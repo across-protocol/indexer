@@ -1,28 +1,51 @@
-# Turborepo starter
+# Across Indexer
 
-This is an official starter Turborepo.
-
-## Using this example
-
-Run the following command:
-
-```sh
-npx create-turbo@latest
-```
+Across Indexer monorepo
 
 ## What's inside?
 
-This Turborepo includes the following packages/apps:
+You can read further details on each component's README file
 
-### Apps and Packages
+### Apps
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
+### Packages
+
+Configuration packages:
+
+- `@repo/eslint-config`: `eslint` configurations
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Other components that wish to use these configurations should include the package names in their dev dependencies and then extend the configurations from component-local configuration files. For example:
+
+```
+// a component package.json
+{
+  // ...
+  "devDependencies": {
+    // ...
+    "eslint-config": "workspace:*",
+    "tsconfig": "workspace:*"
+  }
+}
+```
+
+```
+// a component tsconfig.json
+{
+  "extends": "@repo/typescript-config/base.json",
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"],
+  // ...
+}
+```
+
+```
+// a component .eslintrc.js
+module.exports = {
+  extends: ["@repo/eslint-config/index.js"],
+  // ...
+};
+```
 
 ### Utilities
 
@@ -32,13 +55,21 @@ This Turborepo has some additional tools already setup for you:
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
 
+
+## Useful Commands
+
 ### Build
 
 To build all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm build
+```
+
+To run tasks only for the components you're currently working on, run the following command:
+
+```
+turbo build --filter=<component>
 ```
 
 ### Develop
@@ -46,27 +77,66 @@ pnpm build
 To develop all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm dev
 ```
 
-### Remote Caching
+### Installing dependencies:
 
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+Turborepo suggests to install dependencies directly in the component that uses them.
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
-
-```
-cd my-turborepo
-npx turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+To do that, add the dependency to the `package.json` of the component running the following commands from within the workspace:
 
 ```
-npx turbo link
+pnpm add some-runtime-package
+pnpm add -D some-dev-dependency-package
+```
+
+To add a dependency to a named workspace, regardless of the current workspace or directory, you can do:
+
+```
+pnpm add some-runtime-package --filter someworkspace
+pnpm add -D some-dev-dependency-package --filter someworkspace
+```
+
+If you ever need to update the root `package.json`, no matter what directory you’re in, you can add and remove by including the -w switch:
+
+```
+pnpm add -w some-runtime-package
+pnpm add -wD some-dev-dependency-package
+```
+
+### Creating a new library
+
+Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it. To do so:
+
+1. Create the folder for the new library under the `/packages` directory.
+2. Create the `package.json` with the `exports` key defining the entrypoints of the package. 
+3. Create the `tsconfig.json`.
+4. Add the `src` directory and the source code of the package.
+5. Add the package to an existing app, modyfiying the app's dependencies:
+```
+// apps/my-app/package.json
+{
+  // ...
+  "dependencies": {
+    "@repo/<new-package>": "workspace:*",
+  }
+  // ...
+}
+```
+As you updated the dependencies, make sure pnpm's installation command to update the lockfile.
+
+It's also important to keep `turbo.json` file updated to ensure build outputs will be cached by Turborepo. For example:
+```
+{
+  // ...
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"]
+    },
+  }
+}
 ```
 
 ## Useful Links
