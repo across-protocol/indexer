@@ -1,16 +1,14 @@
 {
-  "name": "indexer",
+  "name":"across-indexer-monorepo",
   "private": true,
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "turbo lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "fix": "turbo fix",
+    "check": "turbo check"
   },
   "devDependencies": {
-    "prettier": "^3.2.5",
-    "turbo": "^2.0.10",
-    "typescript": "^5.4.5"
+    "turbo": "^2.0.10"
   },
   "packageManager": "pnpm@8.15.6",
   "engines": {
