@@ -13,8 +13,9 @@ in that case you must make a new application.
 ## adding an app
 ### Package requirements
 This expects a package that conforms to a basic interface:
-Create a package which exports a "main" function, which takes in an env type: `Record<string, string>`.
-You can copy packages/template to get you started quickly.
+Create a package which exports a "main" function, which takes in an env type: `Record<string, string
+Return value of the library is not used in the app, so you are free to return anything without affecting the runtime of the application.
+You can copy packages/template to get you started quickly. 
 
 ### Adding a new app
 You can copy packages/template into a new folder to get you started quickly. Follow directions in that readme for more info.
