@@ -15,7 +15,7 @@ Configuration packages:
 - `@repo/eslint-config`: `eslint` configurations
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
-Other components that wish to use these configurations should include the package names in their dev dependencies and then extend the configurations from component-local configuration files. For example:
+Other components that need to use these configurations should include the package names in their dev dependencies and then extend the configurations from component-local configuration files. For example:
 
 ```
 // a component package.json
@@ -56,31 +56,15 @@ This Turborepo has some additional tools already setup for you:
 - [Prettier](https://prettier.io) for code formatting
 
 
-## Useful Commands
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-pnpm build
-```
-
-To run tasks only for the components you're currently working on, run the following command:
-
-```
-turbo build --filter=<component>
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-pnpm dev
-```
+## How to use
 
 ### Installing dependencies:
+
+To install dependencies for all apps and packages, run the following command from the root of the repository:
+
+```
+pnpm install
+```
 
 Turborepo suggests to install dependencies directly in the component that uses them.
 
@@ -105,6 +89,29 @@ pnpm add -w some-runtime-package
 pnpm add -wD some-dev-dependency-package
 ```
 
+### Build
+
+To build all apps and packages, run the following command:
+
+```
+pnpm build
+```
+
+### Develop
+
+To develop all apps and packages, run the following command:
+
+```
+pnpm dev
+```
+
+To run tasks only for the components you're currently working on, you can use the --filter flag:
+
+```
+turbo build --filter=<component>
+turbo dev --filter=<component>
+```
+
 ### Creating a new library
 
 Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it. To do so:
@@ -124,7 +131,7 @@ Avoid putting shared code in any app. Instead, create a new package with the sha
   // ...
 }
 ```
-As you updated the dependencies, make sure pnpm's installation command to update the lockfile.
+As you updated the dependencies, make sure to run pnpm's installation command to update the lockfile.
 
 It's also important to keep `turbo.json` file updated to ensure build outputs will be cached by Turborepo. For example:
 ```
