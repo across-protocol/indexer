@@ -1,0 +1,35 @@
+{
+  "name": "@repo/node-app",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node ./src/app",
+    "build": "tsc -b",
+    "format": "prettier --write src",
+    "lint": "eslint --fix",
+    "lint:check": "eslint",
+    "format:check": "prettier src --check",
+    "fix": "pnpm format && pnpm lint",
+    "check": "pnpm format:check && pnpm lint:check",
+    "husky": "husky install",
+    "e2e": "ts-node  node_modules/tape/bin/tape src/**/*.e2e.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "husky": "^9.1.4",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "winston": "^3.13.1",
+    "@repo/template": "workspace:*"
+  }
+}
