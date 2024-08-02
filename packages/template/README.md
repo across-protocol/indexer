@@ -18,6 +18,7 @@ This template will set you up with typescript, eslint, prettier, some basic scri
 - fix - eslint and prettier code fixing
 - lint:check - eslint code checking ( no changes )
 - format:check - prettier code checking ( no changes )
-- check - eslint and prettier code checking ( no changes )
+- build:check - run type check without emitting files 
+- check - eslint and prettier and typescript code checking ( no changes )
 - test - run jest testing
 

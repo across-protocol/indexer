@@ -1,15 +1,18 @@
 {
-  "name":"across-indexer-monorepo",
+  "name": "across-indexer-monorepo",
   "private": true,
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
     "fix": "turbo fix",
     "check": "turbo check",
-    "start:template": "APP=template pnpm --filter @repo/node-app start"
+    "test": "turbo test",
+    "start:template": "APP=template pnpm --filter @repo/node-app start",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2.0.10"
+    "turbo": "^2.0.10",
+    "husky": "^9.1.4"
   },
   "packageManager": "pnpm@8.15.6",
   "engines": {

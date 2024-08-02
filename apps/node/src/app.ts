@@ -17,6 +17,4 @@ async function run() {
   }
 }
 
-run()
-  .then(console.log)
-  .catch(console.error);
+run().then(console.log).catch(console.error);
