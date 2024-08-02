@@ -26,7 +26,7 @@ The `workspace:*` notation is pnpm's way of denoting a local package.
 #### src/app.ts
 Edit the src/app.ts file:
 1. import the package, for example `import * as Template from "@repo/template"`
-2. give it a unique name in the switch statemen within the run function, for example: `case "template":`
+2. give it a unique name in the switch statement within the run function, for example: `case "template":`
 3. Call the packages main function, passing in process.env, awaiting if necessary, for example: `await Template.Main(process.env);`
 4. Return any data you want to log on success.
 
