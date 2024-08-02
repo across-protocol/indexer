@@ -5,7 +5,8 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "fix": "turbo fix",
-    "check": "turbo check"
+    "check": "turbo check",
+    "start:template": "APP=template pnpm --filter @repo/node-app start"
   },
   "devDependencies": {
     "turbo": "^2.0.10"
