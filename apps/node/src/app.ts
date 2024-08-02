@@ -19,4 +19,4 @@ async function run() {
 
 run()
   .then(console.log)
-  .catch((err) => console.error(err));
+  .catch(console.error);
