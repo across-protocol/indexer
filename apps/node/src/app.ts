@@ -10,7 +10,7 @@ async function run() {
   assert(APP, 'Specify the application to start with "APP=appname pnpm start"');
   switch (APP) {
     case "template":
-      void await Template.Main(process.env);
+      void (await Template.Main(process.env));
       return "Example template app running";
     default:
       throw new Error(`Unable to start, unknown app: ${APP}`);

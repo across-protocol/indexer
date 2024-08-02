@@ -5,14 +5,14 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc -b",
-    "build:check": "tsc -b --noEmit",
+    "build:check": "tsc --noEmit",
     "watch": "tsc -b --watch",
     "fix": "pnpm format && pnpm lint",
     "format": "prettier --write src",
     "format:check": "prettier src --check",
     "lint": "eslint --fix",
     "lint:check": "eslint",
-    "check": "pnpm format:check && pnpm lint:check && build:check",
+    "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
     "test": "jest",
     "test:watch": "jest --watch"
   },
