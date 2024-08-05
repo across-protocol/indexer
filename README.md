@@ -55,7 +55,6 @@ This Turborepo has some additional tools already setup for you:
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
 
-
 ## How to use
 
 ### Installing dependencies:
@@ -97,6 +96,8 @@ To build all apps and packages, run the following command:
 pnpm build
 ```
 
+**Note:** Call `pnpm install` before running `pnpm build` if you've added a new package or updated dependencies.
+
 ### Develop
 
 To develop all apps and packages, run the following command:
@@ -112,9 +113,56 @@ turbo build --filter=<component>
 turbo dev --filter=<component>
 ```
 
+### Using a Developer Environment
+
+This repository is configured to use Docker-Compose to create a development environment with all external dependencies.
+
+#### Starting the Environment
+
+To start the development environment, run the following command:
+
+```sh
+pnpm run dev:dev-env:up
+```
+
+#### Stopping the Environment
+
+To stop the development environment, run the following command:
+
+```sh
+pnpm run dev:dev-env:down
+```
+
+#### Running Applications
+
+To run each app in the development environment, you can use the following command:
+
+```sh
+pnpm run dev-env:run-app:{app-name}
+```
+
+**Example:**
+
+```sh
+pnpm run dev-env:run-app:persistence-example
+```
+
+#### Exposed Environment Variables
+
+The development environment exposes the following environment variables that can be used to connect to the locally-running services:
+
+- `NODE_ENV`
+- `DATABASE_HOST`
+- `DATABASE_PORT`
+- `DATABASE_USER`
+- `DATABASE_PASSWORD`
+- `DATABASE_NAME`
+- `REDIS_HOST`
+- `REDIS_PORT`
+
 ### Creating a new library
 
-Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it.  To do so, you can use this repo's template package following instructions [here](./packages/template/README.md).
+Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it. To do so, you can use this repo's template package following instructions [here](./packages/template/README.md).
 
 ## Useful Links
 

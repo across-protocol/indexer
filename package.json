@@ -7,8 +7,15 @@
     "fix": "turbo fix",
     "check": "turbo check",
     "test": "turbo test",
+    "start:indexer": "APP=indexer pnpm --filter @repo/node-app start",
     "start:template": "APP=template pnpm --filter @repo/node-app start",
-    "prepare": "husky"
+    "start:persistence-example": "APP=persistence-example pnpm --filter @repo/node-app start",
+    "prepare": "husky",
+    "dev-env:up": "docker-compose up -d --build",
+    "dev-env:down": "docker-compose down",
+    "dev-env:run-app:indexer": "docker-compose exec app sh -c \"pnpm start:indexer\"",
+    "dev-env:run-app:template": "docker-compose exec app sh -c \"pnpm start:template\"",
+    "dev-env:run-app:persistence-example": "docker-compose exec app sh -c \"pnpm start:persistence-example\""
   },
   "devDependencies": {
     "turbo": "^2.0.10",
