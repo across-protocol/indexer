@@ -19,7 +19,7 @@ async function run() {
       return "Indexer running";
     case "persistence-example":
       void (await PersistenceExample.Main(process.env));
-      return "Example template app running";
+      return "Example persistence app running";
     default:
       throw new Error(`Unable to start, unknown app: ${APP}`);
   }
