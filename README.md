@@ -114,7 +114,7 @@ turbo dev --filter=<component>
 
 ### Creating a new library
 
-Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it.  To do so, you can use this repo's template package (see [link]).
+Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it.  To do so, you can use this repo's template package following instructions [here](./packages/template/README.md).
 
 ## Useful Links
 
