@@ -75,7 +75,7 @@ pnpm add some-runtime-package
 pnpm add -D some-dev-dependency-package
 ```
 
-To add a dependency to a named workspace, regardless of the current workspace or directory, you can do:
+To add a dependency to a named workspace, regardless of the current workspace or directory, run the followig command:
 
 ```
 pnpm add some-runtime-package --filter someworkspace
@@ -114,37 +114,7 @@ turbo dev --filter=<component>
 
 ### Creating a new library
 
-Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it. To do so:
-
-1. Create the folder for the new library under the `/packages` directory.
-2. Create the `package.json` with the `exports` key defining the entrypoints of the package. 
-3. Create the `tsconfig.json`.
-4. Add the `src` directory and the source code of the package.
-5. Add the package to an existing app, modyfiying the app's dependencies:
-```
-// apps/my-app/package.json
-{
-  // ...
-  "dependencies": {
-    "@repo/<new-package>": "workspace:*",
-  }
-  // ...
-}
-```
-As you updated the dependencies, make sure to run pnpm's installation command to update the lockfile.
-
-It's also important to keep `turbo.json` file updated to ensure build outputs will be cached by Turborepo. For example:
-```
-{
-  // ...
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
-    },
-  }
-}
-```
+Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it.  To do so, you can use this repo's template package (see [link]).
 
 ## Useful Links
 
