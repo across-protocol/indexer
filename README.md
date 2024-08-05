@@ -1,28 +1,51 @@
-# Turborepo starter
+# Across Indexer
 
-This is an official starter Turborepo.
-
-## Using this example
-
-Run the following command:
-
-```sh
-npx create-turbo@latest
-```
+Across Indexer monorepo
 
 ## What's inside?
 
-This Turborepo includes the following packages/apps:
+You can read further details on each component's README file
 
-### Apps and Packages
+### Apps
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
+### Packages
+
+Configuration packages:
+
+- `@repo/eslint-config`: `eslint` configurations
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Other components that need to use these configurations should include the package names in their dev dependencies and then extend the configurations from component-local configuration files. For example:
+
+```
+// a component package.json
+{
+  // ...
+  "devDependencies": {
+    // ...
+    "eslint-config": "workspace:*",
+    "tsconfig": "workspace:*"
+  }
+}
+```
+
+```
+// a component tsconfig.json
+{
+  "extends": "@repo/typescript-config/base.json",
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"],
+  // ...
+}
+```
+
+```
+// a component .eslintrc.js
+module.exports = {
+  extends: ["@repo/eslint-config/index.js"],
+  // ...
+};
+```
 
 ### Utilities
 
@@ -32,12 +55,45 @@ This Turborepo has some additional tools already setup for you:
 - [ESLint](https://eslint.org/) for code linting
 - [Prettier](https://prettier.io) for code formatting
 
+
+## How to use
+
+### Installing dependencies:
+
+To install dependencies for all apps and packages, run the following command from the root of the repository:
+
+```
+pnpm install
+```
+
+Turborepo suggests to install dependencies directly in the component that uses them.
+
+To do that, add the dependency to the `package.json` of the component running the following commands from within the workspace:
+
+```
+pnpm add some-runtime-package
+pnpm add -D some-dev-dependency-package
+```
+
+To add a dependency to a named workspace, regardless of the current workspace or directory, run the followig command:
+
+```
+pnpm add some-runtime-package --filter someworkspace
+pnpm add -D some-dev-dependency-package --filter someworkspace
+```
+
+If you ever need to update the root `package.json`, no matter what directory you’re in, you can add and remove by including the -w switch:
+
+```
+pnpm add -w some-runtime-package
+pnpm add -wD some-dev-dependency-package
+```
+
 ### Build
 
 To build all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm build
 ```
 
@@ -46,28 +102,19 @@ pnpm build
 To develop all apps and packages, run the following command:
 
 ```
-cd my-turborepo
 pnpm dev
 ```
 
-### Remote Caching
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
+To run tasks only for the components you're currently working on, you can use the --filter flag:
 
 ```
-cd my-turborepo
-npx turbo login
+turbo build --filter=<component>
+turbo dev --filter=<component>
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### Creating a new library
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
-```
+Avoid putting shared code in any app. Instead, create a new package with the shared code and have the apps import it.  To do so, you can use this repo's template package following instructions [here](./packages/template/README.md).
 
 ## Useful Links
 
