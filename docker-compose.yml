@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Service
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+
+  # Redis Service
+  redis:
+    image: redis:6-alpine
+    container_name: redis_cache
+    volumes:
+      - ./volumes/redis:/data
+
+  # TypeScript Development Service
+  app:
+    build:
+      context: .
+      dockerfile: app-runner.dockerfile
+    container_name: typescript_app
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - DATABASE_NAME=mydatabase
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    command: sh -c "tail -f /dev/null"
