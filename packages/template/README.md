@@ -20,5 +20,10 @@ This template will set you up with typescript, eslint, prettier, some basic scri
 - format:check - prettier code checking ( no changes )
 - build:check - run type check without emitting files 
 - check - eslint and prettier and typescript code checking ( no changes )
-- test - run jest testing
+- test - run mocha testing
+- test:watch - run mocha testing
+- coverage - see testing coverage
 
+### Adding tests
+Add a `example.test.ts` file to any folder and mocha will find it.
+** note: chai v5 breaks typescript support, so we explicitly use chai 4 **
