@@ -30,6 +30,7 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "winston": "^3.13.1",
-    "@repo/template": "workspace:*"
+    "@repo/template": "workspace:*",
+    "@repo/indexer": "workspace:*"
   }
 }
