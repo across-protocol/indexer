@@ -20,11 +20,12 @@ You can copy packages/template to get you started quickly.
 ### Adding a new app
 You can copy packages/template into a new folder to get you started quickly. Follow directions in that readme for more info.
 
-#### package.json
-In this package, edit the package.json file, adding the local repos package to dependencies, for example `"@repo/template": "workspace:*"`. 
+#### 1. Update package.json
+1. In this package, edit the package.json file, adding the local repos package to dependencies, for example `"@repo/template": "workspace:*"`. 
 The `workspace:*` notation is pnpm's way of denoting a local package. 
+2. Run `pnpm install` to make sure it gets linked correctly.
 
-#### src/app.ts
+#### 2. Update src/app.ts
 Edit the src/app.ts file:
 1. import the package, for example `import * as Template from "@repo/template"`
 2. give it a unique name in the switch statement within the run function, for example: `case "template":`

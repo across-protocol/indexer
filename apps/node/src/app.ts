@@ -4,6 +4,7 @@ import assert from "assert";
 import * as Template from "@repo/template";
 import * as Indexer from "@repo/indexer";
 import * as PersistenceExample from "@repo/persistence-example";
+import * as IndexerApi from "@repo/indexer-api";
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ async function run() {
     case "persistence-example":
       void (await PersistenceExample.Main(process.env));
       return "Example persistence app running";
+    case "indexer-api":
+      void (await IndexerApi.Main(process.env));
+      return "Indexer API running";
     default:
       throw new Error(`Unable to start, unknown app: ${APP}`);
   }
