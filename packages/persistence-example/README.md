@@ -13,7 +13,7 @@ When creating a package based on this one, include the scripts for creating and 
 - dev-env:persistence-example:db:migrate:generate
 - dev-env:persistence-example:db:migrate:run
 
-For creating migrations, you need to provide the path to the migrations folder. For this example that can be made running the following command from the root package.json:
+For creating migrations, you need to provide the path to the migrations folder. For this example, that can be made running the following command of the root package.json:
 
 ```
 MIGRATION_PATH=src/migrations/<migration-name> pnpm run dev-env:persistence-example:db:migrate:generate
