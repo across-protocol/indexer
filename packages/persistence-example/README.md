@@ -2,6 +2,17 @@
 
 This is meant to be an example of using a persistence layer in this monorepo.
 
+This template uses:
+- PostgreSQL with TypeORM
+- Redis
+
+When creating a package based on this one, include the scripts for creating and running migrations in the package.json of the root folder. [See scripts](../../package.json):
+
+- db:persistence-example:migrate:generate
+- db:persistence-example:migrate:run
+- dev-env:persistence-example:db:migrate:generate
+- dev-env:persistence-example:db:migrate:run
+
 ## Adding a new package
 
 Refer to the `template` package for a basic template to start a new package.

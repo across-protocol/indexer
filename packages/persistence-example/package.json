@@ -15,15 +15,20 @@
     "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
     "test": "mocha",
     "coverage": "nyc mocha",
-    "test:watch": "mocha --watch"
+    "test:watch": "mocha --watch",
+    "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js",
+    "db:migration:generate": "pnpm typeorm migration:generate -d migrations.config.ts",
+    "db:migration:run": "pnpm typeorm migration:run -d migrations.config.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "ioredis": "^5.4.1",
-    "pg": "^8.12.0",
-    "superstruct": "^2.0.2"
+    "pg": "^8.4.0",
+    "reflect-metadata": "^0.1.13",
+    "superstruct": "^2.0.2",
+    "typeorm": "0.3.20"
   },
   "exports": {
     ".": "./src/index.ts"
@@ -35,6 +40,7 @@
     "@types/chai": "^4.3.17",
     "@types/ioredis": "^5.0.0",
     "@types/mocha": "^10.0.7",
+    "@types/node": "^16.11.10",
     "@types/pg": "^8.11.6",
     "chai": "^4.5.0",
     "eslint": "^8.57.0",

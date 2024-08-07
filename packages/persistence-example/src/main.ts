@@ -1,5 +1,7 @@
-import { Client } from "pg";
 import Redis from "ioredis";
+
+import { createDataSource } from "./data-source";
+import { User } from "./entities/User.entity";
 
 /**
  * Connects to PostgreSQL, performs some dummy queries, and logs the results.
@@ -11,37 +13,35 @@ import Redis from "ioredis";
  * @param {Record<string, string | undefined>} env - Environment variables for configuration.
  */
 async function queryPostgres(env: Record<string, string | undefined>) {
-  // Initialize PostgreSQL client
-  const pgClient = new Client({
-    host: env.DATABASE_HOST,
-    port: parseInt(env.DATABASE_PORT || "5432", 10),
-    user: env.DATABASE_USER,
-    password: env.DATABASE_PASSWORD,
-    database: env.DATABASE_NAME,
-  });
+  // Set up Data Source
+  const AppDataSource = createDataSource(env);
 
   try {
-    // Connect to PostgreSQL
-    await pgClient.connect();
+    // Connect to Data Source
+    await AppDataSource.initialize();
     console.log("Connected to PostgreSQL");
 
-    // Create a table if it doesn't exist
-    await pgClient.query(
-      "CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name VARCHAR(50));",
-    );
-
-    // Insert a dummy row
-    await pgClient.query("INSERT INTO test_table (name) VALUES ('dummy');");
+    // Insert a dummy row. Table should be already created by migrations
+    console.log("Inserting a new user into the database...");
+    const user = new User();
+    user.firstName = "Timber";
+    user.lastName = "Saw";
+    user.age = 25;
+    await AppDataSource.manager.save(user);
+    console.log("Saved a new user with id: " + user.id);
 
     // Query the table
-    const res = await pgClient.query("SELECT * FROM test_table;");
-    console.log("PostgreSQL query result:", res.rows);
+    console.log("Loading users from the database...");
+    const users = await AppDataSource.manager.find(User);
+    console.log("Loaded users: ", users);
   } catch (error) {
     console.error("Error querying PostgreSQL:", error);
   } finally {
     // Disconnect from PostgreSQL
-    await pgClient.end();
-    console.log("Disconnected from PostgreSQL");
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+      console.log("Disconnected from PostgreSQL");
+    }
   }
 }
 

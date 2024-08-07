@@ -19,20 +19,20 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "eslint": "^8.57.0",
     "husky": "^9.1.4",
     "prettier": "^3.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*"
+    "typescript": "^5.5.4"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "winston": "^3.13.1",
-    "@repo/template": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/persistence-example": "workspace:*",
-    "@repo/indexer-api": "workspace:*"
+    "@repo/indexer-api": "workspace:*",
+    "@repo/template": "workspace:*",
+    "dotenv": "^16.4.5",
+    "winston": "^3.13.1"
   }
 }
