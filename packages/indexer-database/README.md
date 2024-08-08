@@ -45,7 +45,7 @@ pnpm run db:migration:run
 
 ### Using this package
 1. Add it as a dependency of other packages that need to interact with the indexer database:
-```json
+```
 // other package package.json
 {
     // ...
