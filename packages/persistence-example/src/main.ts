@@ -14,7 +14,13 @@ import { User } from "./entities/User.entity";
  */
 async function queryPostgres(env: Record<string, string | undefined>) {
   // Set up Data Source
-  const AppDataSource = createDataSource(env);
+  const AppDataSource = createDataSource({
+    host: env.DATABASE_HOST || "localhost",
+    port: env.DATABASE_PORT || "5432",
+    user: env.DATABASE_USER || "user",
+    password: env.DATABASE_PASSWORD || "password",
+    dbName: env.DATABASE_NAME || "database",
+  });
 
   try {
     // Connect to Data Source

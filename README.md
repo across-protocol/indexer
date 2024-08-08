@@ -115,7 +115,7 @@ turbo dev --filter=<component>
 
 ### Using a Developer Environment
 
-This repository is configured to use Docker-Compose to create a development environment with all external dependencies.
+This repository is configured to use Docker Compose to create a development environment with all external dependencies.
 
 #### Starting the Environment
 
