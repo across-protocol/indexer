@@ -231,9 +231,6 @@ importers:
       '@types/chai':
         specifier: ^4.3.17
         version: 4.3.17
-      '@types/ioredis':
-        specifier: ^5.0.0
-        version: 5.0.0
       '@types/mocha':
         specifier: ^10.0.7
         version: 10.0.7
