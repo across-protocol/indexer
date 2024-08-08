@@ -14,6 +14,8 @@
     "prepare": "husky",
     "db:persistence-example:migrate:generate": "cd packages/persistence-example; pnpm db:migration:generate $MIGRATION_PATH",
     "db:persistence-example:migrate:run": "cd packages/persistence-example; pnpm db:migration:run",
+    "db:indexer-database:migrate:generate": "cd packages/indexer-database; pnpm db:migration:generate $MIGRATION_PATH",
+    "db:indexer-database:migrate:run": "cd packages/indexer-database; pnpm db:migration:run",
     "dev-env:up": "docker compose up -d --build",
     "dev-env:down": "docker compose down",
     "dev-env:run-app:indexer": "docker compose exec app sh -c \"pnpm start:indexer\"",
@@ -21,7 +23,9 @@
     "dev-env:run-app:template": "docker compose exec app sh -c \"pnpm start:template\"",
     "dev-env:run-app:persistence-example": "docker compose exec app sh -c \"pnpm db:persistence-example:migrate:run && pnpm start:persistence-example\"",
     "dev-env:persistence-example:db:migrate:generate": "docker compose exec app sh -c \"pnpm db:persistence-example:migrate:generate $MIGRATION_PATH\"",
-    "dev-env:persistence-example:db:migrate:run": "docker compose exec app sh -c \"pnpm db:persistence-example:migrate:run\""
+    "dev-env:persistence-example:db:migrate:run": "docker compose exec app sh -c \"pnpm db:persistence-example:migrate:run\"",
+    "dev-env:indexer-database:migrate:generate": "docker compose exec app sh -c \"pnpm db:indexer-database:migrate:generate $MIGRATION_PATH\"",
+    "dev-env:indexer-database:migrate:run": "docker compose exec app sh -c \"pnpm db:indexer-database:migrate:run\""
   },
   "devDependencies": {
     "turbo": "^2.0.10",
