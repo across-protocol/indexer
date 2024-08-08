@@ -94,6 +94,9 @@ importers:
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@repo/indexer-database':
+        specifier: workspace:*
+        version: link:../indexer-database
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -130,6 +133,9 @@ importers:
 
   packages/indexer-api:
     dependencies:
+      '@repo/indexer-database':
+        specifier: workspace:*
+        version: link:../indexer-database
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -194,6 +200,70 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.0.2)(typescript@5.5.4)
+      typescript:
+        specifier: ^5.5.4
+        version: 5.5.4
+
+  packages/indexer-database:
+    dependencies:
+      pg:
+        specifier: ^8.4.0
+        version: 8.12.0
+      reflect-metadata:
+        specifier: ^0.1.13
+        version: 0.1.14
+      superstruct:
+        specifier: ^2.0.2
+        version: 2.0.2
+      typeorm:
+        specifier: 0.3.20
+        version: 0.3.20(ioredis@5.4.1)(pg@8.12.0)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))
+    devDependencies:
+      '@istanbuljs/nyc-config-typescript':
+        specifier: ^1.0.2
+        version: 1.0.2(nyc@17.0.0)
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/chai':
+        specifier: ^4.3.17
+        version: 4.3.17
+      '@types/ioredis':
+        specifier: ^5.0.0
+        version: 5.0.0
+      '@types/mocha':
+        specifier: ^10.0.7
+        version: 10.0.7
+      '@types/node':
+        specifier: ^16.11.10
+        version: 16.18.104
+      '@types/pg':
+        specifier: ^8.11.6
+        version: 8.11.6
+      chai:
+        specifier: ^4.5.0
+        version: 4.5.0
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.0
+      mocha:
+        specifier: ^10.7.0
+        version: 10.7.0
+      nyc:
+        specifier: ^17.0.0
+        version: 17.0.0
+      prettier:
+        specifier: ^3.3.3
+        version: 3.3.3
+      source-map-support:
+        specifier: ^0.5.21
+        version: 0.5.21
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@16.18.104)(typescript@5.5.4)
       typescript:
         specifier: ^5.5.4
         version: 5.5.4
