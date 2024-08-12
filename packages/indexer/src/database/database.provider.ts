@@ -1,15 +1,6 @@
-import { createDataSource } from "@repo/indexer-database";
+import { createDataSource, DatabaseConfig } from "@repo/indexer-database";
 
-export async function connectToDatabase(
-  env: Record<string, string | undefined>,
-) {
-  const databaseConfig = {
-    host: env.DATABASE_HOST,
-    port: env.DATABASE_PORT,
-    user: env.DATABASE_USER,
-    password: env.DATABASE_PASSWORD,
-    dbName: env.DATABASE_NAME,
-  };
+export async function connectToDatabase(databaseConfig: DatabaseConfig) {
   try {
     const database = await createDataSource(databaseConfig).initialize();
     return database;

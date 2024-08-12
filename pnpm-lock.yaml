@@ -85,8 +85,8 @@ importers:
   packages/indexer:
     dependencies:
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: 2.0.3-1
+        version: 2.0.3-1
     devDependencies:
       '@istanbuljs/nyc-config-typescript':
         specifier: ^1.0.2
@@ -152,8 +152,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: 2.0.3-1
+        version: 2.0.3-1
     devDependencies:
       '@istanbuljs/nyc-config-typescript':
         specifier: ^1.0.2
@@ -213,8 +213,8 @@ importers:
         specifier: ^0.1.13
         version: 0.1.14
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: 2.0.3-1
+        version: 2.0.3-1
       typeorm:
         specifier: 0.3.20
         version: 0.3.20(ioredis@5.4.1)(pg@8.12.0)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))
@@ -277,8 +277,8 @@ importers:
         specifier: ^0.1.13
         version: 0.1.14
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: 2.0.3-1
+        version: 2.0.3-1
       typeorm:
         specifier: 0.3.20
         version: 0.3.20(ioredis@5.4.1)(pg@8.12.0)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))
@@ -335,8 +335,8 @@ importers:
   packages/template:
     dependencies:
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: 2.0.3-1
+        version: 2.0.3-1
     devDependencies:
       '@istanbuljs/nyc-config-typescript':
         specifier: ^1.0.2
@@ -2859,8 +2859,8 @@ packages:
     resolution: {integrity: sha512-xuW7dzkUpcJq7QnhOsnNUgtYp3xRwpt2F7abdRYIpCsAt0hhUqia0EdxyXZQQpNmGtsCzYHryaKSV3q3GJnq7w==}
     engines: {node: '>=14.18.0'}
 
-  superstruct@2.0.2:
-    resolution: {integrity: sha512-uV+TFRZdXsqXTL2pRvujROjdZQ4RAlBUS5BTh9IGm+jTqQntYThciG/qu57Gs69yjnVUSqdxF9YLmSnpupBW9A==}
+  superstruct@2.0.3-1:
+    resolution: {integrity: sha512-6QrJTw1xy6fuV7bmBQYNy0IzW7IN2WSntqdrccpM/xdkLdCTVZ2Td5wU3rUkV6Iz5RhYCpY4egeZh6jdzFTlvQ==}
     engines: {node: '>=14.0.0'}
 
   supertest@7.0.0:
@@ -6156,7 +6156,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  superstruct@2.0.2: {}
+  superstruct@2.0.3-1: {}
 
   supertest@7.0.0:
     dependencies:
