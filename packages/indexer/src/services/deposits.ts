@@ -40,7 +40,7 @@ export async function getSpokeClient(
   let lastProcessedBlockNumber: number = deployedBlockNumber;
   if (redis) {
     lastProcessedBlockNumber = Number(
-      (await redis.get(getSpokePoolLastBlockSearchedKey(chainId))) ??
+      (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
         lastProcessedBlockNumber,
     );
   }
@@ -95,7 +95,7 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
   // for now we will always process all config store events.
   // if (redis) {
   //   lastProcessedBlockNumber = Number(
-  //     (await redis.get(getConfigStoreLastBlockSearchedKey(chainId))) ??
+  //     (await redis.get(getLastBlockSearchedKey('configStore',chainId))) ??
   //       lastProcessedBlockNumber,
   //   );
   // }
@@ -134,7 +134,7 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
   let lastProcessedBlockNumber: number = deployedBlockNumber;
   if (redis) {
     lastProcessedBlockNumber = Number(
-      (await redis.get(getHubPoolLastBlockSearchedKey(chainId))) ??
+      (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
         lastProcessedBlockNumber,
     );
   }
@@ -151,26 +151,13 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
     eventSearchConfig,
   );
 }
-function getSpokePoolLastBlockSearchedKey(chainId: number): string {
+function getLastBlockSearchedKey(
+  clientName: "hubPool" | "spokePool" | "configStore",
+  chainId: number,
+): string {
   return [
     "depositIndexer",
-    "spokePool",
-    "lastProcessedBlockNumber",
-    chainId,
-  ].join("~");
-}
-function getConfigStoreLastBlockSearchedKey(chainId: number): string {
-  return [
-    "depositIndexer",
-    "configStore",
-    "lastProcessedBlockNumber",
-    chainId,
-  ].join("~");
-}
-function getHubPoolLastBlockSearchedKey(chainId: number): string {
-  return [
-    "depositIndexer",
-    "hubPool",
+    clientName,
     "lastProcessedBlockNumber",
     chainId,
   ].join("~");
@@ -246,7 +233,7 @@ export async function Indexer(config: Config) {
     });
     if (redis) {
       await redis.set(
-        getHubPoolLastBlockSearchedKey(chainId),
+        getLastBlockSearchedKey("hubPool", chainId),
         latestBlockSearched,
       );
     }
@@ -261,12 +248,13 @@ export async function Indexer(config: Config) {
       chainId,
       latestBlockSearched,
     });
-    if (redis) {
-      await redis.set(
-        getConfigStoreLastBlockSearchedKey(chainId),
-        latestBlockSearched,
-      );
-    }
+    // remove this for now
+    // if (redis) {
+    //   await redis.set(
+    //     getConfigStoreLastBlockSearchedKey(chainId),
+    //     latestBlockSearched,
+    //   );
+    // }
   }
   async function updateSpokePool(
     now: number,
@@ -289,7 +277,7 @@ export async function Indexer(config: Config) {
     });
     if (redis) {
       await redis.set(
-        getSpokePoolLastBlockSearchedKey(chainId),
+        getLastBlockSearchedKey("spokePool", chainId),
         latestBlockSearched,
       );
     }
