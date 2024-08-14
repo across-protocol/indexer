@@ -84,6 +84,9 @@ importers:
 
   packages/indexer:
     dependencies:
+      '@across-protocol/constants':
+        specifier: ^3.1.13
+        version: 3.1.13
       '@across-protocol/contracts':
         specifier: ^3.0.8
         version: 3.0.8(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
@@ -103,11 +106,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0
       superstruct:
-        specifier: ^2.0.2
-        version: 2.0.2
-      typeorm:
-        specifier: 0.3.20
-        version: 0.3.20(ioredis@5.4.1)(redis@4.7.0)(ts-node@10.9.2)
+        specifier: ^2.0.3-1
+        version: 2.0.3-1
       winston:
         specifier: ^3.13.1
         version: 3.13.1
@@ -13074,86 +13074,6 @@ packages:
       ioredis: 5.4.1
       mkdirp: 2.1.6
       pg: 8.12.0
-      reflect-metadata: 0.2.2
-      sha.js: 2.4.11
-      ts-node: 10.9.2(@types/node@16.18.104)(typescript@5.5.4)
-      tslib: 2.6.3
-      uuid: 9.0.1
-      yargs: 17.7.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
-  /typeorm@0.3.20(ioredis@5.4.1)(redis@4.7.0)(ts-node@10.9.2):
-    resolution: {integrity: sha512-sJ0T08dV5eoZroaq9uPKBoNcGslHBR4E4y+EBHs//SiGbblGe7IeduP/IH4ddCcj0qp3PHwDwGnuvqEAnKlq/Q==}
-    engines: {node: '>=16.13.0'}
-    hasBin: true
-    peerDependencies:
-      '@google-cloud/spanner': ^5.18.0
-      '@sap/hana-client': ^2.12.25
-      better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
-      hdb-pool: ^0.1.6
-      ioredis: ^5.0.4
-      mongodb: ^5.8.0
-      mssql: ^9.1.1 || ^10.0.1
-      mysql2: ^2.2.5 || ^3.0.1
-      oracledb: ^6.3.0
-      pg: ^8.5.1
-      pg-native: ^3.0.0
-      pg-query-stream: ^4.0.0
-      redis: ^3.1.1 || ^4.0.0
-      sql.js: ^1.4.0
-      sqlite3: ^5.0.3
-      ts-node: ^10.7.0
-      typeorm-aurora-data-api-driver: ^2.0.0
-    peerDependenciesMeta:
-      '@google-cloud/spanner':
-        optional: true
-      '@sap/hana-client':
-        optional: true
-      better-sqlite3:
-        optional: true
-      hdb-pool:
-        optional: true
-      ioredis:
-        optional: true
-      mongodb:
-        optional: true
-      mssql:
-        optional: true
-      mysql2:
-        optional: true
-      oracledb:
-        optional: true
-      pg:
-        optional: true
-      pg-native:
-        optional: true
-      pg-query-stream:
-        optional: true
-      redis:
-        optional: true
-      sql.js:
-        optional: true
-      sqlite3:
-        optional: true
-      ts-node:
-        optional: true
-      typeorm-aurora-data-api-driver:
-        optional: true
-    dependencies:
-      '@sqltools/formatter': 1.2.5
-      app-root-path: 3.1.0
-      buffer: 6.0.3
-      chalk: 4.1.2
-      cli-highlight: 2.1.11
-      dayjs: 1.11.12
-      debug: 4.3.6(supports-color@8.1.1)
-      dotenv: 16.4.5
-      glob: 10.4.5
-      ioredis: 5.4.1
-      mkdirp: 2.1.6
-      redis: 4.7.0
       reflect-metadata: 0.2.2
       sha.js: 2.4.11
       ts-node: 10.9.2(@types/node@16.18.104)(typescript@5.5.4)

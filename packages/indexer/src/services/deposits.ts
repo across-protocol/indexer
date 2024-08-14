@@ -6,38 +6,17 @@ import {
 } from "@across-protocol/contracts";
 import * as across from "@across-protocol/sdk";
 import winston from "winston";
-import { DataSource } from "typeorm";
 import Redis from "ioredis";
 
 import { providers, Contract } from "ethers";
 
-type PostgresConfig = {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  database: string;
-};
 type Config = {
   providerUrls: string[];
   maxBlockLookBack?: number;
   logger: winston.Logger;
-  postgres?: PostgresConfig | undefined;
   redis: Redis | undefined;
 };
 
-const initPostgres = (config: PostgresConfig): DataSource => {
-  return new DataSource({
-    type: "postgres",
-    host: config.host,
-    port: config.port,
-    username: config.username,
-    password: config.password,
-    database: config.database,
-    logging: false,
-    entities: [],
-  });
-};
 type GetSpokeClientParams = {
   provider: providers.Provider;
   logger: winston.Logger;

@@ -2,6 +2,7 @@ import assert from "assert";
 import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
+import * as acrossConstants from "@across-protocol/constants";
 
 function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
@@ -39,34 +40,11 @@ export async function Main(
     );
     running = false;
   });
-  const providerUrls: string[] = [
-    // eth mainnet
-    env.INDEXER_PROVIDER_URL_1,
-    // optimism
-    env.INDEXER_PROVIDER_URL_10,
-    // polygon
-    env.INDEXER_PROVIDER_URL_137,
-    // zksync
-    env.INDEXER_PROVIDER_URL_324,
-    // redstone
-    env.INDEXER_PROVIDER_URL_690,
-    // lisk
-    env.INDEXER_PROVIDER_URL_1135,
-    // base
-    env.INDEXER_PROVIDER_URL_8453,
-    // mode
-    env.INDEXER_PROVIDER_URL_34443,
-    // arbitrum
-    env.INDEXER_PROVIDER_URL_42161,
-    // linea
-    env.INDEXER_PROVIDER_URL_59144,
-    // blast
-    env.INDEXER_PROVIDER_URL_81457,
-    // scroll
-    env.INDEXER_PROVIDER_URL_534352,
-    // zora
-    env.INDEXER_PROVIDER_URL_7777777,
-  ].filter((x): x is string => !!x);
+  const providerUrls: string[] = Object.values(
+    acrossConstants.MAINNET_CHAIN_IDs,
+  )
+    .map((chainId) => env[`INDEXER_PROVIDER_URL_${chainId}`])
+    .filter((x): x is string => !!x);
 
   assert(
     providerUrls.length > 0,
