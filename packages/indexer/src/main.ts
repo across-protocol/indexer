@@ -40,17 +40,22 @@ export async function Main(
     );
     running = false;
   });
-  const providerUrls: string[] = Object.values(
+  const spokePoolProviderUrls: string[] = Object.values(
     acrossConstants.MAINNET_CHAIN_IDs,
   )
-    .map((chainId) => env[`INDEXER_PROVIDER_URL_${chainId}`])
+    .map((chainId) => env[`INDEXER_SPOKEPOOL_PROVIDER_URL_${chainId}`])
     .filter((x): x is string => !!x);
 
   assert(
-    providerUrls.length > 0,
-    "Must provide a url for at least one provider on one chain, for example: INDEXER_PROVIDER_URL_1",
+    spokePoolProviderUrls.length > 0,
+    "Must provide a url for at least one provider on one chain, for example: INDEXER_SPOKEPOOL_PROVIDER_URL_1",
   );
 
+  assert(
+    env.INDEXER_HUBPOOL_PROVIDER_URL,
+    "requires INDEXER_HUBPOOL_PROVIDER_URL",
+  );
+  const hubPoolProviderUrl = env.INDEXER_HUBPOOL_PROVIDER_URL;
   // optional redis config
   const redisConfig =
     env.INDEXER_REDIS_HOST && env.INDEXER_REDIS_PORT
@@ -67,14 +72,17 @@ export async function Main(
   logger.info({
     message: "Starting indexer",
     redisConfig,
-    providerUrls,
+    spokePoolProviderUrls,
+    hubPoolProviderUrl,
   });
   const depositIndexer = await services.deposits.Indexer({
-    providerUrls,
+    spokePoolProviderUrls,
+    hubPoolProviderUrl,
     logger,
     redis,
   });
 
+  // TODO: add looping to keep process going
   // do {
   logger.info("index loop starting");
   await depositIndexer(Date.now());
