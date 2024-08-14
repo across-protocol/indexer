@@ -13,9 +13,7 @@ import Redis from "ioredis";
 
 import { providers, Contract } from "ethers";
 
-// Maximum supported version of the configuration loaded into the Across ConfigStore.
-// It protects bots from running outdated code against newer version of the on-chain config store.
-// @dev Incorrectly setting this value may lead to incorrect behaviour and potential loss of funds.
+// from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
 
 type GetSpokeClientParams = {
@@ -297,10 +295,13 @@ export async function Indexer(config: Config) {
   }
 
   return async function updateAll(now: number) {
-    for (const [chainId, spokeClient] of spokeClientEntries) {
-      await updateConfigStore(now, hubPoolNetworkInfo.chainId);
-      await updateHubPool(now, hubPoolNetworkInfo.chainId);
-      await updateSpokePool(now, chainId, spokeClient);
-    }
+    await updateConfigStore(now, hubPoolNetworkInfo.chainId);
+    await updateHubPool(now, hubPoolNetworkInfo.chainId);
+    // using all instead of all settled for now to make sure we easily see errors
+    await Promise.all(
+      spokeClientEntries.map(async ([chainId, spokeClient]) =>
+        updateSpokePool(now, chainId, spokeClient),
+      ),
+    );
   };
 }
