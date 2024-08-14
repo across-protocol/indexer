@@ -92,12 +92,13 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     provider,
   );
   let lastProcessedBlockNumber: number = deployedBlockNumber;
-  if (redis) {
-    lastProcessedBlockNumber = Number(
-      (await redis.get(getConfigStoreLastBlockSearchedKey(chainId))) ??
-        lastProcessedBlockNumber,
-    );
-  }
+  // for now we will always process all config store events.
+  // if (redis) {
+  //   lastProcessedBlockNumber = Number(
+  //     (await redis.get(getConfigStoreLastBlockSearchedKey(chainId))) ??
+  //       lastProcessedBlockNumber,
+  //   );
+  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
