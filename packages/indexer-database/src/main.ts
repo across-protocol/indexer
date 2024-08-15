@@ -1,5 +1,10 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
+import { Deposit } from "./entities/deposit.entity";
+import { Fill } from "./entities/fill.entity";
+import { SlowFillRequest } from "./entities/slowFillRequest.entity";
+
+export { DataSource };
 
 export type DatabaseConfig = {
   host: string;
@@ -18,8 +23,10 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
     password: config.password,
     database: config.dbName,
     logging: false,
-    entities: ["entities/*.ts"],
+    entities: [Deposit, Fill, SlowFillRequest],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
   });
 };
+
+export { Deposit, Fill, SlowFillRequest };

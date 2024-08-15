@@ -1,4 +1,3 @@
-import assert from "assert";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
@@ -6,12 +5,19 @@ import {
   HubPool__factory as HubPoolFactory,
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
-import * as acrossConstants from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
+import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
 import winston from "winston";
 import Redis from "ioredis";
+import {
+  DataSource,
+  Deposit,
+  Fill,
+  SlowFillRequest,
+} from "@repo/indexer-database";
 
 import { providers, Contract } from "ethers";
+
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -169,6 +175,7 @@ type Config = {
   maxBlockLookBack?: number;
   logger: winston.Logger;
   redis: Redis | undefined;
+  postgres: DataSource | undefined;
 };
 
 export async function Indexer(config: Config) {
@@ -178,9 +185,8 @@ export async function Indexer(config: Config) {
     maxBlockLookBack = 10000,
     logger,
     redis,
+    postgres,
   } = config;
-
-  // const pg = config.postgres ? initPostgres(config.postgres) : undefined;
 
   const hubPoolProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
   const hubPoolNetworkInfo = await hubPoolProvider.getNetwork();
@@ -220,6 +226,86 @@ export async function Indexer(config: Config) {
         ];
       }),
     );
+
+  function formatRelayData(
+    event:
+      | across.interfaces.DepositWithBlock
+      | across.interfaces.FillWithBlock
+      | across.interfaces.SlowFillRequestWithBlock,
+  ) {
+    return {
+      inputAmount: event.inputAmount.toString(),
+      outputAmount: event.outputAmount.toString(),
+      fillDeadline: new Date(event.fillDeadline * 1000),
+      exclusivityDeadline:
+        event.exclusivityDeadline === 0
+          ? undefined
+          : new Date(event.exclusivityDeadline * 1000),
+    };
+  }
+
+  async function formatAndSaveDeposits(
+    deposits: across.interfaces.DepositWithBlock[],
+  ) {
+    const depositRepository = postgres?.getRepository(Deposit);
+    const formattedDeposits = deposits.map((deposit) => {
+      return {
+        uuid: getRelayHashFromEvent(deposit),
+        ...formatRelayData(deposit),
+        quoteTimestamp: new Date(deposit.quoteTimestamp * 1000),
+      };
+    });
+    try {
+      await depositRepository?.save(formattedDeposits, { chunk: 2000 });
+      logger.info(`Saved ${deposits.length} deposits`);
+    } catch (error) {
+      logger.error("There was an error while saving deposits:", error);
+    }
+  }
+
+  async function formatAndSaveFills(fills: across.interfaces.FillWithBlock[]) {
+    const fillRepository = postgres?.getRepository(Fill);
+    const formattedFills = fills.map((fill) => {
+      return {
+        uuid: getRelayHashFromEvent(fill),
+        ...formatRelayData(fill),
+        relayExecutionInfo: {
+          ...fill.relayExecutionInfo,
+          updatedOutputAmount:
+            fill.relayExecutionInfo.updatedOutputAmount.toString(),
+        },
+      };
+    });
+    try {
+      await fillRepository?.save(formattedFills, { chunk: 2000 });
+      logger.info(`Saved ${fills.length} fills`);
+    } catch (error) {
+      logger.error("There was an error while saving fills:", error);
+    }
+  }
+
+  async function formatAndSaveSlowFillRequests(
+    slowFillRequests: across.interfaces.SlowFillRequestWithBlock[],
+  ) {
+    const slowFillRequestRepository = postgres?.getRepository(SlowFillRequest);
+    const formattedSlowFillRequests = slowFillRequests.map((slowFillReq) => {
+      return {
+        uuid: getRelayHashFromEvent(slowFillReq),
+        ...formatRelayData(slowFillReq)
+      };
+    });
+    try {
+      await slowFillRequestRepository?.save(formattedSlowFillRequests, {
+        chunk: 2000,
+      });
+      logger.info(`Saved ${slowFillRequests.length} slow fill requests`);
+    } catch (error) {
+      logger.error(
+        "There was an error while saving slow fill requests:",
+        error,
+      );
+    }
+  }
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
@@ -267,13 +353,25 @@ export async function Indexer(config: Config) {
     });
     await spokeClient.update();
     // TODO: store any data we need for configs in index
+
+    const deposits = spokeClient.getDeposits();
+    const fills = spokeClient.getFills();
+    const slowFillRequests =
+      spokeClient.getSlowFillRequestsForOriginChain(chainId);
+    if (postgres) {
+      await formatAndSaveDeposits(deposits);
+      await formatAndSaveFills(fills);
+      await formatAndSaveSlowFillRequests(slowFillRequests);
+    }
+
     const latestBlockSearched = spokeClient.latestBlockSearched;
     logger.info({
       message: "Finished updating spoke client",
       chainId,
       latestBlockSearched,
-      fills: Object.values(spokeClient.fills).length,
-      deposits: spokeClient.getDeposits().length,
+      deposits: deposits.length,
+      fills: fills.length,
+      slowFillRequests: slowFillRequests.length
     });
     if (redis) {
       await redis.set(
