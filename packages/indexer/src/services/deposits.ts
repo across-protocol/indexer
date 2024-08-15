@@ -18,7 +18,6 @@ import {
 
 import { providers, Contract } from "ethers";
 
-
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
 
@@ -291,7 +290,7 @@ export async function Indexer(config: Config) {
     const formattedSlowFillRequests = slowFillRequests.map((slowFillReq) => {
       return {
         uuid: getRelayHashFromEvent(slowFillReq),
-        ...formatRelayData(slowFillReq)
+        ...formatRelayData(slowFillReq),
       };
     });
     try {
@@ -371,7 +370,7 @@ export async function Indexer(config: Config) {
       latestBlockSearched,
       deposits: deposits.length,
       fills: fills.length,
-      slowFillRequests: slowFillRequests.length
+      slowFillRequests: slowFillRequests.length,
     });
     if (redis) {
       await redis.set(
