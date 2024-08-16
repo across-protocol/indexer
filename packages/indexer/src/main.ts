@@ -119,5 +119,6 @@ export async function Main(
   // } while (running);
 
   redis && redis.disconnect();
+  postgres && postgres.destroy();
   logger.info("Exiting indexer");
 }
