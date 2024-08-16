@@ -249,6 +249,7 @@ export async function Indexer(config: Config) {
     const depositRepository = postgres?.getRepository(Deposit);
     const formattedDeposits = deposits.map((deposit) => {
       return {
+        ...deposit,
         uuid: getRelayHashFromEvent(deposit),
         ...formatRelayData(deposit),
         quoteTimestamp: new Date(deposit.quoteTimestamp * 1000),
@@ -266,6 +267,7 @@ export async function Indexer(config: Config) {
     const fillRepository = postgres?.getRepository(Fill);
     const formattedFills = fills.map((fill) => {
       return {
+        ...fill,
         uuid: getRelayHashFromEvent(fill),
         ...formatRelayData(fill),
         relayExecutionInfo: {
@@ -289,6 +291,7 @@ export async function Indexer(config: Config) {
     const slowFillRequestRepository = postgres?.getRepository(SlowFillRequest);
     const formattedSlowFillRequests = slowFillRequests.map((slowFillReq) => {
       return {
+        ...slowFillReq,
         uuid: getRelayHashFromEvent(slowFillReq),
         ...formatRelayData(slowFillReq),
       };

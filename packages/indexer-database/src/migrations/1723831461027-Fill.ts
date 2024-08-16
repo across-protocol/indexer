@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Fill1723753878289 implements MigrationInterface {
-  name = "Fill1723753878289";
+export class Fill1723831461027 implements MigrationInterface {
+  name = "Fill1723831461027";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -14,9 +14,9 @@ export class Fill1723753878289 implements MigrationInterface {
                 "depositor" character varying NOT NULL,
                 "recipient" character varying NOT NULL,
                 "inputToken" character varying NOT NULL,
-                "inputAmount" numeric NOT NULL,
+                "inputAmount" character varying NOT NULL,
                 "outputToken" character varying NOT NULL,
-                "outputAmount" numeric NOT NULL,
+                "outputAmount" character varying NOT NULL,
                 "message" character varying NOT NULL,
                 "exclusiveRelayer" character varying NOT NULL,
                 "exclusivityDeadline" TIMESTAMP,
@@ -32,11 +32,12 @@ export class Fill1723753878289 implements MigrationInterface {
                 "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
                 "updatedRecipient" character varying NOT NULL,
                 "updatedMessage" character varying NOT NULL,
-                "updatedOutputAmount" numeric NOT NULL,
+                "updatedOutputAmount" character varying NOT NULL,
                 "fillType" "public"."fill_filltype_enum" NOT NULL,
                 CONSTRAINT "UK_fill_uuid_transactionHash_logIndex" UNIQUE ("uuid", "transactionHash", "logIndex"),
                 CONSTRAINT "PK_27c68239b5271f170cfe8946cc1" PRIMARY KEY ("id")
-            )`,
+            )
+        `,
     );
   }
 

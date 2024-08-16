@@ -41,13 +41,13 @@ export class SlowFillRequest {
   @Column()
   inputToken: string;
 
-  @Column({ type: "decimal" })
+  @Column()
   inputAmount: string;
 
   @Column()
   outputToken: string;
 
-  @Column({ type: "decimal" })
+  @Column()
   outputAmount: string;
 
   @Column()

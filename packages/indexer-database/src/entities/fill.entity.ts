@@ -15,7 +15,7 @@ class RelayExecutionInfo {
   @Column()
   updatedMessage: string;
 
-  @Column({ type: "decimal" })
+  @Column()
   updatedOutputAmount: string;
 
   @Column({ type: "enum", enum: interfaces.FillType })
@@ -55,13 +55,13 @@ export class Fill {
   @Column()
   inputToken: string;
 
-  @Column({ type: "decimal" })
+  @Column()
   inputAmount: string;
 
   @Column()
   outputToken: string;
 
-  @Column({ type: "decimal" })
+  @Column()
   outputAmount: string;
 
   @Column()
