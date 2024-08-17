@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class SlowFillRequest1723831487451 implements MigrationInterface {
-  name = "SlowFillRequest1723831487451";
+export class SlowFillRequest1723914767778 implements MigrationInterface {
+  name = "SlowFillRequest1723914767778";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

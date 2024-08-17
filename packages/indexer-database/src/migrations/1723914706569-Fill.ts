@@ -1,9 +1,12 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Fill1723831461027 implements MigrationInterface {
-  name = "Fill1723831461027";
+export class Fill1723914706569 implements MigrationInterface {
+  name = "Fill1723914706569";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TYPE "public"."fill_filltype_enum" AS ENUM('0', '1', '2')`,
+    );
     await queryRunner.query(
       `CREATE TABLE "fill" (
                 "id" SERIAL NOT NULL,
@@ -43,5 +46,6 @@ export class Fill1723831461027 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "fill"`);
+    await queryRunner.query(`DROP TYPE "public"."fill_filltype_enum"`);
   }
 }
