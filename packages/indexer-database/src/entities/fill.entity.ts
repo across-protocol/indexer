@@ -25,11 +25,7 @@ class RelayExecutionInfo {
 // TODO: Add refundBundle when we have the Bundle entity
 // TODO: Add effectiveRepaymentChainId
 @Entity()
-@Unique("UK_fill_uuid_transactionHash_logIndex", [
-  "uuid",
-  "transactionHash",
-  "logIndex",
-])
+@Unique("UK_fill_uuid", ["uuid"])
 export class Fill {
   @PrimaryGeneratedColumn()
   id: number;
