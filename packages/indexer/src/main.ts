@@ -3,6 +3,8 @@ import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
 import * as acrossConstants from "@across-protocol/constants";
+import { DatabaseConfig } from "@repo/indexer-database";
+import { connectToDatabase } from "./database/database.provider";
 
 function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
@@ -26,6 +28,24 @@ async function initializeRedis(config: RedisConfig, logger: winston.Logger) {
       reject(err);
     });
   });
+}
+
+function getPostgresConfig(
+  env: Record<string, string | undefined>,
+): DatabaseConfig | undefined {
+  return env.DATABASE_HOST &&
+    env.DATABASE_PORT &&
+    env.DATABASE_USER &&
+    env.DATABASE_PASSWORD &&
+    env.DATABASE_NAME
+    ? {
+        host: env.DATABASE_HOST,
+        port: env.DATABASE_PORT,
+        user: env.DATABASE_USER,
+        password: env.DATABASE_PASSWORD,
+        dbName: env.DATABASE_NAME,
+      }
+    : undefined;
 }
 
 export async function Main(
@@ -69,9 +89,16 @@ export async function Main(
     ? await initializeRedis(redisConfig, logger)
     : undefined;
 
+  // optional postgresConfig
+  const postgresConfig = getPostgresConfig(env);
+  const postgres = postgresConfig
+    ? await connectToDatabase(postgresConfig, logger)
+    : undefined;
+
   logger.info({
     message: "Starting indexer",
     redisConfig,
+    postgresConfig,
     spokePoolProviderUrls,
     hubPoolProviderUrl,
   });
@@ -80,6 +107,7 @@ export async function Main(
     hubPoolProviderUrl,
     logger,
     redis,
+    postgres,
   });
 
   // TODO: add looping to keep process going
@@ -91,5 +119,6 @@ export async function Main(
   // } while (running);
 
   redis && redis.disconnect();
+  postgres && postgres.destroy();
   logger.info("Exiting indexer");
 }

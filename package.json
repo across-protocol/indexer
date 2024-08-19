@@ -18,7 +18,7 @@
     "db:indexer-database:migrate:run": "cd packages/indexer-database; pnpm db:migration:run",
     "dev-env:up": "docker compose up -d --build",
     "dev-env:down": "docker compose down",
-    "dev-env:run-app:indexer": "docker compose exec app sh -c \"pnpm start:indexer\"",
+    "dev-env:run-app:indexer": "docker compose exec app sh -c \"pnpm db:indexer-database:migrate:run && pnpm start:indexer\"",
     "dev-env:run-app:indexer-api": "docker compose exec app sh -c \"pnpm start:indexer-api\"",
     "dev-env:run-app:template": "docker compose exec app sh -c \"pnpm start:template\"",
     "dev-env:run-app:persistence-example": "docker compose exec app sh -c \"pnpm db:persistence-example:migrate:run && pnpm start:persistence-example\"",
