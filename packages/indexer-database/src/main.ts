@@ -1,8 +1,8 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { Deposit } from "./entities/deposit.entity";
-import { Fill } from "./entities/fill.entity";
-import { SlowFillRequest } from "./entities/slowFillRequest.entity";
+import { V3FundsDeposited } from "./entities/evm/V3FundsDeposited";
+import { FilledV3Relay } from "./entities/evm/FilledV3Relay";
+import { RequestedV3SlowFill } from "./entities/evm/RequestedV3SlowFill";
 
 export { DataSource };
 
@@ -23,10 +23,10 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
     password: config.password,
     database: config.dbName,
     logging: false,
-    entities: [Deposit, Fill, SlowFillRequest],
+    entities: [V3FundsDeposited, FilledV3Relay, RequestedV3SlowFill],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
   });
 };
 
-export { Deposit, Fill, SlowFillRequest };
+export { V3FundsDeposited, FilledV3Relay, RequestedV3SlowFill };

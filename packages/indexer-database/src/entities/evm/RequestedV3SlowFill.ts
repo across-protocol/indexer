@@ -6,27 +6,10 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
-import { interfaces } from "@across-protocol/sdk";
 
-class RelayExecutionInfo {
-  @Column()
-  updatedRecipient: string;
-
-  @Column()
-  updatedMessage: string;
-
-  @Column()
-  updatedOutputAmount: string;
-
-  @Column({ type: "enum", enum: interfaces.FillType })
-  fillType: interfaces.FillType;
-}
-
-// TODO: Add refundBundle when we have the Bundle entity
-// TODO: Add effectiveRepaymentChainId
-@Entity()
-@Unique("UK_fill_uuid", ["uuid"])
-export class Fill {
+@Entity({ schema: "evm" })
+@Unique("UK_requestedV3SlowFill_uuid", ["uuid"])
+export class RequestedV3SlowFill {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -41,6 +24,12 @@ export class Fill {
 
   @Column()
   destinationChainId: number;
+
+  @Column()
+  fromLiteChain: boolean;
+
+  @Column()
+  toLiteChain: boolean;
 
   @Column()
   depositor: string;
@@ -71,18 +60,6 @@ export class Fill {
 
   @Column()
   fillDeadline: Date;
-
-  @Column(() => RelayExecutionInfo, { prefix: false })
-  relayExecutionInfo: RelayExecutionInfo;
-
-  @Column({ nullable: true })
-  isValid: boolean;
-
-  @Column()
-  relayer: string;
-
-  @Column()
-  repaymentChainId: number;
 
   @Column()
   transactionHash: string;

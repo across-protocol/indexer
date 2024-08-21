@@ -7,18 +7,12 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-export type DepositStatus =
-  | "unfilled"
-  | "filled"
-  | "slowFillRequested"
-  | "slowFilled"
-  | "expired"
-  | "refunded";
-
-// TODO: Add expiredRefundBundle and slowFillBundle when we have the Bundle entity
-@Entity()
-@Unique("UK_deposit_depositId_originChainId", ["depositId", "originChainId"])
-export class Deposit {
+@Entity({ schema: "evm" })
+@Unique("UK_v3FundsDeposited_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
+export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -75,9 +69,6 @@ export class Deposit {
 
   @Column()
   quoteBlockNumber: number;
-
-  @Column({ default: "unfilled" })
-  status: DepositStatus;
 
   @Column()
   transactionHash: string;

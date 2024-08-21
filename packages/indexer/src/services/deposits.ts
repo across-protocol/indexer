@@ -11,9 +11,9 @@ import winston from "winston";
 import Redis from "ioredis";
 import {
   DataSource,
-  Deposit,
-  Fill,
-  SlowFillRequest,
+  V3FundsDeposited,
+  FilledV3Relay,
+  RequestedV3SlowFill,
 } from "@repo/indexer-database";
 
 import { providers, Contract } from "ethers";
@@ -243,67 +243,81 @@ export async function Indexer(config: Config) {
     };
   }
 
-  async function formatAndSaveDeposits(
-    deposits: across.interfaces.DepositWithBlock[],
+  async function formatAndSaveV3FundsDepositedEvents(
+    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
   ) {
-    const depositRepository = postgres?.getRepository(Deposit);
-    const formattedDeposits = deposits.map((deposit) => {
+    const v3FundsDepositedRepository =
+      postgres?.getRepository(V3FundsDeposited);
+    const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
-        ...deposit,
-        uuid: getRelayHashFromEvent(deposit),
-        ...formatRelayData(deposit),
-        quoteTimestamp: new Date(deposit.quoteTimestamp * 1000),
+        ...event,
+        uuid: getRelayHashFromEvent(event),
+        ...formatRelayData(event),
+        quoteTimestamp: new Date(event.quoteTimestamp * 1000),
       };
     });
     try {
-      await depositRepository?.save(formattedDeposits, { chunk: 2000 });
-      logger.info(`Saved ${deposits.length} deposits`);
+      await v3FundsDepositedRepository?.save(formattedEvents, { chunk: 2000 });
+      logger.info(
+        `Saved ${v3FundsDepositedEvents.length} V3FundsDeposited events`,
+      );
     } catch (error) {
-      logger.error("There was an error while saving deposits:", error);
+      logger.error(
+        "There was an error while saving V3FundsDeposited events:",
+        error,
+      );
     }
   }
 
-  async function formatAndSaveFills(fills: across.interfaces.FillWithBlock[]) {
-    const fillRepository = postgres?.getRepository(Fill);
-    const formattedFills = fills.map((fill) => {
+  async function formatAndSaveFilledV3RelayEvents(
+    filledV3RelayEvents: across.interfaces.FillWithBlock[],
+  ) {
+    const filledV3RelayRepository = postgres?.getRepository(FilledV3Relay);
+    const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
-        ...fill,
-        uuid: getRelayHashFromEvent(fill),
-        ...formatRelayData(fill),
+        ...event,
+        uuid: getRelayHashFromEvent(event),
+        ...formatRelayData(event),
         relayExecutionInfo: {
-          ...fill.relayExecutionInfo,
+          ...event.relayExecutionInfo,
           updatedOutputAmount:
-            fill.relayExecutionInfo.updatedOutputAmount.toString(),
+            event.relayExecutionInfo.updatedOutputAmount.toString(),
         },
       };
     });
     try {
-      await fillRepository?.save(formattedFills, { chunk: 2000 });
-      logger.info(`Saved ${fills.length} fills`);
+      await filledV3RelayRepository?.save(formattedEvents, { chunk: 2000 });
+      logger.info(`Saved ${filledV3RelayEvents.length} FilledV3Relay events`);
     } catch (error) {
-      logger.error("There was an error while saving fills:", error);
+      logger.error(
+        "There was an error while saving FilledV3Relay events:",
+        error,
+      );
     }
   }
 
-  async function formatAndSaveSlowFillRequests(
-    slowFillRequests: across.interfaces.SlowFillRequestWithBlock[],
+  async function formatAndSaveRequestedV3SlowFillEvents(
+    requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
   ) {
-    const slowFillRequestRepository = postgres?.getRepository(SlowFillRequest);
-    const formattedSlowFillRequests = slowFillRequests.map((slowFillReq) => {
+    const requestedV3SlowFillRepository =
+      postgres?.getRepository(RequestedV3SlowFill);
+    const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
-        ...slowFillReq,
-        uuid: getRelayHashFromEvent(slowFillReq),
-        ...formatRelayData(slowFillReq),
+        ...event,
+        uuid: getRelayHashFromEvent(event),
+        ...formatRelayData(event),
       };
     });
     try {
-      await slowFillRequestRepository?.save(formattedSlowFillRequests, {
+      await requestedV3SlowFillRepository?.save(formattedEvents, {
         chunk: 2000,
       });
-      logger.info(`Saved ${slowFillRequests.length} slow fill requests`);
+      logger.info(
+        `Saved ${requestedV3SlowFillEvents.length} RequestedV3SlowFill events`,
+      );
     } catch (error) {
       logger.error(
-        "There was an error while saving slow fill requests:",
+        "There was an error while saving RequestedV3SlowFill events:",
         error,
       );
     }
@@ -356,14 +370,14 @@ export async function Indexer(config: Config) {
     await spokeClient.update();
     // TODO: store any data we need for configs in index
 
-    const deposits = spokeClient.getDeposits();
-    const fills = spokeClient.getFills();
-    const slowFillRequests =
+    const v3FundsDepositedEvents = spokeClient.getDeposits();
+    const filledV3RelayEvents = spokeClient.getFills();
+    const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(chainId);
     if (postgres) {
-      await formatAndSaveDeposits(deposits);
-      await formatAndSaveFills(fills);
-      await formatAndSaveSlowFillRequests(slowFillRequests);
+      await formatAndSaveV3FundsDepositedEvents(v3FundsDepositedEvents);
+      await formatAndSaveRequestedV3SlowFillEvents(requestedV3SlowFillEvents);
+      await formatAndSaveFilledV3RelayEvents(filledV3RelayEvents);
     }
 
     const latestBlockSearched = spokeClient.latestBlockSearched;
@@ -371,9 +385,9 @@ export async function Indexer(config: Config) {
       message: "Finished updating spoke client",
       chainId,
       latestBlockSearched,
-      deposits: deposits.length,
-      fills: fills.length,
-      slowFillRequests: slowFillRequests.length,
+      v3FundsDepositedEvents: v3FundsDepositedEvents.length,
+      filledV3RelayEvents: filledV3RelayEvents.length,
+      requestedV3SlowFillEvents: requestedV3SlowFillEvents.length,
     });
     if (redis) {
       await redis.set(

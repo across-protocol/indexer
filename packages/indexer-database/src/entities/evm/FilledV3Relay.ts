@@ -6,11 +6,25 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
+import { interfaces } from "@across-protocol/sdk";
 
-// TODO: slowFillBundle when we have the Bundle entity. Or is it enough to reference that on Deposit?
-@Entity()
-@Unique("UK_slowFillRequest_uuid", ["uuid"])
-export class SlowFillRequest {
+class RelayExecutionInfo {
+  @Column()
+  updatedRecipient: string;
+
+  @Column()
+  updatedMessage: string;
+
+  @Column()
+  updatedOutputAmount: string;
+
+  @Column({ type: "enum", enum: interfaces.FillType })
+  fillType: interfaces.FillType;
+}
+
+@Entity({ schema: "evm" })
+@Unique("UK_filledV3Relay_uuid", ["uuid"])
+export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -25,12 +39,6 @@ export class SlowFillRequest {
 
   @Column()
   destinationChainId: number;
-
-  @Column()
-  fromLiteChain: boolean;
-
-  @Column()
-  toLiteChain: boolean;
 
   @Column()
   depositor: string;
@@ -61,6 +69,15 @@ export class SlowFillRequest {
 
   @Column()
   fillDeadline: Date;
+
+  @Column(() => RelayExecutionInfo, { prefix: false })
+  relayExecutionInfo: RelayExecutionInfo;
+
+  @Column()
+  relayer: string;
+
+  @Column()
+  repaymentChainId: number;
 
   @Column()
   transactionHash: string;
