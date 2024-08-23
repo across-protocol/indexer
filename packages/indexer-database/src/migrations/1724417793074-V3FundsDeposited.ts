@@ -1,13 +1,13 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Deposit1723914679612 implements MigrationInterface {
-  name = "Deposit1723914679612";
+export class V3FundsDeposited1724417793074 implements MigrationInterface {
+  name = "V3FundsDeposited1724417793074";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "deposit" (
+      `CREATE TABLE "evm"."v3_funds_deposited" (
                 "id" SERIAL NOT NULL,
-                "uuid" character varying NOT NULL,
+                "relayHash" character varying NOT NULL,
                 "depositId" integer NOT NULL,
                 "originChainId" integer NOT NULL,
                 "destinationChainId" integer NOT NULL,
@@ -25,21 +25,19 @@ export class Deposit1723914679612 implements MigrationInterface {
                 "fillDeadline" TIMESTAMP NOT NULL,
                 "quoteTimestamp" TIMESTAMP NOT NULL,
                 "quoteBlockNumber" integer NOT NULL,
-                "status" character varying NOT NULL DEFAULT 'unfilled',
                 "transactionHash" character varying NOT NULL,
                 "transactionIndex" integer NOT NULL,
                 "logIndex" integer NOT NULL,
                 "blockNumber" integer NOT NULL,
                 "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-                "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
-                CONSTRAINT "UK_deposit_depositId_originChainId" UNIQUE ("depositId", "originChainId"),
-                CONSTRAINT "PK_6654b4be449dadfd9d03a324b61" PRIMARY KEY ("id")
+                CONSTRAINT "UK_v3FundsDeposited_depositId_originChainId" UNIQUE ("depositId", "originChainId"),
+                CONSTRAINT "PK_7fb4637d005c1caba823aefdbd1" PRIMARY KEY ("id")
             )
         `,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "deposit"`);
+    await queryRunner.query(`DROP TABLE "evm"."v3_funds_deposited"`);
   }
 }

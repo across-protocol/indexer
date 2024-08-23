@@ -4,7 +4,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
 import { interfaces } from "@across-protocol/sdk";
 
@@ -23,13 +22,13 @@ class RelayExecutionInfo {
 }
 
 @Entity({ schema: "evm" })
-@Unique("UK_filledV3Relay_uuid", ["uuid"])
+@Unique("UK_filledV3Relay_relayHash", ["relayHash"])
 export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -93,7 +92,4 @@ export class FilledV3Relay {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

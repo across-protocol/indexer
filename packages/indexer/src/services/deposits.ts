@@ -251,7 +251,7 @@ export async function Indexer(config: Config) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
         ...event,
-        uuid: getRelayHashFromEvent(event),
+        relayHash: getRelayHashFromEvent(event),
         ...formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
       };
@@ -276,7 +276,7 @@ export async function Indexer(config: Config) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
         ...event,
-        uuid: getRelayHashFromEvent(event),
+        relayHash: getRelayHashFromEvent(event),
         ...formatRelayData(event),
         relayExecutionInfo: {
           ...event.relayExecutionInfo,
@@ -304,7 +304,7 @@ export async function Indexer(config: Config) {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...event,
-        uuid: getRelayHashFromEvent(event),
+        relayHash: getRelayHashFromEvent(event),
         ...formatRelayData(event),
       };
     });

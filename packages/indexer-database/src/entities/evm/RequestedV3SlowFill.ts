@@ -4,17 +4,16 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_requestedV3SlowFill_uuid", ["uuid"])
+@Unique("UK_requestedV3SlowFill_relayHash", ["relayHash"])
 export class RequestedV3SlowFill {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -75,7 +74,4 @@ export class RequestedV3SlowFill {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

@@ -4,7 +4,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
 
 @Entity({ schema: "evm" })
@@ -17,7 +16,7 @@ export class V3FundsDeposited {
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -84,7 +83,4 @@ export class V3FundsDeposited {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

@@ -1,19 +1,19 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class V3FundsDeposited1724271636924 implements MigrationInterface {
-  name = "V3FundsDeposited1724271636924";
+export class FilledV3Relay1724417911807 implements MigrationInterface {
+  name = "FilledV3Relay1724417911807";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "deposit"`);
     await queryRunner.query(
-      `CREATE TABLE "evm"."v3_funds_deposited" (
+      `CREATE TYPE "evm"."filled_v3_relay_filltype_enum" AS ENUM('0', '1', '2')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "evm"."filled_v3_relay" (
                 "id" SERIAL NOT NULL,
-                "uuid" character varying NOT NULL,
+                "relayHash" character varying NOT NULL,
                 "depositId" integer NOT NULL,
                 "originChainId" integer NOT NULL,
                 "destinationChainId" integer NOT NULL,
-                "fromLiteChain" boolean NOT NULL,
-                "toLiteChain" boolean NOT NULL,
                 "depositor" character varying NOT NULL,
                 "recipient" character varying NOT NULL,
                 "inputToken" character varying NOT NULL,
@@ -24,22 +24,26 @@ export class V3FundsDeposited1724271636924 implements MigrationInterface {
                 "exclusiveRelayer" character varying NOT NULL,
                 "exclusivityDeadline" TIMESTAMP,
                 "fillDeadline" TIMESTAMP NOT NULL,
-                "quoteTimestamp" TIMESTAMP NOT NULL,
-                "quoteBlockNumber" integer NOT NULL,
+                "relayer" character varying NOT NULL,
+                "repaymentChainId" integer NOT NULL,
                 "transactionHash" character varying NOT NULL,
                 "transactionIndex" integer NOT NULL,
                 "logIndex" integer NOT NULL,
                 "blockNumber" integer NOT NULL,
                 "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-                "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
-                CONSTRAINT "UK_v3FundsDeposited_depositId_originChainId" UNIQUE ("depositId", "originChainId"),
-                CONSTRAINT "PK_7fb4637d005c1caba823aefdbd1" PRIMARY KEY ("id")
+                "updatedRecipient" character varying NOT NULL,
+                "updatedMessage" character varying NOT NULL,
+                "updatedOutputAmount" character varying NOT NULL,
+                "fillType" "evm"."filled_v3_relay_filltype_enum" NOT NULL,
+                CONSTRAINT "UK_filledV3Relay_relayHash" UNIQUE ("relayHash"),
+                CONSTRAINT "PK_8f1cc6f89a5ed042e3ed258d400" PRIMARY KEY ("id")
             )
         `,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "evm"."v3_funds_deposited"`);
+    await queryRunner.query(`DROP TABLE "evm"."filled_v3_relay"`);
+    await queryRunner.query(`DROP TYPE "evm"."filled_v3_relay_filltype_enum"`);
   }
 }
