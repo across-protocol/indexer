@@ -89,12 +89,12 @@ importers:
         version: 3.1.13
       '@across-protocol/contracts':
         specifier: ^3.0.8
-        version: 3.0.8(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
+        version: 3.0.8(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
       '@across-protocol/sdk':
-        specifier: ^3.1.25
-        version: 3.1.25(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.8)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
+        specifier: ^3.1.27
+        version: 3.1.27(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.9)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
       ethers:
-        specifier: 5.7.2
+        specifier: ^5.7.2
         version: 5.7.2
       ioredis:
         specifier: ^5.4.1
@@ -232,7 +232,11 @@ importers:
     dependencies:
       '@across-protocol/sdk':
         specifier: ^3.1.25
+<<<<<<< HEAD
         version: 3.1.25(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.8)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
+=======
+        version: 3.1.25(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.9)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       pg:
         specifier: ^8.4.0
         version: 8.12.0
@@ -464,12 +468,41 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
   /@across-protocol/contracts@3.0.10(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3):
+=======
+  /@across-protocol/contracts@0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+    resolution: {integrity: sha512-y9FVRSFdPgEdGWBcf8rUmmzdYhzGdy0752HwpaAFtMJ1pn+HFgNaI0EZc/UudMKIPOkk+/BxPIHYPy7tKad5/A==}
+    dependencies:
+      '@eth-optimism/contracts': 0.5.40(ethers@5.7.2)
+      '@openzeppelin/contracts': 4.1.0
+      '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - ethers
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+    dev: false
+
+  /@across-protocol/contracts@3.0.10(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     resolution: {integrity: sha512-qZBIkvuU1faZYUj0qFTWN7DVHfkEFK4jn7u5SMHBtAFEtbW2kSIREbE8afWPbhXa5Zah409nQINzYkcfo/I5rw==}
     engines: {node: '>=16.18.0'}
     dependencies:
       '@across-protocol/constants': 3.1.14
+<<<<<<< HEAD
       '@defi-wonderland/smock': 2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)
+=======
+      '@defi-wonderland/smock': 2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       '@eth-optimism/contracts': 0.5.40(ethers@5.7.2)
       '@ethersproject/abstract-provider': 5.7.0
       '@ethersproject/abstract-signer': 5.7.0
@@ -477,9 +510,15 @@ packages:
       '@openzeppelin/contracts': 4.9.6
       '@openzeppelin/contracts-upgradeable': 4.9.6
       '@scroll-tech/contracts': 0.1.0
+<<<<<<< HEAD
       '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
       '@uma/contracts-node': 0.4.23
       '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
+=======
+      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@uma/contracts-node': 0.4.23
+      '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       axios: 1.7.3
       zksync-web3: 0.14.4(ethers@5.7.2)
     transitivePeerDependencies:
@@ -500,12 +539,20 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
   /@across-protocol/contracts@3.0.8(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3):
+=======
+  /@across-protocol/contracts@3.0.8(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     resolution: {integrity: sha512-JG3Jt+itG+f9ZcUK1K/SFy6xlmCjCxsf99+Ffp11rPN6FUvDNgscRCoizLlBmibzRbXkR6r6r5F2iPbIPX/gxw==}
     engines: {node: '>=16.18.0'}
     dependencies:
       '@across-protocol/constants': 3.1.13
+<<<<<<< HEAD
       '@defi-wonderland/smock': 2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)
+=======
+      '@defi-wonderland/smock': 2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       '@eth-optimism/contracts': 0.5.40(ethers@5.7.2)
       '@ethersproject/abstract-provider': 5.7.0
       '@ethersproject/abstract-signer': 5.7.0
@@ -513,9 +560,15 @@ packages:
       '@openzeppelin/contracts': 4.9.6
       '@openzeppelin/contracts-upgradeable': 4.9.6
       '@scroll-tech/contracts': 0.1.0
+<<<<<<< HEAD
       '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
       '@uma/contracts-node': 0.4.23
       '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
+=======
+      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@uma/contracts-node': 0.4.23
+      '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       axios: 1.7.3
       zksync-web3: 0.14.4(ethers@5.7.2)
     transitivePeerDependencies:
@@ -536,13 +589,21 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
   /@across-protocol/sdk@3.1.25(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.8)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4):
+=======
+  /@across-protocol/sdk@3.1.25(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.9)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4):
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     resolution: {integrity: sha512-s+JhA0DSD3NXrut/L5IbmanfzHhy0lTlGcq5TgjtPLcZJ5GvWMqnNdVzUNbijb+lZAVW5gea0AgkFU0Z+6gdEg==}
     engines: {node: '>=16.18.0'}
     dependencies:
       '@across-protocol/across-token': 1.0.0(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
       '@across-protocol/constants': 3.1.14
+<<<<<<< HEAD
       '@across-protocol/contracts': 3.0.10(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3)
+=======
+      '@across-protocol/contracts': 3.0.10(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       '@eth-optimism/sdk': 3.3.2(ethers@5.7.2)
       '@pinata/sdk': 2.1.0
       '@types/mocha': 10.0.7
@@ -577,6 +638,50 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@across-protocol/sdk@3.1.27(@babel/core@7.25.2)(@eth-optimism/contracts@0.5.40)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(hardhat@2.22.9)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4):
+    resolution: {integrity: sha512-n1RZwpgPjLmqkCnbMjdqy+aNVtiu4kRlJ3L9yTR/F3E5RQkN52c22xZeKGvsT+lSfvcmWwH18YzsDeBoVqhVyg==}
+    engines: {node: '>=16.18.0'}
+    dependencies:
+      '@across-protocol/across-token': 1.0.0(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(ts-generator@0.1.1)(ts-node@10.9.2)(typechain@4.0.3)(typescript@5.5.4)
+      '@across-protocol/constants': 3.1.14
+      '@across-protocol/contracts': 3.0.10(@babel/core@7.25.2)(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@eth-optimism/sdk': 3.3.2(ethers@5.7.2)
+      '@pinata/sdk': 2.1.0
+      '@types/mocha': 10.0.7
+      '@uma/sdk': 0.34.8(@eth-optimism/contracts@0.5.40)(ethers@5.7.2)
+      arweave: 1.15.1
+      async: 3.2.5
+      axios: 0.27.2
+      big-number: 2.0.0
+      decimal.js: 10.4.3
+      ethers: 5.7.2
+      lodash: 4.17.21
+      lodash.get: 4.4.2
+      superstruct: 0.15.5
+      tslib: 2.6.3
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@eth-optimism/contracts'
+      - '@ethersproject/abi'
+      - '@ethersproject/hardware-wallets'
+      - '@nomiclabs/hardhat-ethers'
+      - bufferutil
+      - c-kzg
+      - debug
+      - encoding
+      - hardhat
+      - supports-color
+      - ts-generator
+      - ts-node
+      - typechain
+      - typescript
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@ampproject/remapping@2.3.0:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
@@ -817,7 +922,11 @@ packages:
       kuler: 2.0.0
     dev: false
 
+<<<<<<< HEAD
   /@defi-wonderland/smock@2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.8):
+=======
+  /@defi-wonderland/smock@2.4.0(@ethersproject/abi@5.7.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(hardhat@2.22.9):
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     resolution: {integrity: sha512-eS5fuAa9MOVDvXsT7Qa4v9Tg0Pk5ypfY3JWyW93a5sqyY2E2nCuRRBC53IikM9z0tVB2YYA8C9bWK8Lc47mATw==}
     peerDependencies:
       '@ethersproject/abi': ^5
@@ -831,10 +940,17 @@ packages:
       '@ethersproject/abstract-provider': 5.7.0
       '@ethersproject/abstract-signer': 5.7.0
       '@nomicfoundation/ethereumjs-util': 9.0.4
+<<<<<<< HEAD
       '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.7.2)(hardhat@2.22.8)
       diff: 5.2.0
       ethers: 5.7.2
       hardhat: 2.22.8(ts-node@10.9.2)(typescript@5.5.4)
+=======
+      '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.7.2)(hardhat@2.22.9)
+      diff: 5.2.0
+      ethers: 5.7.2
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       lodash.isequal: 4.5.0
       lodash.isequalwith: 4.4.0
       rxjs: 7.8.1
@@ -1916,6 +2032,28 @@ packages:
       - supports-color
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@nomicfoundation/hardhat-verify@1.1.1(hardhat@2.22.9):
+    resolution: {integrity: sha512-9QsTYD7pcZaQFEA3tBb/D/oCStYDiEVDN7Dxeo/4SCyHRSm86APypxxdOMEPlGmXsAvd+p1j/dTODcpxb8aztA==}
+    peerDependencies:
+      hardhat: ^2.0.4
+    dependencies:
+      '@ethersproject/abi': 5.7.0
+      '@ethersproject/address': 5.7.0
+      cbor: 8.1.0
+      chalk: 2.4.2
+      debug: 4.3.6(supports-color@8.1.1)
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+      lodash.clonedeep: 4.5.0
+      semver: 6.3.1
+      table: 6.8.2
+      undici: 5.28.4
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.2:
     resolution: {integrity: sha512-JaqcWPDZENCvm++lFFGjrDd8mxtf+CtLd2MiXvMNTBD33dContTZ9TWETwNFwg7JTJT5Q9HEecH7FA+HTSsIUw==}
     engines: {node: '>= 12'}
@@ -1988,6 +2126,19 @@ packages:
       hardhat: 2.22.8(ts-node@10.9.2)(typescript@5.5.4)
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@nomiclabs/hardhat-ethers@2.2.3(ethers@5.7.2)(hardhat@2.22.9):
+    resolution: {integrity: sha512-YhzPdzb612X591FOe68q+qXVXGG2ANZRvDo0RRUtimev85rCrAlv/TLMEZw5c+kq9AbzocLTVX/h2jVIFPL9Xg==}
+    peerDependencies:
+      ethers: ^5.0.0
+      hardhat: ^2.0.0
+    dependencies:
+      ethers: 5.7.2
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@nomiclabs/hardhat-web3@2.0.0(hardhat@2.22.8)(web3@1.10.4):
     resolution: {integrity: sha512-zt4xN+D+fKl3wW2YlTX3k9APR3XZgPkxJYf36AcliJn3oujnKEVRZaHu0PhgLjO+gR+F/kiYayo9fgd2L8970Q==}
     peerDependencies:
@@ -1999,6 +2150,20 @@ packages:
       web3: 1.10.4
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@nomiclabs/hardhat-web3@2.0.0(hardhat@2.22.9)(web3@1.10.4):
+    resolution: {integrity: sha512-zt4xN+D+fKl3wW2YlTX3k9APR3XZgPkxJYf36AcliJn3oujnKEVRZaHu0PhgLjO+gR+F/kiYayo9fgd2L8970Q==}
+    peerDependencies:
+      hardhat: ^2.0.0
+      web3: ^1.0.0-beta.36
+    dependencies:
+      '@types/bignumber.js': 5.0.0
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+      web3: 1.10.4
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@openzeppelin/contracts-upgradeable@4.9.6:
     resolution: {integrity: sha512-m4iHazOsOCv1DgM7eD7GupTJ+NFVujRZt1wzddDPSVGpWdKq1SKkla5htKG7+IS4d2XOCtzkUNwRZ7Vq5aEUMA==}
     dev: false
@@ -3253,6 +3418,62 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@uma/common@2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+    resolution: {integrity: sha512-gUZfpoBJRU4pMHnlNlcxMMRPnBlH/K4cZ8b4R6UewxvUbxbBNktV6KC4A2bkZ0AS9IQRzNGHToZJg//0cbqULw==}
+    dependencies:
+      '@across-protocol/contracts': 0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/bignumber': 5.7.0
+      '@ethersproject/bytes': 5.7.0
+      '@ethersproject/constants': 5.7.0
+      '@google-cloud/kms': 3.8.0
+      '@google-cloud/storage': 6.12.0
+      '@nomicfoundation/hardhat-verify': 1.1.1(hardhat@2.22.9)
+      '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.7.2)(hardhat@2.22.9)
+      '@nomiclabs/hardhat-web3': 2.0.0(hardhat@2.22.9)(web3@1.10.4)
+      '@truffle/contract': 4.6.17
+      '@truffle/hdwallet-provider': 1.5.1-alpha.1(@babel/core@7.25.2)
+      '@types/ethereum-protocol': 1.0.5
+      '@uniswap/v3-core': 1.0.1
+      abi-decoder: github.com/UMAprotocol/abi-decoder/1f18b7037985bf9b8960a6dc39dc52579ef274bb
+      async-retry: 1.3.3
+      axios: 1.7.3
+      bignumber.js: 8.1.1
+      chalk-pipe: 3.0.0
+      decimal.js: 10.4.3
+      dotenv: 9.0.2
+      eth-crypto: 2.6.0
+      hardhat-deploy: 0.9.1(@ethersproject/hardware-wallets@5.7.0)(hardhat@2.22.9)
+      hardhat-gas-reporter: 1.0.10(hardhat@2.22.9)
+      hardhat-typechain: 0.3.5(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      lodash.uniqby: 4.7.0
+      minimist: 1.2.8
+      moment: 2.30.1
+      node-fetch: 2.7.0
+      node-metamask: github.com/UMAprotocol/node-metamask/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584
+      require-context: 1.1.0
+      solidity-coverage: 0.7.22
+      truffle-deploy-registry: 0.5.1
+      web3: 1.10.4
+      winston: 3.13.1
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - ethers
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@uma/contracts-frontend@0.4.23:
     resolution: {integrity: sha512-x0kS05uIZbpz/DP1TjvYNLR5h/PWNbb5pNa4FisVTmDL5F/FQuLZX7Mf+rh3zBApm37U4NkvrAcIyIQ1eqSGdA==}
     dev: false
@@ -3290,6 +3511,38 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@uma/core@2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+    resolution: {integrity: sha512-TYwfMoDxGYcnXsazTtY76hQjopyPvm6TICyIh4Jh5gi6sHz1bcK52G4PBNPFV9/lvMuhzuJ7nKckDn3FQ4F7gQ==}
+    dependencies:
+      '@gnosis.pm/safe-contracts': 1.3.0(ethers@5.7.2)
+      '@gnosis.pm/zodiac': 3.2.0(ethers@5.7.2)
+      '@maticnetwork/fx-portal': 1.0.5
+      '@openzeppelin/contracts': 4.9.6
+      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@uma/merkle-distributor': 1.3.40(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@uniswap/lib': 4.0.1-alpha
+      '@uniswap/v2-core': 1.0.0
+      '@uniswap/v2-periphery': 1.1.0-beta.0
+      '@uniswap/v3-core': 1.0.1
+      '@uniswap/v3-periphery': 1.4.4
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - ethers
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@uma/merkle-distributor@1.3.40(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3):
     resolution: {integrity: sha512-Hu0Qlj9pkCnwKMYGDoSOf6biabq64go7JiF9jJd/dbju12zh/gX6PInJTbosHfbYv6LIm43zb5RBc7XtZwW+nQ==}
     hasBin: true
@@ -3316,6 +3569,35 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /@uma/merkle-distributor@1.3.40(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+    resolution: {integrity: sha512-Hu0Qlj9pkCnwKMYGDoSOf6biabq64go7JiF9jJd/dbju12zh/gX6PInJTbosHfbYv6LIm43zb5RBc7XtZwW+nQ==}
+    hasBin: true
+    dependencies:
+      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0)(ethers@5.7.2)(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3)
+      '@uma/contracts-node': 0.4.23
+      chai: 4.5.0
+      commander: 7.2.0
+      ethers: 5.7.2
+      ipfs-http-client: 49.0.4(node-fetch@2.7.0)
+      mocha: 8.4.0
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /@uma/sdk@0.34.8(@eth-optimism/contracts@0.5.40)(ethers@5.7.2):
     resolution: {integrity: sha512-/aYmJBS46r1LPtBXMYnzvgAaF9opy0PeKontPRUV50mU/wCAd3yHdVVNpPiq73IYfYVweJ2K8XpblVBC97rzZA==}
     engines: {node: '>=14'}
@@ -4001,7 +4283,11 @@ packages:
     dependencies:
       '@babel/core': 7.25.2
       '@babel/helper-define-polyfill-provider': 0.6.2(@babel/core@7.25.2)
+<<<<<<< HEAD
       core-js-compat: 3.38.0
+=======
+      core-js-compat: 3.38.1
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -4250,7 +4536,11 @@ packages:
       browserify-rsa: 4.1.0
       create-hash: 1.2.0
       create-hmac: 1.1.7
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       hash-base: 3.0.4
       inherits: 2.0.4
       parse-asn1: 5.1.7
@@ -4273,8 +4563,13 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
+<<<<<<< HEAD
       caniuse-lite: 1.0.30001646
       electron-to-chromium: 1.5.4
+=======
+      caniuse-lite: 1.0.30001651
+      electron-to-chromium: 1.5.13
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       node-releases: 2.0.18
       update-browserslist-db: 1.1.0(browserslist@4.23.3)
     dev: false
@@ -4445,10 +4740,21 @@ packages:
   /caniuse-lite@1.0.30001646:
     resolution: {integrity: sha512-dRg00gudiBDDTmUhClSdv3hqRfpbOnU28IpI1T6PBTLWa+kOj0681C8uML3PifYfREuBrVjDGhL3adYpBT6spw==}
 
+<<<<<<< HEAD
   /caseless@0.12.0:
     resolution: {integrity: sha512-4tYFyifaFfGacoiObjJegolkwSU4xQNGbVgUiNYVUxbQ2x2lUsFvY4hVgVzGiIe6WLOPqycWXA40l+PWsxthUw==}
     dev: false
 
+=======
+  /caniuse-lite@1.0.30001651:
+    resolution: {integrity: sha512-9Cf+Xv1jJNe1xPZLGuUXLNkE1BoDkqRqYyFJ9TDYSqhduqA4hu4oR9HluGoWYQC/aj8WHjsGVV+bwkh0+tegRg==}
+    dev: false
+
+  /caseless@0.12.0:
+    resolution: {integrity: sha512-4tYFyifaFfGacoiObjJegolkwSU4xQNGbVgUiNYVUxbQ2x2lUsFvY4hVgVzGiIe6WLOPqycWXA40l+PWsxthUw==}
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /catharsis@0.9.0:
     resolution: {integrity: sha512-prMTQVpcns/tzFgFVkVp6ak6RykZyWb3gu8ckUpd6YkTlacOd3DXGJjIpD4Q6zJirizvaiAjSSHlOsA+6sNh2A==}
     engines: {node: '>= 10'}
@@ -4925,8 +5231,13 @@ packages:
   /cookiejar@2.1.4:
     resolution: {integrity: sha512-LDx6oHrK+PhzLKJU9j5S7/Y3jM/mUHvD/DeI1WQmJn652iPC5Y4TBzC9l+5OMOXlyTTA+SmVUPm0HQUwpD5Jqw==}
 
+<<<<<<< HEAD
   /core-js-compat@3.38.0:
     resolution: {integrity: sha512-75LAicdLa4OJVwFxFbQR3NdnZjNgX6ILpVcVzcC4T2smerB5lELMrJQQQoWV6TiuC/vlaFqgU2tKQx9w5s0e0A==}
+=======
+  /core-js-compat@3.38.1:
+    resolution: {integrity: sha512-JRH6gfXxGmrzF3tZ57lFx97YARxCXPaMzPo6jELZhv88pBH5VXpQ+y0znKGlFnzuaihqhLbefxSJxWJMPtfDzw==}
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     dependencies:
       browserslist: 4.23.3
     dev: false
@@ -4957,7 +5268,11 @@ packages:
     resolution: {integrity: sha512-mf+TCx8wWc9VpuxfP2ht0iSISLZnt0JgWlrOKZiNqyUZWnjIaCIVNQArMHnCZKfEYRg6IM7A+NeJoN8gf/Ws0A==}
     dependencies:
       bn.js: 4.12.0
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     dev: false
 
   /create-hash@1.2.0:
@@ -5535,6 +5850,13 @@ packages:
       encoding: 0.1.13
     dev: false
 
+<<<<<<< HEAD
+=======
+  /electron-to-chromium@1.5.13:
+    resolution: {integrity: sha512-lbBcvtIJ4J6sS4tb5TLp1b4LyfCdMkwStzXPyAgVgTRAsep4bvrAGaBOP7ZJtQMNJpSQ9SqG4brWOroNaQtm7Q==}
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /electron-to-chromium@1.5.4:
     resolution: {integrity: sha512-orzA81VqLyIGUEA77YkVA1D+N+nNfl2isJVjjmOyrlxuooZ19ynb+dOlaDTqd/idKRS9lDCSBmtzM+kyCsMnkA==}
 
@@ -5562,6 +5884,21 @@ packages:
       minimalistic-crypto-utils: 1.0.1
     dev: false
 
+<<<<<<< HEAD
+=======
+  /elliptic@6.5.7:
+    resolution: {integrity: sha512-ESVCtTwiA+XhY3wyh24QqRGBoP3rEdDUl3EDUUo9tft074fi19IrdpH7hLCMMP3CIj7jb3W96rn8lt/BqIlt5Q==}
+    dependencies:
+      bn.js: 4.12.0
+      brorand: 1.1.0
+      hash.js: 1.1.7
+      hmac-drbg: 1.0.1
+      inherits: 2.0.4
+      minimalistic-assert: 1.0.1
+      minimalistic-crypto-utils: 1.0.1
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -6391,7 +6728,11 @@ packages:
     resolution: {integrity: sha512-bfttrr3/7gG4E02HoWTDUcDDslN003OlOoBxk9virpAZQ1ja/jDgwkWB8QfJF7ojuEowrqy+lzp9VcJG7/k5bQ==}
     dependencies:
       bn.js: 4.12.0
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       nano-json-stream-parser: 0.1.2
       servify: 0.1.12
       ws: 3.3.3
@@ -6406,7 +6747,11 @@ packages:
     resolution: {integrity: sha512-ArJ7x1WcWOlSpzdoTBX8vkwlkSQ85CjjifSZtV4co64vWxSV8geWfPI9x4SVYu3DSxnX4yWFVTtGL+j9DUFLNw==}
     dependencies:
       bn.js: 4.12.0
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       xhr-request-promise: 0.1.3
     dev: false
 
@@ -6552,7 +6897,11 @@ packages:
     dependencies:
       bn.js: 4.12.0
       create-hash: 1.2.0
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       ethereum-cryptography: 0.1.3
       ethjs-util: 0.1.6
       rlp: 2.2.7
@@ -6679,6 +7028,10 @@ packages:
       is-hex-prefixed: 1.0.0
       strip-hex-prefix: 1.0.0
     dev: false
+<<<<<<< HEAD
+=======
+    bundledDependencies: false
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
 
   /event-emitter@0.3.5:
     resolution: {integrity: sha512-D9rRn9y7kLPnJ+hMq7S/nhvoKwwvVJahBi2BPmx3bvbsEdK3W9ii8cBSGjP+72/LnM4n6fo3+dkCX5FeTQruXA==}
@@ -7665,7 +8018,11 @@ packages:
       source-map: 0.6.1
       wordwrap: 1.0.0
     optionalDependencies:
+<<<<<<< HEAD
       uglify-js: 3.19.1
+=======
+      uglify-js: 3.19.2
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
     dev: false
 
   /har-schema@2.0.0:
@@ -7717,6 +8074,44 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /hardhat-deploy@0.9.1(@ethersproject/hardware-wallets@5.7.0)(hardhat@2.22.9):
+    resolution: {integrity: sha512-GUrLlsBKZqWJ2isFDnpnlnyLuIDqES7mEFGm4P7GutG2jeBebvTg2wCNh3RTW/rpHUtU66yCZXfy+LeD0QXFbg==}
+    peerDependencies:
+      '@ethersproject/hardware-wallets': ^5.0.14
+      hardhat: ^2.0.0
+    dependencies:
+      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abstract-signer': 5.7.0
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/bignumber': 5.7.0
+      '@ethersproject/bytes': 5.7.0
+      '@ethersproject/contracts': 5.7.0
+      '@ethersproject/hardware-wallets': 5.7.0
+      '@ethersproject/providers': 5.7.2
+      '@ethersproject/solidity': 5.7.0
+      '@ethersproject/transactions': 5.7.0
+      '@ethersproject/wallet': 5.7.0
+      '@types/qs': 6.9.15
+      axios: 0.21.4(debug@4.3.6)
+      chalk: 4.1.2
+      chokidar: 3.6.0
+      debug: 4.3.6(supports-color@8.1.1)
+      enquirer: 2.4.1
+      form-data: 4.0.0
+      fs-extra: 10.1.0
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+      match-all: 1.2.6
+      murmur-128: 0.2.1
+      qs: 6.11.0
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /hardhat-gas-reporter@1.0.10(hardhat@2.22.8):
     resolution: {integrity: sha512-02N4+So/fZrzJ88ci54GqwVA3Zrf0C9duuTyGt0CFRIh/CdNwbnTgkXkRfojOMLBQ+6t+lBIkgbsOtqMvNwikA==}
     peerDependencies:
@@ -7733,6 +8128,25 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /hardhat-gas-reporter@1.0.10(hardhat@2.22.9):
+    resolution: {integrity: sha512-02N4+So/fZrzJ88ci54GqwVA3Zrf0C9duuTyGt0CFRIh/CdNwbnTgkXkRfojOMLBQ+6t+lBIkgbsOtqMvNwikA==}
+    peerDependencies:
+      hardhat: ^2.0.2
+    dependencies:
+      array-uniq: 1.0.3
+      eth-gas-reporter: 0.2.27
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+      sha1: 1.1.1
+    transitivePeerDependencies:
+      - '@codechecks/client'
+      - bufferutil
+      - debug
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /hardhat-typechain@0.3.5(hardhat@2.22.8)(ts-generator@0.1.1)(typechain@4.0.3):
     resolution: {integrity: sha512-w9lm8sxqTJACY+V7vijiH+NkPExnmtiQEjsV9JKD1KgMdVk2q8y+RhvU/c4B7+7b1+HylRUCxpOIvFuB3rE4+w==}
     peerDependencies:
@@ -7745,6 +8159,21 @@ packages:
       typechain: 4.0.3(typescript@5.5.4)
     dev: false
 
+<<<<<<< HEAD
+=======
+  /hardhat-typechain@0.3.5(hardhat@2.22.9)(ts-generator@0.1.1)(typechain@4.0.3):
+    resolution: {integrity: sha512-w9lm8sxqTJACY+V7vijiH+NkPExnmtiQEjsV9JKD1KgMdVk2q8y+RhvU/c4B7+7b1+HylRUCxpOIvFuB3rE4+w==}
+    peerDependencies:
+      hardhat: ^2.0.10
+      ts-generator: ^0.1.1
+      typechain: ^4.0.1
+    dependencies:
+      hardhat: 2.22.9(ts-node@10.9.2)(typescript@5.5.4)
+      ts-generator: 0.1.1
+      typechain: 4.0.3(typescript@5.5.4)
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /hardhat@2.22.8(ts-node@10.9.2)(typescript@5.5.4):
     resolution: {integrity: sha512-hPh2feBGRswkXkoXUFW6NbxgiYtEzp/3uvVFjYROy6fA9LH8BobUyxStlyhSKj4+v1Y23ZoUBOVWL84IcLACrA==}
     hasBin: true
@@ -7809,6 +8238,73 @@ packages:
       - utf-8-validate
     dev: false
 
+<<<<<<< HEAD
+=======
+  /hardhat@2.22.9(ts-node@10.9.2)(typescript@5.5.4):
+    resolution: {integrity: sha512-sWiuI/yRdFUPfndIvL+2H18Vs2Gav0XacCFYY5msT5dHOWkhLxESJySIk9j83mXL31aXL8+UMA9OgViFLexklg==}
+    hasBin: true
+    peerDependencies:
+      ts-node: '*'
+      typescript: '*'
+    peerDependenciesMeta:
+      ts-node:
+        optional: true
+      typescript:
+        optional: true
+    dependencies:
+      '@ethersproject/abi': 5.7.0
+      '@metamask/eth-sig-util': 4.0.1
+      '@nomicfoundation/edr': 0.5.2
+      '@nomicfoundation/ethereumjs-common': 4.0.4
+      '@nomicfoundation/ethereumjs-tx': 5.0.4
+      '@nomicfoundation/ethereumjs-util': 9.0.4
+      '@nomicfoundation/solidity-analyzer': 0.1.2
+      '@sentry/node': 5.30.0
+      '@types/bn.js': 5.1.5
+      '@types/lru-cache': 5.1.1
+      adm-zip: 0.4.16
+      aggregate-error: 3.1.0
+      ansi-escapes: 4.3.2
+      boxen: 5.1.2
+      chalk: 2.4.2
+      chokidar: 3.6.0
+      ci-info: 2.0.0
+      debug: 4.3.6(supports-color@8.1.1)
+      enquirer: 2.4.1
+      env-paths: 2.2.1
+      ethereum-cryptography: 1.2.0
+      ethereumjs-abi: 0.6.8
+      find-up: 2.1.0
+      fp-ts: 1.19.3
+      fs-extra: 7.0.1
+      glob: 7.2.0
+      immutable: 4.3.7
+      io-ts: 1.10.4
+      keccak: 3.0.4
+      lodash: 4.17.21
+      mnemonist: 0.38.5
+      mocha: 10.7.3
+      p-map: 4.0.0
+      raw-body: 2.5.2
+      resolve: 1.17.0
+      semver: 6.3.1
+      solc: 0.8.26(debug@4.3.6)
+      source-map-support: 0.5.21
+      stacktrace-parser: 0.1.10
+      ts-node: 10.9.2(@types/node@16.18.104)(typescript@5.5.4)
+      tsort: 0.0.1
+      typescript: 5.5.4
+      undici: 5.28.4
+      uuid: 8.3.2
+      ws: 7.5.10
+    transitivePeerDependencies:
+      - bufferutil
+      - c-kzg
+      - supports-color
+      - utf-8-validate
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /has-bigints@1.0.2:
     resolution: {integrity: sha512-tSvCKtBr9lkF0Ex0aQiP9N+OpV4zi2r/Nee5VkRDbaqv35RLYMzbwQfFSZZH0kR+Rd6302UJZ2p/bJCEoR3VoQ==}
     dev: true
@@ -9709,6 +10205,36 @@ packages:
       yargs-parser: 20.2.9
       yargs-unparser: 2.0.0
 
+<<<<<<< HEAD
+=======
+  /mocha@10.7.3:
+    resolution: {integrity: sha512-uQWxAu44wwiACGqjbPYmjo7Lg8sFrS3dQe7PP2FQI+woptP4vZXSMcfMyFL/e1yFEeEpV4RtyTpZROOKmxis+A==}
+    engines: {node: '>= 14.0.0'}
+    hasBin: true
+    dependencies:
+      ansi-colors: 4.1.3
+      browser-stdout: 1.3.1
+      chokidar: 3.6.0
+      debug: 4.3.6(supports-color@8.1.1)
+      diff: 5.2.0
+      escape-string-regexp: 4.0.0
+      find-up: 5.0.0
+      glob: 8.1.0
+      he: 1.2.0
+      js-yaml: 4.1.0
+      log-symbols: 4.1.0
+      minimatch: 5.1.6
+      ms: 2.1.3
+      serialize-javascript: 6.0.2
+      strip-json-comments: 3.1.1
+      supports-color: 8.1.1
+      workerpool: 6.5.1
+      yargs: 16.2.0
+      yargs-parser: 20.2.9
+      yargs-unparser: 2.0.0
+    dev: false
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /mocha@8.4.0:
     resolution: {integrity: sha512-hJaO0mwDXmZS4ghXsvPVriOhsxQ7ofcpQdm8dE+jISUOKopitvnXFQmpRR7jd2K6VBG6E26gU3IAbXXGIbu4sQ==}
     engines: {node: '>= 10.12.0'}
@@ -11737,7 +12263,11 @@ packages:
       bn.js: 4.12.0
       create-hash: 1.2.0
       drbg.js: 1.0.1
+<<<<<<< HEAD
       elliptic: 6.5.6
+=======
+      elliptic: 6.5.7
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
       nan: 2.14.0
       safe-buffer: 5.2.1
     dev: false
@@ -13141,6 +13671,17 @@ packages:
     hasBin: true
     dev: false
 
+<<<<<<< HEAD
+=======
+  /uglify-js@3.19.2:
+    resolution: {integrity: sha512-S8KA6DDI47nQXJSi2ctQ629YzwOVs+bQML6DAtvy0wgNdpi+0ySpQK0g2pxBq2xfF2z3YCscu7NNA8nXT9PlIQ==}
+    engines: {node: '>=0.8.0'}
+    hasBin: true
+    requiresBuild: true
+    dev: false
+    optional: true
+
+>>>>>>> 8cbc7d4 (feat: add optional retry provider to indexer)
   /uint8arrays@1.1.0:
     resolution: {integrity: sha512-cLdlZ6jnFczsKf5IH1gPHTtcHtPGho5r4CvctohmQjw8K7Q3gFdfIGHxSTdTaCKrL4w09SsPRJTqRS0drYeszA==}
     dependencies:

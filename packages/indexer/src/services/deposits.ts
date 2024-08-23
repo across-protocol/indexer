@@ -15,6 +15,7 @@ import {
   Fill,
   SlowFillRequest,
 } from "@repo/indexer-database";
+import { RedisCache } from "../redisCache";
 
 import { providers, Contract } from "ethers";
 
@@ -97,13 +98,6 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     provider,
   );
   let lastProcessedBlockNumber: number = deployedBlockNumber;
-  // for now we will always process all config store events.
-  // if (redis) {
-  //   lastProcessedBlockNumber = Number(
-  //     (await redis.get(getLastBlockSearchedKey('configStore',chainId))) ??
-  //       lastProcessedBlockNumber,
-  //   );
-  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -167,6 +161,40 @@ function getLastBlockSearchedKey(
     chainId,
   ].join("~");
 }
+export type RetryProviderConfig = {
+  providerCacheNamespace: string;
+  maxConcurrency: number;
+  pctRpcCallsLogged: number;
+  standardTtlBlockDistance: number;
+  noTtlBlockDistance: number;
+  providerCacheTtl: number;
+  nodeQuorumThreshold: number;
+  retries: number;
+  delay: number;
+};
+type RetryProviderDeps = {
+  cache: across.interfaces.CachingMechanismInterface;
+  logger: winston.Logger;
+  providerUrl: string;
+  chainId: number;
+};
+function getRetryProvider(params: RetryProviderConfig & RetryProviderDeps) {
+  return new across.providers.RetryProvider(
+    [[params.providerUrl], [undefined]],
+    params.chainId,
+    params.nodeQuorumThreshold,
+    params.retries,
+    params.delay,
+    params.maxConcurrency,
+    params.providerCacheNamespace,
+    params.pctRpcCallsLogged,
+    params.cache,
+    params.standardTtlBlockDistance,
+    params.noTtlBlockDistance,
+    params.providerCacheTtl,
+    params.logger,
+  );
+}
 
 type Config = {
   spokePoolProviderUrls: string[];
@@ -175,6 +203,7 @@ type Config = {
   logger: winston.Logger;
   redis: Redis | undefined;
   postgres: DataSource | undefined;
+  retryProvider?: RetryProviderConfig;
 };
 
 export async function Indexer(config: Config) {
@@ -185,10 +214,26 @@ export async function Indexer(config: Config) {
     logger,
     redis,
     postgres,
+    retryProvider,
   } = config;
 
-  const hubPoolProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
-  const hubPoolNetworkInfo = await hubPoolProvider.getNetwork();
+  let redisCache = undefined;
+  if (redis && retryProvider) {
+    redisCache = new RedisCache(redis);
+  }
+  // This is weird but we need to get the chain id from the provider, before calling the retry provider
+  const tempProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
+  const hubPoolNetworkInfo = await tempProvider.getNetwork();
+  const hubPoolProvider =
+    redisCache && retryProvider
+      ? getRetryProvider({
+          ...retryProvider,
+          cache: redisCache,
+          logger,
+          providerUrl: hubPoolProviderUrl,
+          chainId: hubPoolNetworkInfo.chainId,
+        })
+      : tempProvider;
 
   const configStoreClient = await getConfigStoreClient({
     provider: hubPoolProvider,
@@ -209,9 +254,21 @@ export async function Indexer(config: Config) {
   const spokeClientEntries: [number, across.clients.SpokePoolClient][] =
     await Promise.all(
       spokePoolProviderUrls.map(async (providerUrl) => {
-        const provider = new providers.JsonRpcProvider(providerUrl);
-        const networkInfo = await provider.getNetwork();
+        const tempProvider = new providers.JsonRpcProvider(providerUrl);
+        const networkInfo = await tempProvider.getNetwork();
         const { chainId } = networkInfo;
+
+        const provider =
+          redisCache && retryProvider
+            ? getRetryProvider({
+                ...retryProvider,
+                cache: redisCache,
+                logger,
+                providerUrl,
+                chainId,
+              })
+            : tempProvider;
+
         return [
           chainId,
           await getSpokeClient({
