@@ -37,7 +37,7 @@ export function Indexer(db: DataSource): Record<string, APIHandler> {
   async function deposits(queryParams: JSON) {
     // this coerces any string numbers into numbers that we defined in our params
     const params = s.create(queryParams, DepositsParams);
-    const repo = db.getRepository(entities.Deposit);
+    const repo = db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo.createQueryBuilder("deposit");
 
     if (params.depositor) {
@@ -61,18 +61,6 @@ export function Indexer(db: DataSource): Record<string, APIHandler> {
     if (params.outputToken) {
       queryBuilder.andWhere("deposit.outputToken = :outputToken", {
         outputToken: params.outputToken,
-      });
-    }
-
-    if (params.integrator) {
-      queryBuilder.andWhere("deposit.integrator = :integrator", {
-        integrator: params.integrator,
-      });
-    }
-
-    if (params.status) {
-      queryBuilder.andWhere("deposit.status = :status", {
-        status: params.status,
       });
     }
 
