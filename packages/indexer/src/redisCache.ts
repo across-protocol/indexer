@@ -10,7 +10,6 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
     key: string,
     value: ObjectType,
   ): Promise<string | undefined> {
-    await this.redis.set(key, JSON.stringify(value));
-    return undefined;
+    return this.redis.set(key, JSON.stringify(value));
   }
 }

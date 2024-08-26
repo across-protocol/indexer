@@ -7,10 +7,6 @@ import { DatabaseConfig } from "@repo/indexer-database";
 import { connectToDatabase } from "./database/database.provider";
 import * as s from "superstruct";
 
-function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
-}
-
 type RedisConfig = {
   host: string;
   port: number;
@@ -86,15 +82,6 @@ export async function Main(
   env: Record<string, string | undefined>,
   logger: winston.Logger,
 ) {
-  //   let running = true;
-  //   // Handle Ctrl+C (SIGINT)
-  //   dont need this until we have some kind of looping
-  //   process.on("SIGINT", async () => {
-  //     logger.info(
-  //       "SIGINT received. Please wait or CTRL + c again to forcefully exit...",
-  //     );
-  //     running = false;
-  //   });
   const spokePoolProviderUrls: string[] = Object.values(
     acrossConstants.MAINNET_CHAIN_IDs,
   )

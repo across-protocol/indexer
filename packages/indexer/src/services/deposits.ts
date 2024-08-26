@@ -393,13 +393,6 @@ export async function Indexer(config: Config) {
       chainId,
       latestBlockSearched,
     });
-    // remove this for now
-    // if (redis) {
-    //   await redis.set(
-    //     getConfigStoreLastBlockSearchedKey(chainId),
-    //     latestBlockSearched,
-    //   );
-    // }
   }
   async function updateSpokePool(
     now: number,
