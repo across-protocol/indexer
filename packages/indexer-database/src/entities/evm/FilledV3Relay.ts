@@ -4,26 +4,31 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
+import { interfaces } from "@across-protocol/sdk";
 
-export type DepositStatus =
-  | "unfilled"
-  | "filled"
-  | "slowFillRequested"
-  | "slowFilled"
-  | "expired"
-  | "refunded";
+class RelayExecutionInfo {
+  @Column()
+  updatedRecipient: string;
 
-// TODO: Add expiredRefundBundle and slowFillBundle when we have the Bundle entity
-@Entity()
-@Unique("UK_deposit_depositId_originChainId", ["depositId", "originChainId"])
-export class Deposit {
+  @Column()
+  updatedMessage: string;
+
+  @Column()
+  updatedOutputAmount: string;
+
+  @Column({ type: "enum", enum: interfaces.FillType })
+  fillType: interfaces.FillType;
+}
+
+@Entity({ schema: "evm" })
+@Unique("UK_filledV3Relay_relayHash", ["relayHash"])
+export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -33,12 +38,6 @@ export class Deposit {
 
   @Column()
   destinationChainId: number;
-
-  @Column()
-  fromLiteChain: boolean;
-
-  @Column()
-  toLiteChain: boolean;
 
   @Column()
   depositor: string;
@@ -70,14 +69,14 @@ export class Deposit {
   @Column()
   fillDeadline: Date;
 
-  @Column()
-  quoteTimestamp: Date;
+  @Column(() => RelayExecutionInfo, { prefix: false })
+  relayExecutionInfo: RelayExecutionInfo;
 
   @Column()
-  quoteBlockNumber: number;
+  relayer: string;
 
-  @Column({ default: "unfilled" })
-  status: DepositStatus;
+  @Column()
+  repaymentChainId: number;
 
   @Column()
   transactionHash: string;
@@ -93,7 +92,4 @@ export class Deposit {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

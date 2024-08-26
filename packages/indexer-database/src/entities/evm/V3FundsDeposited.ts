@@ -4,34 +4,19 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
-import { interfaces } from "@across-protocol/sdk";
 
-class RelayExecutionInfo {
-  @Column()
-  updatedRecipient: string;
-
-  @Column()
-  updatedMessage: string;
-
-  @Column()
-  updatedOutputAmount: string;
-
-  @Column({ type: "enum", enum: interfaces.FillType })
-  fillType: interfaces.FillType;
-}
-
-// TODO: Add refundBundle when we have the Bundle entity
-// TODO: Add effectiveRepaymentChainId
-@Entity()
-@Unique("UK_fill_uuid", ["uuid"])
-export class Fill {
+@Entity({ schema: "evm" })
+@Unique("UK_v3FundsDeposited_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
+export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -41,6 +26,12 @@ export class Fill {
 
   @Column()
   destinationChainId: number;
+
+  @Column()
+  fromLiteChain: boolean;
+
+  @Column()
+  toLiteChain: boolean;
 
   @Column()
   depositor: string;
@@ -72,17 +63,11 @@ export class Fill {
   @Column()
   fillDeadline: Date;
 
-  @Column(() => RelayExecutionInfo, { prefix: false })
-  relayExecutionInfo: RelayExecutionInfo;
-
-  @Column({ nullable: true })
-  isValid: boolean;
+  @Column()
+  quoteTimestamp: Date;
 
   @Column()
-  relayer: string;
-
-  @Column()
-  repaymentChainId: number;
+  quoteBlockNumber: number;
 
   @Column()
   transactionHash: string;
@@ -98,7 +83,4 @@ export class Fill {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

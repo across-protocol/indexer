@@ -4,18 +4,16 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from "typeorm";
 
-// TODO: slowFillBundle when we have the Bundle entity. Or is it enough to reference that on Deposit?
-@Entity()
-@Unique("UK_slowFillRequest_uuid", ["uuid"])
-export class SlowFillRequest {
+@Entity({ schema: "evm" })
+@Unique("UK_requestedV3SlowFill_relayHash", ["relayHash"])
+export class RequestedV3SlowFill {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  uuid: string;
+  relayHash: string;
 
   @Column()
   depositId: number;
@@ -76,7 +74,4 @@ export class SlowFillRequest {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }
