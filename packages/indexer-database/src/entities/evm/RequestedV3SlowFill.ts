@@ -61,6 +61,12 @@ export class RequestedV3SlowFill {
   fillDeadline: Date;
 
   @Column()
+  quoteTimestamp: Date;
+
+  @Column()
+  quoteBlockNumber: number;
+
+  @Column()
   transactionHash: string;
 
   @Column()
