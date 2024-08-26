@@ -1,0 +1,193 @@
+import winston from "winston";
+import * as across from "@across-protocol/sdk";
+import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
+import {
+  DataSource,
+  ExecutedRelayerRefundRoot,
+  FilledV3Relay,
+  RelayedRootBundle,
+  RequestedV3SlowFill,
+  TokensBridged,
+  V3FundsDeposited,
+} from "@repo/indexer-database";
+
+export class SpokePoolRepository {
+  constructor(
+    private postgres: DataSource | undefined,
+    private logger: winston.Logger,
+  ) {}
+
+  private formatRelayData(
+    event:
+      | across.interfaces.DepositWithBlock
+      | across.interfaces.FillWithBlock
+      | across.interfaces.SlowFillRequestWithBlock,
+  ) {
+    return {
+      inputAmount: event.inputAmount.toString(),
+      outputAmount: event.outputAmount.toString(),
+      fillDeadline: new Date(event.fillDeadline * 1000),
+      exclusivityDeadline:
+        event.exclusivityDeadline === 0
+          ? undefined
+          : new Date(event.exclusivityDeadline * 1000),
+    };
+  }
+
+  public async formatAndSaveV3FundsDepositedEvents(
+    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
+  ) {
+    const v3FundsDepositedRepository =
+      this.postgres?.getRepository(V3FundsDeposited);
+    const formattedEvents = v3FundsDepositedEvents.map((event) => {
+      return {
+        ...event,
+        relayHash: getRelayHashFromEvent(event),
+        ...this.formatRelayData(event),
+        quoteTimestamp: new Date(event.quoteTimestamp * 1000),
+      };
+    });
+    try {
+      await v3FundsDepositedRepository?.save(formattedEvents, { chunk: 2000 });
+      this.logger.info(
+        `Saved ${v3FundsDepositedEvents.length} V3FundsDeposited events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving V3FundsDeposited events:",
+        error,
+      );
+    }
+  }
+
+  public async formatAndSaveFilledV3RelayEvents(
+    filledV3RelayEvents: across.interfaces.FillWithBlock[],
+  ) {
+    const filledV3RelayRepository = this.postgres?.getRepository(FilledV3Relay);
+    const formattedEvents = filledV3RelayEvents.map((event) => {
+      return {
+        ...event,
+        relayHash: getRelayHashFromEvent(event),
+        ...this.formatRelayData(event),
+        relayExecutionInfo: {
+          ...event.relayExecutionInfo,
+          updatedOutputAmount:
+            event.relayExecutionInfo.updatedOutputAmount.toString(),
+        },
+      };
+    });
+    try {
+      await filledV3RelayRepository?.save(formattedEvents, { chunk: 2000 });
+      this.logger.info(
+        `Saved ${filledV3RelayEvents.length} FilledV3Relay events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving FilledV3Relay events:",
+        error,
+      );
+    }
+  }
+
+  public async formatAndSaveRequestedV3SlowFillEvents(
+    requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
+  ) {
+    const requestedV3SlowFillRepository =
+      this.postgres?.getRepository(RequestedV3SlowFill);
+    const formattedEvents = requestedV3SlowFillEvents.map((event) => {
+      return {
+        ...event,
+        relayHash: getRelayHashFromEvent(event),
+        ...this.formatRelayData(event),
+      };
+    });
+    try {
+      await requestedV3SlowFillRepository?.save(formattedEvents);
+      this.logger.info(
+        `Saved ${requestedV3SlowFillEvents.length} RequestedV3SlowFill events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving RequestedV3SlowFill events:",
+        error,
+      );
+    }
+  }
+
+  public async formatAndSaveRelayedRootBundleEvents(
+    relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[],
+    chainId: number,
+  ) {
+    const formattedEvents = relayedRootBundleEvents.map((event) => {
+      return { ...event, chainId };
+    });
+    const relayedRootBundleRepository =
+      this.postgres?.getRepository(RelayedRootBundle);
+    try {
+      await relayedRootBundleRepository?.save(formattedEvents);
+      this.logger.info(
+        `Saved ${relayedRootBundleEvents.length} RelayedRootBundle events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving RelayedRootBundle events:",
+        error,
+      );
+    }
+  }
+
+  public async formatAndSaveExecutedRelayerRefundRootEvents(
+    executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
+      caller: string;
+    })[],
+  ) {
+    const executedRelayerRefundRootRepository = this.postgres?.getRepository(
+      ExecutedRelayerRefundRoot,
+    );
+    const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
+      return {
+        ...event,
+        amountToReturn: event.amountToReturn.toString(),
+        refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
+        caller: event.caller,
+      };
+    });
+    try {
+      await executedRelayerRefundRootRepository?.save(formattedEvents);
+      this.logger.info(
+        `Saved ${executedRelayerRefundRootEvents.length} ExecutedRelayerRefundRoot events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving ExecutedRelayerRefundRoot events:",
+        error,
+      );
+    }
+  }
+
+  public async formatAndSaveTokensBridgedEvents(
+    tokensBridgedEvents: (across.interfaces.TokensBridged & {
+      caller: string;
+    })[],
+  ) {
+    const tokensBridgedRepository = this.postgres?.getRepository(TokensBridged);
+    const formattedEvents = tokensBridgedEvents.map((event) => {
+      return {
+        ...event,
+        amountToReturn: event.amountToReturn.toString(),
+        caller: event.caller,
+      };
+    });
+    try {
+      await tokensBridgedRepository?.save(formattedEvents);
+      this.logger.info(
+        `Saved ${tokensBridgedEvents.length} TokensBridged events`,
+      );
+    } catch (error) {
+      this.logger.error(
+        "There was an error while saving TokensBridged events:",
+        error,
+      );
+    }
+  }
+}

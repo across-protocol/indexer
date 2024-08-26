@@ -1,8 +1,11 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { V3FundsDeposited } from "./entities/evm/V3FundsDeposited";
+import { ExecutedRelayerRefundRoot } from "./entities/evm/ExecutedRelayerRefundRoot";
 import { FilledV3Relay } from "./entities/evm/FilledV3Relay";
+import { RelayedRootBundle } from "./entities/evm/RelayedRootBundle";
 import { RequestedV3SlowFill } from "./entities/evm/RequestedV3SlowFill";
+import { TokensBridged } from "./entities/evm/TokensBridged";
+import { V3FundsDeposited } from "./entities/evm/V3FundsDeposited";
 
 export { DataSource };
 
@@ -23,10 +26,24 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
     password: config.password,
     database: config.dbName,
     logging: false,
-    entities: [V3FundsDeposited, FilledV3Relay, RequestedV3SlowFill],
+    entities: [
+      ExecutedRelayerRefundRoot,
+      FilledV3Relay,
+      RelayedRootBundle,
+      RequestedV3SlowFill,
+      TokensBridged,
+      V3FundsDeposited,
+    ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
   });
 };
 
-export { V3FundsDeposited, FilledV3Relay, RequestedV3SlowFill };
+export {
+  ExecutedRelayerRefundRoot,
+  FilledV3Relay,
+  RelayedRootBundle,
+  RequestedV3SlowFill,
+  TokensBridged,
+  V3FundsDeposited,
+};
