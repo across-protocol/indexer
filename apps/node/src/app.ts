@@ -43,7 +43,7 @@ async function run() {
       void (await PersistenceExample.Main(process.env));
       return "Example persistence app running";
     case "indexer-api":
-      void (await IndexerApi.Main(process.env));
+      void (await IndexerApi.Main(process.env, logger));
       return "Indexer API running";
     default:
       throw new Error(`Unable to start, unknown app: ${APP}`);
