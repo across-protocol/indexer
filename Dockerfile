@@ -1,4 +1,4 @@
-FROM node:lts-iron AS development
+FROM node:20 AS development
 
 
 WORKDIR /usr/src/app
@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm build
 
-FROM node:lts-iron AS production
+FROM node:20 AS production
 
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
