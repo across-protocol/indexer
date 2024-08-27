@@ -15,6 +15,7 @@ export class SpokePoolRepository {
   constructor(
     private postgres: DataSource | undefined,
     private logger: winston.Logger,
+    private chunkSize = 2000,
   ) {}
 
   private formatRelayData(
@@ -48,8 +49,13 @@ export class SpokePoolRepository {
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
       };
     });
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     try {
-      await v3FundsDepositedRepository?.save(formattedEvents, { chunk: 2000 });
+      await Promise.all(
+        chunkedEvents.map((eventsChunk) =>
+          v3FundsDepositedRepository?.insert(eventsChunk),
+        ),
+      );
       this.logger.info(
         `Saved ${v3FundsDepositedEvents.length} V3FundsDeposited events`,
       );
@@ -79,8 +85,13 @@ export class SpokePoolRepository {
         },
       };
     });
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     try {
-      await filledV3RelayRepository?.save(formattedEvents, { chunk: 2000 });
+      await Promise.all(
+        chunkedEvents.map((eventsChunk) =>
+          filledV3RelayRepository?.insert(eventsChunk),
+        ),
+      );
       this.logger.info(
         `Saved ${filledV3RelayEvents.length} FilledV3Relay events`,
       );
@@ -107,7 +118,7 @@ export class SpokePoolRepository {
       };
     });
     try {
-      await requestedV3SlowFillRepository?.save(formattedEvents);
+      await requestedV3SlowFillRepository?.insert(formattedEvents);
       this.logger.info(
         `Saved ${requestedV3SlowFillEvents.length} RequestedV3SlowFill events`,
       );
@@ -131,7 +142,7 @@ export class SpokePoolRepository {
     const relayedRootBundleRepository =
       this.postgres?.getRepository(RelayedRootBundle);
     try {
-      await relayedRootBundleRepository?.save(formattedEvents);
+      await relayedRootBundleRepository?.insert(formattedEvents);
       this.logger.info(
         `Saved ${relayedRootBundleEvents.length} RelayedRootBundle events`,
       );
@@ -162,7 +173,7 @@ export class SpokePoolRepository {
       };
     });
     try {
-      await executedRelayerRefundRootRepository?.save(formattedEvents);
+      await executedRelayerRefundRootRepository?.insert(formattedEvents);
       this.logger.info(
         `Saved ${executedRelayerRefundRootEvents.length} ExecutedRelayerRefundRoot events`,
       );
@@ -190,7 +201,7 @@ export class SpokePoolRepository {
       };
     });
     try {
-      await tokensBridgedRepository?.save(formattedEvents);
+      await tokensBridgedRepository?.insert(formattedEvents);
       this.logger.info(
         `Saved ${tokensBridgedEvents.length} TokensBridged events`,
       );
