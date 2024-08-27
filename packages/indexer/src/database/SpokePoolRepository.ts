@@ -36,6 +36,7 @@ export class SpokePoolRepository {
 
   public async formatAndSaveV3FundsDepositedEvents(
     v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
+    throwError = false,
   ) {
     const v3FundsDepositedRepository =
       this.postgres?.getRepository(V3FundsDeposited);
@@ -57,11 +58,13 @@ export class SpokePoolRepository {
         "There was an error while saving V3FundsDeposited events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 
   public async formatAndSaveFilledV3RelayEvents(
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
+    throwError = false,
   ) {
     const filledV3RelayRepository = this.postgres?.getRepository(FilledV3Relay);
     const formattedEvents = filledV3RelayEvents.map((event) => {
@@ -86,11 +89,13 @@ export class SpokePoolRepository {
         "There was an error while saving FilledV3Relay events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 
   public async formatAndSaveRequestedV3SlowFillEvents(
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
+    throwError = false,
   ) {
     const requestedV3SlowFillRepository =
       this.postgres?.getRepository(RequestedV3SlowFill);
@@ -111,12 +116,14 @@ export class SpokePoolRepository {
         "There was an error while saving RequestedV3SlowFill events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 
   public async formatAndSaveRelayedRootBundleEvents(
     relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[],
     chainId: number,
+    throwError = false,
   ) {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
       return { ...event, chainId };
@@ -133,6 +140,7 @@ export class SpokePoolRepository {
         "There was an error while saving RelayedRootBundle events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 
@@ -140,6 +148,7 @@ export class SpokePoolRepository {
     executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
       caller: string;
     })[],
+    throwError = false,
   ) {
     const executedRelayerRefundRootRepository = this.postgres?.getRepository(
       ExecutedRelayerRefundRoot,
@@ -162,6 +171,7 @@ export class SpokePoolRepository {
         "There was an error while saving ExecutedRelayerRefundRoot events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 
@@ -169,6 +179,7 @@ export class SpokePoolRepository {
     tokensBridgedEvents: (across.interfaces.TokensBridged & {
       caller: string;
     })[],
+    throwError = false,
   ) {
     const tokensBridgedRepository = this.postgres?.getRepository(TokensBridged);
     const formattedEvents = tokensBridgedEvents.map((event) => {
@@ -188,6 +199,7 @@ export class SpokePoolRepository {
         "There was an error while saving TokensBridged events:",
         error,
       );
+      if (throwError) throw error;
     }
   }
 }
