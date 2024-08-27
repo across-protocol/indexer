@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: ${DATABASE_NAME}
       PG_DATA: /var/lib/postgresql/data
     volumes:
-      - indexer-pgdata:/var/lib/postgresql/data
+      - ./volumes/indexer-pgdata:/var/lib/postgresql/data
     ports:
       - 5432:5432
 
@@ -29,7 +29,7 @@ services:
     container_name: indexer_service
     volumes:
       - .:/usr/src/app
-      - indexer-node-modules:/usr/src/app/node_modules
+      - ./volumes/indexer-node-modules:/usr/src/app/node_modules
     command: ["/bin/sh", "./docker/dev.command.sh"]
     env_file:
       - .env
@@ -47,7 +47,7 @@ services:
     container_name: indexer_api
     volumes:
       - .:/usr/src/app
-      - indexer-node-modules:/usr/src/app/node_modules
+      - ./volumes/indexer-node-modules:/usr/src/app/node_modules
     ports:
       - ${PORT}:${PORT}
     command: ["/bin/sh", "./docker/dev.command.sh"]
@@ -58,8 +58,3 @@ services:
     depends_on:
       - postgres
       - redis
-
-volumes:
-  indexer-node-modules:
-  indexer-pgdata:
-  indexer-redis-volume:
