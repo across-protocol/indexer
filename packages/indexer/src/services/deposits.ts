@@ -203,7 +203,7 @@ type Config = {
   logger: winston.Logger;
   redis: Redis | undefined;
   postgres: DataSource | undefined;
-  retryProvider?: RetryProviderConfig;
+  retryProviderConfig?: RetryProviderConfig;
 };
 
 export async function Indexer(config: Config) {
@@ -214,20 +214,20 @@ export async function Indexer(config: Config) {
     logger,
     redis,
     postgres,
-    retryProvider,
+    retryProviderConfig,
   } = config;
 
   let redisCache = undefined;
-  if (redis && retryProvider) {
+  if (redis && retryProviderConfig) {
     redisCache = new RedisCache(redis);
   }
   // This is weird but we need to get the chain id from the provider, before calling the retry provider
   const tempProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
   const hubPoolNetworkInfo = await tempProvider.getNetwork();
   const hubPoolProvider =
-    redisCache && retryProvider
+    redisCache && retryProviderConfig
       ? getRetryProvider({
-          ...retryProvider,
+          ...retryProviderConfig,
           cache: redisCache,
           logger,
           providerUrl: hubPoolProviderUrl,
@@ -259,9 +259,9 @@ export async function Indexer(config: Config) {
         const { chainId } = networkInfo;
 
         const provider =
-          redisCache && retryProvider
+          redisCache && retryProviderConfig
             ? getRetryProvider({
-                ...retryProvider,
+                ...retryProviderConfig,
                 cache: redisCache,
                 logger,
                 providerUrl,

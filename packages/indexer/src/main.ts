@@ -117,7 +117,7 @@ export async function Main(
     ? await connectToDatabase(postgresConfig, logger)
     : undefined;
 
-  const retryProvider = getRetryProviderConfig(env);
+  const retryProviderConfig = getRetryProviderConfig(env);
 
   logger.info({
     message: "Starting indexer",
@@ -132,7 +132,7 @@ export async function Main(
     logger,
     redis,
     postgres,
-    retryProvider,
+    retryProviderConfig,
   });
 
   // TODO: add looping to keep process going
