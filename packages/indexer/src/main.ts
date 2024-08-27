@@ -5,10 +5,7 @@ import Redis from "ioredis";
 import * as acrossConstants from "@across-protocol/constants";
 import { DatabaseConfig } from "@repo/indexer-database";
 import { connectToDatabase } from "./database/database.provider";
-
-function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
-}
+import * as s from "superstruct";
 
 type RedisConfig = {
   host: string;
@@ -48,18 +45,43 @@ function getPostgresConfig(
     : undefined;
 }
 
+// superstruct coersion to turn string into an int and validate
+const stringToInt = s.coerce(s.number(), s.string(), (value) =>
+  parseInt(value),
+);
+function getRetryProviderConfig(
+  env: Record<string, string | undefined>,
+): services.deposits.RetryProviderConfig | undefined {
+  return env.PROVIDER_CACHE_NAMESPACE &&
+    env.MAX_CONCURRENCY &&
+    env.PCT_RPC_CALLS_LOGGED &&
+    env.STANDARD_TTL_BLOCK_DISTANCE &&
+    env.NO_TTL_BLOCK_DISTANCE &&
+    env.PROVIDER_CACHE_TTL &&
+    env.NODE_QUORUM_THRESHOLD &&
+    env.RETRIES &&
+    env.DELAY
+    ? {
+        providerCacheNamespace: env.PROVIDER_CACHE_NAMESPACE,
+        maxConcurrency: s.create(env.MAX_CONCURRENCY, stringToInt),
+        pctRpcCallsLogged: s.create(env.PCT_RPC_CALLS_LOGGED, stringToInt),
+        standardTtlBlockDistance: s.create(
+          env.STANDARD_TTL_BLOCK_DISTANCE,
+          stringToInt,
+        ),
+        noTtlBlockDistance: s.create(env.NO_TTL_BLOCK_DISTANCE, stringToInt),
+        providerCacheTtl: s.create(env.PROVIDER_CACHE_TTL, stringToInt),
+        nodeQuorumThreshold: s.create(env.NODE_QUORUM_THRESHOLD, stringToInt),
+        retries: s.create(env.RETRIES, stringToInt),
+        delay: s.create(env.DELAY, stringToInt),
+      }
+    : undefined;
+}
+
 export async function Main(
   env: Record<string, string | undefined>,
   logger: winston.Logger,
 ) {
-  let running = true;
-  // Handle Ctrl+C (SIGINT)
-  process.on("SIGINT", async () => {
-    logger.info(
-      "SIGINT received. Please wait or CTRL + c again to forcefully exit...",
-    );
-    running = false;
-  });
   const spokePoolProviderUrls: string[] = Object.values(
     acrossConstants.MAINNET_CHAIN_IDs,
   )
@@ -95,6 +117,8 @@ export async function Main(
     ? await connectToDatabase(postgresConfig, logger)
     : undefined;
 
+  const retryProviderConfig = getRetryProviderConfig(env);
+
   logger.info({
     message: "Starting indexer",
     redisConfig,
@@ -108,6 +132,7 @@ export async function Main(
     logger,
     redis,
     postgres,
+    retryProviderConfig,
   });
 
   // TODO: add looping to keep process going
