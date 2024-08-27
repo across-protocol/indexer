@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_executedRelayerRefundRoot_chainId_rootBundleId_leafId", [
+@Unique("UK_executedRelayerRefundRoot_chain_rootBundle_leaf", [
   "chainId",
   "rootBundleId",
   "leafId",

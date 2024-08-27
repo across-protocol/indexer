@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_tokensBridged_chainId_leafId_l2TokenAddress_transactionHash", [
+@Unique("UK_tokensBridged_chain_leaf_l2Token_txHash", [
   "chainId",
   "leafId",
   "l2TokenAddress",

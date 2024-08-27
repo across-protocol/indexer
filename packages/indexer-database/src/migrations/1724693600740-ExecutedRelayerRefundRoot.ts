@@ -22,7 +22,7 @@ export class ExecutedRelayerRefundRoot1724693600740
                 "logIndex" integer NOT NULL,
                 "blockNumber" integer NOT NULL,
                 "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-                CONSTRAINT "UK_executedRelayerRefundRoot_chainId_rootBundleId_leafId" UNIQUE ("chainId", "rootBundleId", "leafId"),
+                CONSTRAINT "UK_executedRelayerRefundRoot_chain_rootBundle_leaf" UNIQUE ("chainId", "rootBundleId", "leafId"),
                 CONSTRAINT "PK_9785720b5a11005f37d894fd412" PRIMARY KEY ("id")
             )
         `,
