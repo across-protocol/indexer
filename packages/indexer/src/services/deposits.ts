@@ -141,6 +141,12 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
   };
+  logger.info({
+    message: "Initializing hubpool",
+    chainId,
+    redis: !!redis,
+    ...eventSearchConfig,
+  });
   return new across.clients.HubPoolClient(
     logger,
     hubPoolContract,
@@ -180,7 +186,7 @@ type RetryProviderDeps = {
 };
 function getRetryProvider(params: RetryProviderConfig & RetryProviderDeps) {
   return new across.providers.RetryProvider(
-    [[params.providerUrl], [undefined]],
+    [[params.providerUrl, params.chainId]],
     params.chainId,
     params.nodeQuorumThreshold,
     params.retries,

@@ -4,7 +4,9 @@ import Redis from "ioredis";
 export class RedisCache implements across.interfaces.CachingMechanismInterface {
   constructor(private redis: Redis) {}
   async get<ObjectType>(key: string): Promise<ObjectType | null> {
-    return this.redis.get(key) as ObjectType | null;
+    const result = await this.redis.get(key);
+    if (result === null) return result;
+    return JSON.parse(result);
   }
   async set<ObjectType>(
     key: string,
