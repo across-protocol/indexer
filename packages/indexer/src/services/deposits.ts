@@ -283,7 +283,9 @@ export async function Indexer(config: Config) {
       }),
     );
 
-  const spokePoolClientRepository = new SpokePoolRepository(postgres, logger);
+  const spokePoolClientRepository = postgres
+    ? new SpokePoolRepository(postgres, logger)
+    : undefined;
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
@@ -333,15 +335,10 @@ export async function Indexer(config: Config) {
       spokeClient.getSlowFillRequestsForOriginChain(chainId);
     const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
-      spokeClient.getRelayerRefundExecutions() as (across.interfaces.RelayerRefundExecutionWithBlock & {
-        caller: string;
-      })[];
-    const tokensBridgedEvents =
-      spokeClient.getTokensBridged() as (across.interfaces.TokensBridged & {
-        caller: string;
-      })[];
+      spokeClient.getRelayerRefundExecutions();
+    const tokensBridgedEvents = spokeClient.getTokensBridged();
 
-    if (postgres) {
+    if (spokePoolClientRepository) {
       await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
         v3FundsDepositedEvents,
       );

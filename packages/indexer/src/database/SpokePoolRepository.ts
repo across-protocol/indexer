@@ -13,7 +13,7 @@ import {
 
 export class SpokePoolRepository {
   constructor(
-    private postgres: DataSource | undefined,
+    private postgres: DataSource,
     private logger: winston.Logger,
     private chunkSize = 2000,
   ) {}
@@ -40,7 +40,7 @@ export class SpokePoolRepository {
     throwError = false,
   ) {
     const v3FundsDepositedRepository =
-      this.postgres?.getRepository(V3FundsDeposited);
+      this.postgres.getRepository(V3FundsDeposited);
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
         ...event,
@@ -53,7 +53,7 @@ export class SpokePoolRepository {
     try {
       await Promise.all(
         chunkedEvents.map((eventsChunk) =>
-          v3FundsDepositedRepository?.insert(eventsChunk),
+          v3FundsDepositedRepository.insert(eventsChunk),
         ),
       );
       this.logger.info(
@@ -72,7 +72,7 @@ export class SpokePoolRepository {
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
     throwError = false,
   ) {
-    const filledV3RelayRepository = this.postgres?.getRepository(FilledV3Relay);
+    const filledV3RelayRepository = this.postgres.getRepository(FilledV3Relay);
     const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
         ...event,
@@ -89,7 +89,7 @@ export class SpokePoolRepository {
     try {
       await Promise.all(
         chunkedEvents.map((eventsChunk) =>
-          filledV3RelayRepository?.insert(eventsChunk),
+          filledV3RelayRepository.insert(eventsChunk),
         ),
       );
       this.logger.info(
@@ -109,7 +109,7 @@ export class SpokePoolRepository {
     throwError = false,
   ) {
     const requestedV3SlowFillRepository =
-      this.postgres?.getRepository(RequestedV3SlowFill);
+      this.postgres.getRepository(RequestedV3SlowFill);
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...event,
@@ -118,7 +118,7 @@ export class SpokePoolRepository {
       };
     });
     try {
-      await requestedV3SlowFillRepository?.insert(formattedEvents);
+      await requestedV3SlowFillRepository.insert(formattedEvents);
       this.logger.info(
         `Saved ${requestedV3SlowFillEvents.length} RequestedV3SlowFill events`,
       );
@@ -140,9 +140,9 @@ export class SpokePoolRepository {
       return { ...event, chainId };
     });
     const relayedRootBundleRepository =
-      this.postgres?.getRepository(RelayedRootBundle);
+      this.postgres.getRepository(RelayedRootBundle);
     try {
-      await relayedRootBundleRepository?.insert(formattedEvents);
+      await relayedRootBundleRepository.insert(formattedEvents);
       this.logger.info(
         `Saved ${relayedRootBundleEvents.length} RelayedRootBundle events`,
       );
@@ -156,12 +156,10 @@ export class SpokePoolRepository {
   }
 
   public async formatAndSaveExecutedRelayerRefundRootEvents(
-    executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
-      caller: string;
-    })[],
+    executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[],
     throwError = false,
   ) {
-    const executedRelayerRefundRootRepository = this.postgres?.getRepository(
+    const executedRelayerRefundRootRepository = this.postgres.getRepository(
       ExecutedRelayerRefundRoot,
     );
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
@@ -169,11 +167,10 @@ export class SpokePoolRepository {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
-        caller: event.caller,
       };
     });
     try {
-      await executedRelayerRefundRootRepository?.insert(formattedEvents);
+      await executedRelayerRefundRootRepository.insert(formattedEvents);
       this.logger.info(
         `Saved ${executedRelayerRefundRootEvents.length} ExecutedRelayerRefundRoot events`,
       );
@@ -187,21 +184,18 @@ export class SpokePoolRepository {
   }
 
   public async formatAndSaveTokensBridgedEvents(
-    tokensBridgedEvents: (across.interfaces.TokensBridged & {
-      caller: string;
-    })[],
+    tokensBridgedEvents: across.interfaces.TokensBridged[],
     throwError = false,
   ) {
-    const tokensBridgedRepository = this.postgres?.getRepository(TokensBridged);
+    const tokensBridgedRepository = this.postgres.getRepository(TokensBridged);
     const formattedEvents = tokensBridgedEvents.map((event) => {
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
-        caller: event.caller,
       };
     });
     try {
-      await tokensBridgedRepository?.insert(formattedEvents);
+      await tokensBridgedRepository.insert(formattedEvents);
       this.logger.info(
         `Saved ${tokensBridgedEvents.length} TokensBridged events`,
       );
