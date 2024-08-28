@@ -12,6 +12,7 @@ import Redis from "ioredis";
 import { RedisCache } from "../redisCache";
 import { DataSource } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
+import { HubPoolRepository } from "../database/HubPoolRepository";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -286,11 +287,33 @@ export async function Indexer(config: Config) {
   const spokePoolClientRepository = postgres
     ? new SpokePoolRepository(postgres, logger)
     : undefined;
+  const hubPoolRepository = postgres
+    ? new HubPoolRepository(postgres, logger)
+    : undefined;
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
     await hubPoolClient.update();
-    // TODO: store any data we need for hubpool in index
+
+    const proposedRootBundleEvents = hubPoolClient.getProposedRootBundles();
+    const rootBundleCanceledEvents = hubPoolClient.getCancelledRootBundles();
+    const rootBundleDisputedEvents = hubPoolClient.getDisputedRootBundles();
+    const rootBundleExecutedEvents = hubPoolClient.getExecutedRootBundles();
+    if (hubPoolRepository) {
+      await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
+        proposedRootBundleEvents,
+      );
+      await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
+        rootBundleCanceledEvents,
+      );
+      await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
+        rootBundleDisputedEvents,
+      );
+      await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
+        rootBundleExecutedEvents,
+      );
+    }
+
     const latestBlockSearched = hubPoolClient.latestBlockSearched;
     logger.info({
       message: "Finished updating hub pool client",
