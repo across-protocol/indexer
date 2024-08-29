@@ -125,6 +125,7 @@ export async function Main(
     postgresConfig,
     spokePoolProviderUrls,
     hubPoolProviderUrl,
+    retryProviderConfig,
   });
   const depositIndexer = await services.deposits.Indexer({
     spokePoolProviderUrls,
