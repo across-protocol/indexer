@@ -15,14 +15,14 @@ export class BaseRepository {
     const repository = this.postgres.getRepository(entity);
     try {
       await repository.insert(data);
-      this.logger.info(
-        `Saved ${data.length} ${repository.metadata.name} events`,
-      );
+      this.logger.info({
+        message: `Saved ${data.length} ${repository.metadata.name} events`,
+      });
     } catch (error) {
-      this.logger.error(
-        `There was an error while saving ${repository.metadata.name} events:`,
+      this.logger.error({
+        message: `There was an error while saving ${repository.metadata.name} events`,
         error,
-      );
+      });
       if (throwError) throw error;
     }
   }
