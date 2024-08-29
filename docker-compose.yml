@@ -36,6 +36,7 @@ services:
       - .env
     environment:
       APP: indexer
+      RUN_MIGRATIONS: true
     depends_on:
       - postgres
       - redis
