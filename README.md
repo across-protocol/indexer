@@ -122,7 +122,7 @@ This repository is configured to use Docker Compose to create a development envi
 To start the development environment, run the following command:
 
 ```sh
-pnpm run dev:dev-env:up
+docker-compose up
 ```
 
 #### Stopping the Environment
@@ -130,34 +130,26 @@ pnpm run dev:dev-env:up
 To stop the development environment, run the following command:
 
 ```sh
-pnpm run dev:dev-env:down
+docker-compose down
 ```
 
 #### Running Applications
 
-To run each app in the development environment, you can use the following command:
-
-```sh
-pnpm run dev-env:run-app:{app-name}
-```
+Each application (the indexer + the api) will run in the development environment. This is
+enabled by default and managed by the `docker-compose.yml` file.
 
 **Example:**
 
-```sh
-pnpm run dev-env:run-app:persistence-example
-```
+#### Required Environment Variables
 
-#### Exposed Environment Variables
+The development environment requires the following ENV variables to be set:
 
-The development environment exposes the following environment variables that can be used to connect to the locally-running services:
-
-- `NODE_ENV`
-- `DATABASE_HOST`
+- `DATABASE_HOST="postgres"`
+- `REDIS_HOST="redis"`
 - `DATABASE_PORT`
 - `DATABASE_USER`
 - `DATABASE_PASSWORD`
 - `DATABASE_NAME`
-- `REDIS_HOST`
 - `REDIS_PORT`
 
 ### Creating a new library
