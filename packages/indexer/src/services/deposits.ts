@@ -6,18 +6,12 @@ import {
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
 import * as across from "@across-protocol/sdk";
-import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
+import { providers, Contract } from "ethers";
 import winston from "winston";
 import Redis from "ioredis";
-import {
-  DataSource,
-  V3FundsDeposited,
-  FilledV3Relay,
-  RequestedV3SlowFill,
-} from "@repo/indexer-database";
 import { RedisCache } from "../redisCache";
-
-import { providers, Contract } from "ethers";
+import { DataSource } from "@repo/indexer-database";
+import { SpokePoolRepository } from "../database/SpokePoolRepository";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -30,6 +24,7 @@ type GetSpokeClientParams = {
   chainId: number;
   hubPoolClient: across.clients.HubPoolClient;
 };
+
 export async function getSpokeClient(
   params: GetSpokeClientParams,
 ): Promise<across.clients.SpokePoolClient> {
@@ -78,6 +73,7 @@ export async function getSpokeClient(
     eventSearchConfig,
   );
 }
+
 type GetConfigStoreClientParams = {
   provider: providers.Provider;
   logger: winston.Logger;
@@ -85,6 +81,7 @@ type GetConfigStoreClientParams = {
   maxBlockLookBack: number;
   chainId: number;
 };
+
 export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
   const { provider, logger, redis, maxBlockLookBack, chainId } = params;
   const address = getDeployedAddress("AcrossConfigStore", chainId);
@@ -109,6 +106,7 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     CONFIG_STORE_VERSION,
   );
 }
+
 type GetHubPoolClientParams = {
   provider: providers.Provider;
   logger: winston.Logger;
@@ -117,6 +115,7 @@ type GetHubPoolClientParams = {
   chainId: number;
   configStoreClient: across.clients.AcrossConfigStoreClient;
 };
+
 export async function getHubPoolClient(params: GetHubPoolClientParams) {
   const {
     provider,
@@ -150,6 +149,7 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
     eventSearchConfig,
   );
 }
+
 function getLastBlockSearchedKey(
   clientName: "hubPool" | "spokePool" | "configStore",
   chainId: number,
@@ -283,102 +283,9 @@ export async function Indexer(config: Config) {
       }),
     );
 
-  function formatRelayData(
-    event:
-      | across.interfaces.DepositWithBlock
-      | across.interfaces.FillWithBlock
-      | across.interfaces.SlowFillRequestWithBlock,
-  ) {
-    return {
-      inputAmount: event.inputAmount.toString(),
-      outputAmount: event.outputAmount.toString(),
-      fillDeadline: new Date(event.fillDeadline * 1000),
-      exclusivityDeadline:
-        event.exclusivityDeadline === 0
-          ? undefined
-          : new Date(event.exclusivityDeadline * 1000),
-    };
-  }
-
-  async function formatAndSaveV3FundsDepositedEvents(
-    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
-  ) {
-    const v3FundsDepositedRepository =
-      postgres?.getRepository(V3FundsDeposited);
-    const formattedEvents = v3FundsDepositedEvents.map((event) => {
-      return {
-        ...event,
-        relayHash: getRelayHashFromEvent(event),
-        ...formatRelayData(event),
-        quoteTimestamp: new Date(event.quoteTimestamp * 1000),
-      };
-    });
-    try {
-      await v3FundsDepositedRepository?.save(formattedEvents, { chunk: 2000 });
-      logger.info(
-        `Saved ${v3FundsDepositedEvents.length} V3FundsDeposited events`,
-      );
-    } catch (error) {
-      logger.error(
-        "There was an error while saving V3FundsDeposited events:",
-        error,
-      );
-    }
-  }
-
-  async function formatAndSaveFilledV3RelayEvents(
-    filledV3RelayEvents: across.interfaces.FillWithBlock[],
-  ) {
-    const filledV3RelayRepository = postgres?.getRepository(FilledV3Relay);
-    const formattedEvents = filledV3RelayEvents.map((event) => {
-      return {
-        ...event,
-        relayHash: getRelayHashFromEvent(event),
-        ...formatRelayData(event),
-        relayExecutionInfo: {
-          ...event.relayExecutionInfo,
-          updatedOutputAmount:
-            event.relayExecutionInfo.updatedOutputAmount.toString(),
-        },
-      };
-    });
-    try {
-      await filledV3RelayRepository?.save(formattedEvents, { chunk: 2000 });
-      logger.info(`Saved ${filledV3RelayEvents.length} FilledV3Relay events`);
-    } catch (error) {
-      logger.error(
-        "There was an error while saving FilledV3Relay events:",
-        error,
-      );
-    }
-  }
-
-  async function formatAndSaveRequestedV3SlowFillEvents(
-    requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
-  ) {
-    const requestedV3SlowFillRepository =
-      postgres?.getRepository(RequestedV3SlowFill);
-    const formattedEvents = requestedV3SlowFillEvents.map((event) => {
-      return {
-        ...event,
-        relayHash: getRelayHashFromEvent(event),
-        ...formatRelayData(event),
-      };
-    });
-    try {
-      await requestedV3SlowFillRepository?.save(formattedEvents, {
-        chunk: 2000,
-      });
-      logger.info(
-        `Saved ${requestedV3SlowFillEvents.length} RequestedV3SlowFill events`,
-      );
-    } catch (error) {
-      logger.error(
-        "There was an error while saving RequestedV3SlowFill events:",
-        error,
-      );
-    }
-  }
+  const spokePoolClientRepository = postgres
+    ? new SpokePoolRepository(postgres, logger)
+    : undefined;
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
@@ -397,6 +304,7 @@ export async function Indexer(config: Config) {
       );
     }
   }
+
   async function updateConfigStore(now: number, chainId: number) {
     logger.info("Starting config store update");
     await configStoreClient.update();
@@ -408,6 +316,7 @@ export async function Indexer(config: Config) {
       latestBlockSearched,
     });
   }
+
   async function updateSpokePool(
     now: number,
     chainId: number,
@@ -424,10 +333,31 @@ export async function Indexer(config: Config) {
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(chainId);
-    if (postgres) {
-      await formatAndSaveV3FundsDepositedEvents(v3FundsDepositedEvents);
-      await formatAndSaveRequestedV3SlowFillEvents(requestedV3SlowFillEvents);
-      await formatAndSaveFilledV3RelayEvents(filledV3RelayEvents);
+    const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
+    const executedRelayerRefundRootEvents =
+      spokeClient.getRelayerRefundExecutions();
+    const tokensBridgedEvents = spokeClient.getTokensBridged();
+
+    if (spokePoolClientRepository) {
+      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        v3FundsDepositedEvents,
+      );
+      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedV3SlowFillEvents,
+      );
+      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledV3RelayEvents,
+      );
+      await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+        relayedRootBundleEvents,
+        chainId,
+      );
+      await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+        executedRelayerRefundRootEvents,
+      );
+      await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+        tokensBridgedEvents,
+      );
     }
 
     const latestBlockSearched = spokeClient.latestBlockSearched;
@@ -438,6 +368,9 @@ export async function Indexer(config: Config) {
       v3FundsDepositedEvents: v3FundsDepositedEvents.length,
       filledV3RelayEvents: filledV3RelayEvents.length,
       requestedV3SlowFillEvents: requestedV3SlowFillEvents.length,
+      relayedRootBundles: relayedRootBundleEvents.length,
+      executedRelayerRefundRoot: executedRelayerRefundRootEvents.length,
+      tokensBridged: tokensBridgedEvents.length,
     });
     if (redis) {
       await redis.set(
