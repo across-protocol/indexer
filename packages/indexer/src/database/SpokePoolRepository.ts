@@ -1,15 +1,7 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
-import {
-  DataSource,
-  ExecutedRelayerRefundRoot,
-  FilledV3Relay,
-  RelayedRootBundle,
-  RequestedV3SlowFill,
-  TokensBridged,
-  V3FundsDeposited,
-} from "@repo/indexer-database";
+import { DataSource, entities } from "@repo/indexer-database";
 
 export class SpokePoolRepository {
   constructor(
@@ -39,8 +31,9 @@ export class SpokePoolRepository {
     v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
     throwError = false,
   ) {
-    const v3FundsDepositedRepository =
-      this.postgres.getRepository(V3FundsDeposited);
+    const v3FundsDepositedRepository = this.postgres.getRepository(
+      entities.V3FundsDeposited,
+    );
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
         ...event,
@@ -72,7 +65,9 @@ export class SpokePoolRepository {
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
     throwError = false,
   ) {
-    const filledV3RelayRepository = this.postgres.getRepository(FilledV3Relay);
+    const filledV3RelayRepository = this.postgres.getRepository(
+      entities.FilledV3Relay,
+    );
     const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
         ...event,
@@ -108,8 +103,9 @@ export class SpokePoolRepository {
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
     throwError = false,
   ) {
-    const requestedV3SlowFillRepository =
-      this.postgres.getRepository(RequestedV3SlowFill);
+    const requestedV3SlowFillRepository = this.postgres.getRepository(
+      entities.RequestedV3SlowFill,
+    );
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...event,
@@ -139,8 +135,9 @@ export class SpokePoolRepository {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
       return { ...event, chainId };
     });
-    const relayedRootBundleRepository =
-      this.postgres.getRepository(RelayedRootBundle);
+    const relayedRootBundleRepository = this.postgres.getRepository(
+      entities.RelayedRootBundle,
+    );
     try {
       await relayedRootBundleRepository.insert(formattedEvents);
       this.logger.info(
@@ -160,7 +157,7 @@ export class SpokePoolRepository {
     throwError = false,
   ) {
     const executedRelayerRefundRootRepository = this.postgres.getRepository(
-      ExecutedRelayerRefundRoot,
+      entities.ExecutedRelayerRefundRoot,
     );
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
       return {
@@ -187,7 +184,9 @@ export class SpokePoolRepository {
     tokensBridgedEvents: across.interfaces.TokensBridged[],
     throwError = false,
   ) {
-    const tokensBridgedRepository = this.postgres.getRepository(TokensBridged);
+    const tokensBridgedRepository = this.postgres.getRepository(
+      entities.TokensBridged,
+    );
     const formattedEvents = tokensBridgedEvents.map((event) => {
       return {
         ...event,
