@@ -293,11 +293,12 @@ export async function Indexer(config: Config) {
       }),
     );
 
+  const dbThrowError = false;
   const spokePoolClientRepository = postgres
-    ? new SpokePoolRepository(postgres, logger)
+    ? new SpokePoolRepository(postgres, logger, dbThrowError)
     : undefined;
   const hubPoolRepository = postgres
-    ? new HubPoolRepository(postgres, logger)
+    ? new HubPoolRepository(postgres, logger, dbThrowError)
     : undefined;
 
   async function updateHubPool(now: number, chainId: number) {
@@ -365,6 +366,7 @@ export async function Indexer(config: Config) {
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(chainId);
+    const requestedSpeedUpV3Events = spokeClient.getSpeedUps();
     const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
       spokeClient.getRelayerRefundExecutions();
@@ -376,6 +378,9 @@ export async function Indexer(config: Config) {
       );
       await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
         requestedV3SlowFillEvents,
+      );
+      await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+        requestedSpeedUpV3Events,
       );
       await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
         filledV3RelayEvents,
@@ -400,6 +405,7 @@ export async function Indexer(config: Config) {
       v3FundsDepositedEvents: v3FundsDepositedEvents.length,
       filledV3RelayEvents: filledV3RelayEvents.length,
       requestedV3SlowFillEvents: requestedV3SlowFillEvents.length,
+      requestedSpeedUpV3DepositEvents: requestedSpeedUpV3Events.length,
       relayedRootBundles: relayedRootBundleEvents.length,
       executedRelayerRefundRoot: executedRelayerRefundRootEvents.length,
       tokensBridged: tokensBridgedEvents.length,
