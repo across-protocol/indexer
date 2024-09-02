@@ -93,6 +93,9 @@ importers:
       '@across-protocol/sdk':
         specifier: ^3.1.27
         version: 3.1.27(@babel/core@7.25.2)(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@ethersproject/abi@5.7.0)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(@nomiclabs/hardhat-ethers@2.2.3(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typechain@4.0.3(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
+      bullmq:
+        specifier: ^5.12.12
+        version: 5.12.12
       ethers:
         specifier: ^5.7.2
         version: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
@@ -902,6 +905,36 @@ packages:
 
   '@microsoft/tsdoc@0.14.2':
     resolution: {integrity: sha512-9b8mPpKrfeGRuhFH5iO1iwCLeIIsV6+H1sRfxbkoGXIyQE2BTsPd9zqSqQJ+pv5sJ/hT5M1zvOFL02MnEezFug==}
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    resolution: {integrity: sha512-QZHtlVgbAdy2zAqNA9Gu1UpIuI8Xvsd1v8ic6B2pZmeFnFcMWiPLfWXh7TVw4eGEZ/C9TH281KwhVoeQUKbyjw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    resolution: {integrity: sha512-mdzd3AVzYKuUmiWOQ8GNhl64/IoFGol569zNRdkLReh6LRLHOXxU4U8eq0JwaD8iFHdVGqSy4IjFL4reoWCDFw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    resolution: {integrity: sha512-YxQL+ax0XqBJDZiKimS2XQaf+2wDGVa1enVRGzEvLLVFeqa5kx2bWbtcSXgsxjQB7nRqqIGFIcLteF/sHeVtQg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    resolution: {integrity: sha512-fg0uy/dG/nZEXfYilKoRe7yALaNmHoYeIoJuJ7KJ+YyU2bvY8vPv27f7UKhGRpY6euFYqEVhxCFZgAUNQBM3nw==}
+    cpu: [arm]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    resolution: {integrity: sha512-cvwNfbP07pKUfq1uH+S6KJ7dT9K8WOE4ZiAcsrSes+UY55E/0jLYc+vq+DO7jlmqRb5zAggExKm0H7O/CBaesg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    resolution: {integrity: sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@multiformats/base-x@4.0.1':
     resolution: {integrity: sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==}
@@ -2188,6 +2221,9 @@ packages:
     resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}
     engines: {node: '>=6'}
 
+  bullmq@5.12.12:
+    resolution: {integrity: sha512-xrWKDj1ZwnGKmrlmFqF6Vmub3WqDFfdBcIRLCooIs5+jeVzbHK7/1usgYSFg2pZiwK6h6eMivTb9WvcKkNW/+w==}
+
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
@@ -2522,6 +2558,10 @@ packages:
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
+  cron-parser@4.9.0:
+    resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
+    engines: {node: '>=12.0.0'}
+
   cross-fetch@2.2.6:
     resolution: {integrity: sha512-9JZz+vXCmfKUZ68zAptS7k4Nu8e2qcibe7WVZYps7sAgk5R8GYTc+T1WR0v1rlP9HxgARmOX1UTIJZFytajpNA==}
 
@@ -2721,6 +2761,10 @@ packages:
     resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
     engines: {node: '>=0.10'}
     hasBin: true
+
+  detect-libc@2.0.3:
+    resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
+    engines: {node: '>=8'}
 
   detect-newline@4.0.1:
     resolution: {integrity: sha512-qE3Veg1YXzGHQhlA6jzebZN2qVf6NX+A7m7qlhCGG30dJixrAQhYOsJjsnBjJkCSmuOPpCk30145fr8FV0bzog==}
@@ -4666,6 +4710,10 @@ packages:
   ltgt@2.2.1:
     resolution: {integrity: sha512-AI2r85+4MquTw9ZYqabu4nMwy9Oftlfa/e/52t9IjtfG+mGBbTNdAoZ3RQKLHR6r0wQnwZnPIEh/Ya6XTWAKNA==}
 
+  luxon@3.5.0:
+    resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
+    engines: {node: '>=12'}
+
   mafmt@7.1.0:
     resolution: {integrity: sha512-vpeo9S+hepT3k2h5iFxzEHvvR0GPBx9uKaErmnRzYNcaKb03DgOArjEMlgG4a9LcuZZ89a3I8xbeto487n26eA==}
 
@@ -4890,6 +4938,13 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
+  msgpackr-extract@3.0.3:
+    resolution: {integrity: sha512-P0efT1C9jIdVRefqjzOQ9Xml57zpOXnIuS+csaB4MdZbTdmGDLo8XhzBG1N7aO11gKDDkJvBLULeFTo46wwreA==}
+    hasBin: true
+
+  msgpackr@1.11.0:
+    resolution: {integrity: sha512-I8qXuuALqJe5laEBYoFykChhSXLikZmUhccjGsPuSJ/7uPip2TJ7lwdIQwWSAi0jGZDXv4WOP8Qg65QZRuXxXw==}
+
   multiaddr-to-uri@6.0.0:
     resolution: {integrity: sha512-OjpkVHOXEmIKMO8WChzzQ7aZQcSQX8squxmvtDbRpy7/QNmJ3Z7jv6qyD74C28QtaeNie8O8ngW2AkeiMmKP7A==}
     deprecated: This module is deprecated, please upgrade to @multiformats/multiaddr-to-uri
@@ -5023,6 +5078,9 @@ packages:
   node-abi@2.30.1:
     resolution: {integrity: sha512-/2D0wOQPgaUWzVSVgRMx+trKJRC2UG4SUc4oCJoXx9Uxjtp0Vy3/kt7zcbxHF8+Z/pK3UloLWzBISg72brfy1w==}
 
+  node-abort-controller@3.1.1:
+    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+
   node-addon-api@2.0.2:
     resolution: {integrity: sha512-Ntyt4AIXyaLIuMHF6IOoTakB3K+RWxwtsHNRxllEoA6vPwP9o4866g6YWDLUdnucilZhmkxiHwHr11gAENw+QA==}
 
@@ -5061,6 +5119,10 @@ packages:
   node-forge@1.3.1:
     resolution: {integrity: sha512-dPEtOeMvF9VMcYV/1Wb8CPoVAXtp6MKMlcbAt4ddqmGqUJ6fQZFXkNZNkNlfevtNkGtaSoXf/vNNNSvgrdXwtA==}
     engines: {node: '>= 6.13.0'}
+
+  node-gyp-build-optional-packages@5.2.2:
+    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
+    hasBin: true
 
   node-gyp-build@4.8.1:
     resolution: {integrity: sha512-OSs33Z9yWr148JZcbZd5WiAXhh/n9z8TxQcdMhIOlpN9AhWpLfvVFO73+m77bBABQMaY9XSvIa+qk0jlI7Gcaw==}
@@ -7468,25 +7530,6 @@ snapshots:
 
   '@across-protocol/constants@3.1.14': {}
 
-  '@across-protocol/contracts@0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@openzeppelin/contracts': 4.1.0
-      '@uma/core': 2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
   '@across-protocol/contracts@0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
     dependencies:
       '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
@@ -7511,6 +7554,25 @@ snapshots:
       '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@openzeppelin/contracts': 4.1.0
       '@uma/core': 2.59.1(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - ethers
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+
+  '@across-protocol/contracts@0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@openzeppelin/contracts': 4.1.0
+      '@uma/core': 2.59.1(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@babel/core'
       - '@codechecks/client'
@@ -8586,6 +8648,24 @@ snapshots:
 
   '@microsoft/tsdoc@0.14.2': {}
 
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    optional: true
+
   '@multiformats/base-x@4.0.1': {}
 
   '@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1':
@@ -9589,7 +9669,7 @@ snapshots:
 
   '@uma/common@2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
     dependencies:
-      '@across-protocol/contracts': 0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
+      '@across-protocol/contracts': 0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
       '@ethersproject/address': 5.7.0
       '@ethersproject/bignumber': 5.7.0
       '@ethersproject/bytes': 5.7.0
@@ -9742,7 +9822,7 @@ snapshots:
 
   '@uma/common@2.37.1(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
-      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@ethersproject/address': 5.7.0
       '@ethersproject/bignumber': 5.7.0
       '@ethersproject/bytes': 5.7.0
@@ -9794,33 +9874,6 @@ snapshots:
   '@uma/contracts-frontend@0.4.23': {}
 
   '@uma/contracts-node@0.4.23': {}
-
-  '@uma/core@2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@gnosis.pm/safe-contracts': 1.3.0(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      '@gnosis.pm/zodiac': 3.2.0(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      '@maticnetwork/fx-portal': 1.0.5
-      '@openzeppelin/contracts': 4.9.6
-      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-      '@uma/merkle-distributor': 1.3.40(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-      '@uniswap/lib': 4.0.1-alpha
-      '@uniswap/v2-core': 1.0.0
-      '@uniswap/v2-periphery': 1.1.0-beta.0
-      '@uniswap/v3-core': 1.0.1
-      '@uniswap/v3-periphery': 1.4.4
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
 
   '@uma/core@2.59.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.9(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
     dependencies:
@@ -9897,29 +9950,6 @@ snapshots:
       - debug
       - encoding
       - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
-  '@uma/merkle-distributor@1.3.40(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@uma/common': 2.37.1(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.8(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.0.2)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-      '@uma/contracts-node': 0.4.23
-      chai: 4.5.0
-      commander: 7.2.0
-      ethers: 5.7.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-      ipfs-http-client: 49.0.4(encoding@0.1.13)(node-fetch@2.7.0(encoding@0.1.13))
-      mocha: 8.4.0
-      node-fetch: 2.7.0(encoding@0.1.13)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
       - hardhat
       - supports-color
       - ts-generator
@@ -10654,6 +10684,18 @@ snapshots:
 
   builtin-modules@3.3.0: {}
 
+  bullmq@5.12.12:
+    dependencies:
+      cron-parser: 4.9.0
+      ioredis: 5.4.1
+      msgpackr: 1.11.0
+      node-abort-controller: 3.1.1
+      semver: 7.6.3
+      tslib: 2.6.3
+      uuid: 9.0.1
+    transitivePeerDependencies:
+      - supports-color
+
   bytes@3.1.2: {}
 
   cacheable-lookup@5.0.4: {}
@@ -11070,6 +11112,10 @@ snapshots:
 
   create-require@1.1.1: {}
 
+  cron-parser@4.9.0:
+    dependencies:
+      luxon: 3.5.0
+
   cross-fetch@2.2.6(encoding@0.1.13):
     dependencies:
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -11286,6 +11332,9 @@ snapshots:
   detect-indent@7.0.1: {}
 
   detect-libc@1.0.3:
+    optional: true
+
+  detect-libc@2.0.3:
     optional: true
 
   detect-newline@4.0.1: {}
@@ -14275,6 +14324,8 @@ snapshots:
 
   ltgt@2.2.1: {}
 
+  luxon@3.5.0: {}
+
   mafmt@7.1.0:
     dependencies:
       multiaddr: 7.5.0
@@ -14538,6 +14589,22 @@ snapshots:
 
   ms@2.1.3: {}
 
+  msgpackr-extract@3.0.3:
+    dependencies:
+      node-gyp-build-optional-packages: 5.2.2
+    optionalDependencies:
+      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.3
+    optional: true
+
+  msgpackr@1.11.0:
+    optionalDependencies:
+      msgpackr-extract: 3.0.3
+
   multiaddr-to-uri@6.0.0(node-fetch@2.7.0(encoding@0.1.13)):
     dependencies:
       multiaddr: 8.1.2(node-fetch@2.7.0(encoding@0.1.13))
@@ -14694,6 +14761,8 @@ snapshots:
       semver: 5.7.2
     optional: true
 
+  node-abort-controller@3.1.1: {}
+
   node-addon-api@2.0.2: {}
 
   node-addon-api@3.2.1:
@@ -14726,6 +14795,11 @@ snapshots:
   node-forge@0.10.0: {}
 
   node-forge@1.3.1: {}
+
+  node-gyp-build-optional-packages@5.2.2:
+    dependencies:
+      detect-libc: 2.0.3
+    optional: true
 
   node-gyp-build@4.8.1: {}
 

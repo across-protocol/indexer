@@ -13,6 +13,7 @@ import { RedisCache } from "../redisCache";
 import { DataSource } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { HubPoolRepository } from "../database/HubPoolRepository";
+import { IndexerQueuesService } from "../messaging/service";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -210,6 +211,7 @@ type Config = {
   logger: winston.Logger;
   redis: Redis | undefined;
   postgres: DataSource | undefined;
+  indexerQueuesService?: IndexerQueuesService;
   retryProviderConfig?: RetryProviderConfig;
 };
 
@@ -221,6 +223,7 @@ export async function Indexer(config: Config) {
     logger,
     redis,
     postgres,
+    indexerQueuesService,
     retryProviderConfig,
   } = config;
 
