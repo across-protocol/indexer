@@ -30,13 +30,12 @@ services:
     volumes:
       - .:/usr/src/app
       - indexer-node-modules:/usr/src/app/node_modules
-    command: ["/bin/sh", "./docker/dev.command.sh"]
+    command: /bin/sh -c "/bin/sh ./docker/migrations.command.sh && /bin/sh ./docker/dev.command.sh"
     working_dir: "/usr/src/app"
     env_file:
       - .env
     environment:
       APP: indexer
-      RUN_MIGRATIONS: true
     depends_on:
       - postgres
       - redis
