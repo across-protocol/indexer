@@ -5,6 +5,7 @@ import Redis from "ioredis";
 import * as acrossConstants from "@across-protocol/constants";
 import { DatabaseConfig } from "@repo/indexer-database";
 import { connectToDatabase } from "./database/database.provider";
+import { IndexerQueuesService } from "./messaging/service";
 import * as s from "superstruct";
 
 type RedisConfig = {
@@ -111,6 +112,10 @@ export async function Main(
     ? await initializeRedis(redisConfig, logger)
     : undefined;
 
+  const indexerQueuesService = redis
+    ? new IndexerQueuesService(redis)
+    : undefined;
+
   // optional postgresConfig
   const postgresConfig = getPostgresConfig(env);
   const postgres = postgresConfig
@@ -133,6 +138,7 @@ export async function Main(
     logger,
     redis,
     postgres,
+    indexerQueuesService,
     retryProviderConfig,
   });
 

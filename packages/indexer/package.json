@@ -24,6 +24,7 @@
     "@across-protocol/constants": "^3.1.13",
     "@across-protocol/contracts": "^3.0.8",
     "@across-protocol/sdk": "^3.1.27",
+    "bullmq": "^5.12.12",
     "ethers": "^5.7.2",
     "ioredis": "^5.4.1",
     "redis": "^4.7.0",
