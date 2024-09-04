@@ -293,7 +293,7 @@ export async function Indexer(config: Config) {
       }),
     );
 
-  const dbThrowError = false;
+  const dbThrowError = false; // TODO: delete this when we implement the indexing loop
   const spokePoolClientRepository = postgres
     ? new SpokePoolRepository(postgres, logger, dbThrowError)
     : undefined;
