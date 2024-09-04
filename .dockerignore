@@ -1,0 +1,9 @@
+node_modules
+Dockerfile
+.dockerignore
+.vscode
+.pnpm-store
+.turbo
+**/dist
+dist
+.env

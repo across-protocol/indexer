@@ -4,40 +4,64 @@ services:
     image: postgres:13-alpine
     container_name: postgres_db
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
+      TZ: GMT
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+      PG_DATA: /var/lib/postgresql/data
     volumes:
-      - ./volumes/postgres:/var/lib/postgresql/data
+      - indexer-pgdata:/var/lib/postgresql/data
     ports:
-    - 5432:5432
+      - 5432:5432
 
   # Redis Service
   redis:
     image: redis:6-alpine
     container_name: redis_cache
     volumes:
-      - ./volumes/redis:/data
+      - indexer-redis-volume:/data
 
-  # TypeScript Development Service
-  app:
+  # Indexer Service
+  indexer-scraper:
     build:
       context: .
-      dockerfile: app-runner.dockerfile
-    container_name: typescript_app
-    working_dir: /app
+      target: development
+    container_name: indexer_service
     volumes:
-      - .:/app
+      - .:/usr/src/app
+      - indexer-node-modules:/usr/src/app/node_modules
+    command: /bin/sh -c "/bin/sh ./docker/migrations.command.sh && /bin/sh ./docker/dev.command.sh"
+    working_dir: "/usr/src/app"
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=development
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5432
-      - DATABASE_USER=user
-      - DATABASE_PASSWORD=password
-      - DATABASE_NAME=mydatabase
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      APP: indexer
     depends_on:
       - postgres
       - redis
-    command: sh -c "tail -f /dev/null"
+
+  # Express API Service
+  indexer-api:
+    build:
+      context: .
+      target: development
+    container_name: indexer_api
+    working_dir: "/usr/src/app"
+    volumes:
+      - .:/usr/src/app
+      - indexer-node-modules:/usr/src/app/node_modules
+    ports:
+      - ${PORT}:${PORT}
+    command: ["/bin/sh", "./docker/dev.command.sh"]
+    env_file:
+      - .env
+    environment:
+      APP: indexer-api
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  indexer-node-modules:
+  indexer-pgdata:
+  indexer-redis-volume:
