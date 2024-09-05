@@ -9,6 +9,7 @@ import { connectToDatabase } from "./database/database.provider";
 import { IndexerQueuesService } from "./messaging/service";
 import { RelayStatusWorker } from "./messaging/RelayStatusWorker";
 import { RelayHashInfoWorker } from "./messaging/RelayHashInfoWorker";
+import { providers } from "ethers";
 
 type RedisConfig = {
   host: string;
@@ -136,33 +137,69 @@ export async function Main(
 
   const retryProviderConfig = getRetryProviderConfig(env);
 
-  logger.info({
-    message: "Starting indexer",
-    redisConfig,
-    postgresConfig,
-    spokePoolProviderUrls,
-    hubPoolProviderUrl,
-    retryProviderConfig,
-  });
-  const depositIndexer = await services.deposits.Indexer({
-    spokePoolProviderUrls,
-    hubPoolProviderUrl,
-    logger,
-    redis,
-    postgres,
-    indexerQueuesService,
-    retryProviderConfig,
-  });
+  if (postgres && redis && retryProviderConfig) {
+    const tempHubProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
+    const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
+    // instanciate multiple spoke pool event indexers
+    for (const spokePoolProviderUrl of spokePoolProviderUrls) {
+      const tempSpokeProvider = new providers.JsonRpcProvider(
+        spokePoolProviderUrl,
+      );
+      const spokePoolNetworkInfo = await tempSpokeProvider.getNetwork();
+      const config = {
+        retryProviderConfig,
+        configStoreConfig: {
+          chainId: hubPoolNetworkInfo.chainId,
+          providerUrl: hubPoolProviderUrl,
+          maxBlockLookBack: 10000,
+        },
+        hubConfig: {
+          chainId: hubPoolNetworkInfo.chainId,
+          providerUrl: hubPoolProviderUrl,
+          maxBlockLookBack: 10000,
+        },
+        spokeConfig: {
+          chainId: spokePoolNetworkInfo.chainId,
+          providerUrl: spokePoolProviderUrl,
+          // TODO: Set this per chain
+          maxBlockLookBack: 10000,
+        },
+        redisKeyPrefix: `spokePoolIndexer:${spokePoolNetworkInfo.chainId}`,
+      };
+      logger.info({
+        message: "Starting indexer",
+        ...config,
+      });
+      const spokeIndexer = await services.spokePoolEvents.SpokePoolEvents({
+        logger,
+        redis,
+        postgres,
+        ...config,
+      });
+      await spokeIndexer.tick();
+    }
+  }
 
-  // TODO: add looping to keep process going
-  // do {
-  logger.info("index loop starting");
-  await depositIndexer(Date.now());
-  logger.info("index loop complete");
-  // sleep(30000);
-  // } while (running);
+  // temp disable
+  // logger.info({
+  //   message: "Starting indexer",
+  //   redisConfig,
+  //   postgresConfig,
+  //   spokePoolProviderUrls,
+  //   hubPoolProviderUrl,
+  //   retryProviderConfig,
+  // });
+  // const depositIndexer = await services.deposits.Indexer({
+  //   spokePoolProviderUrls,
+  //   hubPoolProviderUrl,
+  //   logger,
+  //   redis,
+  //   postgres,
+  //   indexerQueuesService,
+  //   retryProviderConfig,
+  // });
 
-  redis && redis.disconnect();
+  redis && redis.quit();
   postgres && postgres.destroy();
   logger.info("Exiting indexer");
 }
