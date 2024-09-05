@@ -38,7 +38,7 @@ function getPostgresConfig(
   return env.DATABASE_HOST &&
     env.DATABASE_PORT &&
     env.DATABASE_USER &&
-    env.DATABASE_PASSWORD === "" &&
+    env.DATABASE_PASSWORD &&
     env.DATABASE_NAME
     ? {
         host: env.DATABASE_HOST,

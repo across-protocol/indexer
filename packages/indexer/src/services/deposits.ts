@@ -42,16 +42,16 @@ export async function getSpokeClient(
 
   const latestBlockNumber = await provider.getBlockNumber();
   // for testing
-  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+  // let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
 
   // need persistence for this, use it to resume query
-  // let lastProcessedBlockNumber: number = deployedBlockNumber;
-  // if (redis) {
-  //   lastProcessedBlockNumber = Number(
-  //     (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
-  //       lastProcessedBlockNumber,
-  //   );
-  // }
+  let lastProcessedBlockNumber: number = deployedBlockNumber;
+  if (redis) {
+    lastProcessedBlockNumber = Number(
+      (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
+        lastProcessedBlockNumber,
+    );
+  }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -101,9 +101,7 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     AcrossConfigStoreFactory.abi,
     provider,
   );
-  const latestBlockNumber = await provider.getBlockNumber();
-  // for testing
-  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+  let lastProcessedBlockNumber: number = deployedBlockNumber;
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -138,15 +136,13 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
   const deployedBlockNumber = getDeployedBlockNumber("HubPool", chainId);
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
-  const latestBlockNumber = await provider.getBlockNumber();
-  // for testing
-  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
-  // if (redis) {
-  //   lastProcessedBlockNumber = Number(
-  //     (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
-  //       lastProcessedBlockNumber,
-  //   );
-  // }
+  let lastProcessedBlockNumber: number = deployedBlockNumber;
+  if (redis) {
+    lastProcessedBlockNumber = Number(
+      (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
+        lastProcessedBlockNumber,
+    );
+  }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -426,10 +422,6 @@ export async function Indexer(config: Config) {
         await publishRelayHashInfoMessage(event, "RequestedV3SlowFill");
       });
 
-      await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
-        requestedSpeedUpV3Events,
-      );
-
       const savedFilledV3RelayEvents =
         await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
           filledV3RelayEvents,
@@ -439,6 +431,10 @@ export async function Indexer(config: Config) {
           await publishRelayHashInfoMessage(event, "FilledV3Relay");
         }
       });
+
+      await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+        requestedSpeedUpV3Events,
+      );
       await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
         relayedRootBundleEvents,
         chainId,
