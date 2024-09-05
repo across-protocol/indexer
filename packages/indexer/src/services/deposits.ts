@@ -10,10 +10,15 @@ import { providers, Contract } from "ethers";
 import winston from "winston";
 import Redis from "ioredis";
 import { RedisCache } from "../redisCache";
-import { DataSource } from "@repo/indexer-database";
+import { DataSource, entities } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { HubPoolRepository } from "../database/HubPoolRepository";
-import { IndexerQueuesService } from "../messaging/service";
+import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
+import {
+  RelayHashInfoMessage,
+  RelayHashInfoWorker,
+} from "../messaging/RelayHashInfoWorker";
+import { RelayStatusWorker } from "../messaging/RelayStatusWorker";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -37,16 +42,16 @@ export async function getSpokeClient(
 
   const latestBlockNumber = await provider.getBlockNumber();
   // for testing
-  // let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
 
   // need persistence for this, use it to resume query
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
-  if (redis) {
-    lastProcessedBlockNumber = Number(
-      (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
-        lastProcessedBlockNumber,
-    );
-  }
+  // let lastProcessedBlockNumber: number = deployedBlockNumber;
+  // if (redis) {
+  //   lastProcessedBlockNumber = Number(
+  //     (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
+  //       lastProcessedBlockNumber,
+  //   );
+  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -96,7 +101,9 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     AcrossConfigStoreFactory.abi,
     provider,
   );
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
+  const latestBlockNumber = await provider.getBlockNumber();
+  // for testing
+  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -131,13 +138,15 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
   const deployedBlockNumber = getDeployedBlockNumber("HubPool", chainId);
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
-  if (redis) {
-    lastProcessedBlockNumber = Number(
-      (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
-        lastProcessedBlockNumber,
-    );
-  }
+  const latestBlockNumber = await provider.getBlockNumber();
+  // for testing
+  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+  // if (redis) {
+  //   lastProcessedBlockNumber = Number(
+  //     (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
+  //       lastProcessedBlockNumber,
+  //   );
+  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -294,12 +303,38 @@ export async function Indexer(config: Config) {
     );
 
   const dbThrowError = false; // TODO: delete this when we implement the indexing loop
-  const spokePoolClientRepository = postgres
-    ? new SpokePoolRepository(postgres, logger, dbThrowError)
-    : undefined;
   const hubPoolRepository = postgres
     ? new HubPoolRepository(postgres, logger, dbThrowError)
     : undefined;
+  const spokePoolClientRepository = postgres
+    ? new SpokePoolRepository(postgres, logger, dbThrowError)
+    : undefined;
+  // Set up Workers
+  if (redis && postgres && indexerQueuesService) {
+    new RelayHashInfoWorker(redis, postgres, indexerQueuesService);
+    new RelayStatusWorker(redis, postgres);
+  }
+
+  async function publishRelayHashInfoMessage(
+    event:
+      | entities.V3FundsDeposited
+      | entities.FilledV3Relay
+      | entities.RequestedV3SlowFill,
+    eventType: "V3FundsDeposited" | "FilledV3Relay" | "RequestedV3SlowFill",
+  ) {
+    const message: RelayHashInfoMessage = {
+      relayHash: event.relayHash,
+      eventType,
+      eventId: event.id,
+      depositId: event.depositId,
+      originChainId: event.originChainId,
+    };
+    await indexerQueuesService?.publishMessage(
+      IndexerQueues.RelayHashInfo,
+      IndexerQueues.RelayHashInfo, // use queue name as job name
+      message,
+    );
+  }
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
@@ -373,18 +408,37 @@ export async function Indexer(config: Config) {
     const tokensBridgedEvents = spokeClient.getTokensBridged();
 
     if (spokePoolClientRepository) {
-      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
-        v3FundsDepositedEvents,
-      );
-      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
-        requestedV3SlowFillEvents,
-      );
+      const savedV3FundsDepositedEvents =
+        await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+          v3FundsDepositedEvents,
+        );
+      savedV3FundsDepositedEvents.forEach(async (event) => {
+        if (event) {
+          await publishRelayHashInfoMessage(event, "V3FundsDeposited");
+        }
+      });
+
+      const savedRequestedV3SlowFillEvents =
+        await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+          requestedV3SlowFillEvents,
+        );
+      savedRequestedV3SlowFillEvents?.forEach(async (event) => {
+        await publishRelayHashInfoMessage(event, "RequestedV3SlowFill");
+      });
+
       await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
         requestedSpeedUpV3Events,
       );
-      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
-        filledV3RelayEvents,
-      );
+
+      const savedFilledV3RelayEvents =
+        await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+          filledV3RelayEvents,
+        );
+      savedFilledV3RelayEvents.forEach(async (event) => {
+        if (event) {
+          await publishRelayHashInfoMessage(event, "FilledV3Relay");
+        }
+      });
       await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
         relayedRootBundleEvents,
         chainId,

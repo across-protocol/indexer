@@ -13,7 +13,11 @@ type RedisConfig = {
   port: number;
 };
 async function initializeRedis(config: RedisConfig, logger: winston.Logger) {
-  const redis = new Redis(config);
+  const redis = new Redis({
+    ...config,
+    // @dev: this config is needed for bullmq workers
+    maxRetriesPerRequest: null,
+  });
 
   return new Promise<Redis>((resolve, reject) => {
     redis.on("ready", () => {
@@ -34,7 +38,7 @@ function getPostgresConfig(
   return env.DATABASE_HOST &&
     env.DATABASE_PORT &&
     env.DATABASE_USER &&
-    env.DATABASE_PASSWORD &&
+    env.DATABASE_PASSWORD === "" &&
     env.DATABASE_NAME
     ? {
         host: env.DATABASE_HOST,

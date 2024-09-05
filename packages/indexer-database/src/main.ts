@@ -35,6 +35,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RequestedV3SlowFill,
       entities.TokensBridged,
       entities.V3FundsDeposited,
+      // Others
+      entities.RelayHashInfo,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
