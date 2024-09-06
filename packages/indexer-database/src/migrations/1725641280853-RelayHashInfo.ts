@@ -1,20 +1,21 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class RelayHashInfo1725497185680 implements MigrationInterface {
-  name = "RelayHashInfo1725497185680";
+export class RelayHashInfo1725641280853 implements MigrationInterface {
+  name = "RelayHashInfo1725641280853";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TABLE "relay_hash_info" (
-          "id" SERIAL NOT NULL,"relayHash" character varying NOT NULL,
+          "id" SERIAL NOT NULL,
+          "relayHash" character varying NOT NULL,
           "depositId" integer NOT NULL,
           "originChainId" integer NOT NULL,
-          "status" character varying,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
           "depositEventId" integer,
           "fillEventId" integer,
           "slowFillRequestEventId" integer,
+          "status" character varying,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
           CONSTRAINT "UK_relayHashInfo_relayHash" UNIQUE ("relayHash"),
           CONSTRAINT "REL_4e5fd1998c43638a6e836a3636" UNIQUE ("depositEventId"),
           CONSTRAINT "REL_8aec45003aaa82a8550b9a1535" UNIQUE ("fillEventId"),

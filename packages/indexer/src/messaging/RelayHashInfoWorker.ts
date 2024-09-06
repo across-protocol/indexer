@@ -29,9 +29,9 @@ export class RelayHashInfoWorker {
           job.data;
         const repository = this.postgres.getRepository(entities.RelayHashInfo);
         const eventTypeToField = {
-          V3FundsDeposited: "depositEvent",
-          FilledV3Relay: "fillEvent",
-          RequestedV3SlowFill: "requestSlowFillEvent",
+          V3FundsDeposited: "depositEventId",
+          FilledV3Relay: "fillEventId",
+          RequestedV3SlowFill: "requestSlowFillEventId",
         };
         const eventField = eventTypeToField[eventType];
         await repository.upsert(

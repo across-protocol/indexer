@@ -36,20 +36,32 @@ export class RelayHashInfo {
   @Column()
   originChainId: number;
 
+  @Column({ nullable: true })
+  depositEventId: number;
+
   @OneToOne(() => V3FundsDeposited, { nullable: true })
   @JoinColumn({
+    name: "depositEventId",
     foreignKeyConstraintName: "FK_relayHashInfo_depositEventId",
   })
   depositEvent: V3FundsDeposited;
 
+  @Column({ nullable: true })
+  fillEventId: number;
+
   @OneToOne(() => FilledV3Relay, { nullable: true })
   @JoinColumn({
+    name: "fillEventId",
     foreignKeyConstraintName: "FK_relayHashInfo_fillEventId",
   })
   fillEvent: FilledV3Relay;
 
+  @Column({ nullable: true })
+  slowFillRequestEventId: number;
+
   @OneToOne(() => RequestedV3SlowFill, { nullable: true })
   @JoinColumn({
+    name: "slowFillRequestEventId",
     foreignKeyConstraintName: "FK_relayHashInfo_slowFillRequestEventId",
   })
   slowFillRequestEvent: RequestedV3SlowFill;
