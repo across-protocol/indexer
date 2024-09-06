@@ -12,7 +12,7 @@ export class BaseRepository {
     entity: EntityTarget<Entity>,
     data: Partial<Entity>[],
     throwError?: boolean,
-  ): Promise<Entity[] | void> {
+  ): Promise<Entity[]> {
     const repository = this.postgres.getRepository(entity);
     try {
       const savedData = await repository
@@ -30,7 +30,11 @@ export class BaseRepository {
         message: `There was an error while saving ${repository.metadata.name} events`,
         error,
       });
-      if (throwError || this.throwError) throw error;
+      if (throwError || this.throwError) {
+        throw error;
+      } else {
+        return [];
+      }
     }
   }
 }

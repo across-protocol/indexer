@@ -302,24 +302,26 @@ export async function Indexer(config: Config) {
     ? new SpokePoolRepository(postgres, logger, dbThrowError)
     : undefined;
 
-  async function publishRelayHashInfoMessage(
-    event:
-      | entities.V3FundsDeposited
-      | entities.FilledV3Relay
-      | entities.RequestedV3SlowFill,
+  async function publishRelayHashInfoMessages(
+    events:
+      | entities.V3FundsDeposited[]
+      | entities.FilledV3Relay[]
+      | entities.RequestedV3SlowFill[],
     eventType: "V3FundsDeposited" | "FilledV3Relay" | "RequestedV3SlowFill",
   ) {
-    const message: RelayHashInfoMessage = {
-      relayHash: event.relayHash,
-      eventType,
-      eventId: event.id,
-      depositId: event.depositId,
-      originChainId: event.originChainId,
-    };
-    await indexerQueuesService?.publishMessage(
+    const messages: RelayHashInfoMessage[] = events.map((event) => {
+      return {
+        relayHash: event.relayHash,
+        eventType,
+        eventId: event.id,
+        depositId: event.depositId,
+        originChainId: event.originChainId,
+      };
+    });
+    await indexerQueuesService?.publishMessagesBulk(
       IndexerQueues.RelayHashInfo,
       IndexerQueues.RelayHashInfo, // use queue name as job name
-      message,
+      messages,
     );
   }
 
@@ -399,29 +401,28 @@ export async function Indexer(config: Config) {
         await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
           v3FundsDepositedEvents,
         );
-      savedV3FundsDepositedEvents.forEach(async (event) => {
-        if (event) {
-          await publishRelayHashInfoMessage(event, "V3FundsDeposited");
-        }
-      });
+      await publishRelayHashInfoMessages(
+        savedV3FundsDepositedEvents,
+        "V3FundsDeposited",
+      );
 
       const savedRequestedV3SlowFillEvents =
         await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
           requestedV3SlowFillEvents,
         );
-      savedRequestedV3SlowFillEvents?.forEach(async (event) => {
-        await publishRelayHashInfoMessage(event, "RequestedV3SlowFill");
-      });
+      await publishRelayHashInfoMessages(
+        savedRequestedV3SlowFillEvents,
+        "RequestedV3SlowFill",
+      );
 
       const savedFilledV3RelayEvents =
         await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
           filledV3RelayEvents,
         );
-      savedFilledV3RelayEvents.forEach(async (event) => {
-        if (event) {
-          await publishRelayHashInfoMessage(event, "FilledV3Relay");
-        }
-      });
+      await publishRelayHashInfoMessages(
+        savedFilledV3RelayEvents,
+        "FilledV3Relay",
+      );
 
       await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
         requestedSpeedUpV3Events,
