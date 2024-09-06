@@ -14,11 +14,7 @@ import { DataSource, entities } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { HubPoolRepository } from "../database/HubPoolRepository";
 import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
-import {
-  RelayHashInfoMessage,
-  RelayHashInfoWorker,
-} from "../messaging/RelayHashInfoWorker";
-import { RelayStatusWorker } from "../messaging/RelayStatusWorker";
+import { RelayHashInfoMessage } from "../messaging/RelayHashInfoWorker";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -305,11 +301,6 @@ export async function Indexer(config: Config) {
   const spokePoolClientRepository = postgres
     ? new SpokePoolRepository(postgres, logger, dbThrowError)
     : undefined;
-  // Set up Workers
-  if (redis && postgres && indexerQueuesService) {
-    new RelayHashInfoWorker(redis, postgres, indexerQueuesService);
-    new RelayStatusWorker(redis, postgres);
-  }
 
   async function publishRelayHashInfoMessage(
     event:

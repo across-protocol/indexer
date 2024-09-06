@@ -2,11 +2,13 @@ import assert from "assert";
 import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
+import * as s from "superstruct";
 import * as acrossConstants from "@across-protocol/constants";
 import { DatabaseConfig } from "@repo/indexer-database";
 import { connectToDatabase } from "./database/database.provider";
 import { IndexerQueuesService } from "./messaging/service";
-import * as s from "superstruct";
+import { RelayStatusWorker } from "./messaging/RelayStatusWorker";
+import { RelayHashInfoWorker } from "./messaging/RelayHashInfoWorker";
 
 type RedisConfig = {
   host: string;
@@ -125,6 +127,12 @@ export async function Main(
   const postgres = postgresConfig
     ? await connectToDatabase(postgresConfig, logger)
     : undefined;
+
+  // Set up Workers
+  if (redis && postgres && indexerQueuesService) {
+    new RelayHashInfoWorker(redis, postgres, indexerQueuesService);
+    new RelayStatusWorker(redis, postgres);
+  }
 
   const retryProviderConfig = getRetryProviderConfig(env);
 
