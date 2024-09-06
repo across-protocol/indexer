@@ -28,7 +28,7 @@
     "pg": "^8.4.0",
     "reflect-metadata": "^0.1.13",
     "superstruct": "2.0.3-1",
-    "typeorm": "0.3.20"
+    "typeorm": "^0.3.20"
   },
   "exports": {
     ".": "./dist/src/index.js"

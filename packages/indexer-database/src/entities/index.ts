@@ -7,6 +7,7 @@ export * from "./evm/RootBundleExecuted";
 export * from "./evm/V3FundsDeposited";
 export * from "./evm/FilledV3Relay";
 export * from "./evm/RequestedV3SlowFill";
+export * from "./evm/RequestedSpeedUpV3Deposit";
 export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
