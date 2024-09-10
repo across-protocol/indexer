@@ -180,26 +180,7 @@ export async function Main(
     }
   }
 
-  // temp disable
-  // logger.info({
-  //   message: "Starting indexer",
-  //   redisConfig,
-  //   postgresConfig,
-  //   spokePoolProviderUrls,
-  //   hubPoolProviderUrl,
-  //   retryProviderConfig,
-  // });
-  // const depositIndexer = await services.deposits.Indexer({
-  //   spokePoolProviderUrls,
-  //   hubPoolProviderUrl,
-  //   logger,
-  //   redis,
-  //   postgres,
-  //   indexerQueuesService,
-  //   retryProviderConfig,
-  // });
-
-  redis && redis.quit();
-  postgres && postgres.destroy();
+  redis?.quit();
+  postgres?.destroy();
   logger.info("Exiting indexer");
 }
