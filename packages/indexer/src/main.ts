@@ -4,12 +4,16 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as s from "superstruct";
 import * as acrossConstants from "@across-protocol/constants";
-import { DatabaseConfig } from "@repo/indexer-database";
 import { connectToDatabase } from "./database/database.provider";
 import { IndexerQueuesService } from "./messaging/service";
 import { RelayStatusWorker } from "./messaging/RelayStatusWorker";
 import { RelayHashInfoWorker } from "./messaging/RelayHashInfoWorker";
 import { providers } from "ethers";
+import {
+  createDataSource,
+  DatabaseConfig,
+  DataSource,
+} from "@repo/indexer-database";
 
 type RedisConfig = {
   host: string;
@@ -86,6 +90,43 @@ function getRetryProviderConfig(
     : undefined;
 }
 
+// utility call to create the spoke pool event indexer config
+async function getSpokePooLEventIndexerConfig(params: {
+  retryProviderConfig: services.deposits.RetryProviderConfig;
+  spokePoolProviderUrl: string;
+  hubPoolNetworkInfo: providers.Network;
+  hubPoolProviderUrl: string;
+}) {
+  const {
+    retryProviderConfig,
+    spokePoolProviderUrl,
+    hubPoolProviderUrl,
+    hubPoolNetworkInfo,
+  } = params;
+  const tempSpokeProvider = new providers.JsonRpcProvider(spokePoolProviderUrl);
+  const spokePoolNetworkInfo = await tempSpokeProvider.getNetwork();
+  return {
+    retryProviderConfig,
+    configStoreConfig: {
+      chainId: hubPoolNetworkInfo.chainId,
+      providerUrl: hubPoolProviderUrl,
+      maxBlockLookBack: 10000,
+    },
+    hubConfig: {
+      chainId: hubPoolNetworkInfo.chainId,
+      providerUrl: hubPoolProviderUrl,
+      maxBlockLookBack: 10000,
+    },
+    spokeConfig: {
+      chainId: spokePoolNetworkInfo.chainId,
+      providerUrl: spokePoolProviderUrl,
+      // TODO: Set this per chain
+      maxBlockLookBack: 10000,
+    },
+    redisKeyPrefix: `spokePoolIndexer:${spokePoolNetworkInfo.chainId}`,
+  };
+}
+
 export async function Main(
   env: Record<string, string | undefined>,
   logger: winston.Logger,
@@ -142,30 +183,12 @@ export async function Main(
     const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
     // instanciate multiple spoke pool event indexers
     for (const spokePoolProviderUrl of spokePoolProviderUrls) {
-      const tempSpokeProvider = new providers.JsonRpcProvider(
+      const config = await getSpokePooLEventIndexerConfig({
+        hubPoolNetworkInfo,
         spokePoolProviderUrl,
-      );
-      const spokePoolNetworkInfo = await tempSpokeProvider.getNetwork();
-      const config = {
+        hubPoolProviderUrl,
         retryProviderConfig,
-        configStoreConfig: {
-          chainId: hubPoolNetworkInfo.chainId,
-          providerUrl: hubPoolProviderUrl,
-          maxBlockLookBack: 10000,
-        },
-        hubConfig: {
-          chainId: hubPoolNetworkInfo.chainId,
-          providerUrl: hubPoolProviderUrl,
-          maxBlockLookBack: 10000,
-        },
-        spokeConfig: {
-          chainId: spokePoolNetworkInfo.chainId,
-          providerUrl: spokePoolProviderUrl,
-          // TODO: Set this per chain
-          maxBlockLookBack: 10000,
-        },
-        redisKeyPrefix: `spokePoolIndexer:${spokePoolNetworkInfo.chainId}`,
-      };
+      });
       logger.info({
         message: "Starting indexer",
         ...config,
