@@ -87,7 +87,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         ...this.formatRelayData(event),
       };
     });
-    return await this.insert(
+    return this.insert(
       entities.RequestedV3SlowFill,
       formattedEvents,
       throwError,
