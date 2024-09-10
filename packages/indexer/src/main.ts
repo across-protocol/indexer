@@ -124,6 +124,24 @@ async function getSpokePoolIndexerConfig(params: {
     redisKeyPrefix: `spokePoolIndexer:${spokePoolNetworkInfo.chainId}`,
   };
 }
+// utility call to create the spoke pool event indexer config
+async function getHubPoolIndexerConfig(params: {
+  retryProviderConfig: services.deposits.RetryProviderConfig;
+  hubPoolNetworkInfo: providers.Network;
+  hubPoolProviderUrl: string;
+}) {
+  const { retryProviderConfig, hubPoolProviderUrl, hubPoolNetworkInfo } =
+    params;
+  return {
+    retryProviderConfig,
+    hubConfig: {
+      chainId: hubPoolNetworkInfo.chainId,
+      providerUrl: hubPoolProviderUrl,
+      maxBlockLookBack: 10000,
+    },
+    redisKeyPrefix: `hubPoolIndexer:${hubPoolNetworkInfo.chainId}`,
+  };
+}
 
 export async function Main(
   env: Record<string, string | undefined>,
@@ -175,6 +193,18 @@ export async function Main(
   });
   const spokePoolIndexers: Array<services.spokePoolIndexer.SpokePoolIndexer> =
     [];
+  const hubPoolIndexerConfig = await getHubPoolIndexerConfig({
+    hubPoolNetworkInfo,
+    hubPoolProviderUrl,
+    retryProviderConfig,
+  });
+  // canonical hubpool indexer
+  const hubPoolIndexer = await services.hubPoolIndexer.HubPoolIndexer({
+    logger,
+    redis,
+    postgres,
+    ...hubPoolIndexerConfig,
+  });
   // instanciate multiple spoke pool event indexers
   for (const spokePoolProviderUrl of spokePoolProviderUrls) {
     const config = await getSpokePoolIndexerConfig({
@@ -199,8 +229,11 @@ export async function Main(
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
-      logger.info("\nPress Ctrl+C again to exit.");
+      logger.info(
+        "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
+      );
       spokePoolIndexers.map((s) => s.stop());
+      hubPoolIndexer.stop();
     } else {
       logger.info("\nForcing exit...");
       across.utils.delay(1).finally(() => process.exit());
@@ -211,6 +244,7 @@ export async function Main(
     message: "Running indexers",
     at: "Indexer#Main",
   });
+  await hubPoolIndexer.start(10);
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [bundleResults, ...spokeResults] = await Promise.allSettled([
     bundleProcessor(),
