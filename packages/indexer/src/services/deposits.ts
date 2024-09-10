@@ -37,16 +37,16 @@ export async function getSpokeClient(
 
   const latestBlockNumber = await provider.getBlockNumber();
   // for testing
-  // let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
 
-  // need persistence for this, use it to resume query
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
-  if (redis) {
-    lastProcessedBlockNumber = Number(
-      (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
-        lastProcessedBlockNumber,
-    );
-  }
+  // // need persistence for this, use it to resume query
+  // // let lastProcessedBlockNumber: number = deployedBlockNumber;
+  // if (redis) {
+  //   lastProcessedBlockNumber = Number(
+  //     (await redis.get(getLastBlockSearchedKey("spokePool", chainId))) ??
+  //       lastProcessedBlockNumber,
+  //   );
+  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -96,7 +96,11 @@ export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
     AcrossConfigStoreFactory.abi,
     provider,
   );
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
+
+  const latestBlockNumber = await provider.getBlockNumber();
+  // for testing
+  let lastProcessedBlockNumber: number = latestBlockNumber - 10000;
+
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,
@@ -131,13 +135,17 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
   const deployedBlockNumber = getDeployedBlockNumber("HubPool", chainId);
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
-  let lastProcessedBlockNumber: number = deployedBlockNumber;
-  if (redis) {
-    lastProcessedBlockNumber = Number(
-      (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
-        lastProcessedBlockNumber,
-    );
-  }
+
+  const latestBlockNumber = await provider.getBlockNumber();
+  // for testing
+  let lastProcessedBlockNumber: number = latestBlockNumber - 1_000_000;
+
+  // if (redis) {
+  //   lastProcessedBlockNumber = Number(
+  //     (await redis.get(getLastBlockSearchedKey("hubPool", chainId))) ??
+  //       lastProcessedBlockNumber,
+  //   );
+  // }
   const eventSearchConfig = {
     fromBlock: lastProcessedBlockNumber,
     maxBlockLookBack,

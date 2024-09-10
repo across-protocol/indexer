@@ -142,10 +142,17 @@ export async function Main(
     retryProviderConfig,
   });
 
+  const bundleIndexer = await services.bundles.Indexer({
+    logger,
+    redis,
+    postgres,
+  });
+
   // TODO: add looping to keep process going
   // do {
   logger.info("index loop starting");
   await depositIndexer(Date.now());
+  await bundleIndexer();
   logger.info("index loop complete");
   // sleep(30000);
   // } while (running);

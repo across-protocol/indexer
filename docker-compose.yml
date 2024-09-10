@@ -36,6 +36,8 @@ services:
       - .env
     environment:
       APP: indexer
+      INDEXER_REDIS_HOST: redis
+      DATABASE_HOST: postgres
     depends_on:
       - postgres
       - redis
@@ -49,7 +51,7 @@ services:
     working_dir: "/usr/src/app"
     volumes:
       - .:/usr/src/app
-      - indexer-node-modules:/usr/src/app/node_modules
+      - indexer-api-node-modules:/usr/src/app/node_modules
     ports:
       - ${PORT}:${PORT}
     command: ["/bin/sh", "./docker/dev.command.sh"]
@@ -57,11 +59,14 @@ services:
       - .env
     environment:
       APP: indexer-api
+      INDEXER_REDIS_HOST: redis
+      DATABASE_HOST: postgres
     depends_on:
       - postgres
       - redis
 
 volumes:
   indexer-node-modules:
+  indexer-api-node-modules:
   indexer-pgdata:
   indexer-redis-volume:
