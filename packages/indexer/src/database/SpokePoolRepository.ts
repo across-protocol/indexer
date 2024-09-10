@@ -43,11 +43,12 @@ export class SpokePoolRepository extends utils.BaseRepository {
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.insert(entities.V3FundsDeposited, eventsChunk, throwError),
       ),
     );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveFilledV3RelayEvents(
@@ -67,11 +68,12 @@ export class SpokePoolRepository extends utils.BaseRepository {
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.insert(entities.FilledV3Relay, eventsChunk, throwError),
       ),
     );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveRequestedV3SlowFillEvents(
@@ -85,7 +87,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         ...this.formatRelayData(event),
       };
     });
-    await this.insert(
+    return this.insert(
       entities.RequestedV3SlowFill,
       formattedEvents,
       throwError,

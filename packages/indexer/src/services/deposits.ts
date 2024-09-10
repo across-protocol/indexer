@@ -10,10 +10,11 @@ import { providers, Contract } from "ethers";
 import winston from "winston";
 import Redis from "ioredis";
 import { RedisCache } from "../redisCache";
-import { DataSource } from "@repo/indexer-database";
+import { DataSource, entities } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { HubPoolRepository } from "../database/HubPoolRepository";
-import { IndexerQueuesService } from "../messaging/service";
+import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
+import { RelayHashInfoMessage } from "../messaging/RelayHashInfoWorker";
 
 // from https://github.com/across-protocol/relayer/blob/master/src/common/Constants.ts#L30
 export const CONFIG_STORE_VERSION = 4;
@@ -294,12 +295,35 @@ export async function Indexer(config: Config) {
     );
 
   const dbThrowError = false; // TODO: delete this when we implement the indexing loop
-  const spokePoolClientRepository = postgres
-    ? new SpokePoolRepository(postgres, logger, dbThrowError)
-    : undefined;
   const hubPoolRepository = postgres
     ? new HubPoolRepository(postgres, logger, dbThrowError)
     : undefined;
+  const spokePoolClientRepository = postgres
+    ? new SpokePoolRepository(postgres, logger, dbThrowError)
+    : undefined;
+
+  async function publishRelayHashInfoMessages(
+    events:
+      | entities.V3FundsDeposited[]
+      | entities.FilledV3Relay[]
+      | entities.RequestedV3SlowFill[],
+    eventType: "V3FundsDeposited" | "FilledV3Relay" | "RequestedV3SlowFill",
+  ) {
+    const messages: RelayHashInfoMessage[] = events.map((event) => {
+      return {
+        relayHash: event.relayHash,
+        eventType,
+        eventId: event.id,
+        depositId: event.depositId,
+        originChainId: event.originChainId,
+      };
+    });
+    await indexerQueuesService?.publishMessagesBulk(
+      IndexerQueues.RelayHashInfo,
+      IndexerQueues.RelayHashInfo, // use queue name as job name
+      messages,
+    );
+  }
 
   async function updateHubPool(now: number, chainId: number) {
     logger.info("Starting hub pool client update");
@@ -373,17 +397,35 @@ export async function Indexer(config: Config) {
     const tokensBridgedEvents = spokeClient.getTokensBridged();
 
     if (spokePoolClientRepository) {
-      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
-        v3FundsDepositedEvents,
+      const savedV3FundsDepositedEvents =
+        await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+          v3FundsDepositedEvents,
+        );
+      await publishRelayHashInfoMessages(
+        savedV3FundsDepositedEvents,
+        "V3FundsDeposited",
       );
-      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
-        requestedV3SlowFillEvents,
+
+      const savedRequestedV3SlowFillEvents =
+        await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+          requestedV3SlowFillEvents,
+        );
+      await publishRelayHashInfoMessages(
+        savedRequestedV3SlowFillEvents,
+        "RequestedV3SlowFill",
       );
+
+      const savedFilledV3RelayEvents =
+        await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+          filledV3RelayEvents,
+        );
+      await publishRelayHashInfoMessages(
+        savedFilledV3RelayEvents,
+        "FilledV3Relay",
+      );
+
       await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
         requestedSpeedUpV3Events,
-      );
-      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
-        filledV3RelayEvents,
       );
       await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
         relayedRootBundleEvents,
