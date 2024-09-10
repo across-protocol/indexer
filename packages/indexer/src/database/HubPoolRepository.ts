@@ -3,13 +3,17 @@ import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 export class HubPoolRepository extends utils.BaseRepository {
-  constructor(postgres: DataSource, logger: winston.Logger) {
-    super(postgres, logger);
+  constructor(
+    postgres: DataSource,
+    logger: winston.Logger,
+    throwError: boolean,
+  ) {
+    super(postgres, logger, throwError);
   }
 
   public async formatAndSaveProposedRootBundleEvents(
     proposedRootBundleEvents: across.interfaces.ProposedRootBundle[],
-    throwError = false,
+    throwError?: boolean,
   ) {
     const formattedEvents = proposedRootBundleEvents.map((event) => {
       return {
@@ -27,7 +31,7 @@ export class HubPoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveRootBundleDisputedEvents(
     rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[],
-    throwError = false,
+    throwError?: boolean,
   ) {
     const formattedEvents = rootBundleDisputedEvents.map((event) => {
       return {
@@ -40,7 +44,7 @@ export class HubPoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveRootBundleCanceledEvents(
     rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[],
-    throwError = false,
+    throwError?: boolean,
   ) {
     const formattedEvents = rootBundleCanceledEvents.map((event) => {
       return {
@@ -54,7 +58,7 @@ export class HubPoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveRootBundleExecutedEvents(
     rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[],
-    throwError = false,
+    throwError?: boolean,
   ) {
     const formattedEvents = rootBundleExecutedEvents.map((event) => {
       return {

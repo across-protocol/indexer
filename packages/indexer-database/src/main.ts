@@ -31,11 +31,14 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.ExecutedRelayerRefundRoot,
       entities.FilledV3Relay,
       entities.RelayedRootBundle,
+      entities.RequestedSpeedUpV3Deposit,
       entities.RequestedV3SlowFill,
       entities.TokensBridged,
       entities.V3FundsDeposited,
       // Bundle
       entities.Bundle,
+      // Others
+      entities.RelayHashInfo,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
