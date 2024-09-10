@@ -34,7 +34,7 @@ export async function getSpokeClient(
 ): Promise<across.clients.SpokePoolClient> {
   const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
   const address = getDeployedAddress("SpokePool", chainId);
-  assert(address,`Unable to get spokepool address on chain ${chainId}`)
+  assert(address, `Unable to get spokepool address on chain ${chainId}`);
   const deployedBlockNumber = getDeployedBlockNumber("SpokePool", chainId);
 
   const toBlock = params.toBlock ?? (await provider.getBlockNumber());
