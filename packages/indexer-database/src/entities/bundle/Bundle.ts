@@ -20,7 +20,7 @@ export enum BundleStatus {
   Executed = "Executed",
 }
 
-@Entity({ schema: "aggregate" })
+@Entity()
 export class Bundle {
   @PrimaryGeneratedColumn()
   id: number;
@@ -40,25 +40,17 @@ export class Bundle {
   })
   proposal: ProposedRootBundle;
 
+  @Column({ nullable: true })
+  proposalnId: number;
+
   @OneToOne(() => RootBundleCanceled, { nullable: true })
   @JoinColumn({
     foreignKeyConstraintName: "FK_bundle_rootBundleCanceledId",
   })
   cancelation: RootBundleCanceled;
 
-  @ManyToMany(() => RootBundleExecuted)
-  @JoinTable({
-    name: "bundle_executions_join", // Custom join table name
-    joinColumn: {
-      name: "bundle_id",
-      referencedColumnName: "id",
-    },
-    inverseJoinColumn: {
-      name: "execution_id",
-      referencedColumnName: "id",
-    },
-  })
-  executions: RootBundleExecuted[];
+  @Column({ nullable: true })
+  cancelationId: number;
 
   @OneToOne(() => RootBundleDisputed, { nullable: true })
   @JoinColumn({
@@ -66,6 +58,23 @@ export class Bundle {
   })
   dispute: RootBundleDisputed;
 
+  @Column({ nullable: true })
+  disputeId: number;
+
   @Column({ type: "enum", enum: BundleStatus })
   status: BundleStatus;
+
+  @ManyToMany(() => RootBundleExecuted)
+  @JoinTable({
+    name: "bundle_executions", // Custom join table name
+    joinColumn: {
+      name: "bundleId",
+      referencedColumnName: "id",
+    },
+    inverseJoinColumn: {
+      name: "executionId",
+      referencedColumnName: "id",
+    },
+  })
+  executions: RootBundleExecuted[];
 }
