@@ -12,7 +12,6 @@ export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
 
-// Bundle Metaclass
-export * from "./bundle/Bundle";
 // Others
+export * from "./Bundle";
 export * from "./RelayHashInfo";

@@ -9,12 +9,12 @@ const AVERAGE_BLOCKS_PER_BUNDLE = Math.floor(
 );
 
 /**
- * Error thrown when the indexer configuration is malformed
+ * Error thrown when the processor configuration is malformed
  */
-class IndexerConfigurationMalformedError extends Error {
+class ConfigurationMalformedError extends Error {
   constructor() {
-    super("Indexer configuration is malformed");
-    this.name = "IndexerConfigurationMalformedError";
+    super("Processor configuration is malformed");
+    this.name = "ProcessorConfigurationMalformedError";
   }
 }
 
@@ -25,19 +25,19 @@ type BundleConfig = {
 };
 
 /**
- * Closure generator for the indexer service to track bundle meta-data
- * @param config The configuration for the indexer service
- * @returns A function that can be called to start the indexer service
+ * Closure generator for the processor service to track bundle meta-data
+ * @param config The configuration for the processor service
+ * @returns A function that can be called to start the processor service
  */
-export function Indexer(config: BundleConfig) {
+export function Processor(config: BundleConfig) {
   const { postgres, logger } = config;
 
   if (!postgres) {
     logger.error({
-      at: "Bundles#Indexer",
+      at: "Bundles#Processor",
       message: "Postgres connection not provided",
     });
-    throw new IndexerConfigurationMalformedError();
+    throw new ConfigurationMalformedError();
   }
 
   return async () => {

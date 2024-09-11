@@ -7,10 +7,10 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
-import { ProposedRootBundle } from "../evm/ProposedRootBundle";
-import { RootBundleCanceled } from "../evm/RootBundleCanceled";
-import { RootBundleExecuted } from "../evm/RootBundleExecuted";
-import { RootBundleDisputed } from "../evm/RootBundleDisputed";
+import { ProposedRootBundle } from "./evm/ProposedRootBundle";
+import { RootBundleCanceled } from "./evm/RootBundleCanceled";
+import { RootBundleExecuted } from "./evm/RootBundleExecuted";
+import { RootBundleDisputed } from "./evm/RootBundleDisputed";
 
 export enum BundleStatus {
   Proposed = "Proposed",

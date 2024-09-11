@@ -154,7 +154,7 @@ export async function Main(
     retryProviderConfig,
   });
 
-  const bundleIndexer = await services.bundles.Indexer({
+  const bundleProcessor = services.bundles.Processor({
     logger,
     redis,
     postgres,
@@ -163,9 +163,19 @@ export async function Main(
   // TODO: add looping to keep process going
   // do {
   logger.info("index loop starting");
-  await depositIndexer(Date.now());
-  await bundleIndexer();
-  logger.info("index loop complete");
+  const [depositResults, bundleResults] = await Promise.allSettled([
+    depositIndexer(Date.now()),
+    bundleProcessor(),
+  ]);
+
+  logger.info({
+    at: "Indexer#Main",
+    message: "Indexer loop completed",
+    results: {
+      depositIndexerRunSuccess: depositResults.status === "fulfilled",
+      bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
+    },
+  });
   // sleep(30000);
   // } while (running);
 
