@@ -40,8 +40,8 @@ export class Bundle {
   })
   proposal: ProposedRootBundle;
 
-  @Column({ nullable: true })
-  proposalnId: number;
+  @Column({ nullable: false })
+  proposalId: number;
 
   @OneToOne(() => RootBundleCanceled, { nullable: true })
   @JoinColumn({
