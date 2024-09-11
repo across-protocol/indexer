@@ -194,7 +194,7 @@ type Config = {
   };
   redisKeyPrefix: string;
 };
-export async function SpokePoolEvents(config: Config) {
+export async function SpokePoolIndexer(config: Config) {
   const {
     logger,
     redis,

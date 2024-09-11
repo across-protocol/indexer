@@ -183,7 +183,7 @@ export async function Main(
       message: "Starting indexer",
       ...config,
     });
-    const spokeIndexer = await services.spokePoolEvents.SpokePoolEvents({
+    const spokeIndexer = await services.spokePoolIndexer.SpokePoolIndexer({
       logger,
       redis,
       postgres,
