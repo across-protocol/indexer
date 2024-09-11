@@ -423,8 +423,23 @@ export async function SpokePoolIndexer(config: Config) {
     );
   }
 
+  let stopRequested = false;
+
+  function stop() {
+    stopRequested = true;
+  }
+
+  async function start(delay: number) {
+    stopRequested = false;
+    do {
+      await tick();
+      await across.utils.delay(delay);
+    } while (!stopRequested);
+  }
   return {
     tick,
+    start,
+    stop,
   };
 }
 export type SpokePoolIndexer = Awaited<ReturnType<typeof SpokePoolIndexer>>;

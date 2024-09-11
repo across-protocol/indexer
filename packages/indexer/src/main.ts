@@ -195,22 +195,21 @@ export async function Main(
   process.on("SIGINT", () => {
     if (!exitRequested) {
       logger.info("\nPress Ctrl+C again to exit.");
-      exitRequested = true;
+      spokePoolIndexers.map((s) => s.stop());
     } else {
       logger.info("\nForcing exit...");
       across.utils.delay(1).finally(() => process.exit());
     }
   });
-  do {
-    logger.info({
-      message: "Running indexers",
-    });
-    await Promise.all(spokePoolIndexers.map((s) => s.tick()));
-    await across.utils.delay(10);
-    logger.info({
-      message: "Completed running indexers",
-    });
-  } while (!exitRequested);
+
+  logger.info({
+    message: "Running indexers",
+  });
+  // start all indexers in parallel, will wait for them to complete, but they all loop independently
+  await Promise.all(spokePoolIndexers.map((s) => s.start(10)));
+  logger.info({
+    message: "Completed running indexers",
+  });
 
   redis?.quit();
   postgres?.destroy();
