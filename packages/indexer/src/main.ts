@@ -92,7 +92,7 @@ function getRetryProviderConfig(
 }
 
 // utility call to create the spoke pool event indexer config
-async function getSpokePooLEventIndexerConfig(params: {
+async function getSpokePoolIndexerConfig(params: {
   retryProviderConfig: services.deposits.RetryProviderConfig;
   spokePoolProviderUrl: string;
   hubPoolNetworkInfo: providers.Network;
@@ -173,7 +173,7 @@ export async function Main(
   const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
   // instanciate multiple spoke pool event indexers
   for (const spokePoolProviderUrl of spokePoolProviderUrls) {
-    const config = await getSpokePooLEventIndexerConfig({
+    const config = await getSpokePoolIndexerConfig({
       hubPoolNetworkInfo,
       spokePoolProviderUrl,
       hubPoolProviderUrl,
