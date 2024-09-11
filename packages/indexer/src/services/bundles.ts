@@ -41,11 +41,9 @@ export function Indexer(config: BundleConfig) {
   }
 
   return async () => {
-    await Promise.all([
-      assignBundleToProposedEvent(postgres, logger),
-      asignDisputeEventToBundle(postgres, logger),
-      asignCanceledEventToBundle(postgres, logger),
-    ]);
+    await assignBundleToProposedEvent(postgres, logger);
+    await assignDisputeEventToBundle(postgres, logger);
+    await assignCanceledEventToBundle(postgres, logger);
   };
 }
 
@@ -97,7 +95,7 @@ function retrieveClosestProposedRootBundle(
     .getOne();
 }
 
-async function asignDisputeEventToBundle(
+async function assignDisputeEventToBundle(
   dataSource: DataSource,
   logger: winston.Logger,
 ): Promise<void> {
@@ -150,7 +148,7 @@ async function asignDisputeEventToBundle(
   );
 }
 
-async function asignCanceledEventToBundle(
+async function assignCanceledEventToBundle(
   dataSource: DataSource,
   logger: winston.Logger,
 ): Promise<void> {
