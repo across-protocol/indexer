@@ -10,12 +10,12 @@ import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { providers, Contract } from "ethers";
 import Redis from "ioredis";
-import { RedisCache } from "../redisCache";
+import { RedisCache } from "../redis/redisCache";
 import { DataSource } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { differenceWith, isEqual } from "lodash";
 
-import { RangeQueryStore, Ranges } from "../rangeQueryStore";
+import { RangeQueryStore, Ranges } from "../redis/rangeQueryStore";
 
 export const CONFIG_STORE_VERSION = 4;
 
