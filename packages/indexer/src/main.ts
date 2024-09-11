@@ -4,16 +4,13 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as s from "superstruct";
 import * as acrossConstants from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
 import { connectToDatabase } from "./database/database.provider";
 import { IndexerQueuesService } from "./messaging/service";
 import { RelayStatusWorker } from "./messaging/RelayStatusWorker";
 import { RelayHashInfoWorker } from "./messaging/RelayHashInfoWorker";
 import { providers } from "ethers";
-import {
-  createDataSource,
-  DatabaseConfig,
-  DataSource,
-} from "@repo/indexer-database";
+import { DatabaseConfig } from "@repo/indexer-database";
 
 type RedisConfig = {
   host: string;
@@ -171,6 +168,8 @@ export async function Main(
 
   const tempHubProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
   const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
+  const spokePoolIndexers: Array<services.spokePoolIndexer.SpokePoolIndexer> =
+    [];
   // instanciate multiple spoke pool event indexers
   for (const spokePoolProviderUrl of spokePoolProviderUrls) {
     const config = await getSpokePoolIndexerConfig({
@@ -189,8 +188,29 @@ export async function Main(
       postgres,
       ...config,
     });
-    await spokeIndexer.tick();
+    spokePoolIndexers.push(spokeIndexer);
   }
+
+  let exitRequested = false;
+  process.on("SIGINT", () => {
+    if (!exitRequested) {
+      logger.info("\nPress Ctrl+C again to exit.");
+      exitRequested = true;
+    } else {
+      logger.info("\nForcing exit...");
+      across.utils.delay(1).finally(() => process.exit());
+    }
+  });
+  do {
+    logger.info({
+      message: "Running indexers",
+    });
+    await Promise.all(spokePoolIndexers.map((s) => s.tick()));
+    await across.utils.delay(10);
+    logger.info({
+      message: "Completed running indexers",
+    });
+  } while (!exitRequested);
 
   redis?.quit();
   postgres?.destroy();

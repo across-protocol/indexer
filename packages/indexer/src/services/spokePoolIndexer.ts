@@ -427,3 +427,4 @@ export async function SpokePoolIndexer(config: Config) {
     tick,
   };
 }
+export type SpokePoolIndexer = Awaited<ReturnType<typeof SpokePoolIndexer>>;
