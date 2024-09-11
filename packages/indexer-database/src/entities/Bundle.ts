@@ -61,7 +61,7 @@ export class Bundle {
   @Column({ nullable: true })
   disputeId: number;
 
-  @Column({ type: "enum", enum: BundleStatus })
+  @Column({ type: "enum", enum: BundleStatus, default: BundleStatus.Proposed })
   status: BundleStatus;
 
   @ManyToMany(() => RootBundleExecuted)

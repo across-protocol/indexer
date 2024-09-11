@@ -38,6 +38,9 @@ export class Bundle1726082056015 implements MigrationInterface {
       `ALTER TABLE "bundle" ADD CONSTRAINT "FK_bundle_rootBundleProposeId" FOREIGN KEY ("proposalId") REFERENCES "evm"."proposed_root_bundle"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
+      `ALTER TABLE "bundle" ALTER COLUMN "status" SET DEFAULT 'Proposed'`,
+    );
+    await queryRunner.query(
       `ALTER TABLE "bundle" ADD CONSTRAINT "FK_bundle_rootBundleCanceledId" FOREIGN KEY ("cancelationId") REFERENCES "evm"."root_bundle_canceled"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
