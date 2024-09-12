@@ -63,7 +63,7 @@ export class RangeQueryStore {
    * @param {string} id - The identifier of the range.
    * @returns {Promise<RangeQuery>} The range query associated with the id.
    */
-  async set(id: string): Promise<RangeQuery> {
+  public async set(id: string): Promise<RangeQuery> {
     await this.config.redis.sadd(this.config.prefix, id);
     return this.decode(id);
   }
@@ -73,14 +73,14 @@ export class RangeQueryStore {
    * @param {number} toBlock - The ending block of the range.
    * @returns {Promise<RangeQuery>} The range query associated with the id.
    */
-  async setByRange(fromBlock: number, toBlock: number) {
+  public async setByRange(fromBlock: number, toBlock: number) {
     return this.set(this.id(fromBlock, toBlock));
   }
   /**
    * Retrieves all block range entries from Redis.
    * @returns {Promise<[string, RangeQuery][]>} An array of tuples containing range ids and their associated RangeQuery objects.
    */
-  async entries(): Promise<[string, RangeQuery][]> {
+  public async entries(): Promise<[string, RangeQuery][]> {
     const ids = await this.config.redis.smembers(this.config.prefix);
     return ids.map((id) => {
       return [id, this.decode(id)];
