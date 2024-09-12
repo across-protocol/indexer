@@ -9,7 +9,7 @@ import * as across from "@across-protocol/sdk";
 import { providers, Contract } from "ethers";
 import winston from "winston";
 import Redis from "ioredis";
-import { RedisCache } from "../redisCache";
+import { RedisCache } from "../redis/redisCache";
 import { DataSource, entities } from "@repo/indexer-database";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { HubPoolRepository } from "../database/HubPoolRepository";
