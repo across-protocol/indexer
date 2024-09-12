@@ -11,5 +11,7 @@ export * from "./evm/RequestedSpeedUpV3Deposit";
 export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
+
 // Others
+export * from "./Bundle";
 export * from "./RelayHashInfo";
