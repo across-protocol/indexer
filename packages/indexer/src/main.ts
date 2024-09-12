@@ -37,7 +37,7 @@ async function initializeRedis(config: RedisConfig, logger: winston.Logger) {
 }
 
 function getPostgresConfig(
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): DatabaseConfig {
   assert(env.DATABASE_HOST, "requires DATABASE_HOST");
   assert(env.DATABASE_PORT, "requires DATABASE_PORT");
@@ -55,17 +55,17 @@ function getPostgresConfig(
 
 // superstruct coersion to turn string into an int and validate
 const stringToInt = s.coerce(s.number(), s.string(), (value) =>
-  parseInt(value)
+  parseInt(value),
 );
 function getRetryProviderConfig(
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): services.deposits.RetryProviderConfig {
   assert(env.PROVIDER_CACHE_NAMESPACE, "requires PROVIDER_CACHE_NAMESPACE");
   assert(env.MAX_CONCURRENCY, "requires MAX_CONCURRENCY");
   assert(env.PCT_RPC_CALLS_LOGGED, "requires PCT_RPC_CALLS_LOGGED");
   assert(
     env.STANDARD_TTL_BLOCK_DISTANCE,
-    "requires STANDARD_TTL_BLOCK_DISTANCE"
+    "requires STANDARD_TTL_BLOCK_DISTANCE",
   );
   assert(env.NO_TTL_BLOCK_DISTANCE, "requires STANDARD_TTL_BLOCK_DISTANCE");
   assert(env.PROVIDER_CACHE_TTL, "requires PROVIDER_CACHE_TTL");
@@ -78,7 +78,7 @@ function getRetryProviderConfig(
     pctRpcCallsLogged: s.create(env.PCT_RPC_CALLS_LOGGED, stringToInt),
     standardTtlBlockDistance: s.create(
       env.STANDARD_TTL_BLOCK_DISTANCE,
-      stringToInt
+      stringToInt,
     ),
     noTtlBlockDistance: s.create(env.NO_TTL_BLOCK_DISTANCE, stringToInt),
     providerCacheTtl: s.create(env.PROVIDER_CACHE_TTL, stringToInt),
@@ -127,22 +127,22 @@ async function getSpokePoolIndexerConfig(params: {
 
 export async function Main(
   env: Record<string, string | undefined>,
-  logger: winston.Logger
+  logger: winston.Logger,
 ) {
   const spokePoolProviderUrls: string[] = Object.values(
-    acrossConstants.MAINNET_CHAIN_IDs
+    acrossConstants.MAINNET_CHAIN_IDs,
   )
     .map((chainId) => env[`INDEXER_SPOKEPOOL_PROVIDER_URL_${chainId}`])
     .filter((x): x is string => !!x);
 
   assert(
     spokePoolProviderUrls.length > 0,
-    "Must provide a url for at least one provider on one chain, for example: INDEXER_SPOKEPOOL_PROVIDER_URL_1"
+    "Must provide a url for at least one provider on one chain, for example: INDEXER_SPOKEPOOL_PROVIDER_URL_1",
   );
 
   assert(
     env.INDEXER_HUBPOOL_PROVIDER_URL,
-    "requires INDEXER_HUBPOOL_PROVIDER_URL"
+    "requires INDEXER_HUBPOOL_PROVIDER_URL",
   );
   const hubPoolProviderUrl = env.INDEXER_HUBPOOL_PROVIDER_URL;
   assert(env.INDEXER_REDIS_HOST, "requires INDEXER_REDIS_HOST");
@@ -222,7 +222,7 @@ export async function Main(
     message: "Indexer loop completed",
     results: {
       spokeIndexerRunSuccess: spokeResults.every(
-        (r) => r.status === "fulfilled"
+        (r) => r.status === "fulfilled",
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
     },
