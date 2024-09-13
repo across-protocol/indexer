@@ -252,7 +252,6 @@ export async function Main(
     await Promise.allSettled([
       bundleProcessor(),
       hubPoolIndexer.start(10),
-      Promise.resolve(),
       ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
 
