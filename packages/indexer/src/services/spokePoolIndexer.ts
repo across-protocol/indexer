@@ -1,27 +1,22 @@
-import assert from "assert";
-import {
-  getDeployedAddress,
-  getDeployedBlockNumber,
-  SpokePool__factory as SpokePoolFactory,
-  HubPool__factory as HubPoolFactory,
-  AcrossConfigStore__factory as AcrossConfigStoreFactory,
-} from "@across-protocol/contracts";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { providers, Contract } from "ethers";
 import Redis from "ioredis";
-import { RedisCache } from "../redis/redisCache";
-import { DataSource } from "@repo/indexer-database";
-import { SpokePoolRepository } from "../database/SpokePoolRepository";
+import { DataSource, entities } from "@repo/indexer-database";
 import { differenceWith, isEqual } from "lodash";
 
+import { RedisCache } from "../redis/redisCache";
+import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { RangeQueryStore, Ranges } from "../redis/rangeQueryStore";
 import * as utils from "../utils";
+import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
+import { RelayHashInfoMessage } from "../messaging/RelayHashInfoWorker";
 
 type Config = {
   logger: winston.Logger;
   redis: Redis;
   postgres: DataSource;
+  indexerQueuesService: IndexerQueuesService;
   retryProviderConfig: utils.RetryProviderConfig;
   configStoreConfig: {
     chainId: number;
@@ -45,6 +40,7 @@ export async function SpokePoolIndexer(config: Config) {
     logger,
     redis,
     postgres,
+    indexerQueuesService,
     retryProviderConfig,
     redisKeyPrefix,
     hubConfig,
@@ -221,6 +217,7 @@ export async function SpokePoolIndexer(config: Config) {
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(spokeConfig.chainId);
+    const requestedSpeedUpV3Events = spokeClient.getSpeedUps();
     const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
       spokeClient.getRelayerRefundExecutions();
@@ -230,15 +227,45 @@ export async function SpokePoolIndexer(config: Config) {
       v3FundsDepositedEvents,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
+      requestedSpeedUpV3Events,
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
     };
   }
+
+  async function publishRelayHashInfoMessages(
+    events:
+      | entities.V3FundsDeposited[]
+      | entities.FilledV3Relay[]
+      | entities.RequestedV3SlowFill[],
+    eventType: "V3FundsDeposited" | "FilledV3Relay" | "RequestedV3SlowFill",
+  ) {
+    const messages: RelayHashInfoMessage[] = events.map((event) => {
+      return {
+        relayHash: event.relayHash,
+        eventType,
+        eventId: event.id,
+        depositId: event.depositId,
+        originChainId: event.originChainId,
+      };
+    });
+    await indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.RelayHashInfo,
+      IndexerQueues.RelayHashInfo, // use queue name as job name
+      messages,
+    );
+  }
+
   async function storeEvents(params: {
     v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
     filledV3RelayEvents: across.interfaces.FillWithBlock[];
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
+    requestedSpeedUpV3Events: {
+      [depositorAddress: string]: {
+        [depositId: number]: across.interfaces.SpeedUpWithBlock[];
+      };
+    };
     relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
     executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
     tokensBridgedEvents: across.interfaces.TokensBridged[];
@@ -247,18 +274,40 @@ export async function SpokePoolIndexer(config: Config) {
       v3FundsDepositedEvents,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
+      requestedSpeedUpV3Events,
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
     } = params;
-    await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
-      v3FundsDepositedEvents,
+    const savedV3FundsDepositedEvents =
+      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        v3FundsDepositedEvents,
+      );
+    await publishRelayHashInfoMessages(
+      savedV3FundsDepositedEvents,
+      "V3FundsDeposited",
     );
-    await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
-      requestedV3SlowFillEvents,
+
+    const savedRequestedV3SlowFillEvents =
+      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedV3SlowFillEvents,
+      );
+    await publishRelayHashInfoMessages(
+      savedRequestedV3SlowFillEvents,
+      "RequestedV3SlowFill",
     );
-    await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
-      filledV3RelayEvents,
+
+    const savedFilledV3RelayEvents =
+      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledV3RelayEvents,
+      );
+    await publishRelayHashInfoMessages(
+      savedFilledV3RelayEvents,
+      "FilledV3Relay",
+    );
+
+    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+      requestedSpeedUpV3Events,
     );
     await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
       relayedRootBundleEvents,
