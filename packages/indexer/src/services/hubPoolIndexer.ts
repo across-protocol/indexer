@@ -77,6 +77,8 @@ export async function HubPoolIndexer(config: Config) {
     const allPendingQueries = await getUnprocessedRanges();
     logger.info({
       message: `Running hubpool indexer on ${allPendingQueries.length} block range requests`,
+      at: "HubpoolIndexer",
+      config: hubConfig,
     });
     for (const query of allPendingQueries) {
       if (stopRequested) break;
@@ -84,6 +86,8 @@ export async function HubPoolIndexer(config: Config) {
       try {
         logger.info({
           message: `Starting hubpool update for block range ${fromBlock} to ${toBlock}`,
+          at: "HubpoolIndexer",
+          config: hubConfig,
           query,
         });
         const events = await fetchEventsByRange(fromBlock, toBlock);
@@ -93,12 +97,16 @@ export async function HubPoolIndexer(config: Config) {
         await resolvedRangeStore.setByRange(fromBlock, toBlock);
         logger.info({
           message: `Completed hubpool update for block range ${fromBlock} to ${toBlock}`,
+          at: "HubpoolIndexer",
+          config: hubConfig,
           query,
         });
       } catch (error) {
         if (error instanceof Error) {
           logger.error({
             message: `Error hubpool updating for block range ${fromBlock} to ${toBlock}`,
+            at: "HubpoolIndexer",
+            config: hubConfig,
             query,
             errorMessage: error.message,
           });
@@ -135,44 +143,34 @@ export async function HubPoolIndexer(config: Config) {
       message: `${needsProcessing.length} block ranges need processing`,
       deployedBlockNumber,
       latestBlockNumber,
+      at: "HubpoolIndexer",
+      config: hubConfig,
     });
 
     return needsProcessing;
   }
 
   async function fetchEventsByRange(fromBlock: number, toBlock: number) {
-    logger.info({
-      message: "updating config store client",
-      fromBlock,
-      toBlock,
-    });
     await configStoreClient.update();
-    logger.info({
-      message: "updated config store client",
-      fromBlock,
-      toBlock,
-    });
-
-    logger.info({
-      message: "updating hubpool client",
-      fromBlock,
-      toBlock,
-    });
     await hubPoolClient.update();
-    logger.info({
-      message: "updated hubpool client",
-      fromBlock,
-      toBlock,
-    });
-    const proposedRootBundleEvents = hubPoolClient.getProposedRootBundles();
-    const rootBundleCanceledEvents = hubPoolClient.getCancelledRootBundles();
-    const rootBundleDisputedEvents = hubPoolClient.getDisputedRootBundles();
+    const proposedRootBundleEvents =
+      hubPoolClient.getProposedRootBundlesInBlockRange(fromBlock, toBlock);
+    const rootBundleCanceledEvents =
+      hubPoolClient.getCancelledRootBundlesInBlockRange(fromBlock, toBlock);
+    const rootBundleDisputedEvents =
+      hubPoolClient.getDisputedRootBundlesInBlockRange(fromBlock, toBlock);
+    // we do not have a block range query for executed root bundles
     const rootBundleExecutedEvents = hubPoolClient.getExecutedRootBundles();
+
     return {
+      // we need to make sure we filter out all unecessary events for the block range requested
       proposedRootBundleEvents,
       rootBundleCanceledEvents,
       rootBundleDisputedEvents,
-      rootBundleExecutedEvents,
+      rootBundleExecutedEvents: rootBundleExecutedEvents.filter(
+        (event) =>
+          event.blockNumber >= fromBlock && event.blockNumber <= toBlock,
+      ),
     };
   }
   async function storeEvents(params: {

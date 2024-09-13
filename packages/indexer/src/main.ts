@@ -124,7 +124,7 @@ async function getSpokePoolIndexerConfig(params: {
     redisKeyPrefix: `spokePoolIndexer:${spokePoolNetworkInfo.chainId}`,
   };
 }
-// utility call to create the spoke pool event indexer config
+// utility call to create the hubpool event indexer config
 async function getHubPoolIndexerConfig(params: {
   retryProviderConfig: services.deposits.RetryProviderConfig;
   hubPoolNetworkInfo: providers.Network;
@@ -236,7 +236,10 @@ export async function Main(
       hubPoolIndexer.stop();
     } else {
       logger.info("\nForcing exit...");
-      across.utils.delay(1).finally(() => process.exit());
+      redis?.quit();
+      postgres?.destroy();
+      logger.info("Exiting indexer");
+      across.utils.delay(5).finally(() => process.exit());
     }
   });
 
@@ -244,21 +247,23 @@ export async function Main(
     message: "Running indexers",
     at: "Indexer#Main",
   });
-  await hubPoolIndexer.start(10);
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [bundleResults, ...spokeResults] = await Promise.allSettled([
-    bundleProcessor(),
-    ...spokePoolIndexers.map((s) => s.start(10)),
-  ]);
+  const [bundleResults, hubPoolResult, ...spokeResults] =
+    await Promise.allSettled([
+      bundleProcessor(),
+      hubPoolIndexer.start(10),
+      ...spokePoolIndexers.map((s) => s.start(10)),
+    ]);
 
   logger.info({
     at: "Indexer#Main",
     message: "Indexer loop completed",
     results: {
-      spokeIndexerRunSuccess: spokeResults.every(
+      spokeIndexerRunSuccess: [...spokeResults].every(
         (r) => r.status === "fulfilled",
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
+      hubPoolRunSucccess: hubPoolResult.status === "fulfilled",
     },
   });
 
