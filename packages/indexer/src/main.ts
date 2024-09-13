@@ -67,7 +67,7 @@ function getRetryProviderConfig(
     env.STANDARD_TTL_BLOCK_DISTANCE,
     "requires STANDARD_TTL_BLOCK_DISTANCE",
   );
-  assert(env.NO_TTL_BLOCK_DISTANCE, "requires STANDARD_TTL_BLOCK_DISTANCE");
+  assert(env.NO_TTL_BLOCK_DISTANCE, "requires NO_TTL_BLOCK_DISTANCE");
   assert(env.PROVIDER_CACHE_TTL, "requires PROVIDER_CACHE_TTL");
   assert(env.NODE_QUORUM_THRESHOLD, "requires NODE_QUORUM_THRESHOLD");
   assert(env.RETRIES, "requires RETRIES");
