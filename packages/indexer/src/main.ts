@@ -253,7 +253,7 @@ export async function Main(
       bundleProcessor(),
       hubPoolIndexer.start(10),
       Promise.resolve(),
-      // ...spokePoolIndexers.map((s) => s.start(10)),
+      ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
 
   logger.info({

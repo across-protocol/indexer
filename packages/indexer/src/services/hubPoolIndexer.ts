@@ -23,6 +23,9 @@ type Config = {
   redisKeyPrefix: string;
 };
 
+/**
+ * Indexer for the hubpool contract and its component events
+ */
 export class Indexer extends BaseIndexer {
   private resolvedRangeStore: RangeQueryStore;
   private hubPoolRepository: HubPoolRepository;
