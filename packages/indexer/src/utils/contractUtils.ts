@@ -36,7 +36,7 @@ export async function getSpokeClient(
     toBlock,
     maxBlockLookBack,
   };
-  logger.info({
+  logger.debug({
     message: "Initializing spoke pool",
     chainId,
     address,
