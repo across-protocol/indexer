@@ -33,6 +33,7 @@ volumes/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # Misc
 .DS_Store

@@ -199,7 +199,7 @@ export async function Main(
     retryProviderConfig,
   });
   // canonical hubpool indexer
-  const hubPoolIndexer = await services.hubPoolIndexer.HubPoolIndexer({
+  const hubPoolIndexer = new services.hubPoolIndexer.Indexer({
     logger,
     redis,
     postgres,
@@ -252,7 +252,8 @@ export async function Main(
     await Promise.allSettled([
       bundleProcessor(),
       hubPoolIndexer.start(10),
-      ...spokePoolIndexers.map((s) => s.start(10)),
+      Promise.resolve(),
+      // ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
 
   logger.info({
