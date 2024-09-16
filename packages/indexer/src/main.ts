@@ -53,13 +53,24 @@ function getPostgresConfig(
   };
 }
 
+type RetryProviderConfig = {
+  providerCacheNamespace: string;
+  maxConcurrency: number;
+  pctRpcCallsLogged: number;
+  standardTtlBlockDistance: number;
+  noTtlBlockDistance: number;
+  providerCacheTtl: number;
+  nodeQuorumThreshold: number;
+  retries: number;
+  delay: number;
+};
 // superstruct coersion to turn string into an int and validate
 const stringToInt = s.coerce(s.number(), s.string(), (value) =>
   parseInt(value),
 );
 function getRetryProviderConfig(
   env: Record<string, string | undefined>,
-): services.deposits.RetryProviderConfig {
+): RetryProviderConfig {
   assert(env.PROVIDER_CACHE_NAMESPACE, "requires PROVIDER_CACHE_NAMESPACE");
   assert(env.MAX_CONCURRENCY, "requires MAX_CONCURRENCY");
   assert(env.PCT_RPC_CALLS_LOGGED, "requires PCT_RPC_CALLS_LOGGED");
@@ -90,7 +101,7 @@ function getRetryProviderConfig(
 
 // utility call to create the spoke pool event indexer config
 async function getSpokePoolIndexerConfig(params: {
-  retryProviderConfig: services.deposits.RetryProviderConfig;
+  retryProviderConfig: RetryProviderConfig;
   spokePoolProviderUrl: string;
   hubPoolNetworkInfo: providers.Network;
   hubPoolProviderUrl: string;
@@ -126,7 +137,7 @@ async function getSpokePoolIndexerConfig(params: {
 }
 // utility call to create the hubpool event indexer config
 async function getHubPoolIndexerConfig(params: {
-  retryProviderConfig: services.deposits.RetryProviderConfig;
+  retryProviderConfig: RetryProviderConfig;
   hubPoolNetworkInfo: providers.Network;
   hubPoolProviderUrl: string;
 }) {
@@ -221,6 +232,7 @@ export async function Main(
       logger,
       redis,
       postgres,
+      indexerQueuesService,
       ...config,
     });
     spokePoolIndexers.push(spokeIndexer);
