@@ -4,6 +4,7 @@ import {
   JoinColumn,
   JoinTable,
   ManyToMany,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
@@ -11,6 +12,7 @@ import { ProposedRootBundle } from "./evm/ProposedRootBundle";
 import { RootBundleCanceled } from "./evm/RootBundleCanceled";
 import { RootBundleExecuted } from "./evm/RootBundleExecuted";
 import { RootBundleDisputed } from "./evm/RootBundleDisputed";
+import { BundleBlockRange } from "./BundleBlockRange";
 
 export enum BundleStatus {
   Proposed = "Proposed",
@@ -77,4 +79,9 @@ export class Bundle {
     },
   })
   executions: RootBundleExecuted[];
+
+  @OneToMany(() => BundleBlockRange, (range) => range.bundle, {
+    nullable: false,
+  })
+  ranges: BundleBlockRange[];
 }
