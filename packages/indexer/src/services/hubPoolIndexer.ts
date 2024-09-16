@@ -164,7 +164,10 @@ export async function HubPoolIndexer(config: Config) {
 
     return {
       // we need to make sure we filter out all unecessary events for the block range requested
-      proposedRootBundleEvents,
+      proposedRootBundleEvents: proposedRootBundleEvents.map((p) => ({
+        ...p,
+        chainIds: configStoreClient.getChainIdIndicesForBlock(p.blockNumber),
+      })),
       rootBundleCanceledEvents,
       rootBundleDisputedEvents,
       rootBundleExecutedEvents: rootBundleExecutedEvents.filter(
@@ -174,7 +177,9 @@ export async function HubPoolIndexer(config: Config) {
     };
   }
   async function storeEvents(params: {
-    proposedRootBundleEvents: across.interfaces.ProposedRootBundle[];
+    proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
+      chainIds: number[];
+    })[];
     rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[];
     rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[];
     rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[];

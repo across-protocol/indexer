@@ -21,6 +21,9 @@ export class ProposedRootBundle {
   @Column({ type: "jsonb" })
   bundleEvaluationBlockNumbers: number[];
 
+  @Column({ type: "jsonb" })
+  chainIds: number[];
+
   @Column()
   poolRebalanceRoot: string;
 
