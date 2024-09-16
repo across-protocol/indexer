@@ -30,8 +30,17 @@ export abstract class BaseIndexer {
       message: `Starting indexer ${this.name}`,
     });
 
-    // Initialize the indexer before starting the loop
-    await this.initialize();
+    try {
+      // Initialize the indexer before starting the loop
+      await this.initialize();
+    } catch (e) {
+      this.logger.error({
+        at: "BaseIndexer#start",
+        message: `Failed to initialize ${this.name}`,
+        error: e,
+      });
+      return;
+    }
 
     this.stopRequested = false;
     do {

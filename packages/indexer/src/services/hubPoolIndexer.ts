@@ -45,7 +45,7 @@ export class Indexer extends BaseIndexer {
     } = this.config;
     this.resolvedRangeStore = new RangeQueryStore({
       redis,
-      prefix: [redisKeyPrefix, "rangeQuery", "resolved"].join(":"),
+      prefix: `${redisKeyPrefix}:rangeQuery:resolved`,
     });
     const redisCache = new RedisCache(redis);
     const hubPoolProvider = utils.getRetryProvider({
