@@ -64,13 +64,15 @@ function logResultOfAssignment(
   unassociatedRecordsCount: number,
   persistedRecordsCount: number,
 ): void {
-  logger.info({
-    at: `Bundles#assignToBundle`,
-    message: "Found and associated proposed events with bundles",
-    unassociatedRecordsCount,
-    persistedRecordsCount,
-    eventType,
-  });
+  if (unassociatedRecordsCount > 0) {
+    logger.info({
+      at: `Bundles#assignToBundle`,
+      message: "Found and associated proposed events with bundles",
+      unassociatedRecordsCount,
+      persistedRecordsCount,
+      eventType,
+    });
+  }
 }
 
 /**
