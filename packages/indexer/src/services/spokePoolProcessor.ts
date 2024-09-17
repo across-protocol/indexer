@@ -183,6 +183,7 @@ async function updateRefundedDepositsStatus(
   for (const expiredDeposit of expiredDeposits) {
     const { depositor, inputAmount, inputToken, blockNumber } =
       expiredDeposit.depositEvent;
+    // TODO: modify this once we are associating events with bundles. This is a temporary solution.
     const matchingRefunds = await refundsRepository
       .createQueryBuilder("refunds")
       .where("refunds.chainId = :originChainId", {
