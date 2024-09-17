@@ -1,13 +1,10 @@
 import Redis from "ioredis";
 import { Queue, JobsOptions } from "bullmq";
 
-export enum IndexerQueues {
-  RelayHashInfo = "RelayHashInfo",
-  RelayStatus = "RelayStatus",
-}
+export enum IndexerQueues {}
 
 export class IndexerQueuesService {
-  private queues = {} as Record<IndexerQueues, Queue>;
+  private queues = {} as Record<string, Queue>;
 
   constructor(private connection: Redis) {
     this.initializeQueues();
