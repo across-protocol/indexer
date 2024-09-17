@@ -194,10 +194,10 @@ async function updateRefundedDepositsStatus(
       .andWhere("refunds.l2TokenAddress = :inputToken", {
         inputToken: inputToken,
       })
-      .andWhere("refunds.refundAddresses ::jsonb @> :depositor", {
+      .andWhere("refunds.refundAddresses @> :depositor", {
         depositor: JSON.stringify([depositor]),
       })
-      .andWhere("refunds.refundAmounts ::jsonb @> :inputAmount", {
+      .andWhere("refunds.refundAmounts @> :inputAmount", {
         inputAmount: JSON.stringify([inputAmount]),
       })
       .getMany();
