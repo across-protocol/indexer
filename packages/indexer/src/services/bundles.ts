@@ -1,8 +1,11 @@
-import { DataSource, entities } from "@repo/indexer-database";
+import { DataSource } from "@repo/indexer-database";
 import Redis from "ioredis";
 import winston from "winston";
-import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
+import {
+  BlockRangeInsertType,
+  BundleRepository,
+} from "../database/BundleRepository";
 
 const AVERAGE_BUNDLE_LIVENESS_SECONDS = 60 * 60; // 1 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
@@ -38,6 +41,7 @@ export class Processor extends BaseIndexer {
     await assignBundleToProposedEvent(bundleRepository, logger);
     await assignDisputeEventToBundle(bundleRepository, logger);
     await assignCanceledEventToBundle(bundleRepository, logger);
+    await assignBundleRangesToProposal(bundleRepository, logger);
   }
 
   protected async initialize(): Promise<void> {
@@ -165,6 +169,81 @@ async function assignCanceledEventToBundle(
     "RootBundleCanceled",
     unassignedCanceledEvents.length,
     numberUpdated,
+  );
+}
+
+async function assignBundleRangesToProposal(
+  dbRepository: BundleRepository,
+  logger: winston.Logger,
+): Promise<void> {
+  // We first want to confirm that there's no outstanding disputes or cancelations that
+  // haven't been associated with a bundle. We need to ensure that all events are associated
+  // before we can assign ranges to the proposal to account for the most accurate ranges.
+  const [unassociatedDisputes, unassociatedCancellations] = await Promise.all([
+    dbRepository.retrieveUnassociatedDisputedEvents(),
+    dbRepository.retrieveUnassociatedCanceledEvents(),
+    dbRepository.retrieveUnassociatedProposedRootBundleEvents(),
+  ]);
+  if (unassociatedDisputes.length > 0 || unassociatedCancellations.length > 0) {
+    logger.info({
+      at: "Bundles#assignBundleRangesToProposal",
+      message:
+        "Unassociated disputes or cancellations found. Unable to assign ranges.",
+      unassociatedDisputes: unassociatedDisputes.length,
+      unassociatedCancellations: unassociatedCancellations.length,
+    });
+    return;
+  }
+  // Next, we want to find all bundles that don't have ranges defined yet.
+  const bundlesWithoutRanges =
+    await dbRepository.retrieveBundlesWithoutBlockRangesDefined();
+  // For each bundle without a range, find the previous undisputed/non-canceled event
+  // so that we can resolve the start range for the bundle.
+  const rangeSegments = await Promise.all(
+    bundlesWithoutRanges.map(async (bundle) => {
+      const previousEvent =
+        await dbRepository.retrieveClosestProposedRootBundle(
+          bundle.proposal.blockNumber,
+          bundle.proposal.transactionIndex,
+          bundle.proposal.logIndex,
+        );
+      if (!previousEvent) {
+        return undefined;
+      }
+      return bundle.proposal.bundleEvaluationBlockNumbers.reduce(
+        (acc, endBlock, idx) => {
+          // We can enforce that this chainId is defined because the proposal
+          // has parallel arrays.
+          const chainId = bundle.proposal.chainIds[idx]!;
+          // Per UMIP rules, this list of bundle evaluation block numbers is strictly
+          // append-only. As a result, we can guarantee that the index of each chain
+          // matches the previous. For the case that the current bundle adds a new chain
+          // to the proposal, the corresponding previous event index should resolve undefined
+          // and therefore the start block should be 0.
+          const startBlock =
+            previousEvent.bundleEvaluationBlockNumbers[idx] ?? 0;
+          return [
+            ...acc,
+            {
+              bundleId: bundle.id,
+              chainId,
+              startBlock,
+              endBlock,
+            },
+          ];
+        },
+        [] as BlockRangeInsertType[],
+      );
+    }),
+  );
+  const insertResult = await dbRepository.associateBlockRangeWithBundle(
+    rangeSegments.filter((segment) => segment !== undefined).flat(),
+  );
+  logResultOfAssignment(
+    logger,
+    "BundleBlockRange",
+    rangeSegments.length,
+    insertResult.generatedMaps.length,
   );
 }
 
