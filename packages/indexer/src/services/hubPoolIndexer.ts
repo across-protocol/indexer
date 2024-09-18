@@ -181,8 +181,8 @@ export class Indexer extends BaseIndexer {
       ),
     };
   }
-  
-  async function storeEvents(params: {
+
+  async storeEvents(params: {
     proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
       chainIds: number[];
     })[];
