@@ -197,7 +197,7 @@ export async function Main(
 
   const tempHubProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
   const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
-  const bundleProcessor = services.bundles.Processor({
+  const bundleProcessor = new services.bundles.Processor({
     logger,
     redis,
     postgres,
@@ -210,7 +210,7 @@ export async function Main(
     retryProviderConfig,
   });
   // canonical hubpool indexer
-  const hubPoolIndexer = await services.hubPoolIndexer.HubPoolIndexer({
+  const hubPoolIndexer = new services.hubPoolIndexer.Indexer({
     logger,
     redis,
     postgres,
@@ -262,7 +262,7 @@ export async function Main(
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [bundleResults, hubPoolResult, ...spokeResults] =
     await Promise.allSettled([
-      bundleProcessor(),
+      bundleProcessor.start(10),
       hubPoolIndexer.start(10),
       ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
