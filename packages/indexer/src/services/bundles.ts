@@ -182,7 +182,6 @@ async function assignBundleRangesToProposal(
   const [unassociatedDisputes, unassociatedCancellations] = await Promise.all([
     dbRepository.retrieveUnassociatedDisputedEvents(),
     dbRepository.retrieveUnassociatedCanceledEvents(),
-    dbRepository.retrieveUnassociatedProposedRootBundleEvents(),
   ]);
   if (unassociatedDisputes.length > 0 || unassociatedCancellations.length > 0) {
     logger.info({
