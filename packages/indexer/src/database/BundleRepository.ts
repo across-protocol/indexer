@@ -125,7 +125,7 @@ export class BundleRepository extends utils.BaseRepository {
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
-    maxLookbackFromBlock: number = 0,
+    maxLookbackFromBlock: number = Number.MAX_SAFE_INTEGER,
   ): Promise<entities.ProposedRootBundle | null> {
     return this.postgres
       .getRepository(entities.ProposedRootBundle)
