@@ -1,15 +1,14 @@
-import { getDeployedBlockNumber } from "@across-protocol/contracts";
-import winston from "winston";
-import * as across from "@across-protocol/sdk";
-import Redis from "ioredis";
 import { DataSource } from "@repo/indexer-database";
-import { HubPoolRepository } from "../database/HubPoolRepository";
-import { differenceWith, isEqual } from "lodash";
-
+import Redis from "ioredis";
+import winston from "winston";
+import { BaseIndexer } from "../generics";
+import * as utils from "../utils";
 import { RangeQueryStore, Ranges } from "../redis/rangeQueryStore";
 import { RedisCache } from "../redis/redisCache";
-
-import * as utils from "../utils";
+import * as across from "@across-protocol/sdk";
+import { HubPoolRepository } from "../database/HubPoolRepository";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
+import { differenceWith, isEqual } from "lodash";
 
 type Config = {
   logger: winston.Logger;
@@ -23,90 +22,94 @@ type Config = {
   };
   redisKeyPrefix: string;
 };
-export async function HubPoolIndexer(config: Config) {
-  const {
-    logger,
-    redis,
-    postgres,
-    retryProviderConfig,
-    redisKeyPrefix,
-    hubConfig,
-  } = config;
 
-  let stopRequested = false;
-
-  function makeId(...args: Array<string | number>) {
-    return [redisKeyPrefix, ...args].join(":");
+/**
+ * Indexer for the hubpool contract and its component events
+ */
+export class Indexer extends BaseIndexer {
+  private resolvedRangeStore: RangeQueryStore;
+  private hubPoolRepository: HubPoolRepository;
+  private hubPoolClient: across.clients.HubPoolClient;
+  private configStoreClient: across.clients.AcrossConfigStoreClient;
+  constructor(private readonly config: Config) {
+    super(config.logger, "hubPool");
+  }
+  protected async initialize(): Promise<void> {
+    const {
+      logger,
+      redis,
+      retryProviderConfig,
+      hubConfig,
+      redisKeyPrefix,
+      postgres,
+    } = this.config;
+    this.resolvedRangeStore = new RangeQueryStore({
+      redis,
+      prefix: `${redisKeyPrefix}:rangeQuery:resolved`,
+    });
+    const redisCache = new RedisCache(redis);
+    const hubPoolProvider = utils.getRetryProvider({
+      ...retryProviderConfig,
+      cache: redisCache,
+      logger,
+      ...hubConfig,
+    });
+    const configStoreProvider = utils.getRetryProvider({
+      ...retryProviderConfig,
+      cache: redisCache,
+      logger,
+      ...hubConfig,
+    });
+    this.configStoreClient = await utils.getConfigStoreClient({
+      logger,
+      provider: configStoreProvider,
+      maxBlockLookBack: hubConfig.maxBlockLookBack,
+      chainId: hubConfig.chainId,
+    });
+    this.hubPoolClient = await utils.getHubPoolClient({
+      configStoreClient: this.configStoreClient,
+      provider: hubPoolProvider,
+      logger,
+      maxBlockLookBack: hubConfig.maxBlockLookBack,
+      chainId: hubConfig.chainId,
+    });
+    this.hubPoolRepository = new HubPoolRepository(postgres, logger, true);
   }
 
-  const resolvedRangeStore = new RangeQueryStore({
-    redis,
-    prefix: makeId("rangeQuery", "resolved"),
-  });
-
-  const redisCache = new RedisCache(redis);
-  const hubPoolProvider = utils.getRetryProvider({
-    ...retryProviderConfig,
-    cache: redisCache,
-    logger,
-    ...hubConfig,
-  });
-  const configStoreProvider = utils.getRetryProvider({
-    ...retryProviderConfig,
-    cache: redisCache,
-    logger,
-    ...hubConfig,
-  });
-  const configStoreClient = await utils.getConfigStoreClient({
-    logger,
-    provider: configStoreProvider,
-    maxBlockLookBack: hubConfig.maxBlockLookBack,
-    chainId: hubConfig.chainId,
-  });
-  const hubPoolClient = await utils.getHubPoolClient({
-    configStoreClient,
-    provider: hubPoolProvider,
-    logger,
-    maxBlockLookBack: hubConfig.maxBlockLookBack,
-    chainId: hubConfig.chainId,
-  });
-
-  const hubPoolRepository = new HubPoolRepository(postgres, logger, true);
-
-  async function update() {
-    const allPendingQueries = await getUnprocessedRanges();
-    logger.info({
+  protected async indexerLogic(): Promise<void> {
+    const allPendingQueries = await this.getUnprocessedRanges();
+    this.logger.info({
       message: `Running hubpool indexer on ${allPendingQueries.length} block range requests`,
       at: "HubpoolIndexer",
-      config: hubConfig,
+      config: this.config.hubConfig,
     });
     for (const query of allPendingQueries) {
-      if (stopRequested) break;
+      if (this.stopRequested) break;
       const [fromBlock, toBlock] = query;
       try {
-        logger.info({
+        this.logger.info({
           message: `Starting hubpool update for block range ${fromBlock} to ${toBlock}`,
           at: "HubpoolIndexer",
-          config: hubConfig,
+          config: this.config.hubConfig,
           query,
         });
-        const events = await fetchEventsByRange(fromBlock, toBlock);
+        const events = await this.fetchEventsByRange(fromBlock, toBlock);
         // TODO: may need to catch error to see if there is some data that exists in db already or change storage to overwrite any existing values
-        await storeEvents(events);
+        await this.storeEvents(events);
 
-        await resolvedRangeStore.setByRange(fromBlock, toBlock);
-        logger.info({
+        await this.resolvedRangeStore.setByRange(fromBlock, toBlock);
+        this.logger.info({
           message: `Completed hubpool update for block range ${fromBlock} to ${toBlock}`,
           at: "HubpoolIndexer",
-          config: hubConfig,
+          config: this.config.hubConfig,
           query,
         });
       } catch (error) {
         if (error instanceof Error) {
-          logger.error({
+          this.logger.error({
             message: `Error hubpool updating for block range ${fromBlock} to ${toBlock}`,
             at: "HubpoolIndexer",
-            config: hubConfig,
+            config: this.config.hubConfig,
             query,
             errorMessage: error.message,
           });
@@ -117,21 +120,21 @@ export async function HubPoolIndexer(config: Config) {
       }
     }
   }
-  async function getUnprocessedRanges(toBlock?: number): Promise<Ranges> {
+  async getUnprocessedRanges(toBlock?: number): Promise<Ranges> {
     const deployedBlockNumber = getDeployedBlockNumber(
       "HubPool",
-      hubConfig.chainId,
+      this.config.hubConfig.chainId,
     );
     const latestBlockNumber =
-      toBlock ?? (await hubPoolProvider.getBlockNumber());
+      toBlock ?? (await this.hubPoolClient.hubPool.provider.getBlockNumber());
 
     const allPaginatedBlockRanges = across.utils.getPaginatedBlockRanges({
       fromBlock: deployedBlockNumber,
       toBlock: latestBlockNumber,
-      maxBlockLookBack: hubConfig.maxBlockLookBack,
+      maxBlockLookBack: this.config.hubConfig.maxBlockLookBack,
     });
 
-    const allQueries = await resolvedRangeStore.entries();
+    const allQueries = await this.resolvedRangeStore.entries();
     const resolvedRanges = allQueries.map(([, x]) => [x.fromBlock, x.toBlock]);
     const needsProcessing = differenceWith(
       allPaginatedBlockRanges,
@@ -139,18 +142,20 @@ export async function HubPoolIndexer(config: Config) {
       isEqual,
     );
 
-    logger.info({
+    this.logger.info({
       message: `${needsProcessing.length} block ranges need processing`,
       deployedBlockNumber,
       latestBlockNumber,
       at: "HubpoolIndexer",
-      config: hubConfig,
+      config: this.config.hubConfig,
     });
 
     return needsProcessing;
   }
 
-  async function fetchEventsByRange(fromBlock: number, toBlock: number) {
+  async fetchEventsByRange(fromBlock: number, toBlock: number) {
+    const { hubPoolClient, configStoreClient } = this;
+
     await configStoreClient.update();
     await hubPoolClient.update();
     const proposedRootBundleEvents =
@@ -176,6 +181,7 @@ export async function HubPoolIndexer(config: Config) {
       ),
     };
   }
+  
   async function storeEvents(params: {
     proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
       chainIds: number[];
@@ -184,6 +190,7 @@ export async function HubPoolIndexer(config: Config) {
     rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[];
     rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[];
   }) {
+    const { hubPoolRepository } = this;
     const {
       proposedRootBundleEvents,
       rootBundleCanceledEvents,
@@ -203,22 +210,4 @@ export async function HubPoolIndexer(config: Config) {
       rootBundleExecutedEvents,
     );
   }
-
-  function stop() {
-    stopRequested = true;
-  }
-
-  async function start(delay: number) {
-    stopRequested = false;
-    do {
-      await update();
-      await across.utils.delay(delay);
-    } while (!stopRequested);
-  }
-  return {
-    update,
-    start,
-    stop,
-  };
 }
-export type HubPoolIndexer = Awaited<ReturnType<typeof HubPoolIndexer>>;

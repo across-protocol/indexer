@@ -2,12 +2,19 @@ import { DataSource, entities } from "@repo/indexer-database";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
+import { BaseIndexer } from "../generics";
 
 const AVERAGE_BUNDLE_LIVENESS_SECONDS = 60 * 60; // 1 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
 const AVERAGE_BLOCKS_PER_BUNDLE = Math.floor(
   AVERAGE_BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
 );
+
+type BundleConfig = {
+  logger: winston.Logger;
+  redis: Redis | undefined;
+  postgres: DataSource | undefined;
+};
 
 /**
  * Error thrown when the processor configuration is malformed
@@ -19,35 +26,34 @@ class ConfigurationMalformedError extends Error {
   }
 }
 
-type BundleConfig = {
-  logger: winston.Logger;
-  redis: Redis | undefined;
-  postgres: DataSource | undefined;
-};
-
-/**
- * Closure generator for the processor service to track bundle meta-data
- * @param config The configuration for the processor service
- * @returns A function that can be called to start the processor service
- */
-export function Processor(config: BundleConfig) {
-  const { postgres, logger } = config;
-
-  if (!postgres) {
-    logger.error({
-      at: "Bundles#Processor",
-      message: "Postgres connection not provided",
-    });
-    throw new ConfigurationMalformedError();
+export class Processor extends BaseIndexer {
+  private bundleRepository: BundleRepository;
+  constructor(private readonly config: BundleConfig) {
+    super(config.logger, "bundle");
   }
 
-  const bundleRepository = new BundleRepository(postgres, logger, true);
-
-  return async () => {
+  protected async indexerLogic(): Promise<void> {
+    const { logger } = this.config;
+    const { bundleRepository } = this;
     await assignBundleToProposedEvent(bundleRepository, logger);
     await assignDisputeEventToBundle(bundleRepository, logger);
     await assignCanceledEventToBundle(bundleRepository, logger);
-  };
+  }
+
+  protected async initialize(): Promise<void> {
+    if (!this.config.postgres) {
+      this.logger.error({
+        at: "Bundles#Processor",
+        message: "Postgres connection not provided",
+      });
+      throw new ConfigurationMalformedError();
+    }
+    this.bundleRepository = new BundleRepository(
+      this.config.postgres,
+      this.config.logger,
+      true,
+    );
+  }
 }
 
 /**
