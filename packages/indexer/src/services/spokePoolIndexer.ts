@@ -11,6 +11,8 @@ import { RangeQueryStore, Ranges } from "../redis/rangeQueryStore";
 import * as utils from "../utils";
 import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
 import { RelayHashInfoMessage } from "../messaging/RelayHashInfoWorker";
+import { BaseIndexer } from "../generics";
+import { providers } from "ethers";
 
 type Config = {
   logger: winston.Logger;
@@ -35,95 +37,105 @@ type Config = {
   };
   redisKeyPrefix: string;
 };
-export async function SpokePoolIndexer(config: Config) {
-  const {
-    logger,
-    redis,
-    postgres,
-    indexerQueuesService,
-    retryProviderConfig,
-    redisKeyPrefix,
-    hubConfig,
-    spokeConfig,
-    configStoreConfig,
-  } = config;
 
-  let stopRequested = false;
+export class Indexer extends BaseIndexer {
+  private indexerQueuesService: IndexerQueuesService;
+  private resolvedRangeStore: RangeQueryStore;
+  private hubPoolClient: across.clients.HubPoolClient;
+  private spokePoolClientRepository: SpokePoolRepository;
+  private spokePoolProvider: providers.Provider;
+  private configStoreClient: across.clients.AcrossConfigStoreClient;
 
-  function makeId(...args: Array<string | number>) {
-    return [redisKeyPrefix, ...args].join(":");
+  constructor(private readonly config: Config) {
+    super(config.logger, "spokePool");
   }
 
-  const resolvedRangeStore = new RangeQueryStore({
-    redis,
-    prefix: makeId("rangeQuery", "resolved"),
-  });
+  protected async initialize(): Promise<void> {
+    const {
+      logger,
+      redis,
+      postgres,
+      indexerQueuesService,
+      retryProviderConfig,
+      redisKeyPrefix,
+      hubConfig,
+      spokeConfig,
+      configStoreConfig,
+    } = this.config;
 
-  const redisCache = new RedisCache(redis);
-  const hubPoolProvider = utils.getRetryProvider({
-    ...retryProviderConfig,
-    cache: redisCache,
-    logger,
-    ...hubConfig,
-  });
-  const configStoreProvider = utils.getRetryProvider({
-    ...retryProviderConfig,
-    cache: redisCache,
-    logger,
-    ...configStoreConfig,
-  });
-  const spokePoolProvider = utils.getRetryProvider({
-    ...retryProviderConfig,
-    cache: redisCache,
-    logger,
-    ...spokeConfig,
-  });
+    this.indexerQueuesService = indexerQueuesService;
 
-  const spokePoolClientRepository = new SpokePoolRepository(
-    postgres,
-    logger,
-    true,
-  );
+    this.resolvedRangeStore = new RangeQueryStore({
+      redis,
+      prefix: `${redisKeyPrefix}:rangeQuery:resolved`,
+    });
 
-  const configStoreClient = await utils.getConfigStoreClient({
-    logger,
-    provider: configStoreProvider,
-    maxBlockLookBack: configStoreConfig.maxBlockLookBack,
-    chainId: configStoreConfig.chainId,
-  });
-  const hubPoolClient = await utils.getHubPoolClient({
-    configStoreClient,
-    provider: hubPoolProvider,
-    logger,
-    maxBlockLookBack: hubConfig.maxBlockLookBack,
-    chainId: hubConfig.chainId,
-  });
+    const redisCache = new RedisCache(redis);
+    const hubPoolProvider = utils.getRetryProvider({
+      ...retryProviderConfig,
+      cache: redisCache,
+      logger,
+      ...hubConfig,
+    });
+    const configStoreProvider = utils.getRetryProvider({
+      ...retryProviderConfig,
+      cache: redisCache,
+      logger,
+      ...configStoreConfig,
+    });
+    this.spokePoolProvider = utils.getRetryProvider({
+      ...retryProviderConfig,
+      cache: redisCache,
+      logger,
+      ...spokeConfig,
+    });
 
-  async function update() {
-    const allPendingQueries = await getUnprocessedRanges();
-    logger.info({
+    this.spokePoolClientRepository = new SpokePoolRepository(
+      postgres,
+      logger,
+      true,
+    );
+
+    this.configStoreClient = await utils.getConfigStoreClient({
+      logger,
+      provider: configStoreProvider,
+      maxBlockLookBack: configStoreConfig.maxBlockLookBack,
+      chainId: configStoreConfig.chainId,
+    });
+    this.hubPoolClient = await utils.getHubPoolClient({
+      configStoreClient: this.configStoreClient,
+      provider: hubPoolProvider,
+      logger,
+      maxBlockLookBack: hubConfig.maxBlockLookBack,
+      chainId: hubConfig.chainId,
+    });
+  }
+
+  protected async indexerLogic(): Promise<void> {
+    const allPendingQueries = await this.getUnprocessedRanges();
+    this.logger.info({
       message: `Running indexer on ${allPendingQueries.length} block range requests`,
     });
     for (const query of allPendingQueries) {
-      if (stopRequested) break;
+      if (this.stopRequested) break;
       const [fromBlock, toBlock] = query;
       try {
-        logger.info({
+        this.logger.info({
           message: `Starting update for block range ${fromBlock} to ${toBlock}`,
           query,
         });
-        const events = await fetchEventsByRange(fromBlock, toBlock);
+        const events = await this.fetchEventsByRange(fromBlock, toBlock);
         // TODO: may need to catch error to see if there is some data that exists in db already or change storage to overwrite any existing values
-        await storeEvents(events);
+        await this.storeEvents(events);
 
-        await resolvedRangeStore.setByRange(fromBlock, toBlock);
-        logger.info({
+        await this.resolvedRangeStore.setByRange(fromBlock, toBlock);
+        this.logger.info({
           message: `Completed update for block range ${fromBlock} to ${toBlock}`,
           query,
         });
       } catch (error) {
         if (error instanceof Error) {
-          logger.error({
+          this.logger.error({
             message: `Error updating for block range ${fromBlock} to ${toBlock}`,
             query,
             errorMessage: error.message,
@@ -135,21 +147,87 @@ export async function SpokePoolIndexer(config: Config) {
       }
     }
   }
-  async function getUnprocessedRanges(toBlock?: number): Promise<Ranges> {
+
+  private async storeEvents(params: {
+    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
+    filledV3RelayEvents: across.interfaces.FillWithBlock[];
+    requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
+    requestedSpeedUpV3Events: {
+      [depositorAddress: string]: {
+        [depositId: number]: across.interfaces.SpeedUpWithBlock[];
+      };
+    };
+    relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
+    executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
+    tokensBridgedEvents: across.interfaces.TokensBridged[];
+  }) {
+    const { spokePoolClientRepository } = this;
+
+    const {
+      v3FundsDepositedEvents,
+      filledV3RelayEvents,
+      requestedV3SlowFillEvents,
+      requestedSpeedUpV3Events,
+      relayedRootBundleEvents,
+      executedRelayerRefundRootEvents,
+      tokensBridgedEvents,
+    } = params;
+    const savedV3FundsDepositedEvents =
+      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        v3FundsDepositedEvents,
+      );
+    await this.publishRelayHashInfoMessages(
+      savedV3FundsDepositedEvents,
+      "V3FundsDeposited",
+    );
+
+    const savedRequestedV3SlowFillEvents =
+      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedV3SlowFillEvents,
+      );
+    await this.publishRelayHashInfoMessages(
+      savedRequestedV3SlowFillEvents,
+      "RequestedV3SlowFill",
+    );
+
+    const savedFilledV3RelayEvents =
+      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledV3RelayEvents,
+      );
+    await this.publishRelayHashInfoMessages(
+      savedFilledV3RelayEvents,
+      "FilledV3Relay",
+    );
+
+    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+      requestedSpeedUpV3Events,
+    );
+    await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+      relayedRootBundleEvents,
+      this.config.spokeConfig.chainId,
+    );
+    await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+      executedRelayerRefundRootEvents,
+    );
+    await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+      tokensBridgedEvents,
+    );
+  }
+  private async getUnprocessedRanges(toBlock?: number): Promise<Ranges> {
     const deployedBlockNumber = getDeployedBlockNumber(
       "SpokePool",
-      spokeConfig.chainId,
+      this.config.spokeConfig.chainId,
     );
     const spokeLatestBlockNumber =
-      toBlock ?? (await spokePoolProvider.getBlockNumber());
+      toBlock ?? (await this.spokePoolProvider.getBlockNumber());
 
     const allPaginatedBlockRanges = across.utils.getPaginatedBlockRanges({
       fromBlock: deployedBlockNumber,
       toBlock: spokeLatestBlockNumber,
-      maxBlockLookBack: spokeConfig.maxBlockLookBack,
+      maxBlockLookBack: this.config.spokeConfig.maxBlockLookBack,
     });
 
-    const allQueries = await resolvedRangeStore.entries();
+    const allQueries = await this.resolvedRangeStore.entries();
     const resolvedRanges = allQueries.map(([, x]) => [x.fromBlock, x.toBlock]);
     const needsProcessing = differenceWith(
       allPaginatedBlockRanges,
@@ -157,7 +235,7 @@ export async function SpokePoolIndexer(config: Config) {
       isEqual,
     );
 
-    logger.info({
+    this.logger.info({
       message: `${needsProcessing.length} block ranges need processing`,
       deployedBlockNumber,
       spokeLatestBlockNumber,
@@ -166,48 +244,48 @@ export async function SpokePoolIndexer(config: Config) {
     return needsProcessing;
   }
 
-  async function fetchEventsByRange(fromBlock: number, toBlock: number) {
-    logger.info({
+  private async fetchEventsByRange(fromBlock: number, toBlock: number) {
+    this.logger.info({
       message: "updating config store client",
       fromBlock,
       toBlock,
     });
-    await configStoreClient.update();
-    logger.info({
+    await this.configStoreClient.update();
+    this.logger.info({
       message: "updated config store client",
       fromBlock,
       toBlock,
     });
 
-    logger.info({
+    this.logger.info({
       message: "updating hubpool client",
       fromBlock,
       toBlock,
     });
-    await hubPoolClient.update();
-    logger.info({
+    await this.hubPoolClient.update();
+    this.logger.info({
       message: "updated hubpool client",
       fromBlock,
       toBlock,
     });
 
     const spokeClient = await utils.getSpokeClient({
-      hubPoolClient,
-      provider: spokePoolProvider,
-      logger,
-      maxBlockLookBack: spokeConfig.maxBlockLookBack,
-      chainId: spokeConfig.chainId,
+      hubPoolClient: this.hubPoolClient,
+      provider: this.spokePoolProvider,
+      logger: this.logger,
+      maxBlockLookBack: this.config.spokeConfig.maxBlockLookBack,
+      chainId: this.config.spokeConfig.chainId,
       fromBlock,
       toBlock,
     });
 
-    logger.info({
+    this.logger.info({
       message: "updating spokepool client",
       fromBlock,
       toBlock,
     });
     await spokeClient.update();
-    logger.info({
+    this.logger.info({
       message: "updated spokepool client",
       fromBlock,
       toBlock,
@@ -216,7 +294,9 @@ export async function SpokePoolIndexer(config: Config) {
     const v3FundsDepositedEvents = spokeClient.getDeposits();
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
-      spokeClient.getSlowFillRequestsForOriginChain(spokeConfig.chainId);
+      spokeClient.getSlowFillRequestsForOriginChain(
+        this.config.spokeConfig.chainId,
+      );
     const requestedSpeedUpV3Events = spokeClient.getSpeedUps();
     const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
@@ -234,7 +314,7 @@ export async function SpokePoolIndexer(config: Config) {
     };
   }
 
-  async function publishRelayHashInfoMessages(
+  private async publishRelayHashInfoMessages(
     events:
       | entities.V3FundsDeposited[]
       | entities.FilledV3Relay[]
@@ -250,92 +330,10 @@ export async function SpokePoolIndexer(config: Config) {
         originChainId: event.originChainId,
       };
     });
-    await indexerQueuesService.publishMessagesBulk(
+    await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.RelayHashInfo,
       IndexerQueues.RelayHashInfo, // use queue name as job name
       messages,
     );
   }
-
-  async function storeEvents(params: {
-    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
-    filledV3RelayEvents: across.interfaces.FillWithBlock[];
-    requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
-    requestedSpeedUpV3Events: {
-      [depositorAddress: string]: {
-        [depositId: number]: across.interfaces.SpeedUpWithBlock[];
-      };
-    };
-    relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
-    executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
-    tokensBridgedEvents: across.interfaces.TokensBridged[];
-  }) {
-    const {
-      v3FundsDepositedEvents,
-      filledV3RelayEvents,
-      requestedV3SlowFillEvents,
-      requestedSpeedUpV3Events,
-      relayedRootBundleEvents,
-      executedRelayerRefundRootEvents,
-      tokensBridgedEvents,
-    } = params;
-    const savedV3FundsDepositedEvents =
-      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
-        v3FundsDepositedEvents,
-      );
-    await publishRelayHashInfoMessages(
-      savedV3FundsDepositedEvents,
-      "V3FundsDeposited",
-    );
-
-    const savedRequestedV3SlowFillEvents =
-      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
-        requestedV3SlowFillEvents,
-      );
-    await publishRelayHashInfoMessages(
-      savedRequestedV3SlowFillEvents,
-      "RequestedV3SlowFill",
-    );
-
-    const savedFilledV3RelayEvents =
-      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
-        filledV3RelayEvents,
-      );
-    await publishRelayHashInfoMessages(
-      savedFilledV3RelayEvents,
-      "FilledV3Relay",
-    );
-
-    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
-      requestedSpeedUpV3Events,
-    );
-    await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
-      relayedRootBundleEvents,
-      spokeConfig.chainId,
-    );
-    await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
-      executedRelayerRefundRootEvents,
-    );
-    await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
-      tokensBridgedEvents,
-    );
-  }
-
-  function stop() {
-    stopRequested = true;
-  }
-
-  async function start(delay: number) {
-    stopRequested = false;
-    do {
-      await update();
-      await across.utils.delay(delay);
-    } while (!stopRequested);
-  }
-  return {
-    update,
-    start,
-    stop,
-  };
 }
-export type SpokePoolIndexer = Awaited<ReturnType<typeof SpokePoolIndexer>>;
