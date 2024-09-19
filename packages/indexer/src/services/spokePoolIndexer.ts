@@ -40,7 +40,7 @@ export class Indexer extends BaseIndexer {
   private resolvedRangeStore: RangeQueryStore;
   private hubPoolClient: across.clients.HubPoolClient;
   private spokePoolClientRepository: SpokePoolRepository;
-  private spokePoolProcessor: Function;
+  private spokePoolProcessor: Processor;
   private spokePoolProvider: providers.Provider;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
 
@@ -91,10 +91,11 @@ export class Indexer extends BaseIndexer {
       true,
     );
 
-    this.spokePoolProcessor = Processor({
-      logger,
+    this.spokePoolProcessor = new Processor(
       postgres,
-    });
+      logger,
+      this.config.spokeConfig.chainId,
+    );
 
     this.configStoreClient = await utils.getConfigStoreClient({
       logger,
@@ -126,8 +127,8 @@ export class Indexer extends BaseIndexer {
         });
         const events = await this.fetchEventsByRange(fromBlock, toBlock);
         // TODO: may need to catch error to see if there is some data that exists in db already or change storage to overwrite any existing values
-        await this.storeEvents(events);
-        await this.spokePoolProcessor()
+        const storedEvents = await this.storeEvents(events);
+        await this.spokePoolProcessor.process(storedEvents);
         await this.resolvedRangeStore.setByRange(fromBlock, toBlock);
         this.logger.info({
           message: `Completed update for block range ${fromBlock} to ${toBlock}`,
@@ -170,15 +171,22 @@ export class Indexer extends BaseIndexer {
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
     } = params;
-    await this.spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
-      v3FundsDepositedEvents,
-    );
-    await this.spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
-      requestedV3SlowFillEvents,
-    );
-    await this.spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
-      filledV3RelayEvents,
-    );
+    const savedV3FundsDepositedEvents =
+      await this.spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        v3FundsDepositedEvents,
+      );
+    const savedV3RequestedSlowFills =
+      await this.spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedV3SlowFillEvents,
+      );
+    const savedFilledV3RelayEvents =
+      await this.spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledV3RelayEvents,
+      );
+    const savedExecutedRelayerRefundRootEvents =
+      await this.spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+        executedRelayerRefundRootEvents,
+      );
     await this.spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
       requestedSpeedUpV3Events,
     );
@@ -186,12 +194,15 @@ export class Indexer extends BaseIndexer {
       relayedRootBundleEvents,
       this.config.spokeConfig.chainId,
     );
-    await this.spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
-      executedRelayerRefundRootEvents,
-    );
     await this.spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
       tokensBridgedEvents,
     );
+    return {
+      deposits: savedV3FundsDepositedEvents,
+      fills: savedFilledV3RelayEvents,
+      slowFillRequests: savedV3RequestedSlowFills,
+      executedRefundRoots: savedExecutedRelayerRefundRootEvents,
+    };
   }
 
   private async getUnprocessedRanges(toBlock?: number): Promise<Ranges> {

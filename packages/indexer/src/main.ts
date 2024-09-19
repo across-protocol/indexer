@@ -178,7 +178,6 @@ export async function Main(
 
   const redis = await initializeRedis(redisConfig, logger);
 
-  // optional postgresConfig
   const postgresConfig = getPostgresConfig(env);
   const postgres = await connectToDatabase(postgresConfig, logger);
 

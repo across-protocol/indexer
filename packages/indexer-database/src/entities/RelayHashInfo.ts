@@ -67,7 +67,10 @@ export class RelayHashInfo {
   })
   slowFillRequestEvent: RequestedV3SlowFill;
 
-  @Column({ type: "enum", enum: RelayStatus, nullable: true })
+  @Column()
+  fillDeadline: Date;
+
+  @Column({ type: "enum", enum: RelayStatus, default: RelayStatus.Unfilled })
   status: RelayStatus;
 
   @Column({ nullable: true })
