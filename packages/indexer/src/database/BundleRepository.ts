@@ -120,14 +120,14 @@ export class BundleRepository extends utils.BaseRepository {
    * @param blockNumber The block number to search from
    * @param transactionIndex The transaction index in the block to search from
    * @param logIndex The log index in the transaction to search from
-   * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number
+   * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number (optional)
    * @returns The closest proposed (undisputed/non-canceled) root bundle back in time, or undefined if none are found
    */
   public retrieveClosestProposedRootBundle(
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
-    maxLookbackFromBlock: number = blockNumber, // Default to the entire range,
+    maxLookbackFromBlock?: number,
   ): Promise<entities.ProposedRootBundle | null> {
     return this.postgres
       .getRepository(entities.ProposedRootBundle)
@@ -148,7 +148,11 @@ export class BundleRepository extends utils.BaseRepository {
           blockNumber,
           transactionIndex,
           logIndex,
-          blockDiff: blockNumber - maxLookbackFromBlock,
+          // If maxLookbackFromBlock is undefined, then allow the full range of blocks to be searched
+          blockDiff:
+            maxLookbackFromBlock !== undefined
+              ? blockNumber - maxLookbackFromBlock
+              : 0,
         },
       )
       .orderBy("prb.blockNumber", "DESC") // Grab the most recent proposal
