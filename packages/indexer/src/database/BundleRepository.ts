@@ -109,6 +109,8 @@ export class BundleRepository extends utils.BaseRepository {
       .leftJoin("bundle_block_range", "br", "b.id = br.bundleId")
       .where("br.bundleId IS NULL")
       .select(["b.id", "proposal"])
+      .orderBy("proposal.blockNumber", "ASC")
+      .limit(1000) // Limit to 1000 bundles to process at a time
       .getMany();
   }
 
@@ -125,7 +127,7 @@ export class BundleRepository extends utils.BaseRepository {
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
-    maxLookbackFromBlock: number = Number.MAX_SAFE_INTEGER,
+    maxLookbackFromBlock: number = blockNumber, // Default to the entire range,
   ): Promise<entities.ProposedRootBundle | null> {
     return this.postgres
       .getRepository(entities.ProposedRootBundle)

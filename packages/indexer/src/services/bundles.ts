@@ -7,10 +7,10 @@ import {
   BundleRepository,
 } from "../database/BundleRepository";
 
-const AVERAGE_BUNDLE_LIVENESS_SECONDS = 60 * 60; // 1 hour
+const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
-const AVERAGE_BLOCKS_PER_BUNDLE = Math.floor(
-  AVERAGE_BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
+const BLOCKS_PER_BUNDLE = Math.floor(
+  BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
 );
 
 type BundleConfig = {
@@ -77,7 +77,7 @@ function logResultOfAssignment(
   if (unassociatedRecordsCount > 0) {
     logger.info({
       at: `Bundles#assignToBundle`,
-      message: "Found and associated proposed events with bundles",
+      message: "Found and associated events with bundles",
       unassociatedRecordsCount,
       persistedRecordsCount,
       eventType,
@@ -105,7 +105,7 @@ async function assignDisputeEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            AVERAGE_BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE,
           );
         if (!proposedBundle) {
           return undefined;
@@ -148,7 +148,7 @@ async function assignCanceledEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            AVERAGE_BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE,
           );
         if (!proposedBundle) {
           return undefined;
