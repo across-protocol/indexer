@@ -38,6 +38,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // Bundle
       entities.Bundle,
       entities.BundleBlockRange,
+      entities.RootBundleExecutedJoinTable,
       // Others
       entities.RelayHashInfo,
     ],
