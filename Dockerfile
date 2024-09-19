@@ -1,5 +1,5 @@
 # Set the build image
-FROM node:20 AS development
+FROM node:20
 
 # Set the work directory
 WORKDIR /usr/src/app
@@ -21,32 +21,10 @@ COPY packages/template/package.json ./packages/template/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
 
 # Build the dependencies into a node_modules folder
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the files & build the app
-COPY ./apps ./apps
-COPY ./packages ./packages
+COPY . .
+
+# Build the monorepo
 RUN pnpm build
-
-# Set the production image
-FROM node:20-alpine AS production
-
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-WORKDIR /usr/src/app
-
-# Copy pnpm from the development stage
-COPY --from=development /usr/local/bin/pnpm /usr/local/bin/pnpm
-
-# Copy over the built files from the development stage
-COPY --from=development /usr/src/app/apps ./apps
-COPY --from=development /usr/src/app/packages ./packages
-COPY --from=development /usr/src/app/node_modules ./node_modules
-
-# Change the working directory to the apps/node directory
-WORKDIR /usr/src/app/apps/node
-
-COPY ./docker ./docker
-
-CMD ["sh", "./docker/prod.command.sh"]

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node ./src/app",
+    "start:prod": "node dist/app",
     "build": "tsc -b",
     "format": "prettier --write src",
     "lint": "eslint --fix",

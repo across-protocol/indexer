@@ -1,9 +1,12 @@
-node_modules
 Dockerfile
+docker-compose.yml
+volumes
+**/dist
+**/node_modules
 .dockerignore
-.vscode
+.env
+.git*
+.husky
 .pnpm-store
 .turbo
-**/dist
-dist
-.env
+.vscode

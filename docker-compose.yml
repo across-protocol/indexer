@@ -25,17 +25,14 @@ services:
   indexer-scraper:
     build:
       context: .
-      target: development
     container_name: indexer_service
     volumes:
-      - .:/usr/src/app
+      # - .:/usr/src/app
       - indexer-node-modules:/usr/src/app/node_modules
-    command: /bin/sh -c "/bin/sh ./docker/migrations.command.sh && /bin/sh ./docker/dev.command.sh"
-    working_dir: "/usr/src/app"
+    command: [sh, -c, "pnpm db:indexer-database:migrate:run && pnpm start:indexer"]
     env_file:
       - .env
     environment:
-      APP: indexer
       INDEXER_REDIS_HOST: redis
       DATABASE_HOST: postgres
     depends_on:
@@ -46,19 +43,16 @@ services:
   indexer-api:
     build:
       context: .
-      target: development
     container_name: indexer_api
-    working_dir: "/usr/src/app"
     volumes:
-      - .:/usr/src/app
+      # - .:/usr/src/app
       - indexer-api-node-modules:/usr/src/app/node_modules
     ports:
       - ${PORT}:${PORT}
-    command: ["/bin/sh", "./docker/dev.command.sh"]
+    command: pnpm start:indexer-api
     env_file:
       - .env
     environment:
-      APP: indexer-api
       INDEXER_REDIS_HOST: redis
       DATABASE_HOST: postgres
     depends_on:
