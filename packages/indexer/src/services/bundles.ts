@@ -43,6 +43,7 @@ export class Processor extends BaseIndexer {
     await assignCanceledEventToBundle(bundleRepository, logger);
     await assignBundleRangesToProposal(bundleRepository, logger);
     await assignExecutionsToBundle(bundleRepository, logger);
+    await assignBundleValidatedStatus(bundleRepository, logger);
   }
 
   protected async initialize(): Promise<void> {
@@ -317,4 +318,26 @@ async function assignBundleToProposedEvent(
     unassignedProposedEvents.length,
     createdBundleCount,
   );
+}
+
+/**
+ * Assigns validated/executed status to bundles that have sufficient or all
+ * root bundle executed
+ * @param dbRepository A connection to the database
+ * @param logger A logger instance
+ * @returns A void promise
+ */
+async function assignBundleValidatedStatus(
+  dbRepository: BundleRepository,
+  logger: winston.Logger,
+): Promise<void> {
+  const updates = await dbRepository.updateBundleStatus();
+  if (updates.executedCount > 0 || updates.validatedCount > 0) {
+    logger.info({
+      at: "Bundles#assignBundleValidatedStatus",
+      message: "Updated bundles with validated/executed status",
+      bundlesUpdatedWithExecutedStatus: updates.executedCount,
+      bundlesUpdatedWithValidatedStatus: updates.validatedCount,
+    });
+  }
 }

@@ -310,4 +310,59 @@ export class BundleRepository extends utils.BaseRepository {
       .values(events)
       .execute();
   }
+
+  public async updateBundleStatus(): Promise<{
+    validatedCount: number;
+    executedCount: number;
+  }> {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+
+    // Define subqueries for execution count and leaf count
+    const executionCountSubquery = `(SELECT COUNT(executions."executionId")
+      FROM bundle_executions executions
+      WHERE executions."bundleId" = bundle.id)`;
+
+    const leafCountSubquery = `(SELECT proposal."poolRebalanceLeafCount"
+      FROM "evm"."proposed_root_bundle" proposal
+      WHERE proposal.id = bundle."proposalId"
+      LIMIT 1)`;
+
+    const validatedUpdateQuery = bundleRepo
+      .createQueryBuilder("bundle")
+      .update(entities.Bundle)
+      .set({ status: entities.BundleStatus.Validated })
+      .where("bundle.status IN (:...statuses)", {
+        statuses: [entities.BundleStatus.Proposed],
+      })
+      .andWhere(`${executionCountSubquery} > 0`)
+      .andWhere(`${executionCountSubquery} < ${leafCountSubquery}`);
+
+    const executedUpdateQuery = bundleRepo
+      .createQueryBuilder("bundle")
+      .update(entities.Bundle)
+      .set({ status: entities.BundleStatus.Executed })
+      .where("bundle.status IN (:...statuses)", {
+        statuses: [
+          entities.BundleStatus.Proposed,
+          entities.BundleStatus.Validated,
+        ],
+      })
+      .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
+
+    console.log(
+      validatedUpdateQuery.getSql(),
+      validatedUpdateQuery.getParameters(),
+    );
+    console.log(
+      executedUpdateQuery.getSql(),
+      executedUpdateQuery.getParameters(),
+    );
+
+    const validatedUpdates = await validatedUpdateQuery.execute();
+    const executedUpdates = await executedUpdateQuery.execute();
+    return {
+      validatedCount: validatedUpdates.affected ?? 0,
+      executedCount: executedUpdates.affected ?? 0,
+    };
+  }
 }
