@@ -9,6 +9,22 @@ export type BlockRangeInsertType = {
 };
 
 /**
+ * A convenience type for picking the id, block number, transaction hash, log index, and transaction index from a given type.
+ */
+export type PickRangeType<
+  T extends {
+    blockNumber: number;
+    transactionHash: string;
+    logIndex: number;
+    transactionIndex: number;
+    id: number;
+  },
+> = Pick<
+  T,
+  "blockNumber" | "transactionHash" | "logIndex" | "transactionIndex" | "id"
+>;
+
+/**
  * An abstraction class for interacting with the database for bundle-related operations.
  */
 export class BundleRepository extends utils.BaseRepository {
@@ -25,10 +41,7 @@ export class BundleRepository extends utils.BaseRepository {
    * @returns A list of partial canceled root bundle entities
    */
   public retrieveUnassociatedCanceledEvents(): Promise<
-    Pick<
-      entities.RootBundleCanceled,
-      "blockNumber" | "transactionHash" | "logIndex" | "transactionIndex" | "id"
-    >[]
+    PickRangeType<entities.RootBundleCanceled>[]
   > {
     const canceledRootBundleRepository = this.postgres.getRepository(
       entities.RootBundleCanceled,
@@ -52,10 +65,7 @@ export class BundleRepository extends utils.BaseRepository {
    * @returns A list of partial disputed root bundle entities
    */
   public retrieveUnassociatedDisputedEvents(): Promise<
-    Pick<
-      entities.RootBundleDisputed,
-      "blockNumber" | "transactionHash" | "logIndex" | "transactionIndex" | "id"
-    >[]
+    PickRangeType<entities.RootBundleDisputed>[]
   > {
     const disputedRootBundleRepository = this.postgres.getRepository(
       entities.RootBundleDisputed,
@@ -75,6 +85,10 @@ export class BundleRepository extends utils.BaseRepository {
       .getMany();
   }
 
+  /**
+   * Retrieves all proposed root bundle events that haven't been associated to a bundle relation yet.
+   * @returns A list of partial proposed root bundle entities
+   */
   public retrieveUnassociatedProposedRootBundleEvents(): Promise<
     Pick<
       entities.ProposedRootBundle,
@@ -99,6 +113,10 @@ export class BundleRepository extends utils.BaseRepository {
       .getMany();
   }
 
+  /**
+   * Retrieves all bundles that don't have block ranges defined.
+   * @returns A list of partial bundle entities that include the bundle ID and proposal
+   */
   public retrieveBundlesWithoutBlockRangesDefined(): Promise<
     Pick<entities.Bundle, "id" | "proposal">[]
   > {
@@ -111,6 +129,33 @@ export class BundleRepository extends utils.BaseRepository {
       .select(["b.id", "proposal"])
       .orderBy("proposal.blockNumber", "ASC")
       .limit(1000) // Limit to 1000 bundles to process at a time
+      .getMany();
+  }
+
+  /**
+   * Retrieves all root bundle executed events that haven't been associated to a bundle relation yet.
+   * @returns A list of partial executed root bundle entities that include the block number, transaction hash, log index, and transaction index
+   */
+  public retrieveUnassociatedRootBundleExecutedEvents(): Promise<
+    PickRangeType<entities.RootBundleExecuted>[]
+  > {
+    return this.postgres
+      .getRepository(entities.RootBundleExecuted)
+      .createQueryBuilder("rbe")
+      .leftJoin(
+        entities.RootBundleExecutedJoinTable,
+        "be",
+        "be.executionId = rbe.id",
+      )
+      .select([
+        "rbe.id",
+        "rbe.blockNumber",
+        "rbe.logIndex",
+        "rbe.transactionIndex",
+      ])
+      .where("be.executionId IS NULL")
+      .orderBy("rbe.blockNumber", "ASC")
+      .limit(100) // Primarily for initial filling
       .getMany();
   }
 
@@ -185,6 +230,12 @@ export class BundleRepository extends utils.BaseRepository {
     return results.identifiers.length;
   }
 
+  /**
+   * A helper function to associate disputes/cancelations with bundles.
+   * @param events A list of mappings between bundle IDs and event IDs
+   * @param eventType The type of event to associate
+   * @returns The number of events associated with bundles
+   */
   public async associateEventsToBundle(
     events: (
       | {
@@ -227,6 +278,11 @@ export class BundleRepository extends utils.BaseRepository {
     return results.filter((x) => x).length;
   }
 
+  /**
+   * Associates a bundle with a block range.
+   * @param ranges A list of block ranges to associate with a bundle
+   * @returns The result of the inserts
+   */
   public associateBlockRangeWithBundle(ranges: BlockRangeInsertType[]) {
     return this.postgres
       .getRepository(entities.BundleBlockRange)
@@ -234,5 +290,70 @@ export class BundleRepository extends utils.BaseRepository {
       .insert()
       .values(ranges)
       .execute();
+  }
+
+  /**
+   * Associates root bundle executed events with a bundle.
+   * @param events A list of mappings between bundle IDs and event IDs
+   * @returns The result of the inserts
+   */
+  public async associateRootBundleExecutedEventsToBundle(
+    events: {
+      bundleId: number;
+      executionId: number;
+    }[],
+  ) {
+    return this.postgres
+      .getRepository(entities.RootBundleExecutedJoinTable)
+      .createQueryBuilder()
+      .insert()
+      .values(events)
+      .execute();
+  }
+
+  public async updateBundleStatus(): Promise<{
+    validatedCount: number;
+    executedCount: number;
+  }> {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+
+    // Define subqueries for execution count and leaf count
+    const executionCountSubquery = `(SELECT COUNT(executions."executionId")
+      FROM bundle_executions executions
+      WHERE executions."bundleId" = bundle.id)`;
+
+    const leafCountSubquery = `(SELECT proposal."poolRebalanceLeafCount"
+      FROM "evm"."proposed_root_bundle" proposal
+      WHERE proposal.id = bundle."proposalId"
+      LIMIT 1)`;
+
+    const validatedUpdateQuery = bundleRepo
+      .createQueryBuilder("bundle")
+      .update(entities.Bundle)
+      .set({ status: entities.BundleStatus.Validated })
+      .where("bundle.status IN (:...statuses)", {
+        statuses: [entities.BundleStatus.Proposed],
+      })
+      .andWhere(`${executionCountSubquery} > 0`)
+      .andWhere(`${executionCountSubquery} < ${leafCountSubquery}`);
+
+    const executedUpdateQuery = bundleRepo
+      .createQueryBuilder("bundle")
+      .update(entities.Bundle)
+      .set({ status: entities.BundleStatus.Executed })
+      .where("bundle.status IN (:...statuses)", {
+        statuses: [
+          entities.BundleStatus.Proposed,
+          entities.BundleStatus.Validated,
+        ],
+      })
+      .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
+
+    const validatedUpdates = await validatedUpdateQuery.execute();
+    const executedUpdates = await executedUpdateQuery.execute();
+    return {
+      validatedCount: validatedUpdates.affected ?? 0,
+      executedCount: executedUpdates.affected ?? 0,
+    };
   }
 }

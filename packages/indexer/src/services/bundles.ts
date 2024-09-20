@@ -42,6 +42,8 @@ export class Processor extends BaseIndexer {
     await assignDisputeEventToBundle(bundleRepository, logger);
     await assignCanceledEventToBundle(bundleRepository, logger);
     await assignBundleRangesToProposal(bundleRepository, logger);
+    await assignExecutionsToBundle(bundleRepository, logger);
+    await assignBundleValidatedStatus(bundleRepository, logger);
   }
 
   protected async initialize(): Promise<void> {
@@ -172,6 +174,53 @@ async function assignCanceledEventToBundle(
   );
 }
 
+async function assignExecutionsToBundle(
+  dbRepository: BundleRepository,
+  logger: winston.Logger,
+): Promise<void> {
+  const unassociatedExecutions =
+    await dbRepository.retrieveUnassociatedRootBundleExecutedEvents();
+
+  const mappingOfExecutionsToBundles = await Promise.all(
+    unassociatedExecutions.map(
+      async ({ blockNumber, id, logIndex, transactionIndex }) => {
+        const proposedBundle =
+          await dbRepository.retrieveClosestProposedRootBundle(
+            blockNumber,
+            transactionIndex,
+            logIndex,
+          );
+        if (!proposedBundle) {
+          logger.error({
+            at: "Bundles#assignExecutionsToBundle",
+            message: "Unable to find a proposed bundle for the given execution",
+            executionId: id,
+          });
+          throw new Error(
+            `Unable to find a proposed bundle for the given execution ${id}`,
+          );
+        }
+        return {
+          bundleId: proposedBundle.id,
+          executionId: id,
+        };
+      },
+    ),
+  );
+
+  const insertResults =
+    await dbRepository.associateRootBundleExecutedEventsToBundle(
+      mappingOfExecutionsToBundles,
+    );
+
+  logResultOfAssignment(
+    logger,
+    "RootBundleExecuted",
+    unassociatedExecutions.length,
+    insertResults.generatedMaps.length,
+  );
+}
+
 async function assignBundleRangesToProposal(
   dbRepository: BundleRepository,
   logger: winston.Logger,
@@ -235,14 +284,14 @@ async function assignBundleRangesToProposal(
       );
     }),
   );
-  const insertResult = await dbRepository.associateBlockRangeWithBundle(
+  const insertResults = await dbRepository.associateBlockRangeWithBundle(
     rangeSegments.filter((segment) => segment !== undefined).flat(),
   );
   logResultOfAssignment(
     logger,
     "BundleBlockRange",
     rangeSegments.length,
-    insertResult.generatedMaps.length,
+    insertResults.generatedMaps.length,
   );
 }
 
@@ -269,4 +318,26 @@ async function assignBundleToProposedEvent(
     unassignedProposedEvents.length,
     createdBundleCount,
   );
+}
+
+/**
+ * Assigns validated/executed status to bundles that have sufficient or all
+ * root bundle executed
+ * @param dbRepository A connection to the database
+ * @param logger A logger instance
+ * @returns A void promise
+ */
+async function assignBundleValidatedStatus(
+  dbRepository: BundleRepository,
+  logger: winston.Logger,
+): Promise<void> {
+  const updates = await dbRepository.updateBundleStatus();
+  if (updates.executedCount > 0 || updates.validatedCount > 0) {
+    logger.info({
+      at: "Bundles#assignBundleValidatedStatus",
+      message: "Updated bundles with validated/executed status",
+      bundlesUpdatedWithExecutedStatus: updates.executedCount,
+      bundlesUpdatedWithValidatedStatus: updates.validatedCount,
+    });
+  }
 }
