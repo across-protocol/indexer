@@ -202,8 +202,7 @@ export async function Main(
     redis,
     postgres,
   });
-  const spokePoolIndexers: Array<services.spokePoolIndexer.SpokePoolIndexer> =
-    [];
+  const spokePoolIndexers: Array<services.spokePoolIndexer.Indexer> = [];
   const hubPoolIndexerConfig = await getHubPoolIndexerConfig({
     hubPoolNetworkInfo,
     hubPoolProviderUrl,
@@ -228,7 +227,7 @@ export async function Main(
       message: "Starting indexer",
       ...config,
     });
-    const spokeIndexer = await services.spokePoolIndexer.SpokePoolIndexer({
+    const spokeIndexer = new services.spokePoolIndexer.Indexer({
       logger,
       redis,
       postgres,
