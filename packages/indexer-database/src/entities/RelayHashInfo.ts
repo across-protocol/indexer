@@ -13,13 +13,14 @@ import { V3FundsDeposited } from "./evm/V3FundsDeposited";
 import { FilledV3Relay } from "./evm/FilledV3Relay";
 import { RequestedV3SlowFill } from "./evm/RequestedV3SlowFill";
 
-export type RelayStatus =
-  | "unfilled"
-  | "filled"
-  | "slowFillRequested"
-  | "slowFilled"
-  | "expired"
-  | "refunded";
+export enum RelayStatus {
+  Unfilled = "unfilled",
+  Filled = "filled",
+  SlowFillRequested = "slowFillRequested",
+  SlowFilled = "slowFilled",
+  Expired = "expired",
+  Refunded = "refunded",
+}
 
 @Entity()
 @Unique("UK_relayHashInfo_relayHash", ["relayHash"])
@@ -66,8 +67,14 @@ export class RelayHashInfo {
   })
   slowFillRequestEvent: RequestedV3SlowFill;
 
-  @Column({ nullable: true })
+  @Column()
+  fillDeadline: Date;
+
+  @Column({ type: "enum", enum: RelayStatus, default: RelayStatus.Unfilled })
   status: RelayStatus;
+
+  @Column({ nullable: true })
+  depositRefundTxHash: string;
 
   @CreateDateColumn()
   createdAt: Date;

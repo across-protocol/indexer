@@ -6,9 +6,6 @@ import * as s from "superstruct";
 import * as acrossConstants from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
 import { connectToDatabase } from "./database/database.provider";
-import { IndexerQueuesService } from "./messaging/service";
-import { RelayStatusWorker } from "./messaging/RelayStatusWorker";
-import { RelayHashInfoWorker } from "./messaging/RelayHashInfoWorker";
 import { providers } from "ethers";
 import { DatabaseConfig } from "@repo/indexer-database";
 
@@ -19,8 +16,6 @@ type RedisConfig = {
 async function initializeRedis(config: RedisConfig, logger: winston.Logger) {
   const redis = new Redis({
     ...config,
-    // @dev: this config is needed for bullmq workers
-    maxRetriesPerRequest: null,
   });
 
   return new Promise<Redis>((resolve, reject) => {
@@ -183,18 +178,10 @@ export async function Main(
 
   const redis = await initializeRedis(redisConfig, logger);
 
-  const indexerQueuesService = new IndexerQueuesService(redis);
-
-  // optional postgresConfig
   const postgresConfig = getPostgresConfig(env);
   const postgres = await connectToDatabase(postgresConfig, logger);
 
-  // Set up Workers
-  new RelayHashInfoWorker(redis, postgres, indexerQueuesService);
-  new RelayStatusWorker(redis, postgres);
-
   const retryProviderConfig = getRetryProviderConfig(env);
-
   const tempHubProvider = new providers.JsonRpcProvider(hubPoolProviderUrl);
   const hubPoolNetworkInfo = await tempHubProvider.getNetwork();
   const bundleProcessor = new services.bundles.Processor({
@@ -231,7 +218,6 @@ export async function Main(
       logger,
       redis,
       postgres,
-      indexerQueuesService,
       ...config,
     });
     spokePoolIndexers.push(spokeIndexer);

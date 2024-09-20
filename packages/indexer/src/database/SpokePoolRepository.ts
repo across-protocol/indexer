@@ -142,7 +142,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
       };
     });
-    await this.insert(
+    return this.insert(
       entities.ExecutedRelayerRefundRoot,
       formattedEvents,
       throwError,
