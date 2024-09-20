@@ -1,6 +1,12 @@
 import winston from "winston";
-import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
+
+export type BlockRangeInsertType = {
+  bundleId: number;
+  chainId: number;
+  startBlock: number;
+  endBlock: number;
+};
 
 /**
  * An abstraction class for interacting with the database for bundle-related operations.
@@ -93,27 +99,40 @@ export class BundleRepository extends utils.BaseRepository {
       .getMany();
   }
 
+  public retrieveBundlesWithoutBlockRangesDefined(): Promise<
+    Pick<entities.Bundle, "id" | "proposal">[]
+  > {
+    return this.postgres
+      .getRepository(entities.Bundle)
+      .createQueryBuilder("b")
+      .leftJoinAndSelect("b.proposal", "proposal")
+      .leftJoin("bundle_block_range", "br", "b.id = br.bundleId")
+      .where("br.bundleId IS NULL")
+      .select(["b.id", "proposal"])
+      .orderBy("proposal.blockNumber", "ASC")
+      .limit(1000) // Limit to 1000 bundles to process at a time
+      .getMany();
+  }
+
   /**
    * Retrieves the closest proposed root bundle to the given block number, transaction index, and log index. The
    * proposed root bundle can be no further back than the given max lookback from the provided block number.
    * @param blockNumber The block number to search from
    * @param transactionIndex The transaction index in the block to search from
    * @param logIndex The log index in the transaction to search from
-   * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number
-   * @returns The closest proposed root bundle back in time, or undefined if none are found
+   * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number (optional)
+   * @returns The closest proposed (undisputed/non-canceled) root bundle back in time, or undefined if none are found
    */
   public retrieveClosestProposedRootBundle(
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
-    maxLookbackFromBlock: number,
-  ): Promise<Pick<entities.ProposedRootBundle, "id"> | null> {
-    const proposedRootBundleRepository = this.postgres.getRepository(
-      entities.ProposedRootBundle,
-    );
-    return proposedRootBundleRepository
+    maxLookbackFromBlock?: number,
+  ): Promise<entities.ProposedRootBundle | null> {
+    return this.postgres
+      .getRepository(entities.ProposedRootBundle)
       .createQueryBuilder("prb")
-      .select(["prb.id"])
+      .leftJoin(entities.Bundle, "b", "b.proposalId = prb.id")
       .where(
         // Proposal is in the past
         "(prb.blockNumber < :blockNumber OR " +
@@ -122,12 +141,18 @@ export class BundleRepository extends utils.BaseRepository {
           // Proposal happened earlier in the same transaction
           "(prb.blockNumber = :blockNumber AND prb.transactionIndex = :transactionIndex AND prb.logIndex < :logIndex)) AND " +
           // Ensure the block difference is less than an average bundle length in ETH blocks
-          "prb.blockNumber > :blockDiff",
+          "prb.blockNumber > :blockDiff AND" +
+          // The bundle hasn't been disputed or canceled. This is a valid bundle to execute.
+          "(b.disputeId IS NULL AND b.cancelationId IS NULL)",
         {
           blockNumber,
           transactionIndex,
           logIndex,
-          blockDiff: blockNumber - maxLookbackFromBlock,
+          // If maxLookbackFromBlock is undefined, then allow the full range of blocks to be searched
+          blockDiff:
+            maxLookbackFromBlock !== undefined
+              ? blockNumber - maxLookbackFromBlock
+              : 0,
         },
       )
       .orderBy("prb.blockNumber", "DESC") // Grab the most recent proposal
@@ -200,5 +225,14 @@ export class BundleRepository extends utils.BaseRepository {
       }),
     );
     return results.filter((x) => x).length;
+  }
+
+  public associateBlockRangeWithBundle(ranges: BlockRangeInsertType[]) {
+    return this.postgres
+      .getRepository(entities.BundleBlockRange)
+      .createQueryBuilder()
+      .insert()
+      .values(ranges)
+      .execute();
   }
 }

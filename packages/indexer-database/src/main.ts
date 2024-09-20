@@ -37,6 +37,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.V3FundsDeposited,
       // Bundle
       entities.Bundle,
+      entities.BundleBlockRange,
       // Others
       entities.RelayHashInfo,
     ],
