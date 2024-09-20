@@ -162,6 +162,7 @@ export class Indexer extends BaseIndexer {
     executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
     tokensBridgedEvents: across.interfaces.TokensBridged[];
   }) {
+    const { spokePoolClientRepository } = this;
     const {
       v3FundsDepositedEvents,
       filledV3RelayEvents,
@@ -172,29 +173,29 @@ export class Indexer extends BaseIndexer {
       tokensBridgedEvents,
     } = params;
     const savedV3FundsDepositedEvents =
-      await this.spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
         v3FundsDepositedEvents,
       );
     const savedV3RequestedSlowFills =
-      await this.spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
         requestedV3SlowFillEvents,
       );
     const savedFilledV3RelayEvents =
-      await this.spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
         filledV3RelayEvents,
       );
     const savedExecutedRelayerRefundRootEvents =
-      await this.spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+      await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
         executedRelayerRefundRootEvents,
       );
-    await this.spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
       requestedSpeedUpV3Events,
     );
-    await this.spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+    await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
       relayedRootBundleEvents,
       this.config.spokeConfig.chainId,
     );
-    await this.spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+    await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
       tokensBridgedEvents,
     );
     return {
