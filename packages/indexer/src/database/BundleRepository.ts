@@ -349,15 +349,6 @@ export class BundleRepository extends utils.BaseRepository {
       })
       .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
 
-    console.log(
-      validatedUpdateQuery.getSql(),
-      validatedUpdateQuery.getParameters(),
-    );
-    console.log(
-      executedUpdateQuery.getSql(),
-      executedUpdateQuery.getParameters(),
-    );
-
     const validatedUpdates = await validatedUpdateQuery.execute();
     const executedUpdates = await executedUpdateQuery.execute();
     return {
