@@ -38,6 +38,9 @@ export class RelayHashInfo {
   originChainId: number;
 
   @Column({ nullable: true })
+  depositTxHash: string;
+
+  @Column({ nullable: true })
   depositEventId: number;
 
   @OneToOne(() => V3FundsDeposited, { nullable: true })
@@ -46,6 +49,9 @@ export class RelayHashInfo {
     foreignKeyConstraintName: "FK_relayHashInfo_depositEventId",
   })
   depositEvent: V3FundsDeposited;
+
+  @Column({ nullable: true })
+  fillTxHash: string;
 
   @Column({ nullable: true })
   fillEventId: number;
