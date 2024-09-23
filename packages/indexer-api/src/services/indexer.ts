@@ -1,15 +1,14 @@
 import { JSON } from "../types";
 import { DataSource, entities } from "@repo/indexer-database";
 import type { DepositParams, DepositsParams } from "../controllers";
+import { DepositNotFoundException } from "../common/exceptions";
 
 type APIHandler = (
   params?: JSON,
 ) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
 
 export class IndexerService {
-  constructor(private db: DataSource) {
-    this.getDeposits = this.getDeposits.bind(this);
-  }
+  constructor(private db: DataSource) {}
 
   public async getDeposits(params: DepositsParams) {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
@@ -79,6 +78,7 @@ export class IndexerService {
 
     const matchingRelays = await queryBuilder.getMany();
     const numberMatchingRelays = matchingRelays.length;
+    if (numberMatchingRelays === 0) throw new DepositNotFoundException();
     if (params.index < numberMatchingRelays) {
       const relay = matchingRelays[params.index];
       const result = {
@@ -91,7 +91,7 @@ export class IndexerService {
       };
       return result;
     } else {
-      // throw index out of range error ?
+      throw new Error("Index out of range");
     }
   }
 }
