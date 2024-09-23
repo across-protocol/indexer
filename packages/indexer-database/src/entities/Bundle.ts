@@ -16,7 +16,6 @@ import { BundleBlockRange } from "./BundleBlockRange";
 
 export enum BundleStatus {
   Proposed = "Proposed",
-  Validated = "Validated",
   Canceled = "Canceled",
   Disputed = "Disputed",
   Executed = "Executed",

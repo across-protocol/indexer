@@ -311,10 +311,11 @@ export class BundleRepository extends utils.BaseRepository {
       .execute();
   }
 
-  public async updateBundleStatus(): Promise<{
-    validatedCount: number;
-    executedCount: number;
-  }> {
+  /**
+   * Dynamically updates all proposed bundles to executed status if they have the same number of executions as leaf nodes.
+   * @returns The number of bundles updated
+   */
+  public async updateBundleExecutedStatus(): Promise<number> {
     const bundleRepo = this.postgres.getRepository(entities.Bundle);
 
     // Define subqueries for execution count and leaf count
@@ -327,33 +328,15 @@ export class BundleRepository extends utils.BaseRepository {
       WHERE proposal.id = bundle."proposalId"
       LIMIT 1)`;
 
-    const validatedUpdateQuery = bundleRepo
-      .createQueryBuilder("bundle")
-      .update(entities.Bundle)
-      .set({ status: entities.BundleStatus.Validated })
-      .where("bundle.status IN (:...statuses)", {
-        statuses: [entities.BundleStatus.Proposed],
-      })
-      .andWhere(`${executionCountSubquery} > 0`)
-      .andWhere(`${executionCountSubquery} < ${leafCountSubquery}`);
-
     const executedUpdateQuery = bundleRepo
       .createQueryBuilder("bundle")
       .update(entities.Bundle)
       .set({ status: entities.BundleStatus.Executed })
       .where("bundle.status IN (:...statuses)", {
-        statuses: [
-          entities.BundleStatus.Proposed,
-          entities.BundleStatus.Validated,
-        ],
+        statuses: [entities.BundleStatus.Proposed],
       })
       .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
 
-    const validatedUpdates = await validatedUpdateQuery.execute();
-    const executedUpdates = await executedUpdateQuery.execute();
-    return {
-      validatedCount: validatedUpdates.affected ?? 0,
-      executedCount: executedUpdates.affected ?? 0,
-    };
+    return (await executedUpdateQuery.execute())?.affected ?? 0;
   }
 }

@@ -331,13 +331,12 @@ async function assignBundleValidatedStatus(
   dbRepository: BundleRepository,
   logger: winston.Logger,
 ): Promise<void> {
-  const updates = await dbRepository.updateBundleStatus();
-  if (updates.executedCount > 0 || updates.validatedCount > 0) {
+  const updateCount = await dbRepository.updateBundleExecutedStatus();
+  if (updateCount) {
     logger.info({
       at: "Bundles#assignBundleValidatedStatus",
-      message: "Updated bundles with validated/executed status",
-      bundlesUpdatedWithExecutedStatus: updates.executedCount,
-      bundlesUpdatedWithValidatedStatus: updates.validatedCount,
+      message: "Updated bundles with executed status",
+      bundlesUpdatedWithExecutedStatus: updateCount,
     });
   }
 }
