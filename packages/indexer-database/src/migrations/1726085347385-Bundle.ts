@@ -5,7 +5,7 @@ export class Bundle1726085347385 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "public"."bundle_status_enum" AS ENUM('Proposed', 'Validated', 'Canceled', 'Disputed', 'Executed')`,
+      `CREATE TYPE "public"."bundle_status_enum" AS ENUM('Proposed', 'Canceled', 'Disputed', 'Executed')`,
     );
     await queryRunner.query(
       `CREATE TABLE "bundle" (
