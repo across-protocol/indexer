@@ -13,24 +13,17 @@ import { BaseIndexer } from "../generics";
 import { providers } from "ethers";
 import { Processor } from "./spokePoolProcessor";
 
-type Config = {
+export type Config = {
   logger: winston.Logger;
   redis: Redis;
   postgres: DataSource;
   retryProviderConfig: utils.RetryProviderConfig;
-  configStoreConfig: {
-    chainId: number;
-    providerUrl: string;
-    maxBlockLookBack: number;
-  };
   hubConfig: {
     chainId: number;
-    providerUrl: string;
     maxBlockLookBack: number;
   };
   spokeConfig: {
     chainId: number;
-    providerUrl: string;
     maxBlockLookBack: number;
   };
   redisKeyPrefix: string;
@@ -57,7 +50,6 @@ export class Indexer extends BaseIndexer {
       redisKeyPrefix,
       hubConfig,
       spokeConfig,
-      configStoreConfig,
     } = this.config;
 
     this.resolvedRangeStore = new RangeQueryStore({
@@ -76,7 +68,7 @@ export class Indexer extends BaseIndexer {
       ...retryProviderConfig,
       cache: redisCache,
       logger,
-      ...configStoreConfig,
+      ...hubConfig,
     });
     this.spokePoolProvider = utils.getRetryProvider({
       ...retryProviderConfig,
@@ -100,8 +92,8 @@ export class Indexer extends BaseIndexer {
     this.configStoreClient = await utils.getConfigStoreClient({
       logger,
       provider: configStoreProvider,
-      maxBlockLookBack: configStoreConfig.maxBlockLookBack,
-      chainId: configStoreConfig.chainId,
+      maxBlockLookBack: hubConfig.maxBlockLookBack,
+      chainId: hubConfig.chainId,
     });
     this.hubPoolClient = await utils.getHubPoolClient({
       configStoreClient: this.configStoreClient,
