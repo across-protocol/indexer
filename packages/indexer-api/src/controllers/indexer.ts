@@ -32,9 +32,13 @@ const DepositParams = s.object({
   ),
   depositTxHash: s.optional(s.string()),
   relayDataHash: s.optional(s.string()),
-  index: s.defaulted(
-    s.coerce(s.number(), s.string(), (value) => parseInt(value)),
-    0,
+  index: s.refine(
+    s.defaulted(
+      s.coerce(s.number(), s.string(), (value) => parseInt(value)),
+      0,
+    ),
+    "positiveIndex",
+    (value) => value >= 0,
   ),
 });
 

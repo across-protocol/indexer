@@ -1,7 +1,10 @@
 import { JSON } from "../types";
 import { DataSource, entities } from "@repo/indexer-database";
 import type { DepositParams, DepositsParams } from "../controllers";
-import { DepositNotFoundException } from "../common/exceptions";
+import {
+  DepositNotFoundException,
+  IndexParamOutOfRangeException,
+} from "../common/exceptions";
 
 type APIHandler = (
   params?: JSON,
@@ -10,7 +13,9 @@ type APIHandler = (
 export class IndexerService {
   constructor(private db: DataSource) {}
 
-  public async getDeposits(params: DepositsParams) {
+  public async getDeposits(
+    params: DepositsParams,
+  ): Promise<entities.V3FundsDeposited[]> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo.createQueryBuilder("deposit");
 
@@ -83,15 +88,21 @@ export class IndexerService {
       const relay = matchingRelays[params.index];
       const result = {
         status: relay?.status,
+        originChainId: relay?.originChainId,
         depositTxHash: relay?.depositTxHash,
         fillTxHash: relay?.fillTxHash,
+        destinationChainId: relay?.destinationChainId,
         depositRefundTxHash: relay?.depositRefundTxHash,
-        currentIndex: params.index,
-        lastIndex: numberMatchingRelays - 1,
+        pagination: {
+          currentIndex: params.index,
+          maxIndex: numberMatchingRelays - 1,
+        },
       };
       return result;
     } else {
-      throw new Error("Index out of range");
+      throw new IndexParamOutOfRangeException(
+        `Index ${params.index} out of range. Index must be between 0 and ${numberMatchingRelays - 1}`,
+      );
     }
   }
 }

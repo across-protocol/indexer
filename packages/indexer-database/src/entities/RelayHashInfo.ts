@@ -37,6 +37,9 @@ export class RelayHashInfo {
   @Column()
   originChainId: number;
 
+  @Column()
+  destinationChainId: number;
+
   @Column({ nullable: true })
   depositTxHash: string;
 
