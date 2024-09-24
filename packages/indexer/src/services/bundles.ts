@@ -13,7 +13,7 @@ const BLOCKS_PER_BUNDLE = Math.floor(
   BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
 );
 
-type BundleConfig = {
+export type BundleConfig = {
   logger: winston.Logger;
   redis: Redis | undefined;
   postgres: DataSource | undefined;

@@ -143,18 +143,18 @@ export type RetryProviderConfig = {
   nodeQuorumThreshold: number;
   retries: number;
   delay: number;
+  providerConfigs: [providerUrls: string, chainId: number][];
+  chainId: number;
 };
 export type RetryProviderDeps = {
   cache: across.interfaces.CachingMechanismInterface;
   logger: winston.Logger;
-  providerUrl: string;
-  chainId: number;
 };
 export function getRetryProvider(
   params: RetryProviderConfig & RetryProviderDeps,
 ) {
   return new across.providers.RetryProvider(
-    [[params.providerUrl, params.chainId]],
+    params.providerConfigs,
     params.chainId,
     params.nodeQuorumThreshold,
     params.retries,

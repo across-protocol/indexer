@@ -37,7 +37,7 @@ export abstract class BaseIndexer {
       this.logger.error({
         at: "BaseIndexer#start",
         message: `Failed to initialize ${this.name}`,
-        error: e,
+        error: (e as unknown as Error).message,
       });
       return;
     }
