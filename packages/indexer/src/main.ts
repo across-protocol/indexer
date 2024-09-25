@@ -8,6 +8,10 @@ import * as across from "@across-protocol/sdk";
 import { connectToDatabase } from "./database/database.provider";
 import { providers } from "ethers";
 import { DatabaseConfig } from "@repo/indexer-database";
+import { RedisCache } from "./redis/redisCache";
+import { HubPoolIndexerDataHandler } from "./services/HubPoolIndexerDataHandler";
+import * as utils from "./utils";
+import { getFinalisedBlockBufferDistance, getLoopWaitTimeSeconds, Indexer } from "./data-indexing/service";
 
 type RedisConfig = {
   host: string;
@@ -267,4 +271,29 @@ export async function Main(
   redis?.quit();
   postgres?.destroy();
   logger.info("Exiting indexer");
+  const mainnetProvider = utils.getRetryProvider({
+    ...retryProviderConfig,
+    cache: new RedisCache(redis),
+    logger,
+    chainId: hubPoolNetworkInfo.chainId,
+    providerUrl: hubPoolProviderUrl,
+  });
+  const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
+    logger,
+    acrossConstants.CHAIN_IDs.MAINNET,
+    mainnetProvider
+  );
+  const indexer = new Indexer(
+    {
+      loopWaitTimeSeconds: getLoopWaitTimeSeconds(acrossConstants.CHAIN_IDs.MAINNET),
+      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
+        acrossConstants.CHAIN_IDs.MAINNET
+      ),
+    },
+    hubPoolIndexerDataHandler,
+    mainnetProvider,
+    new RedisCache(redis),
+    logger
+  );
+  await indexer.start();
 }
