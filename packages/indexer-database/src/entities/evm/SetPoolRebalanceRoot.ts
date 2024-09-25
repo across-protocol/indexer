@@ -20,16 +20,16 @@ export class SetPoolRebalanceRoot {
   destinationToken: string;
 
   @Column({ nullable: false })
+  blockNumber: number;
+
+  @Column()
   transactionHash: string;
 
-  @Column({ nullable: false })
+  @Column()
   transactionIndex: number;
 
-  @Column({ nullable: false })
+  @Column()
   logIndex: number;
-
-  @Column({ nullable: false })
-  blockNumber: number;
 
   @CreateDateColumn()
   createdAt: Date;

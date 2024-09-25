@@ -10,10 +10,10 @@ export class SetPoolRebalanceRoot1727299133735 implements MigrationInterface {
         "destinationChainId" integer NOT NULL, 
         "l1Token" character varying NOT NULL, 
         "destinationToken" character varying NOT NULL, 
-        "transactionHash" character varying NOT NULL, 
-        "transactionIndex" integer NOT NULL, 
-        "logIndex" integer NOT NULL, 
         "blockNumber" integer NOT NULL, 
+        "transactionHash" character varying, 
+        "transactionIndex" integer, 
+        "logIndex" integer, 
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(), 
         CONSTRAINT "PK_eaf002832bc6c5d1063be0d1da5" PRIMARY KEY ("id")
       )`,
