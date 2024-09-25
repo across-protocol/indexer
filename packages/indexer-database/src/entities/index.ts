@@ -3,6 +3,7 @@ export * from "./evm/ProposedRootBundle";
 export * from "./evm/RootBundleCanceled";
 export * from "./evm/RootBundleDisputed";
 export * from "./evm/RootBundleExecuted";
+export * from "./evm/SetPoolRebalanceRoot";
 // SpokePool
 export * from "./evm/V3FundsDeposited";
 export * from "./evm/FilledV3Relay";
