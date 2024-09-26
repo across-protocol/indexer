@@ -3,10 +3,10 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { connectToDatabase } from "./database/database.provider";
-import * as utils from "./utils";
+import * as parseEnv from "./parseEnv";
 
 async function initializeRedis(
-  config: utils.RedisConfig,
+  config: parseEnv.RedisConfig,
   logger: winston.Logger,
 ) {
   const redis = new Redis({
@@ -26,7 +26,7 @@ async function initializeRedis(
   });
 }
 
-export async function Main(config: utils.Config, logger: winston.Logger) {
+export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const { redisConfig, postgresConfig, hubConfig, spokeConfigs } = config;
 
   const redis = await initializeRedis(redisConfig, logger);

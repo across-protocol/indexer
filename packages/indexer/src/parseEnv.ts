@@ -1,8 +1,8 @@
 import assert from "assert";
 import { DatabaseConfig } from "@repo/indexer-database";
 import * as s from "superstruct";
-import { RetryProviderConfig } from "./contractUtils";
-import * as services from "../services";
+import { RetryProviderConfig } from "./utils/contractUtils";
+import * as services from "./services";
 
 export type Config = {
   redisConfig: RedisConfig;
