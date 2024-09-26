@@ -74,12 +74,12 @@ export class HubPoolRepository extends utils.BaseRepository {
   }
 
   public async formatAndSaveSetPoolRebalanceRouteEvents(
-    SetPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
+    setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
       l2ChainId: number;
     })[],
     throwError?: boolean,
   ) {
-    const formattedEvents = SetPoolRebalanceRouteEvents.map((event) => {
+    const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
       return {
         ...event,
         destinationChainId: event.l2ChainId,

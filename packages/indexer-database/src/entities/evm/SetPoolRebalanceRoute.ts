@@ -3,9 +3,15 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  Unique,
 } from "typeorm";
 
 @Entity({ schema: "evm" })
+@Unique("UK_setPoolRebalanceRoute_transactionHash_transactionIndex_logIndex", [
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+])
 export class SetPoolRebalanceRoute {
   @PrimaryGeneratedColumn()
   id: number;
@@ -22,13 +28,13 @@ export class SetPoolRebalanceRoute {
   @Column({ nullable: false })
   blockNumber: number;
 
-  @Column()
+  @Column({ nullable: false })
   transactionHash: string;
 
-  @Column()
+  @Column({ nullable: false })
   transactionIndex: number;
 
-  @Column()
+  @Column({ nullable: false })
   logIndex: number;
 
   @CreateDateColumn()

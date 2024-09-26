@@ -164,7 +164,7 @@ export class Indexer extends BaseIndexer {
       hubPoolClient.getCancelledRootBundlesInBlockRange(fromBlock, toBlock);
     const rootBundleDisputedEvents =
       hubPoolClient.getDisputedRootBundlesInBlockRange(fromBlock, toBlock);
-    const SetPoolRebalanceRouteEvents =
+    const setPoolRebalanceRouteEvents =
       hubPoolClient.getTokenMappingsModifiedInBlockRange(fromBlock, toBlock);
     // we do not have a block range query for executed root bundles
     const rootBundleExecutedEvents = hubPoolClient.getExecutedRootBundles();
@@ -181,7 +181,7 @@ export class Indexer extends BaseIndexer {
         (event) =>
           event.blockNumber >= fromBlock && event.blockNumber <= toBlock,
       ),
-      SetPoolRebalanceRouteEvents,
+      setPoolRebalanceRouteEvents,
     };
   }
 
@@ -192,7 +192,7 @@ export class Indexer extends BaseIndexer {
     rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[];
     rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[];
     rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[];
-    SetPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
+    setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
       l2ChainId: number;
     })[];
   }) {
@@ -202,7 +202,7 @@ export class Indexer extends BaseIndexer {
       rootBundleCanceledEvents,
       rootBundleDisputedEvents,
       rootBundleExecutedEvents,
-      SetPoolRebalanceRouteEvents,
+      setPoolRebalanceRouteEvents,
     } = params;
     await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
       proposedRootBundleEvents,
@@ -217,7 +217,7 @@ export class Indexer extends BaseIndexer {
       rootBundleExecutedEvents,
     );
     await hubPoolRepository.formatAndSaveSetPoolRebalanceRouteEvents(
-      SetPoolRebalanceRouteEvents,
+      setPoolRebalanceRouteEvents,
     );
   }
 }
