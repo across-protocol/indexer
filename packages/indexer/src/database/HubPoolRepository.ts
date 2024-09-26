@@ -73,13 +73,13 @@ export class HubPoolRepository extends utils.BaseRepository {
     await this.insert(entities.RootBundleExecuted, formattedEvents, throwError);
   }
 
-  public async formatAndSaveSetPoolRebalanceRootEvents(
-    setPoolRebalanceRootEvents: (across.interfaces.DestinationTokenWithBlock & {
+  public async formatAndSaveSetPoolRebalanceRouteEvents(
+    SetPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
       l2ChainId: number;
     })[],
     throwError?: boolean,
   ) {
-    const formattedEvents = setPoolRebalanceRootEvents.map((event) => {
+    const formattedEvents = SetPoolRebalanceRouteEvents.map((event) => {
       return {
         ...event,
         destinationChainId: event.l2ChainId,
@@ -88,7 +88,7 @@ export class HubPoolRepository extends utils.BaseRepository {
       };
     });
     await this.insert(
-      entities.SetPoolRebalanceRoot,
+      entities.SetPoolRebalanceRoute,
       formattedEvents,
       throwError,
     );
@@ -108,7 +108,7 @@ export class HubPoolRepository extends utils.BaseRepository {
   ): Promise<string | undefined> {
     // Build the base query
     const queryBuilder = this.postgres
-      .getRepository(entities.SetPoolRebalanceRoot)
+      .getRepository(entities.SetPoolRebalanceRoute)
       .createQueryBuilder("poolRebalanceRoot")
       .where("poolRebalanceRoot.destinationToken = :l2Token", { l2Token })
       .andWhere("poolRebalanceRoot.destinationChainId = :chainId", { chainId });
@@ -144,7 +144,7 @@ export class HubPoolRepository extends utils.BaseRepository {
   ): Promise<string | undefined> {
     // Build the base query
     const queryBuilder = this.postgres
-      .getRepository(entities.SetPoolRebalanceRoot)
+      .getRepository(entities.SetPoolRebalanceRoute)
       .createQueryBuilder("poolRebalanceRoot")
       .where("poolRebalanceRoot.l1Token = :l1Token", { l1Token })
       .andWhere("poolRebalanceRoot.destinationChainId = :chainId", { chainId });

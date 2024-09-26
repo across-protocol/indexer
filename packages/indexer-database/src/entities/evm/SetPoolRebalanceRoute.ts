@@ -6,7 +6,7 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-export class SetPoolRebalanceRoot {
+export class SetPoolRebalanceRoute {
   @PrimaryGeneratedColumn()
   id: number;
 

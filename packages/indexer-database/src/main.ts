@@ -27,7 +27,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RootBundleCanceled,
       entities.RootBundleDisputed,
       entities.RootBundleExecuted,
-      entities.SetPoolRebalanceRoot,
+      entities.SetPoolRebalanceRoute,
       // SpokePool
       entities.ExecutedRelayerRefundRoot,
       entities.FilledV3Relay,

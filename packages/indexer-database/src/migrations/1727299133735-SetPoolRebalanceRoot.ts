@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class SetPoolRebalanceRoot1727299133735 implements MigrationInterface {
-  name = "SetPoolRebalanceRoot1727299133735";
+export class SetPoolRebalanceRoute1727299133735 implements MigrationInterface {
+  name = "SetPoolRebalanceRoute1727299133735";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "evm"."set_pool_rebalance_root" (
+      `CREATE TABLE "evm"."set_pool_rebalance_route" (
         "id" SERIAL NOT NULL, 
         "destinationChainId" integer NOT NULL, 
         "l1Token" character varying NOT NULL, 
@@ -21,6 +21,6 @@ export class SetPoolRebalanceRoot1727299133735 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "evm"."set_pool_rebalance_root"`);
+    await queryRunner.query(`DROP TABLE "evm"."set_pool_rebalance_route"`);
   }
 }
