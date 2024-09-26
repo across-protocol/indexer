@@ -10,14 +10,13 @@ import { HubPoolRepository } from "../database/HubPoolRepository";
 import { getDeployedBlockNumber } from "@across-protocol/contracts";
 import { differenceWith, isEqual } from "lodash";
 
-type Config = {
+export type Config = {
   logger: winston.Logger;
   redis: Redis;
   postgres: DataSource;
   retryProviderConfig: utils.RetryProviderConfig;
   hubConfig: {
     chainId: number;
-    providerUrl: string;
     maxBlockLookBack: number;
   };
   redisKeyPrefix: string;

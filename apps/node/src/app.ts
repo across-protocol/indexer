@@ -37,7 +37,7 @@ async function run() {
       void (await Template.Main(process.env));
       return "Example template app running";
     case "indexer":
-      void (await Indexer.Main(process.env, logger));
+      void (await Indexer.Main(Indexer.envToConfig(process.env), logger));
       break;
     case "persistence-example":
       void (await PersistenceExample.Main(process.env));
