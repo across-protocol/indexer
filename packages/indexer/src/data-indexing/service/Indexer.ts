@@ -19,16 +19,20 @@ export type ConstructorConfig = {
  * Block ranges are resumed from the last finalised block stored in a persistent cache/db.
  */
 export class Indexer {
+  private stopRequested: boolean;
+
   constructor(
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
     private rpcProvider: ethers.providers.JsonRpcProvider,
     private redisCache: RedisCache,
     private logger: Logger,
-  ) {}
+  ) {
+    this.stopRequested = false;
+  }
 
-  async start() {
-    while (true) {
+  public async start() {
+    while (!this.stopRequested) {
       try {
         const { latestBlockNumber, blockRange } = await this.getBlockRange();
 
@@ -65,6 +69,18 @@ export class Indexer {
         await across.utils.delay(this.config.loopWaitTimeSeconds);
       }
     }
+  }
+
+  /**
+   * Issues a stop request to the indexer.
+   * @dev Note: this does not stop the indexer immediately, but sets a flag that the indexer should stop at the next opportunity.
+   */
+  public stopGracefully() {
+    this.logger.info({
+      at: "Indexer::stopGracefully",
+      message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stoped`,
+    });
+    this.stopRequested = true;
   }
 
   private getLastFinalisedBlockInBlockRange(
