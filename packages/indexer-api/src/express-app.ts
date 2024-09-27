@@ -3,10 +3,10 @@ import bodyParser from "body-parser";
 import type { Request, Response, NextFunction, Express, Router } from "express";
 import express from "express";
 
-export class ExtendedError extends Error {
+export class HttpError extends Error {
   status?: number;
 }
-export function isExtendedError(error: any): error is ExtendedError {
+export function isHttpError(error: any): error is HttpError {
   return error.status !== undefined;
 }
 
@@ -24,23 +24,18 @@ export function ExpressApp(routers: RouterConfigs): Express {
 
   app.options("*", cors());
 
-  [...Object.entries(routers)].forEach(([key, router]) => {
-    app.use(`/${key}`, router);
-  });
-
-  // return callable routers
-  app.get("/", (req: Request, res: Response) => {
-    res.json([...Object.keys(routers)]);
+  [...Object.values(routers)].forEach((router) => {
+    app.use("/", router);
   });
 
   app.use(function (_: Request, __: Response, next: NextFunction) {
-    const error = new ExtendedError("Not Found");
+    const error = new HttpError("Not Found");
     error["status"] = 404;
     next(error);
   });
 
   app.use(function (
-    err: ExtendedError | Error,
+    err: HttpError | Error,
     req: Request,
     res: Response,
     // this needs to be included even if unused, since 4 param call triggers error handler
@@ -52,7 +47,7 @@ export function ExpressApp(routers: RouterConfigs): Express {
       body: req.body,
     };
     let status = 500;
-    if (isExtendedError(err)) {
+    if (isHttpError(err)) {
       status = err.status ?? status;
     }
     res.status(status).json({

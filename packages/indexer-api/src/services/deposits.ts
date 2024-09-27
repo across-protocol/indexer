@@ -1,16 +1,16 @@
 import { JSON } from "../types";
 import { DataSource, entities } from "@repo/indexer-database";
-import type { DepositParams, DepositsParams } from "../controllers";
+import type { DepositParams, DepositsParams } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
   IndexParamOutOfRangeException,
-} from "../common/exceptions";
+} from "./exceptions";
 
 type APIHandler = (
   params?: JSON,
 ) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
 
-export class IndexerService {
+export class DepositsService {
   constructor(private db: DataSource) {}
 
   public async getDeposits(

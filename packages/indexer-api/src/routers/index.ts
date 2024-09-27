@@ -1,1 +1,1 @@
-export * as indexer from "./indexer";
+export * as deposits from "./deposits";

@@ -1,7 +1,7 @@
-import { ExtendedError } from "../express-app";
-import { HttpStatus } from "./httpStatus";
+import { HttpError } from "../express-app";
+import { HttpStatus } from "../model/httpStatus";
 
-export class DepositNotFoundException extends ExtendedError {
+export class DepositNotFoundException extends HttpError {
   constructor() {
     super("Deposit not found");
     this.name = "DepositNotFoundException";
@@ -9,7 +9,7 @@ export class DepositNotFoundException extends ExtendedError {
   }
 }
 
-export class IndexParamOutOfRangeException extends ExtendedError {
+export class IndexParamOutOfRangeException extends HttpError {
   constructor(message: string) {
     super(message);
     this.name = "IndexParamOutOfRangeException";

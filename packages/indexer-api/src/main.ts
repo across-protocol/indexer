@@ -46,10 +46,10 @@ export async function Main(
   const postgresConfig = getPostgresConfig(env);
   const postgres = await connectToDatabase(postgresConfig, logger);
 
-  const allServices: Record<string, Router> = {
-    indexer: routers.indexer.getRouter(postgres),
+  const allRouters: Record<string, Router> = {
+    deposits: routers.deposits.getRouter(postgres),
   };
-  const app = ExpressApp(allServices);
+  const app = ExpressApp(allRouters);
 
   logger.info({
     message: `Starting indexer api on port ${port}`,
