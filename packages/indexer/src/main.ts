@@ -108,7 +108,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     hubPoolClientFactory,
     new HubPoolRepository(postgres, logger),
   );
-  const hubPoolIndexer = new Indexer(
+  const indexer = new Indexer(
     {
       loopWaitTimeSeconds: getLoopWaitTimeSeconds(hubChainId),
       finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(hubChainId),
