@@ -142,7 +142,9 @@ export class Indexer extends BaseIndexer {
   }
 
   private async storeEvents(params: {
-    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
+    v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
+      integratorId: string | undefined;
+    })[];
     filledV3RelayEvents: across.interfaces.FillWithBlock[];
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
     requestedSpeedUpV3Events: {
@@ -277,6 +279,14 @@ export class Indexer extends BaseIndexer {
     });
 
     const v3FundsDepositedEvents = spokeClient.getDeposits();
+    const v3FundsDepositedWithIntegradorId = await Promise.all(
+      v3FundsDepositedEvents.map(async (deposit) => {
+        return {
+          ...deposit,
+          integratorId: await this.getIntegratorId(deposit),
+        };
+      }),
+    );
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(
@@ -289,7 +299,7 @@ export class Indexer extends BaseIndexer {
     const tokensBridgedEvents = spokeClient.getTokensBridged();
 
     return {
-      v3FundsDepositedEvents,
+      v3FundsDepositedEvents: v3FundsDepositedWithIntegradorId,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
       requestedSpeedUpV3Events,
@@ -297,5 +307,22 @@ export class Indexer extends BaseIndexer {
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
     };
+  }
+
+  private async getIntegratorId(deposit: across.interfaces.DepositWithBlock) {
+    const INTEGRATOR_DELIMITER = "1dc0de";
+    const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
+    let integratorId = undefined;
+    const txn = await this.spokePoolProvider.getTransaction(
+      deposit.transactionHash,
+    );
+    const txnData = txn.data;
+    if (txnData.includes(INTEGRATOR_DELIMITER)) {
+      integratorId = txnData
+        .split(INTEGRATOR_DELIMITER)
+        .pop()
+        ?.substring(0, INTEGRATOR_ID_LENGTH - 1);
+    }
+    return integratorId;
   }
 }
