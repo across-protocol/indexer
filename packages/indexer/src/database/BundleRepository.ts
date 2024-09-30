@@ -134,7 +134,8 @@ export class BundleRepository extends utils.BaseRepository {
 
   /**
    * Retrieves all root bundle executed events that haven't been associated to a bundle relation yet.
-   * @returns A list of partial executed root bundle entities that include the block number, transaction hash, log index, and transaction index
+   * @returns A list of partial executed root bundle entities that include the block number,
+   *          transaction hash, log index, and transaction index
    */
   public retrieveUnassociatedRootBundleExecutedEvents(): Promise<
     PickRangeType<entities.RootBundleExecuted>[]
@@ -168,7 +169,7 @@ export class BundleRepository extends utils.BaseRepository {
    * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number (optional)
    * @returns The closest proposed (undisputed/non-canceled) root bundle back in time, or undefined if none are found
    */
-  public retrieveClosestProposedRootBundle(
+  public retrieveClosestProposedRootBundleEvent(
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
@@ -202,6 +203,32 @@ export class BundleRepository extends utils.BaseRepository {
       )
       .orderBy("prb.blockNumber", "DESC") // Grab the most recent proposal
       .getOne();
+  }
+
+  /**
+   * Retrieves the most recent bundle with the given status. Optionally, the bundle can
+   * be filtered by a block number. Note: this is a stored bundle from the "Bundle" table
+   * that has already been associated with a proposal.
+   * @param status The status of the bundle to retrieve
+   * @param blockNumber The block number to filter by (optional)
+   * @returns The most recent bundle with the given status, or null if none are found
+   */
+  public retrieveMostRecentBundle(
+    status: entities.BundleStatus,
+    blockNumber?: number,
+  ): Promise<entities.Bundle | null> {
+    const queryBuilder = this.postgres
+      .getRepository(entities.Bundle)
+      .createQueryBuilder("b")
+      .leftJoin("b.proposal", "proposal")
+      .where("b.status = :status", { status });
+    if (blockNumber) {
+      queryBuilder.andWhere("proposal.blockNumber < :blockNumber", {
+        blockNumber,
+      });
+    }
+    queryBuilder.orderBy("proposal.blockNumber", "DESC");
+    return queryBuilder.getOne();
   }
 
   /**
