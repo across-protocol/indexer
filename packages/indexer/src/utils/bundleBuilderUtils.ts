@@ -2,11 +2,8 @@ import { DataSource, entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
 import winston from "winston";
 import { providers, utils } from "@across-protocol/sdk";
+import { ProviderLookup } from "../web3/RetryProvidersFactory";
 
-/**
- * A lookup of RetryProviders for separate chains.
- */
-export type ProviderLookup = Record<number, providers.RetryProvider>;
 type ProposalRange = Pick<
   entities.ProposedRootBundle,
   "bundleEvaluationBlockNumbers" | "chainIds"

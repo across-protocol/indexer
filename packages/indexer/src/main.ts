@@ -74,6 +74,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redis,
     postgres,
   });
+  const bundleBuilderProcessor = new services.bundleBuilder.Processor({
+    logger,
+    redis,
+    postgres,
+    providerFactory: retryProvidersFactory,
+  });
   const spokePoolIndexers = spokePoolChainsEnabled.map(
     (spokePoolChainId) =>
       new services.spokePoolIndexer.Indexer({
@@ -88,7 +94,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         retryProviderFactory: retryProvidersFactory,
       }),
   );
-
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
     hubChainId,
@@ -121,6 +126,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       );
       spokePoolIndexers.map((s) => s.stop());
       hubPoolIndexer.stopGracefully();
+      bundleProcessor.stop();
+      bundleBuilderProcessor.stop();
     } else {
       logger.info("\nForcing exit...");
       redis?.quit();
