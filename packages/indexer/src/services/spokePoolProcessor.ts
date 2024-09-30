@@ -69,10 +69,15 @@ export class Processor {
           relayHash: event.relayHash,
           depositId: event.depositId,
           originChainId: event.originChainId,
+          destinationChainId: event.destinationChainId,
           fillDeadline: event.fillDeadline,
           [eventField]: event.id,
+          ...(eventType === SpokePoolEvents.V3FundsDeposited && {
+            depositTxHash: event.transactionHash,
+          }),
           ...(eventType === SpokePoolEvents.FilledV3Relay && {
             status: RelayStatus.Filled,
+            fillTxHash: event.transactionHash,
           }),
           ...(eventType === SpokePoolEvents.RequestedV3SlowFill && {
             status: RelayStatus.SlowFillRequested,

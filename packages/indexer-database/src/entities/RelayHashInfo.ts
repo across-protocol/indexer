@@ -37,6 +37,12 @@ export class RelayHashInfo {
   @Column()
   originChainId: number;
 
+  @Column()
+  destinationChainId: number;
+
+  @Column({ nullable: true })
+  depositTxHash: string;
+
   @Column({ nullable: true })
   depositEventId: number;
 
@@ -46,6 +52,9 @@ export class RelayHashInfo {
     foreignKeyConstraintName: "FK_relayHashInfo_depositEventId",
   })
   depositEvent: V3FundsDeposited;
+
+  @Column({ nullable: true })
+  fillTxHash: string;
 
   @Column({ nullable: true })
   fillEventId: number;

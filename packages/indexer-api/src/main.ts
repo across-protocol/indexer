@@ -1,7 +1,7 @@
-import { object, string, assert } from "superstruct";
+import assert from "assert";
 import { ExpressApp } from "./express-app";
 import { createDataSource, DatabaseConfig } from "@repo/indexer-database";
-import * as services from "./services";
+import * as routers from "./routers";
 import winston from "winston";
 import { type Router } from "express";
 
@@ -18,22 +18,22 @@ export async function connectToDatabase(
     throw error;
   }
 }
+
 function getPostgresConfig(
   env: Record<string, string | undefined>,
-): DatabaseConfig | undefined {
-  return env.DATABASE_HOST &&
-    env.DATABASE_PORT &&
-    env.DATABASE_USER &&
-    env.DATABASE_PASSWORD &&
-    env.DATABASE_NAME
-    ? {
-        host: env.DATABASE_HOST,
-        port: env.DATABASE_PORT,
-        user: env.DATABASE_USER,
-        password: env.DATABASE_PASSWORD,
-        dbName: env.DATABASE_NAME,
-      }
-    : undefined;
+): DatabaseConfig {
+  assert(env.DATABASE_HOST, "requires DATABASE_HOST");
+  assert(env.DATABASE_PORT, "requires DATABASE_PORT");
+  assert(env.DATABASE_USER, "requires DATABASE_USER");
+  assert(env.DATABASE_PASSWORD, "requires DATABASE_PASSWORD");
+  assert(env.DATABASE_NAME, "requires DATABASE_NAME");
+  return {
+    host: env.DATABASE_HOST,
+    port: env.DATABASE_PORT,
+    user: env.DATABASE_USER,
+    password: env.DATABASE_PASSWORD,
+    dbName: env.DATABASE_NAME,
+  };
 }
 
 export async function Main(
@@ -44,19 +44,12 @@ export async function Main(
   const port = Number(PORT);
 
   const postgresConfig = getPostgresConfig(env);
-  const postgres = postgresConfig
-    ? await connectToDatabase(postgresConfig, logger)
-    : undefined;
+  const postgres = await connectToDatabase(postgresConfig, logger);
 
-  const exampleRouter = services.example.getRouter();
-  const allServices: Record<string, Router> = {
-    example: exampleRouter,
+  const allRouters: Record<string, Router> = {
+    deposits: routers.deposits.getRouter(postgres),
   };
-  if (postgres) {
-    const indexerRouter = services.indexer.getRouter(postgres);
-    allServices.indexer = indexerRouter;
-  }
-  const app = ExpressApp(allServices);
+  const app = ExpressApp(allRouters);
 
   logger.info({
     message: `Starting indexer api on port ${port}`,
