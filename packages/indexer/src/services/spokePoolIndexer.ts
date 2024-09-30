@@ -321,7 +321,7 @@ export class Indexer extends BaseIndexer {
       integratorId = txnData
         .split(INTEGRATOR_DELIMITER)
         .pop()
-        ?.substring(0, INTEGRATOR_ID_LENGTH - 1);
+        ?.substring(0, INTEGRATOR_ID_LENGTH);
     }
     return integratorId;
   }
