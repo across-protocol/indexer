@@ -118,14 +118,14 @@ function parseRetryProviderConfig(
 }
 
 export function parseProvidersUrls() {
-  const results: Record<number, string[]> = {};
+  const results: Map<number, string[]> = new Map();
   for (const [key, value] of Object.entries(process.env)) {
     const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
     if (match) {
       const chainId = match[1] ? parseNumber(match[1]) : undefined;
       if (chainId && value) {
         const providerUrls = parseArray(value);
-        results[chainId] = providerUrls;
+        results.set(chainId, providerUrls);
       }
     }
   }

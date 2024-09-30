@@ -16,9 +16,8 @@ export class RetryProvidersFactory {
   public initializeProviders() {
     const providersUrls = parseProvidersUrls();
 
-    for (const chainId of this.retryProviders.keys()) {
+    for (const [chainId, providerUrls] of providersUrls.entries()) {
       const retryProviderEnvs = parseRetryProviderEnvs(chainId);
-      const providerUrls = providersUrls[chainId];
       if (!providerUrls || providerUrls.length === 0) {
         throw new Error(`No provider urls found for chainId: ${chainId}`);
       }
