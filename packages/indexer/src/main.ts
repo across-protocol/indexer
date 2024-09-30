@@ -91,12 +91,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
-    hubChainId,
-    configStoreClientFactory,
-    hubPoolClientFactory,
+    acrossConstants.CHAIN_IDs.MAINNET,
+    retryProvidersFactory.getProviderForChainId(
+      acrossConstants.CHAIN_IDs.MAINNET,
+    ),
     new HubPoolRepository(postgres, logger),
   );
-  const indexer = new Indexer(
+  const hubPoolIndexer = new Indexer(
     {
       loopWaitTimeSeconds: getLoopWaitTimeSeconds(
         acrossConstants.CHAIN_IDs.MAINNET,
@@ -113,22 +114,22 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
   );
 
-  // let exitRequested = false;
-  // process.on("SIGINT", () => {
-  //   if (!exitRequested) {
-  //     logger.info(
-  //       "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
-  //     );
-  //     spokePoolIndexers.map((s) => s.stop());
-  //     hubPoolIndexer.stop();
-  //   } else {
-  //     logger.info("\nForcing exit...");
-  //     redis?.quit();
-  //     postgres?.destroy();
-  //     logger.info("Exiting indexer");
-  //     across.utils.delay(5).finally(() => process.exit());
-  //   }
-  // });
+  let exitRequested = false;
+  process.on("SIGINT", () => {
+    if (!exitRequested) {
+      logger.info(
+        "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
+      );
+      spokePoolIndexers.map((s) => s.stop());
+      hubPoolIndexer.stopGracefully();
+    } else {
+      logger.info("\nForcing exit...");
+      redis?.quit();
+      postgres?.destroy();
+      logger.info("Exiting indexer");
+      across.utils.delay(5).finally(() => process.exit());
+    }
+  });
 
   logger.info({
     message: "Running indexers",
