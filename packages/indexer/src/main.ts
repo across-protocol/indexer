@@ -103,12 +103,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
-    hubChainId,
-    configStoreClientFactory,
-    hubPoolClientFactory,
+    acrossConstants.CHAIN_IDs.MAINNET,
+    retryProvidersFactory.getProviderForChainId(
+      acrossConstants.CHAIN_IDs.MAINNET,
+    ),
     new HubPoolRepository(postgres, logger),
   );
-  const indexer = new Indexer(
+  const hubPoolIndexer = new Indexer(
     {
       loopWaitTimeSeconds: getLoopWaitTimeSeconds(hubChainId),
       finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(hubChainId),
