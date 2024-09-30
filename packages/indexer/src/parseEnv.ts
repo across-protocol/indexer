@@ -152,7 +152,7 @@ export function parseRetryProviderEnvs(chainId: number) {
     process.env[`NODE_QUORUM_${chainId}`] || process.env.NODE_QUORUM || "1",
   );
   const retries = Number(
-    process.env[`NODE_RETRIES_${chainId}`] || process.env.NODE_RETRIES || "2",
+    process.env[`NODE_RETRIES_${chainId}`] || process.env.NODE_RETRIES || "0",
   );
   const retryDelay = Number(
     process.env[`NODE_RETRY_DELAY_${chainId}`] ||
