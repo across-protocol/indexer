@@ -49,3 +49,13 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON_AMOY]: 0,
   [CHAIN_IDs.SEPOLIA]: 0,
 };
+
+export const getChainCacheFollowDistance = (chainId: number) => {
+  const chainCacheFollowDistance = CHAIN_CACHE_FOLLOW_DISTANCE[chainId];
+
+  if (!chainCacheFollowDistance) {
+    throw new Error(`Invalid chain cache distance for chain id ${chainId}`);
+  }
+
+  return chainCacheFollowDistance;
+};

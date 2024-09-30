@@ -3,7 +3,7 @@ import { providers } from "@across-protocol/sdk";
 
 import { parseRetryProviderEnvs, parseProvidersUrls } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";
-import { CHAIN_CACHE_FOLLOW_DISTANCE } from "./constants";
+import { getChainCacheFollowDistance } from "./constants";
 
 export class RetryProvidersFactory {
   private retryProviders: Map<number, providers.RetryProvider> = new Map();
@@ -22,8 +22,7 @@ export class RetryProvidersFactory {
       if (!providerUrls || providerUrls.length === 0) {
         throw new Error(`No provider urls found for chainId: ${chainId}`);
       }
-      const standardTtlBlockDistance =
-        CHAIN_CACHE_FOLLOW_DISTANCE[chainId] || 0;
+      const standardTtlBlockDistance = getChainCacheFollowDistance(chainId);
       const provider = new providers.RetryProvider(
         providerUrls.map((url) => [url, chainId]),
         chainId,
