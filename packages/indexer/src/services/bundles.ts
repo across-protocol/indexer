@@ -6,6 +6,7 @@ import {
   BlockRangeInsertType,
   BundleRepository,
 } from "../database/BundleRepository";
+import { HubPoolRepository } from "../database/HubPoolRepository";
 
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
@@ -31,13 +32,14 @@ class ConfigurationMalformedError extends Error {
 
 export class Processor extends BaseIndexer {
   private bundleRepository: BundleRepository;
+  private hubPoolRepository: HubPoolRepository;
   constructor(private readonly config: BundleConfig) {
     super(config.logger, "bundle");
   }
 
   protected async indexerLogic(): Promise<void> {
     const { logger } = this.config;
-    const { bundleRepository } = this;
+    const { bundleRepository, hubPoolRepository } = this;
     await assignBundleToProposedEvent(bundleRepository, logger);
     await assignDisputeEventToBundle(bundleRepository, logger);
     await assignCanceledEventToBundle(bundleRepository, logger);
@@ -55,6 +57,11 @@ export class Processor extends BaseIndexer {
       throw new ConfigurationMalformedError();
     }
     this.bundleRepository = new BundleRepository(
+      this.config.postgres,
+      this.config.logger,
+      true,
+    );
+    this.hubPoolRepository = new HubPoolRepository(
       this.config.postgres,
       this.config.logger,
       true,
@@ -103,7 +110,7 @@ async function assignDisputeEventToBundle(
     unassignedDisputedEvents.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -146,7 +153,7 @@ async function assignCanceledEventToBundle(
     unassignedCanceledEvents.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -185,7 +192,7 @@ async function assignExecutionsToBundle(
     unassociatedExecutions.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -250,7 +257,7 @@ async function assignBundleRangesToProposal(
   const rangeSegments = await Promise.all(
     bundlesWithoutRanges.map(async (bundle) => {
       const previousEvent =
-        await dbRepository.retrieveClosestProposedRootBundle(
+        await dbRepository.retrieveClosestProposedRootBundleEvent(
           bundle.proposal.blockNumber,
           bundle.proposal.transactionIndex,
           bundle.proposal.logIndex,
