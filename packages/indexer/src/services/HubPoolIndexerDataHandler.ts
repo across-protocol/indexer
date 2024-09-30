@@ -9,6 +9,7 @@ import {
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
 import { BlockRange } from "../data-indexing/model";
 import { HubPoolRepository } from "../database/HubPoolRepository";
+import { getMaxBlockLookBack } from "../web3/constants";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -75,7 +76,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     this.configStoreClient = await utils.getConfigStoreClient({
       logger: this.logger,
       provider: this.provider,
-      maxBlockLookBack: 10_000,
+      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
       chainId: this.chainId,
     });
     // how to limit the blocks to only the queried range?
@@ -83,7 +84,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       configStoreClient: this.configStoreClient,
       provider: this.provider,
       logger: this.logger,
-      maxBlockLookBack: 10_000,
+      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
       chainId: this.chainId,
     });
   }
