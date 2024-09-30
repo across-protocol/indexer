@@ -4,6 +4,8 @@ import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
+import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
+import { RedisCache } from "./redis/redisCache";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -28,8 +30,9 @@ async function initializeRedis(
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const { redisConfig, postgresConfig, hubConfig, spokeConfigs } = config;
-
   const redis = await initializeRedis(redisConfig, logger);
+  const redisCache = new RedisCache(redis);
+  const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
   const postgres = await connectToDatabase(postgresConfig, logger);
   const bundleProcessor = new services.bundles.Processor({
     logger,

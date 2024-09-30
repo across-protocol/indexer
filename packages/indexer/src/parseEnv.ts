@@ -1,8 +1,9 @@
 import assert from "assert";
-import { DatabaseConfig } from "@repo/indexer-database";
 import * as s from "superstruct";
-import { RetryProviderConfig } from "./utils/contractUtils";
+import { DatabaseConfig } from "@repo/indexer-database";
 import * as services from "./services";
+import { DEFAULT_NO_TTL_DISTANCE } from "./web3/constants";
+import { RetryProviderConfig } from "./utils";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -66,6 +67,7 @@ function parsePostgresConfig(
     dbName: env.DATABASE_NAME,
   };
 }
+
 function parseProviderConfigs(env: Env): ProviderConfig[] {
   const results: ProviderConfig[] = [];
   for (const [key, value] of Object.entries(process.env)) {
@@ -112,6 +114,68 @@ function parseRetryProviderConfig(
     nodeQuorumThreshold: s.create(env.NODE_QUORUM_THRESHOLD, stringToInt),
     retries: s.create(env.RETRIES, stringToInt),
     delay: s.create(env.DELAY, stringToInt),
+  };
+}
+
+export function parseProvidersUrls() {
+  const results: Map<number, string[]> = new Map();
+  for (const [key, value] of Object.entries(process.env)) {
+    const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
+    if (match) {
+      const chainId = match[1] ? parseNumber(match[1]) : undefined;
+      if (chainId && value) {
+        const providerUrls = parseArray(value);
+        results.set(chainId, providerUrls);
+      }
+    }
+  }
+  return results;
+}
+
+export function parseRetryProviderEnvs(chainId: number) {
+  const providerCacheNamespace =
+    process.env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
+  const maxConcurrency = Number(
+    process.env[`NODE_MAX_CONCURRENCY_${chainId}`] ||
+      process.env.NODE_MAX_CONCURRENCY ||
+      "25",
+  );
+  const pctRpcCallsLogged = Number(
+    process.env[`NODE_PCT_RPC_CALLS_LOGGED_${chainId}`] ||
+      process.env.NODE_PCT_RPC_CALLS_LOGGED ||
+      "0",
+  );
+  const providerCacheTtl = process.env.PROVIDER_CACHE_TTL
+    ? Number(process.env.PROVIDER_CACHE_TTL)
+    : undefined;
+  const nodeQuorumThreshold = Number(
+    process.env[`NODE_QUORUM_${chainId}`] || process.env.NODE_QUORUM || "1",
+  );
+  const retries = Number(
+    process.env[`NODE_RETRIES_${chainId}`] || process.env.NODE_RETRIES || "0",
+  );
+  const retryDelay = Number(
+    process.env[`NODE_RETRY_DELAY_${chainId}`] ||
+      process.env.NODE_RETRY_DELAY ||
+      "1",
+  );
+  // Note: if there is no env var override _and_ no default, this will remain undefined and
+  // effectively disable indefinite caching of old blocks/keys.
+  const noTtlBlockDistance: number | undefined = process.env[
+    `NO_TTL_BLOCK_DISTANCE_${chainId}`
+  ]
+    ? Number(process.env[`NO_TTL_BLOCK_DISTANCE_${chainId}`])
+    : DEFAULT_NO_TTL_DISTANCE[chainId];
+
+  return {
+    providerCacheNamespace,
+    maxConcurrency,
+    pctRpcCallsLogged,
+    providerCacheTtl,
+    nodeQuorumThreshold,
+    retries,
+    retryDelay,
+    noTtlBlockDistance,
   };
 }
 
