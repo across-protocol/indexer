@@ -64,7 +64,6 @@ export class Processor extends BaseIndexer {
     this.hubPoolRepository = new HubPoolRepository(
       this.config.postgres,
       this.config.logger,
-      true,
     );
   }
 }
