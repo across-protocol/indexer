@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_setPoolRebalanceRoute_transactionHash_transactionIndex_logIndex", [
+@Unique("UK_spr_transactionHash_transactionIndex_logIndex", [
   "transactionHash",
   "transactionIndex",
   "logIndex",
@@ -36,6 +36,9 @@ export class SetPoolRebalanceRoute {
 
   @Column({ nullable: false })
   logIndex: number;
+
+  @Column()
+  finalised: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

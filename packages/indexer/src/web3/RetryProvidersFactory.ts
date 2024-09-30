@@ -19,7 +19,7 @@ export class RetryProvidersFactory {
     for (const [chainId, providerUrls] of providersUrls.entries()) {
       const retryProviderEnvs = parseRetryProviderEnvs(chainId);
       if (!providerUrls || providerUrls.length === 0) {
-        throw new Error(`No provider urls found for chainId: ${chainId}`);
+        throw new Error(`Invalid provider urls found for chainId: ${chainId}`);
       }
       const standardTtlBlockDistance = getChainCacheFollowDistance(chainId);
       const provider = new providers.RetryProvider(

@@ -8,7 +8,19 @@ import {
 } from "@across-protocol/contracts";
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
 import { BlockRange } from "../data-indexing/model";
+import { HubPoolRepository } from "../database/HubPoolRepository";
 
+type FetchEventsResult = {
+  proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
+    chainIds: number[];
+  })[];
+  rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[];
+  rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[];
+  rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[];
+  setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
+    l2ChainId: number;
+  })[];
+};
 export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -18,6 +30,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     private logger: Logger,
     private chainId: number,
     private provider: across.providers.RetryProvider,
+    private hubPoolRepository: HubPoolRepository,
   ) {
     this.isInitialized = false;
   }
@@ -45,15 +58,17 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       this.isInitialized = true;
     }
     const events = await this.fetchEventsByRange(blockRange);
-    this.logger.info(
-      `HubPoolIndexerDataHandler::Found events ${JSON.stringify({
+    this.logger.info({
+      message: "HubPoolIndexerDataHandler::Found events",
+      events: {
         proposedRootBundleEvents: events.proposedRootBundleEvents.length,
         rootBundleExecutedEvents: events.rootBundleExecutedEvents.length,
         rootBundleCanceledEvents: events.rootBundleCanceledEvents.length,
         rootBundleDisputedEvents: events.rootBundleDisputedEvents.length,
-      })}`,
-    );
-    return;
+        setPoolRebalanceRouteEvents: events.setPoolRebalanceRouteEvents.length,
+      },
+    });
+    await this.storeEvents(events, lastFinalisedBlock);
   }
 
   private async initialize() {
@@ -73,10 +88,14 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private async fetchEventsByRange(blockRange: BlockRange) {
+  private async fetchEventsByRange(
+    blockRange: BlockRange,
+  ): Promise<FetchEventsResult> {
     const { hubPoolClient, configStoreClient } = this;
 
+    configStoreClient.eventSearchConfig.fromBlock = blockRange.from;
     configStoreClient.eventSearchConfig.toBlock = blockRange.to;
+    hubPoolClient.eventSearchConfig.fromBlock = blockRange.from;
     hubPoolClient.eventSearchConfig.toBlock = blockRange.to;
     await configStoreClient.update();
     await hubPoolClient.update();
@@ -92,6 +111,11 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       );
     const rootBundleDisputedEvents =
       hubPoolClient.getDisputedRootBundlesInBlockRange(
+        blockRange.from,
+        blockRange.to,
+      );
+    const setPoolRebalanceRouteEvents =
+      hubPoolClient.getTokenMappingsModifiedInBlockRange(
         blockRange.from,
         blockRange.to,
       );
@@ -111,6 +135,38 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
           event.blockNumber >= blockRange.from &&
           event.blockNumber <= blockRange.to,
       ),
+      setPoolRebalanceRouteEvents,
     };
+  }
+
+  async storeEvents(events: FetchEventsResult, lastFinalisedBlock: number) {
+    const { hubPoolRepository } = this;
+    const {
+      proposedRootBundleEvents,
+      rootBundleCanceledEvents,
+      rootBundleDisputedEvents,
+      rootBundleExecutedEvents,
+      setPoolRebalanceRouteEvents,
+    } = events;
+    await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
+      proposedRootBundleEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
+      rootBundleCanceledEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
+      rootBundleDisputedEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
+      rootBundleExecutedEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveSetPoolRebalanceRouteEvents(
+      setPoolRebalanceRouteEvents,
+      lastFinalisedBlock,
+    );
   }
 }
