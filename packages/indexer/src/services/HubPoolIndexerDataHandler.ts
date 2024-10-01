@@ -55,6 +55,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       message: "HubPoolIndexerDataHandler::Processing block range",
       blockRange,
       lastFinalisedBlock,
+      identifier: this.getDataIdentifier(),
     });
     if (!this.isInitialized) {
       await this.initialize();

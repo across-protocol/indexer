@@ -20,6 +20,7 @@ import {
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "./utils";
+import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -89,6 +90,31 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       }),
   );
 
+  const spokePoolIndexers = spokeConfigs.map((spokeConfig) => {
+    const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
+      logger,
+      spokeConfig.spokeConfig.chainId,
+      retryProvidersFactory,
+    );
+    const spokePoolIndexer = new Indexer(
+      {
+        loopWaitTimeSeconds: getLoopWaitTimeSeconds(
+          spokeConfig.spokeConfig.chainId,
+        ),
+        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
+          spokeConfig.spokeConfig.chainId,
+        ),
+      },
+      spokePoolIndexerDataHandler,
+      retryProvidersFactory.getProviderForChainId(
+        spokeConfig.spokeConfig.chainId,
+      ),
+      redisCache,
+      logger,
+    );
+    return spokePoolIndexer;
+  });
+
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
     acrossConstants.CHAIN_IDs.MAINNET,
@@ -115,12 +141,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   );
 
   let exitRequested = false;
+
   process.on("SIGINT", () => {
     if (!exitRequested) {
       logger.info(
         "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
       );
-      spokePoolIndexers.map((s) => s.stop());
+      spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
     } else {
       logger.info("\nForcing exit...");
@@ -141,6 +168,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
       ...spokePoolIndexers.map((s) => s.start(10)),
+      // bundleProcessor.start(10),
+      ...spokePoolIndexers.map((s) => s.start()),
     ]);
 
   logger.info({
@@ -152,6 +181,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
       hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
+      // bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
     },
   });
 
