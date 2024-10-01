@@ -61,7 +61,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
 
     if (!this.isInitialized) {
-      await this.initialize();
+      await this.initialize(blockRange.from, blockRange.to);
       this.isInitialized = true;
     }
 
@@ -72,9 +72,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       return acc + Object.values(speedUps).length;
     }, 0);
     this.logger.info({
-      message: "HubPoolIndexerDataHandler::Found events",
+      message: "SpokePoolIndexerDataHandler::Found events",
       events: {
-        proposedRootBundleEvents: events.v3FundsDepositedEvents.length,
+        v3FundsDepositedEvents: events.v3FundsDepositedEvents.length,
         filledV3RelayEvents: events.filledV3RelayEvents.length,
         requestedV3SlowFillEvents: events.requestedV3SlowFillEvents.length,
         requestedSpeedUpV3Events: requestedSpeedUpV3EventsCount,
@@ -91,18 +91,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const { configStoreClient, hubPoolClient, spokePoolClient } = this;
 
-    configStoreClient.eventSearchConfig.fromBlock = blockRange.from;
     configStoreClient.eventSearchConfig.toBlock = blockRange.to;
-    hubPoolClient.eventSearchConfig.fromBlock = blockRange.from;
     hubPoolClient.eventSearchConfig.toBlock = blockRange.to;
-    spokePoolClient.eventSearchConfig.fromBlock = blockRange.from;
     spokePoolClient.eventSearchConfig.toBlock = blockRange.to;
 
     await configStoreClient.update();
-    await hubPoolClient.update();
+    await hubPoolClient.update([
+      "SetPoolRebalanceRoute",
+      "CrossChainContractsSet",
+    ]);
     await spokePoolClient.update();
 
-    const v3FundsDepositedEvents = spokePoolClient.getDeposits();
+    const v3FundsDepositedEvents = spokePoolClient.getDeposits({
+      fromBlock: blockRange.from,
+      toBlock: blockRange.to,
+    });
     const filledV3RelayEvents = spokePoolClient.getFills();
     const requestedV3SlowFillEvents =
       spokePoolClient.getSlowFillRequestsForOriginChain(this.chainId);
@@ -123,7 +126,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  private async initialize() {
+  private async initialize(fromBlock: number, toBlock: number) {
     this.configStoreClient = await utils.getConfigStoreClient({
       logger: this.logger,
       provider: this.providersFactory.getProviderForChainId(CHAIN_IDs.MAINNET),
@@ -136,6 +139,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       logger: this.logger,
       maxBlockLookBack: getMaxBlockLookBack(this.chainId),
       chainId: this.chainId,
+      toBlock,
     });
     this.spokePoolClient = await utils.getSpokeClient({
       hubPoolClient: this.hubPoolClient,
@@ -143,6 +147,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       logger: this.logger,
       maxBlockLookBack: getMaxBlockLookBack(this.chainId),
       chainId: this.chainId,
+      fromBlock,
+      toBlock,
     });
   }
 }
