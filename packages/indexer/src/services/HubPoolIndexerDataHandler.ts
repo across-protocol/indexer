@@ -79,7 +79,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       maxBlockLookBack: getMaxBlockLookBack(this.chainId),
       chainId: this.chainId,
     });
-    // how to limit the blocks to only the queried range?
     this.hubPoolClient = await utils.getHubPoolClient({
       configStoreClient: this.configStoreClient,
       provider: this.provider,
@@ -94,7 +93,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const { hubPoolClient, configStoreClient } = this;
 
-    configStoreClient.eventSearchConfig.fromBlock = blockRange.from;
     configStoreClient.eventSearchConfig.toBlock = blockRange.to;
     hubPoolClient.eventSearchConfig.fromBlock = blockRange.from;
     hubPoolClient.eventSearchConfig.toBlock = blockRange.to;
