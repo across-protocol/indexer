@@ -59,13 +59,13 @@ export class Indexer extends BaseIndexer {
       logger,
       ...hubConfig,
     });
-    this.configStoreClient = await utils.getConfigStoreClient({
+    this.configStoreClient = utils.getConfigStoreClient({
       logger,
       provider: configStoreProvider,
       maxBlockLookBack: hubConfig.maxBlockLookBack,
       chainId: hubConfig.chainId,
     });
-    this.hubPoolClient = await utils.getHubPoolClient({
+    this.hubPoolClient = utils.getHubPoolClient({
       configStoreClient: this.configStoreClient,
       provider: hubPoolProvider,
       logger,

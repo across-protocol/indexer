@@ -21,14 +21,21 @@ export type GetSpokeClientParams = {
   hubPoolClient: across.clients.HubPoolClient;
 };
 
-export async function getSpokeClient(
+/**
+ * Resolves a spoke pool client with the given parameters
+ * @param params Parameters to resolve a spoke client.
+ * @returns A spoke pool client configured with the given parameters
+ * @see {@link across.clients.SpokePoolClient} for client
+ * @see {@link GetSpokeClientParams} for params
+ */
+export function getSpokeClient(
   params: GetSpokeClientParams,
-): Promise<across.clients.SpokePoolClient> {
+): across.clients.SpokePoolClient {
   const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
   const address = getDeployedAddress("SpokePool", chainId);
   const deployedBlockNumber = getDeployedBlockNumber("SpokePool", chainId);
 
-  const toBlock = params.toBlock ?? (await provider.getBlockNumber());
+  const toBlock = params.toBlock;
   const fromBlock = params.fromBlock ?? deployedBlockNumber;
 
   const eventSearchConfig = {
@@ -38,11 +45,12 @@ export async function getSpokeClient(
   };
   logger.debug({
     message: "Initializing spoke pool",
+    at: "getSpokeClient",
     chainId,
     address,
     deployedBlockNumber,
     ...eventSearchConfig,
-    blockRangeSearched: toBlock - fromBlock,
+    blockRangeSearched: `${fromBlock} to ${toBlock ?? "latest"}`,
   });
   const spokePoolContract = new Contract(
     address,
@@ -66,7 +74,14 @@ export type GetConfigStoreClientParams = {
   chainId: number;
 };
 
-export async function getConfigStoreClient(params: GetConfigStoreClientParams) {
+/**
+ * Resolves a config store client with the given parameters
+ * @param params Parameters to resolve a config store client
+ * @returns A config store client configured with the given parameters
+ * @see {@link across.clients.AcrossConfigStoreClient} for client
+ * @see {@link GetConfigStoreClientParams} for params
+ */
+export function getConfigStoreClient(params: GetConfigStoreClientParams) {
   const { provider, logger, maxBlockLookBack, chainId } = params;
   const address = getDeployedAddress("AcrossConfigStore", chainId);
   const deployedBlockNumber = getDeployedBlockNumber(
@@ -102,7 +117,14 @@ export type GetHubPoolClientParams = {
   toBlock?: number;
 };
 
-export async function getHubPoolClient(params: GetHubPoolClientParams) {
+/**
+ * Resolves a hub pool client with the given parameters
+ * @param params Parameters to resolve a hub pool client
+ * @returns A hub pool client configured with the given parameters
+ * @see {@link across.clients.HubPoolClient} for client
+ * @see {@link GetHubPoolClientParams} for params
+ */
+export function getHubPoolClient(params: GetHubPoolClientParams) {
   const { provider, logger, maxBlockLookBack, chainId, configStoreClient } =
     params;
   const address = getDeployedAddress("HubPool", chainId);
@@ -110,7 +132,7 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
   const fromBlock = params.fromBlock ?? deployedBlockNumber;
-  const toBlock = params.toBlock ?? (await provider.getBlockNumber());
+  const toBlock = params.toBlock;
 
   const eventSearchConfig = {
     fromBlock,
@@ -121,7 +143,7 @@ export async function getHubPoolClient(params: GetHubPoolClientParams) {
     message: "Initializing hubpool",
     chainId,
     ...eventSearchConfig,
-    blockRangeSearched: toBlock - fromBlock,
+    blockRangeSearched: `${fromBlock} to ${toBlock ?? "latest"}`,
   });
   return new across.clients.HubPoolClient(
     logger,
