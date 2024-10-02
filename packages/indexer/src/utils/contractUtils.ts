@@ -81,7 +81,9 @@ export type GetConfigStoreClientParams = {
  * @see {@link across.clients.AcrossConfigStoreClient} for client
  * @see {@link GetConfigStoreClientParams} for params
  */
-export function getConfigStoreClient(params: GetConfigStoreClientParams) {
+export function getConfigStoreClient(
+  params: GetConfigStoreClientParams,
+): across.clients.AcrossConfigStoreClient {
   const { provider, logger, maxBlockLookBack, chainId } = params;
   const address = getDeployedAddress("AcrossConfigStore", chainId);
   const deployedBlockNumber = getDeployedBlockNumber(
@@ -124,7 +126,9 @@ export type GetHubPoolClientParams = {
  * @see {@link across.clients.HubPoolClient} for client
  * @see {@link GetHubPoolClientParams} for params
  */
-export function getHubPoolClient(params: GetHubPoolClientParams) {
+export function getHubPoolClient(
+  params: GetHubPoolClientParams,
+): across.clients.HubPoolClient {
   const { provider, logger, maxBlockLookBack, chainId, configStoreClient } =
     params;
   const address = getDeployedAddress("HubPool", chainId);
