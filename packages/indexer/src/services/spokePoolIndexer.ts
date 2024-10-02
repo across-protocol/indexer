@@ -256,7 +256,7 @@ export class Indexer extends BaseIndexer {
       toBlock,
     });
 
-    const spokeClient = await utils.getSpokeClient({
+    const spokeClient = utils.getSpokeClient({
       hubPoolClient: this.hubPoolClient,
       provider: this.spokePoolProvider,
       logger: this.logger,
