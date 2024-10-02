@@ -69,6 +69,9 @@ export class V3FundsDeposited {
   @Column()
   quoteBlockNumber: number;
 
+  @Column({ nullable: true })
+  integratorId: string;
+
   @Column()
   transactionHash: string;
 

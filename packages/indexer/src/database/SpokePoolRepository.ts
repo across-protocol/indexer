@@ -31,7 +31,9 @@ export class SpokePoolRepository extends utils.BaseRepository {
   }
 
   public async formatAndSaveV3FundsDepositedEvents(
-    v3FundsDepositedEvents: across.interfaces.DepositWithBlock[],
+    v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
+      integratorId: string | undefined;
+    })[],
     throwError?: boolean,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {

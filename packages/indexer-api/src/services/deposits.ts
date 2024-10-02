@@ -17,7 +17,20 @@ export class DepositsService {
     params: DepositsParams,
   ): Promise<entities.V3FundsDeposited[]> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
-    const queryBuilder = repo.createQueryBuilder("deposit");
+    const queryBuilder = repo
+      .createQueryBuilder("deposit")
+      .leftJoinAndSelect(
+        entities.RelayHashInfo,
+        "rhi",
+        "rhi.depositEventId = deposit.id",
+      )
+      .select([
+        `deposit.*`,
+        `rhi.status as status`,
+        `rhi.fillTxHash as "fillTxHash"`,
+        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
+      ])
+      .orderBy("deposit.quoteTimestamp", "DESC");
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
@@ -43,16 +56,42 @@ export class DepositsService {
       });
     }
 
+    if (params.originChainId) {
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
+        originChainId: params.originChainId,
+      });
+    }
+
+    if (params.destinationChainId) {
+      queryBuilder.andWhere(
+        "deposit.destinationChainId = :destinationChainId",
+        {
+          destinationChainId: params.destinationChainId,
+        },
+      );
+    }
+
+    if (params.status) {
+      queryBuilder.andWhere("rhi.status = :status", {
+        status: params.status,
+      });
+    }
+
+    if (params.integratorId) {
+      queryBuilder.andWhere("deposit.integratorId = :integratorId", {
+        integratorId: params.integratorId,
+      });
+    }
+
     if (params.skip) {
       queryBuilder.skip(params.skip);
     }
 
     if (params.limit) {
-      // using take rather than limit
-      queryBuilder.take(params.limit);
+      queryBuilder.limit(params.limit);
     }
 
-    return queryBuilder.getMany();
+    return queryBuilder.execute();
   }
 
   public async getDepositStatus(params: DepositParams) {
