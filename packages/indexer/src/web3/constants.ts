@@ -59,3 +59,30 @@ export const getChainCacheFollowDistance = (chainId: number) => {
 
   return chainCacheFollowDistance;
 };
+
+const MAX_BLOCK_LOOK_BACK = {
+  [CHAIN_IDs.MAINNET]: 10000,
+  [CHAIN_IDs.OPTIMISM]: 10000,
+  [CHAIN_IDs.POLYGON]: 10000,
+  [CHAIN_IDs.BOBA]: 4990,
+  [CHAIN_IDs.ZK_SYNC]: 10000,
+  [CHAIN_IDs.REDSTONE]: 10000,
+  [CHAIN_IDs.LISK]: 10000,
+  [CHAIN_IDs.BASE]: 10000,
+  [CHAIN_IDs.MODE]: 10000,
+  [CHAIN_IDs.ARBITRUM]: 10000,
+  [CHAIN_IDs.LINEA]: 5000,
+  [CHAIN_IDs.BLAST]: 10000,
+  [CHAIN_IDs.SCROLL]: 3000,
+  [CHAIN_IDs.ZORA]: 10000,
+};
+
+export const getMaxBlockLookBack = (chainId: number) => {
+  const maxBlockLookBack = MAX_BLOCK_LOOK_BACK[chainId];
+
+  if (!maxBlockLookBack) {
+    return 10_000;
+  }
+
+  return maxBlockLookBack;
+};

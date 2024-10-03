@@ -1,5 +1,6 @@
 Dockerfile
 docker-compose.yml
+out
 volumes
 **/dist
 **/node_modules

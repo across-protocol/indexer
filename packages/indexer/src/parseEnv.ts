@@ -12,10 +12,6 @@ export type Config = {
     services.spokePoolIndexer.Config,
     "logger" | "redis" | "postgres"
   >[];
-  hubConfig: Omit<
-    services.hubPoolIndexer.Config,
-    "logger" | "redis" | "postgres"
-  >;
 };
 export type RedisConfig = {
   host: string;
@@ -236,7 +232,6 @@ export function envToConfig(env: Env): Config {
   return {
     redisConfig,
     postgresConfig,
-    hubConfig,
     spokeConfigs,
   };
 }

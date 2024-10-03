@@ -53,6 +53,9 @@ export class RootBundleExecuted {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

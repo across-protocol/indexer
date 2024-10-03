@@ -3,17 +3,13 @@ import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 export class HubPoolRepository extends utils.BaseRepository {
-  constructor(
-    postgres: DataSource,
-    logger: winston.Logger,
-    throwError: boolean,
-  ) {
-    super(postgres, logger, throwError);
+  constructor(postgres: DataSource, logger: winston.Logger) {
+    super(postgres, logger, true);
   }
 
   public async formatAndSaveProposedRootBundleEvents(
     proposedRootBundleEvents: across.interfaces.ProposedRootBundle[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = proposedRootBundleEvents.map((event) => {
       return {
@@ -24,41 +20,59 @@ export class HubPoolRepository extends utils.BaseRepository {
         bundleEvaluationBlockNumbers: event.bundleEvaluationBlockNumbers.map(
           (blockNumber) => parseInt(blockNumber.toString()),
         ),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(entities.ProposedRootBundle, formattedEvents, throwError);
+    await this.postgres
+      .createQueryBuilder(entities.ProposedRootBundle, "b")
+      .insert()
+      .values(formattedEvents)
+      .orUpdate(["finalised"], ["transactionHash"])
+      .execute();
   }
 
   public async formatAndSaveRootBundleDisputedEvents(
     rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleDisputedEvents.map((event) => {
       return {
         ...event,
         requestTime: new Date(event.requestTime * 1000),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(entities.RootBundleDisputed, formattedEvents, throwError);
+    await this.postgres
+      .createQueryBuilder(entities.RootBundleDisputed, "b")
+      .insert()
+      .values(formattedEvents)
+      .orUpdate(["finalised"], ["transactionHash"])
+      .execute();
   }
 
   public async formatAndSaveRootBundleCanceledEvents(
     rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleCanceledEvents.map((event) => {
       return {
         ...event,
         caller: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(entities.RootBundleCanceled, formattedEvents, throwError);
+    await this.postgres
+      .createQueryBuilder(entities.RootBundleCanceled, "b")
+      .insert()
+      .values(formattedEvents)
+      .orUpdate(["finalised"], ["transactionHash"])
+      .execute();
   }
 
   public async formatAndSaveRootBundleExecutedEvents(
     rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleExecutedEvents.map((event) => {
       return {
@@ -68,16 +82,31 @@ export class HubPoolRepository extends utils.BaseRepository {
         runningBalances: event.runningBalances.map((balance) =>
           balance.toString(),
         ),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(entities.RootBundleExecuted, formattedEvents, throwError);
+    // Split the events into chunks of 1000 to avoid exceeding the max query length
+    const chunks = across.utils.chunk(formattedEvents, 1000);
+    await Promise.all(
+      chunks.map((chunk) =>
+        this.postgres
+          .createQueryBuilder(entities.RootBundleExecuted, "b")
+          .insert()
+          .values(chunk)
+          .orUpdate(
+            ["finalised"],
+            ["chainId", "leafId", "groupIndex", "transactionHash"],
+          )
+          .execute(),
+      ),
+    );
   }
 
   public async formatAndSaveSetPoolRebalanceRouteEvents(
     setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
       l2ChainId: number;
     })[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
       return {
@@ -85,13 +114,18 @@ export class HubPoolRepository extends utils.BaseRepository {
         destinationChainId: event.l2ChainId,
         destinationToken: event.l2Token,
         l1Token: event.l1Token,
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(
-      entities.SetPoolRebalanceRoute,
-      formattedEvents,
-      throwError,
-    );
+    await this.postgres
+      .createQueryBuilder(entities.SetPoolRebalanceRoute, "b")
+      .insert()
+      .values(formattedEvents)
+      .orUpdate(
+        ["finalised"],
+        ["transactionHash", "transactionIndex", "logIndex"],
+      )
+      .execute();
   }
 
   /**

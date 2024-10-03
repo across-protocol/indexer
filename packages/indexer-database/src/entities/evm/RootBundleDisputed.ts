@@ -30,6 +30,9 @@ export class RootBundleDisputed {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

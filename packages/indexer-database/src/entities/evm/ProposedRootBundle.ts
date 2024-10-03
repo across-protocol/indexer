@@ -48,6 +48,9 @@ export class ProposedRootBundle {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

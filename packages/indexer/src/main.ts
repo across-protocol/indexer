@@ -2,10 +2,22 @@ import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
+import * as acrossConstants from "@across-protocol/constants";
+import { providers } from "ethers";
+
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
 import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import { RedisCache } from "./redis/redisCache";
+import { DatabaseConfig } from "@repo/indexer-database";
+import { HubPoolIndexerDataHandler } from "./services/HubPoolIndexerDataHandler";
+import * as utils from "./utils";
+import {
+  getFinalisedBlockBufferDistance,
+  getLoopWaitTimeSeconds,
+  Indexer,
+} from "./data-indexing/service";
+import { HubPoolRepository } from "./database/HubPoolRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -29,21 +41,16 @@ async function initializeRedis(
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
-  const { redisConfig, postgresConfig, hubConfig, spokeConfigs } = config;
+  const { redisConfig, postgresConfig, spokeConfigs } = config;
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
+  retryProvidersFactory.initializeProviders();
   const postgres = await connectToDatabase(postgresConfig, logger);
   const bundleProcessor = new services.bundles.Processor({
     logger,
     redis,
     postgres,
-  });
-  const hubPoolIndexer = new services.hubPoolIndexer.Indexer({
-    logger,
-    redis,
-    postgres,
-    ...hubConfig,
   });
   const spokePoolIndexers = spokeConfigs.map((spokeConfig) => {
     return new services.spokePoolIndexer.Indexer({
@@ -54,6 +61,32 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     });
   });
 
+  const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
+    logger,
+    acrossConstants.CHAIN_IDs.MAINNET,
+    retryProvidersFactory.getProviderForChainId(
+      acrossConstants.CHAIN_IDs.MAINNET,
+    ),
+    new HubPoolRepository(postgres, logger),
+  );
+  const hubPoolIndexer = new Indexer(
+    {
+      loopWaitTimeSeconds: getLoopWaitTimeSeconds(
+        acrossConstants.CHAIN_IDs.MAINNET,
+      ),
+      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
+        acrossConstants.CHAIN_IDs.MAINNET,
+      ),
+    },
+    hubPoolIndexerDataHandler,
+    retryProvidersFactory.getProviderForChainId(
+      acrossConstants.CHAIN_IDs.MAINNET,
+    ),
+    new RedisCache(redis),
+    logger,
+  );
+  await hubPoolIndexer.start();
+
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
@@ -61,7 +94,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
       );
       spokePoolIndexers.map((s) => s.stop());
-      hubPoolIndexer.stop();
+      hubPoolIndexer.stopGracefully();
     } else {
       logger.info("\nForcing exit...");
       redis?.quit();
@@ -79,7 +112,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const [bundleResults, hubPoolResult, ...spokeResults] =
     await Promise.allSettled([
       bundleProcessor.start(10),
-      hubPoolIndexer.start(10),
       ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
 
@@ -91,7 +123,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         (r) => r.status === "fulfilled",
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
-      hubPoolRunSuccess: hubPoolResult.status === "fulfilled",
     },
   });
 
