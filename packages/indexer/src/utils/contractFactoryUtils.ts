@@ -1,23 +1,18 @@
-import { Logger } from "winston";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { clients } from "@across-protocol/sdk";
+import { Logger } from "winston";
+import { getMaxBlockLookBack } from "../web3/constants";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import {
   getConfigStoreClient,
   getHubPoolClient,
   getSpokeClient,
 } from "./contractUtils";
-import { CHAIN_IDs } from "@across-protocol/constants";
-
-// FIXME: we should have more intelligent ways to resolve max lookback
-//      : maybe a lookup table per chain like in the constants/bots
-function resolveMaxLookback(lookback?: number) {
-  return lookback ?? Number.MAX_SAFE_INTEGER;
-}
 
 abstract class ContractClientFactory<
   ClientType,
-  RequiredFactories = unknown,
-  GetOverrides = unknown,
+  RequiredFactories = undefined,
+  GetOverrides = undefined,
 > {
   constructor(
     protected readonly retryProviderFactory: RetryProvidersFactory,
@@ -39,14 +34,7 @@ abstract class ContractClientFactory<
   ): ClientType;
 }
 
-type ConfigStoreFactoryGetFunctionOverrides = {
-  maxBlockLookBack: number;
-};
-export class ConfigStoreClientFactory extends ContractClientFactory<
-  clients.AcrossConfigStoreClient,
-  undefined,
-  ConfigStoreFactoryGetFunctionOverrides
-> {
+export class ConfigStoreClientFactory extends ContractClientFactory<clients.AcrossConfigStoreClient> {
   constructor(
     retryProviderFactory: RetryProvidersFactory,
     logger: Logger,
@@ -59,9 +47,6 @@ export class ConfigStoreClientFactory extends ContractClientFactory<
     _chainId: number, // Unused
     _fromBlock?: number, // Unused
     _toBlock?: number, // Unused
-    overrides?: {
-      maxBlockLookBack: number;
-    },
   ): clients.AcrossConfigStoreClient {
     // FIXME: hardcoded chain id to represent mainnet
     const chainId = CHAIN_IDs.MAINNET;
@@ -70,7 +55,7 @@ export class ConfigStoreClientFactory extends ContractClientFactory<
     return getConfigStoreClient({
       provider,
       logger: this.logger,
-      maxBlockLookBack: resolveMaxLookback(overrides?.maxBlockLookBack),
+      maxBlockLookBack: getMaxBlockLookBack(chainId),
       chainId,
     });
   }
@@ -80,8 +65,7 @@ type HubPoolFactoryRequiredFactories = {
   configStoreClientFactory: ConfigStoreClientFactory;
 };
 type HubPoolFactoryGetFunctionOverrides = {
-  configStoreClient?: clients.AcrossConfigStoreClient;
-  maxBlockLookBack: number;
+  configStoreClient: clients.AcrossConfigStoreClient;
 };
 export class HubPoolClientFactory extends ContractClientFactory<
   clients.HubPoolClient,
@@ -100,8 +84,7 @@ export class HubPoolClientFactory extends ContractClientFactory<
     fromBlock?: number,
     toBlock?: number,
     overrides?: {
-      configStoreClient?: clients.AcrossConfigStoreClient;
-      maxBlockLookBack: number;
+      configStoreClient: clients.AcrossConfigStoreClient;
     },
   ): clients.HubPoolClient {
     // FIXME: hardcoded chain id to represent mainnet
@@ -113,14 +96,11 @@ export class HubPoolClientFactory extends ContractClientFactory<
         chainId,
         undefined, // We need to instantiate the config store from genesis
         toBlock,
-        {
-          maxBlockLookBack: resolveMaxLookback(overrides?.maxBlockLookBack),
-        },
       );
     return getHubPoolClient({
       provider: this.retryProviderFactory.getProviderForChainId(chainId),
       logger: this.logger,
-      maxBlockLookBack: resolveMaxLookback(overrides?.maxBlockLookBack),
+      maxBlockLookBack: getMaxBlockLookBack(chainId),
       chainId,
       configStoreClient,
       fromBlock,
@@ -133,8 +113,7 @@ type SpokeFactoryRequiredFactories = {
   hubPoolClientFactory: HubPoolClientFactory;
 };
 type SpokeFactoryGetFunctionOverrides = {
-  maxBlockLookBack: number;
-  hubPoolClient?: clients.HubPoolClient;
+  hubPoolClient: clients.HubPoolClient;
 };
 export class SpokePoolClientFactory extends ContractClientFactory<
   clients.SpokePoolClient,
@@ -146,8 +125,7 @@ export class SpokePoolClientFactory extends ContractClientFactory<
     fromBlock?: number,
     toBlock?: number,
     overrides?: {
-      maxBlockLookBack: number;
-      hubPoolClient?: clients.HubPoolClient;
+      hubPoolClient: clients.HubPoolClient;
     },
   ): clients.SpokePoolClient {
     const hubPoolClient =
@@ -156,15 +134,12 @@ export class SpokePoolClientFactory extends ContractClientFactory<
         CHAIN_IDs.MAINNET, // FIXME: hardcoded chain id to represent mainnet
         undefined, // We need to instantiate the hub pool from genesis
         toBlock,
-        {
-          maxBlockLookBack: resolveMaxLookback(overrides?.maxBlockLookBack),
-        },
       );
 
     return getSpokeClient({
       provider: this.retryProviderFactory.getProviderForChainId(chainId),
       logger: this.logger,
-      maxBlockLookBack: resolveMaxLookback(overrides?.maxBlockLookBack),
+      maxBlockLookBack: getMaxBlockLookBack(chainId),
       chainId,
       hubPoolClient,
       fromBlock,
