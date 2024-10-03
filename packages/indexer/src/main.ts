@@ -3,21 +3,23 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import * as acrossConstants from "@across-protocol/constants";
-import { providers } from "ethers";
 
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
 import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import { RedisCache } from "./redis/redisCache";
-import { DatabaseConfig } from "@repo/indexer-database";
 import { HubPoolIndexerDataHandler } from "./services/HubPoolIndexerDataHandler";
-import * as utils from "./utils";
 import {
   getFinalisedBlockBufferDistance,
   getLoopWaitTimeSeconds,
   Indexer,
 } from "./data-indexing/service";
 import { HubPoolRepository } from "./database/HubPoolRepository";
+import {
+  ConfigStoreClientFactory,
+  HubPoolClientFactory,
+  SpokePoolClientFactory,
+} from "./utils";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -41,32 +43,57 @@ async function initializeRedis(
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
-  const { redisConfig, postgresConfig, spokeConfigs } = config;
+  const { redisConfig, postgresConfig, spokePoolChainsEnabled, hubChainId } =
+    config;
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
-  const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
-  retryProvidersFactory.initializeProviders();
   const postgres = await connectToDatabase(postgresConfig, logger);
+  const retryProvidersFactory = new RetryProvidersFactory(
+    redisCache,
+    logger,
+  ).initializeProviders();
+
+  const configStoreClientFactory = new ConfigStoreClientFactory(
+    retryProvidersFactory,
+    logger,
+    undefined,
+  );
+  const hubPoolClientFactory = new HubPoolClientFactory(
+    retryProvidersFactory,
+    logger,
+    { configStoreClientFactory },
+  );
+  const spokePoolClientFactory = new SpokePoolClientFactory(
+    retryProvidersFactory,
+    logger,
+    { hubPoolClientFactory },
+  );
+
   const bundleProcessor = new services.bundles.Processor({
     logger,
     redis,
     postgres,
   });
-  const spokePoolIndexers = spokeConfigs.map((spokeConfig) => {
-    return new services.spokePoolIndexer.Indexer({
-      logger,
-      redis,
-      postgres,
-      ...spokeConfig,
-    });
-  });
+  const spokePoolIndexers = spokePoolChainsEnabled.map(
+    (spokePoolChainId) =>
+      new services.spokePoolIndexer.Indexer({
+        logger,
+        redis,
+        postgres,
+        spokePoolChainId,
+        configStoreFactory: configStoreClientFactory,
+        hubPoolFactory: hubPoolClientFactory,
+        spokePoolClientFactory,
+        hubChainId,
+        retryProviderFactory: retryProvidersFactory,
+      }),
+  );
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
-    acrossConstants.CHAIN_IDs.MAINNET,
-    retryProvidersFactory.getProviderForChainId(
-      acrossConstants.CHAIN_IDs.MAINNET,
-    ),
+    hubChainId,
+    configStoreClientFactory,
+    hubPoolClientFactory,
     new HubPoolRepository(postgres, logger),
   );
   const hubPoolIndexer = new Indexer(

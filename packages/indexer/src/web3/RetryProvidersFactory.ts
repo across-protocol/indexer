@@ -13,7 +13,7 @@ export class RetryProvidersFactory {
     private logger: Logger,
   ) {}
 
-  public initializeProviders() {
+  public initializeProviders(): RetryProvidersFactory {
     const providersUrls = parseProvidersUrls();
 
     for (const [chainId, providerUrls] of providersUrls.entries()) {
@@ -39,6 +39,7 @@ export class RetryProvidersFactory {
       );
       this.retryProviders.set(chainId, provider);
     }
+    return this;
   }
 
   public getProviderForChainId(chainId: number) {

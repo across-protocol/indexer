@@ -12,21 +12,19 @@ import * as utils from "../utils";
 import { BaseIndexer } from "../generics";
 import { providers } from "ethers";
 import { Processor } from "./spokePoolProcessor";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { getMaxBlockLookBack } from "../web3/constants";
 
 export type Config = {
   logger: winston.Logger;
   redis: Redis;
   postgres: DataSource;
-  retryProviderConfig: utils.RetryProviderConfig;
-  hubConfig: {
-    chainId: number;
-    maxBlockLookBack: number;
-  };
-  spokeConfig: {
-    chainId: number;
-    maxBlockLookBack: number;
-  };
-  redisKeyPrefix: string;
+  hubChainId: number;
+  spokePoolChainId: number;
+  retryProviderFactory: RetryProvidersFactory;
+  configStoreFactory: utils.ConfigStoreClientFactory;
+  hubPoolFactory: utils.HubPoolClientFactory;
+  spokePoolClientFactory: utils.SpokePoolClientFactory;
 };
 
 export class Indexer extends BaseIndexer {
@@ -46,61 +44,32 @@ export class Indexer extends BaseIndexer {
       logger,
       redis,
       postgres,
-      retryProviderConfig,
-      redisKeyPrefix,
-      hubConfig,
-      spokeConfig,
+      retryProviderFactory,
+      hubChainId,
+      spokePoolChainId,
+      hubPoolFactory,
+      configStoreFactory,
     } = this.config;
-
+    // Instantiate redis store
     this.resolvedRangeStore = new RangeQueryStore({
       redis,
-      prefix: `${redisKeyPrefix}:rangeQuery:resolved`,
+      prefix: `spokePoolIndexer:${spokePoolChainId}:rangeQuery:resolved`,
     });
-
-    const redisCache = new RedisCache(redis);
-    const hubPoolProvider = utils.getRetryProvider({
-      ...retryProviderConfig,
-      cache: redisCache,
-      logger,
-      ...hubConfig,
-    });
-    const configStoreProvider = utils.getRetryProvider({
-      ...retryProviderConfig,
-      cache: redisCache,
-      logger,
-      ...hubConfig,
-    });
-    this.spokePoolProvider = utils.getRetryProvider({
-      ...retryProviderConfig,
-      cache: redisCache,
-      logger,
-      ...spokeConfig,
-    });
-
+    // Instantiate providers
+    this.spokePoolProvider =
+      retryProviderFactory.getProviderForChainId(spokePoolChainId);
+    // Instantiate respositories
     this.spokePoolClientRepository = new SpokePoolRepository(
       postgres,
       logger,
       true,
     );
-
-    this.spokePoolProcessor = new Processor(
-      postgres,
-      logger,
-      this.config.spokeConfig.chainId,
-    );
-
-    this.configStoreClient = await utils.getConfigStoreClient({
-      logger,
-      provider: configStoreProvider,
-      maxBlockLookBack: hubConfig.maxBlockLookBack,
-      chainId: hubConfig.chainId,
-    });
-    this.hubPoolClient = await utils.getHubPoolClient({
+    // Instantiate processors
+    this.spokePoolProcessor = new Processor(postgres, logger, spokePoolChainId);
+    // Instantiate clients
+    this.configStoreClient = configStoreFactory.get(hubChainId);
+    this.hubPoolClient = hubPoolFactory.get(hubChainId, undefined, undefined, {
       configStoreClient: this.configStoreClient,
-      provider: hubPoolProvider,
-      logger,
-      maxBlockLookBack: hubConfig.maxBlockLookBack,
-      chainId: hubConfig.chainId,
     });
   }
 
@@ -187,7 +156,7 @@ export class Indexer extends BaseIndexer {
     );
     await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
       relayedRootBundleEvents,
-      this.config.spokeConfig.chainId,
+      this.config.spokePoolChainId,
     );
     await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
       tokensBridgedEvents,
@@ -203,7 +172,7 @@ export class Indexer extends BaseIndexer {
   private async getUnprocessedRanges(toBlock?: number): Promise<Ranges> {
     const deployedBlockNumber = getDeployedBlockNumber(
       "SpokePool",
-      this.config.spokeConfig.chainId,
+      this.config.spokePoolChainId,
     );
     const spokeLatestBlockNumber =
       toBlock ?? (await this.spokePoolProvider.getBlockNumber());
@@ -211,7 +180,7 @@ export class Indexer extends BaseIndexer {
     const allPaginatedBlockRanges = across.utils.getPaginatedBlockRanges({
       fromBlock: deployedBlockNumber,
       toBlock: spokeLatestBlockNumber,
-      maxBlockLookBack: this.config.spokeConfig.maxBlockLookBack,
+      maxBlockLookBack: getMaxBlockLookBack(this.config.spokePoolChainId),
     });
 
     const allQueries = await this.resolvedRangeStore.entries();
@@ -256,15 +225,14 @@ export class Indexer extends BaseIndexer {
       toBlock,
     });
 
-    const spokeClient = utils.getSpokeClient({
-      hubPoolClient: this.hubPoolClient,
-      provider: this.spokePoolProvider,
-      logger: this.logger,
-      maxBlockLookBack: this.config.spokeConfig.maxBlockLookBack,
-      chainId: this.config.spokeConfig.chainId,
+    const spokeClient = this.config.spokePoolClientFactory.get(
+      this.config.spokePoolChainId,
       fromBlock,
       toBlock,
-    });
+      {
+        hubPoolClient: this.hubPoolClient,
+      },
+    );
 
     this.logger.info({
       message: "updating spokepool client",
@@ -290,7 +258,7 @@ export class Indexer extends BaseIndexer {
     const filledV3RelayEvents = spokeClient.getFills();
     const requestedV3SlowFillEvents =
       spokeClient.getSlowFillRequestsForOriginChain(
-        this.config.spokeConfig.chainId,
+        this.config.spokePoolChainId,
       );
     const requestedSpeedUpV3Events = spokeClient.getSpeedUps();
     const relayedRootBundleEvents = spokeClient.getRootBundleRelays();
