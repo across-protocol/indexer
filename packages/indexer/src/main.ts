@@ -114,6 +114,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redis,
     postgres,
     providerFactory: retryProvidersFactory,
+    hubClientFactory: hubPoolClientFactory,
+    spokePoolClientFactory,
   });
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(

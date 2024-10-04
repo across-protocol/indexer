@@ -211,11 +211,13 @@ export class BundleRepository extends utils.BaseRepository {
    * that has already been associated with a proposal.
    * @param status The status of the bundle to retrieve
    * @param blockNumber The block number to filter by (optional)
-   * @returns The most recent bundle with the given status, or null if none are found
+   * @param nthBundle The nth bundle to retrieve (optional) defaults to 0 (most recent)
+   * @returns The most recent nth bundle with the given status, or null if none are found
    */
   public retrieveMostRecentBundle(
     status: entities.BundleStatus,
     blockNumber?: number,
+    nthBundle?: number,
   ): Promise<entities.Bundle | null> {
     const queryBuilder = this.postgres
       .getRepository(entities.Bundle)
@@ -228,6 +230,9 @@ export class BundleRepository extends utils.BaseRepository {
       });
     }
     queryBuilder.orderBy("proposal.blockNumber", "DESC");
+    if (nthBundle !== undefined) {
+      queryBuilder.offset(nthBundle);
+    }
     return queryBuilder.getOne();
   }
 
