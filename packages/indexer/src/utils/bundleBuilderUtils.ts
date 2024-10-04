@@ -1,8 +1,8 @@
-import { DataSource, entities } from "@repo/indexer-database";
+import { entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
 import winston from "winston";
-import { providers, utils } from "@across-protocol/sdk";
-import { ProviderLookup } from "../web3/RetryProvidersFactory";
+import { utils } from "@across-protocol/sdk";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type ProposalRange = Pick<
   entities.ProposedRootBundle,
@@ -84,12 +84,12 @@ export function getBlockRangeBetweenBundles(
  */
 export async function getBlockRangeFromBundleToHead(
   previous: ProposalRange,
-  providers: ProviderLookup,
+  providers: RetryProvidersFactory,
 ): Promise<{ chainId: number; startBlock: number; endBlock: number }[]> {
   return Promise.all(
     previous.chainIds.map(async (chainId, idx) => {
       const previousBlock = previous.bundleEvaluationBlockNumbers[idx];
-      const provider = providers[chainId];
+      const provider = providers.getProviderForChainId(chainId);
       if (!utils.isDefined(provider)) {
         throw new Error(`Provider for chain ${chainId} not found`);
       }
