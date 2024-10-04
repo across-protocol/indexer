@@ -85,7 +85,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new RedisCache(redis),
     logger,
   );
-  await hubPoolIndexer.start();
 
   let exitRequested = false;
   process.on("SIGINT", () => {
@@ -109,10 +108,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     at: "Indexer#Main",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [bundleResults, ...spokeResults] = await Promise.allSettled([
-    bundleProcessor.start(10),
-    ...spokePoolIndexers.map((s) => s.start(10)),
-  ]);
+  const [bundleResults, hubPoolResult, ...spokeResults] =
+    await Promise.allSettled([
+      bundleProcessor.start(10),
+      hubPoolIndexer.start(),
+      ...spokePoolIndexers.map((s) => s.start(10)),
+    ]);
 
   logger.info({
     at: "Indexer#Main",
@@ -122,6 +123,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         (r) => r.status === "fulfilled",
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
+      hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
     },
   });
 
