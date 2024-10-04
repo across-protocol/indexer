@@ -78,6 +78,7 @@ export class Processor extends BaseIndexer {
       // and not any specific proposal
       convertProposalRangeResultToProposalRange(ranges),
     );
+    // Persist this to Redis
   }
 
   private async handleProposedBundleLoop(): Promise<void> {
@@ -105,6 +106,10 @@ export class Processor extends BaseIndexer {
       ranges,
       lastProposedBundle.proposal,
     );
+    // Filter out any pool leave results that have been executed and are stored
+    // in the database
+
+    // Persist this to Redis
   }
 
   async resolvePoolLeafForBundleRange(
