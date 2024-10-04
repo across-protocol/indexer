@@ -79,6 +79,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redis,
     postgres,
     providerFactory: retryProvidersFactory,
+    hubClientFactory: hubPoolClientFactory,
+    spokePoolClientFactory,
   });
   const spokePoolIndexers = spokePoolChainsEnabled.map(
     (spokePoolChainId) =>

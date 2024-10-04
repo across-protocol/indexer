@@ -4,10 +4,16 @@ import winston from "winston";
 import { utils } from "@across-protocol/sdk";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
-type ProposalRange = Pick<
+export type ProposalRange = Pick<
   entities.ProposedRootBundle,
   "bundleEvaluationBlockNumbers" | "chainIds"
 >;
+
+export type ProposalRangeResult = {
+  chainId: number;
+  startBlock: number;
+  endBlock: number;
+};
 
 /**
  * Retrieves the most recent proposed and executed bundles from the database.
@@ -59,11 +65,12 @@ export async function resolveMostRecentProposedAndExecutedBundles(
  *          proposal's evaluation block number + 1 to the current proposal's evaluation block
  *          number. In the case that the new proposal includes ranges for a chain that was not
  *          previously included, the range starts at block 0 for that chain per the ACX UMIP.
+ * @dev The ordering of the ranges is the same as the chainIds in the current proposal.
  */
 export function getBlockRangeBetweenBundles(
   previous: ProposalRange,
   current: ProposalRange,
-): { chainId: number; startBlock: number; endBlock: number }[] {
+): ProposalRangeResult[] {
   return current.chainIds.map((chainId, idx) => ({
     chainId,
     startBlock: previous.bundleEvaluationBlockNumbers[idx]
@@ -81,11 +88,12 @@ export function getBlockRangeBetweenBundles(
  * @param providers A lookup of RetryProviders for each chain.
  * @returns The block ranges for each chain. For each chain, this is the previous proposal's
  *          evaluation block number + 1 to the current head block number.
+ * @dev The ordering of the ranges is the same as the chainIds in the previous proposal.
  */
 export async function getBlockRangeFromBundleToHead(
   previous: ProposalRange,
   providers: RetryProvidersFactory,
-): Promise<{ chainId: number; startBlock: number; endBlock: number }[]> {
+): Promise<ProposalRangeResult[]> {
   return Promise.all(
     previous.chainIds.map(async (chainId, idx) => {
       const previousBlock = previous.bundleEvaluationBlockNumbers[idx];
@@ -104,4 +112,13 @@ export async function getBlockRangeFromBundleToHead(
       };
     }),
   );
+}
+
+export function convertProposalRangeResultToProposalRange(
+  ranges: ProposalRangeResult[],
+): ProposalRange {
+  return {
+    chainIds: ranges.map((r) => r.chainId),
+    bundleEvaluationBlockNumbers: ranges.map((r) => r.endBlock),
+  };
 }
