@@ -142,10 +142,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     at: "Indexer#Main",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [bundleResults, hubPoolResult, ...spokeResults] =
+  const [bundleResults, hubPoolResult, bundleBuilderResult, ...spokeResults] =
     await Promise.allSettled([
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
+      bundleBuilderProcessor.start(10),
       ...spokePoolIndexers.map((s) => s.start(10)),
     ]);
 
@@ -158,6 +159,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
       hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
+      bundleBuilderProcessorRunSuccess:
+        bundleBuilderResult.status === "fulfilled",
     },
   });
 
