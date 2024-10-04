@@ -5,11 +5,6 @@ import { parseRetryProviderEnvs, parseProvidersUrls } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";
 import { getChainCacheFollowDistance } from "./constants";
 
-/**
- * A lookup of RetryProviders for separate chains.
- */
-export type ProviderLookup = Record<number, providers.RetryProvider>;
-
 export class RetryProvidersFactory {
   private retryProviders: Map<number, providers.RetryProvider> = new Map();
 
@@ -55,12 +50,5 @@ export class RetryProvidersFactory {
     }
 
     return retryProvider;
-  }
-
-  public getProviderLookup(...chainIds: number[]): ProviderLookup {
-    return chainIds.reduce((acc, chainId) => {
-      acc[chainId] = this.getProviderForChainId(chainId);
-      return acc;
-    }, {} as ProviderLookup);
   }
 }
