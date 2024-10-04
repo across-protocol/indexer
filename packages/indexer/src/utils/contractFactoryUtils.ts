@@ -120,6 +120,13 @@ export class SpokePoolClientFactory extends ContractClientFactory<
   SpokeFactoryRequiredFactories,
   SpokeFactoryGetFunctionOverrides
 > {
+  constructor(
+    retryProviderFactory: RetryProvidersFactory,
+    logger: Logger,
+    requiredFactories: SpokeFactoryRequiredFactories,
+  ) {
+    super(retryProviderFactory, logger, requiredFactories);
+  }
   get(
     chainId: number,
     fromBlock?: number,
