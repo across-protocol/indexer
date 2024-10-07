@@ -3,7 +3,11 @@ import { clients } from "@across-protocol/sdk";
 import { Logger } from "winston";
 import { getMaxBlockLookBack } from "../web3/constants";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-import { getConfigStoreClient, getHubPoolClient, getSpokeClient } from ".";
+import {
+  getConfigStoreClient,
+  getHubPoolClient,
+  getSpokeClient,
+} from "./contractUtils";
 
 abstract class ContractClientFactory<
   ClientType,
