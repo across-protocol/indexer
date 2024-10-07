@@ -10,6 +10,7 @@ import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler"
 import { BlockRange } from "../data-indexing/model";
 import { HubPoolRepository } from "../database/HubPoolRepository";
 import { getMaxBlockLookBack } from "../web3/constants";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -30,7 +31,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   constructor(
     private logger: Logger,
     private chainId: number,
-    private provider: across.providers.RetryProvider,
+    private configStoreFactory: utils.ConfigStoreClientFactory,
+    private hubPoolFactory: utils.HubPoolClientFactory,
     private hubPoolRepository: HubPoolRepository,
   ) {
     this.isInitialized = false;
@@ -73,19 +75,15 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   }
 
   private async initialize() {
-    this.configStoreClient = await utils.getConfigStoreClient({
-      logger: this.logger,
-      provider: this.provider,
-      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
-      chainId: this.chainId,
-    });
-    this.hubPoolClient = await utils.getHubPoolClient({
-      configStoreClient: this.configStoreClient,
-      provider: this.provider,
-      logger: this.logger,
-      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
-      chainId: this.chainId,
-    });
+    this.configStoreClient = this.configStoreFactory.get(this.chainId);
+    this.hubPoolClient = this.hubPoolFactory.get(
+      this.chainId,
+      undefined,
+      undefined,
+      {
+        configStoreClient: this.configStoreClient,
+      },
+    );
   }
 
   private async fetchEventsByRange(

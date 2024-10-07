@@ -77,7 +77,12 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.ZORA]: 10000,
 };
 
-export const getMaxBlockLookBack = (chainId: number) => {
+/**
+ * Resolves the maxLookback for a given chain id
+ * @param chainId Chain id to resolve max lookback for
+ * @returns A max lookback from {@link MAX_BLOCK_LOOK_BACK} or a default of 10,000
+ */
+export function getMaxBlockLookBack(chainId: number) {
   const maxBlockLookBack = MAX_BLOCK_LOOK_BACK[chainId];
 
   if (!maxBlockLookBack) {
@@ -85,4 +90,4 @@ export const getMaxBlockLookBack = (chainId: number) => {
   }
 
   return maxBlockLookBack;
-};
+}

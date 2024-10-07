@@ -1,17 +1,13 @@
 import assert from "assert";
 import * as s from "superstruct";
 import { DatabaseConfig } from "@repo/indexer-database";
-import * as services from "./services";
 import { DEFAULT_NO_TTL_DISTANCE } from "./web3/constants";
-import { RetryProviderConfig } from "./utils";
 
 export type Config = {
   redisConfig: RedisConfig;
   postgresConfig: DatabaseConfig;
-  spokeConfigs: Omit<
-    services.spokePoolIndexer.Config,
-    "logger" | "redis" | "postgres"
-  >[];
+  hubChainId: number;
+  spokePoolChainsEnabled: number[];
 };
 export type RedisConfig = {
   host: string;
@@ -81,38 +77,6 @@ function parseProviderConfigs(env: Env): ProviderConfig[] {
   return results;
 }
 
-function parseRetryProviderConfig(
-  env: Record<string, string | undefined>,
-): Omit<RetryProviderConfig, "providerConfigs" | "chainId"> {
-  assert(env.PROVIDER_CACHE_NAMESPACE, "requires PROVIDER_CACHE_NAMESPACE");
-  assert(env.MAX_CONCURRENCY, "requires MAX_CONCURRENCY");
-  assert(env.PCT_RPC_CALLS_LOGGED, "requires PCT_RPC_CALLS_LOGGED");
-  assert(
-    env.STANDARD_TTL_BLOCK_DISTANCE,
-    "requires STANDARD_TTL_BLOCK_DISTANCE",
-  );
-  assert(env.NO_TTL_BLOCK_DISTANCE, "requires NO_TTL_BLOCK_DISTANCE");
-  assert(env.PROVIDER_CACHE_TTL, "requires PROVIDER_CACHE_TTL");
-  assert(env.NODE_QUORUM_THRESHOLD, "requires NODE_QUORUM_THRESHOLD");
-  assert(env.RETRIES, "requires RETRIES");
-  assert(env.DELAY, "requires DELAY");
-
-  return {
-    providerCacheNamespace: env.PROVIDER_CACHE_NAMESPACE,
-    maxConcurrency: s.create(env.MAX_CONCURRENCY, stringToInt),
-    pctRpcCallsLogged: s.create(env.PCT_RPC_CALLS_LOGGED, stringToInt),
-    standardTtlBlockDistance: s.create(
-      env.STANDARD_TTL_BLOCK_DISTANCE,
-      stringToInt,
-    ),
-    noTtlBlockDistance: s.create(env.NO_TTL_BLOCK_DISTANCE, stringToInt),
-    providerCacheTtl: s.create(env.PROVIDER_CACHE_TTL, stringToInt),
-    nodeQuorumThreshold: s.create(env.NODE_QUORUM_THRESHOLD, stringToInt),
-    retries: s.create(env.RETRIES, stringToInt),
-    delay: s.create(env.DELAY, stringToInt),
-  };
-}
-
 export function parseProvidersUrls() {
   const results: Map<number, string[]> = new Map();
   for (const [key, value] of Object.entries(process.env)) {
@@ -180,33 +144,16 @@ export function envToConfig(env: Env): Config {
   const redisConfig = parseRedisConfig(env);
   const postgresConfig = parsePostgresConfig(env);
   const allProviderConfigs = parseProviderConfigs(env);
-  const retryProviderConfig = parseRetryProviderConfig(env);
   const hubPoolChain = parseNumber(env.HUBPOOL_CHAIN);
   const spokePoolChainsEnabled = parseArray(env.SPOKEPOOL_CHAINS_ENABLED).map(
     parseNumber,
   );
-  const providerConfigs = allProviderConfigs.filter(
-    (provider) => provider[1] === hubPoolChain,
-  );
   assert(
     allProviderConfigs.length > 0,
-    `Requires at least one RPC_PROVIDER_URLS_CHAINID`,
+    `Requires at least one RPC_PROVIDER_URLS_CHAIN_ID`,
   );
-
-  const hubConfig = {
-    retryProviderConfig: {
-      ...retryProviderConfig,
-      chainId: hubPoolChain,
-      providerConfigs,
-    },
-    hubConfig: {
-      chainId: hubPoolChain,
-      maxBlockLookBack: 10000,
-    },
-    redisKeyPrefix: `hubPoolIndexer:${hubPoolChain}`,
-  };
-
-  const spokeConfigs = spokePoolChainsEnabled.map((chainId) => {
+  const hubChainId = hubPoolChain;
+  spokePoolChainsEnabled.forEach((chainId) => {
     const providerConfigs = allProviderConfigs.filter(
       (provider) => provider[1] == chainId,
     );
@@ -214,24 +161,11 @@ export function envToConfig(env: Env): Config {
       providerConfigs.length > 0,
       `SPOKEPOOL_CHAINS_ENABLED=${chainId} but did not find any corresponding RPC_PROVIDER_URLS_${chainId}`,
     );
-    return {
-      retryProviderConfig: {
-        ...retryProviderConfig,
-        chainId,
-        providerConfigs,
-      },
-      spokeConfig: {
-        chainId,
-        maxBlockLookBack: 10000,
-      },
-      hubConfig: hubConfig.hubConfig,
-      redisKeyPrefix: `spokePoolIndexer:${chainId}`,
-    };
   });
-
   return {
     redisConfig,
     postgresConfig,
-    spokeConfigs,
+    hubChainId,
+    spokePoolChainsEnabled,
   };
 }
