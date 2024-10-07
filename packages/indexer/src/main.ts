@@ -71,11 +71,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     { hubPoolClientFactory },
   );
 
-  // const bundleProcessor = new services.bundles.Processor({
-  //   logger,
-  //   redis,
-  //   postgres,
-  // });
+  const bundleProcessor = new services.bundles.Processor({
+    logger,
+    redis,
+    postgres,
+  });
 
   const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
     const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
@@ -127,7 +127,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.info(
         "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
       );
-      // spokePoolIndexers.map((s) => s.stopGracefully());
+      spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
     } else {
       logger.info("\nForcing exit...");
@@ -145,8 +145,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [hubPoolResult] = await Promise.allSettled([
     hubPoolIndexer.start(),
-    // bundleProcessor.start(10),
-    // ...spokePoolIndexers.map((s) => s.start()),
+    bundleProcessor.start(10),
+    ...spokePoolIndexers.map((s) => s.start()),
   ]);
 
   logger.info({
