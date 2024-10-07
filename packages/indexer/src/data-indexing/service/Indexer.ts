@@ -59,12 +59,13 @@ export class Indexer {
           );
         }
       } catch (error) {
-        this.logger.error({
-          at: "Indexer::start",
-          message: "Error processing block range",
-          dataIdentifier: this.dataHandler.getDataIdentifier(),
-          error,
-        });
+        // this.logger.error({
+        //   at: "Indexer::start",
+        //   message: "Error processing block range",
+        //   dataIdentifier: this.dataHandler.getDataIdentifier(),
+        //   error,
+        // });
+        console.log(error);
       } finally {
         await across.utils.delay(this.config.loopWaitTimeSeconds);
       }

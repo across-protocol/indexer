@@ -37,4 +37,30 @@ export class BaseRepository {
       }
     }
   }
+
+  protected async insertWithFinalisationCheck<Entity extends ObjectLiteral>(
+    entity: EntityTarget<Entity>,
+    data: Partial<Entity>[],
+    uniqueKeys: (keyof Entity)[],
+    lastFinalisedBlock: number,
+  ) {
+    const repository = this.postgres.getRepository(entity);
+    const uniqueKeysAsStrings = uniqueKeys.map((key) => key.toString());
+
+    const savedData = await repository
+      .createQueryBuilder()
+      .insert()
+      .values(data)
+      .orUpdate(Object.keys(data[0] as any), uniqueKeysAsStrings)
+      .returning("*")
+      .execute();
+    await repository
+      .createQueryBuilder()
+      .delete()
+      .where("finalised = false")
+      .andWhere("blockNumber <= :lastFinalisedBlock", { lastFinalisedBlock })
+      .execute();
+
+    return savedData.generatedMaps as Entity[];
+  }
 }

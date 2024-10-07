@@ -72,6 +72,9 @@ export class RequestedV3SlowFill {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

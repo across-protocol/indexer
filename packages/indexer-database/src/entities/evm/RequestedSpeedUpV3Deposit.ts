@@ -47,6 +47,9 @@ export class RequestedSpeedUpV3Deposit {
   logIndex: number;
 
   @Column()
+  finalised: boolean;
+
+  @Column()
   blockNumber: number;
 
   @CreateDateColumn()

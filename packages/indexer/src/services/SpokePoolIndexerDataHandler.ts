@@ -9,9 +9,14 @@ import { BlockRange } from "../data-indexing/model";
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
 
 import * as utils from "../utils";
+import { providers } from "@across-protocol/sdk";
+import { SpokePoolRepository } from "../database/SpokePoolRepository";
+import { SpokePoolProcessor } from "./spokePoolProcessor";
 
 type FetchEventsResult = {
-  v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
+  v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
+    integratorId: string | undefined;
+  })[];
   filledV3RelayEvents: across.interfaces.FillWithBlock[];
   requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
   requestedSpeedUpV3Events: {
@@ -34,9 +39,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private logger: Logger,
     private chainId: number,
     private hubPoolChainId: number,
+    private provider: providers.RetryProvider,
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
     private spokePoolFactory: utils.SpokePoolClientFactory,
+    private spokePoolClientRepository: SpokePoolRepository,
+    private spokePoolProcessor: SpokePoolProcessor,
   ) {
     this.isInitialized = false;
   }
@@ -83,6 +91,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         tokensBridgedEvents: events.tokensBridgedEvents.length,
       },
     });
+    const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+    await this.spokePoolProcessor.process(storedEvents);
   }
 
   private async fetchEventsByRange(
@@ -105,6 +115,14 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       fromBlock: blockRange.from,
       toBlock: blockRange.to,
     });
+    const v3FundsDepositedWithIntegradorId = await Promise.all(
+      v3FundsDepositedEvents.map(async (deposit) => {
+        return {
+          ...deposit,
+          integratorId: await this.getIntegratorId(deposit),
+        };
+      }),
+    );
     const filledV3RelayEvents = spokePoolClient.getFills();
     const requestedV3SlowFillEvents =
       spokePoolClient.getSlowFillRequestsForOriginChain(this.chainId);
@@ -115,6 +133,22 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
 
     return {
+      v3FundsDepositedEvents: v3FundsDepositedWithIntegradorId,
+      filledV3RelayEvents,
+      requestedV3SlowFillEvents,
+      requestedSpeedUpV3Events,
+      relayedRootBundleEvents,
+      executedRelayerRefundRootEvents,
+      tokensBridgedEvents,
+    };
+  }
+
+  private async storeEvents(
+    params: FetchEventsResult,
+    lastFinalisedBlock: number,
+  ) {
+    const { spokePoolClientRepository } = this;
+    const {
       v3FundsDepositedEvents,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
@@ -122,6 +156,45 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+    } = params;
+    const savedV3FundsDepositedEvents =
+      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        v3FundsDepositedEvents,
+        lastFinalisedBlock,
+      );
+    const savedV3RequestedSlowFills =
+      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedV3SlowFillEvents,
+        lastFinalisedBlock,
+      );
+    const savedFilledV3RelayEvents =
+      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledV3RelayEvents,
+        lastFinalisedBlock,
+      );
+    const savedExecutedRelayerRefundRootEvents =
+      await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+        executedRelayerRefundRootEvents,
+        lastFinalisedBlock,
+      );
+    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+      requestedSpeedUpV3Events,
+      lastFinalisedBlock,
+    );
+    await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+      relayedRootBundleEvents,
+      this.chainId,
+      lastFinalisedBlock,
+    );
+    await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+      tokensBridgedEvents,
+      lastFinalisedBlock,
+    );
+    return {
+      deposits: savedV3FundsDepositedEvents,
+      fills: savedFilledV3RelayEvents,
+      slowFillRequests: savedV3RequestedSlowFills,
+      executedRefundRoots: savedExecutedRelayerRefundRootEvents,
     };
   }
 
@@ -143,5 +216,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         hubPoolClient: this.hubPoolClient,
       },
     );
+  }
+
+  private async getIntegratorId(deposit: across.interfaces.DepositWithBlock) {
+    const INTEGRATOR_DELIMITER = "1dc0de";
+    const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
+    let integratorId = undefined;
+    const txn = await this.provider.getTransaction(deposit.transactionHash);
+    const txnData = txn.data;
+    if (txnData.includes(INTEGRATOR_DELIMITER)) {
+      integratorId = txnData
+        .split(INTEGRATOR_DELIMITER)
+        .pop()
+        ?.substring(0, INTEGRATOR_ID_LENGTH);
+    }
+    return integratorId;
   }
 }

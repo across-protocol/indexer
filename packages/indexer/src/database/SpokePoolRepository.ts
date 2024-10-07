@@ -7,10 +7,9 @@ export class SpokePoolRepository extends utils.BaseRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
-    throwError: boolean,
     private chunkSize = 2000,
   ) {
-    super(postgres, logger, throwError);
+    super(postgres, logger, true);
   }
 
   private formatRelayData(
@@ -34,7 +33,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
     v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
       integratorId: string | undefined;
     })[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
@@ -42,12 +41,18 @@ export class SpokePoolRepository extends utils.BaseRepository {
         relayHash: getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insert(entities.V3FundsDeposited, eventsChunk, throwError),
+        this.insertWithFinalisationCheck(
+          entities.V3FundsDeposited,
+          eventsChunk,
+          ["depositId", "originChainId"],
+          lastFinalisedBlock,
+        ),
       ),
     );
     return savedEvents.flat();
@@ -55,7 +60,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveFilledV3RelayEvents(
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
@@ -67,12 +72,18 @@ export class SpokePoolRepository extends utils.BaseRepository {
           updatedOutputAmount:
             event.relayExecutionInfo.updatedOutputAmount.toString(),
         },
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insert(entities.FilledV3Relay, eventsChunk, throwError),
+        this.insertWithFinalisationCheck(
+          entities.FilledV3Relay,
+          eventsChunk,
+          ["depositId", "originChainId"],
+          lastFinalisedBlock,
+        ),
       ),
     );
     return savedEvents.flat();
@@ -80,20 +91,28 @@ export class SpokePoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveRequestedV3SlowFillEvents(
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...event,
         relayHash: getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    return this.insert(
-      entities.RequestedV3SlowFill,
-      formattedEvents,
-      throwError,
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.insertWithFinalisationCheck(
+          entities.RequestedV3SlowFill,
+          eventsChunk,
+          ["depositId", "originChainId"],
+          lastFinalisedBlock,
+        ),
+      ),
     );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveRequestedSpeedUpV3Events(
@@ -102,7 +121,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         [depositId: number]: across.interfaces.SpeedUpWithBlock[];
       };
     },
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = Object.values(requestedSpeedUpV3Events).flatMap(
       (eventsByDepositId) =>
@@ -111,56 +130,100 @@ export class SpokePoolRepository extends utils.BaseRepository {
             return {
               ...event,
               updatedOutputAmount: event.updatedOutputAmount.toString(),
+              finalised: event.blockNumber <= lastFinalisedBlock,
             };
           }),
         ),
     );
-    await this.insert(
-      entities.RequestedSpeedUpV3Deposit,
-      formattedEvents,
-      throwError,
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.insertWithFinalisationCheck(
+          entities.RequestedSpeedUpV3Deposit,
+          eventsChunk,
+          ["depositId", "originChainId"],
+          lastFinalisedBlock,
+        ),
+      ),
     );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveRelayedRootBundleEvents(
     relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[],
     chainId: number,
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
-      return { ...event, chainId };
+      return {
+        ...event,
+        chainId,
+        finalised: event.blockNumber <= lastFinalisedBlock,
+      };
     });
-    await this.insert(entities.RelayedRootBundle, formattedEvents, throwError);
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.insertWithFinalisationCheck(
+          entities.RelayedRootBundle,
+          eventsChunk,
+          ["chainId", "rootBundleId"],
+          lastFinalisedBlock,
+        ),
+      ),
+    );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveExecutedRelayerRefundRootEvents(
     executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    return this.insert(
-      entities.ExecutedRelayerRefundRoot,
-      formattedEvents,
-      throwError,
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.insertWithFinalisationCheck(
+          entities.ExecutedRelayerRefundRoot,
+          eventsChunk,
+          ["chainId", "rootBundleId", "leafId"],
+          lastFinalisedBlock,
+        ),
+      ),
     );
+    return savedEvents.flat();
   }
 
   public async formatAndSaveTokensBridgedEvents(
     tokensBridgedEvents: across.interfaces.TokensBridged[],
-    throwError?: boolean,
+    lastFinalisedBlock: number,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
+        finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    await this.insert(entities.TokensBridged, formattedEvents, throwError);
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.insertWithFinalisationCheck(
+          entities.TokensBridged,
+          eventsChunk,
+          ["chainId", "leafId", "l2TokenAddress", "transactionHash"],
+          lastFinalisedBlock,
+        ),
+      ),
+    );
+    return savedEvents.flat();
   }
 }

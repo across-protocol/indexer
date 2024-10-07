@@ -14,12 +14,14 @@ import {
   Indexer,
 } from "./data-indexing/service";
 import { HubPoolRepository } from "./database/HubPoolRepository";
+import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
-} from "./utils";
+} from "./utils/contractFactoryUtils";
 import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
+import { SpokePoolProcessor } from "./services/spokePoolProcessor";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -70,33 +72,36 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     { hubPoolClientFactory },
   );
 
-  // const bundleProcessor = new services.bundles.Processor({
-  //   logger,
-  //   redis,
-  //   postgres,
-  // });
+  const bundleProcessor = new services.bundles.Processor({
+    logger,
+    redis,
+    postgres,
+  });
 
-  // const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
-  //   const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
-  //     logger,
-  //     chainId,
-  //     hubChainId,
-  //     configStoreClientFactory,
-  //     hubPoolClientFactory,
-  //     spokePoolClientFactory,
-  //   );
-  //   const spokePoolIndexer = new Indexer(
-  //     {
-  //       loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
-  //       finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(chainId),
-  //     },
-  //     spokePoolIndexerDataHandler,
-  //     retryProvidersFactory.getProviderForChainId(chainId),
-  //     redisCache,
-  //     logger,
-  //   );
-  //   return spokePoolIndexer;
-  // });
+  const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
+    const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
+      logger,
+      chainId,
+      hubChainId,
+      retryProvidersFactory.getProviderForChainId(chainId),
+      configStoreClientFactory,
+      hubPoolClientFactory,
+      spokePoolClientFactory,
+      new SpokePoolRepository(postgres, logger),
+      new SpokePoolProcessor(postgres, logger, chainId),
+    );
+    const spokePoolIndexer = new Indexer(
+      {
+        loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
+        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(chainId),
+      },
+      spokePoolIndexerDataHandler,
+      retryProvidersFactory.getProviderForChainId(chainId),
+      redisCache,
+      logger,
+    );
+    return spokePoolIndexer;
+  });
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
@@ -123,7 +128,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.info(
         "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
       );
-      // spokePoolIndexers.map((s) => s.stopGracefully());
+      spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
     } else {
       logger.info("\nForcing exit...");
@@ -141,8 +146,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [hubPoolResult] = await Promise.allSettled([
     hubPoolIndexer.start(),
-    // bundleProcessor.start(10),
-    // ...spokePoolIndexers.map((s) => s.start()),
+    bundleProcessor.start(10),
+    ...spokePoolIndexers.map((s) => s.start()),
   ]);
 
   logger.info({
