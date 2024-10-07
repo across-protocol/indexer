@@ -59,7 +59,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     undefined,
   );
-  console.log(2);
   const hubPoolClientFactory = new HubPoolClientFactory(
     retryProvidersFactory,
     logger,
