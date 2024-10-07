@@ -101,37 +101,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     return spokePoolIndexer;
   });
 
-  const spokePoolIndexers = spokeConfigs.map((spokeConfig) => {
-    const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
-      logger,
-      spokeConfig.spokeConfig.chainId,
-      retryProvidersFactory,
-    );
-    const spokePoolIndexer = new Indexer(
-      {
-        loopWaitTimeSeconds: getLoopWaitTimeSeconds(
-          spokeConfig.spokeConfig.chainId,
-        ),
-        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
-          spokeConfig.spokeConfig.chainId,
-        ),
-      },
-      spokePoolIndexerDataHandler,
-      retryProvidersFactory.getProviderForChainId(
-        spokeConfig.spokeConfig.chainId,
-      ),
-      redisCache,
-      logger,
-    );
-    return spokePoolIndexer;
-  });
-
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
-    acrossConstants.CHAIN_IDs.MAINNET,
-    retryProvidersFactory.getProviderForChainId(
-      acrossConstants.CHAIN_IDs.MAINNET,
-    ),
+    hubChainId,
+    configStoreClientFactory,
+    hubPoolClientFactory,
     new HubPoolRepository(postgres, logger),
   );
   const hubPoolIndexer = new Indexer(
@@ -184,7 +158,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
       hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
-      // bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
     },
   });
 
