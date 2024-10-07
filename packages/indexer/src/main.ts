@@ -54,13 +54,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redisCache,
     logger,
   ).initializeProviders();
-  console.log(1);
   const configStoreClientFactory = new ConfigStoreClientFactory(
     retryProvidersFactory,
     logger,
     undefined,
   );
-  console.log(2);
   const hubPoolClientFactory = new HubPoolClientFactory(
     retryProvidersFactory,
     logger,
