@@ -2,7 +2,6 @@ import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
-import * as acrossConstants from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
@@ -75,40 +74,23 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redis,
     postgres,
   });
-  const spokePoolIndexers = spokePoolChainsEnabled.map(
-    (spokePoolChainId) =>
-      new services.spokePoolIndexer.Indexer({
-        logger,
-        redis,
-        postgres,
-        spokePoolChainId,
-        configStoreFactory: configStoreClientFactory,
-        hubPoolFactory: hubPoolClientFactory,
-        spokePoolClientFactory,
-        hubChainId,
-        retryProviderFactory: retryProvidersFactory,
-      }),
-  );
 
-  const spokePoolIndexers = spokeConfigs.map((spokeConfig) => {
+  const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
     const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
       logger,
-      spokeConfig.spokeConfig.chainId,
-      retryProvidersFactory,
+      chainId,
+      hubChainId,
+      configStoreClientFactory,
+      hubPoolClientFactory,
+      spokePoolClientFactory,
     );
     const spokePoolIndexer = new Indexer(
       {
-        loopWaitTimeSeconds: getLoopWaitTimeSeconds(
-          spokeConfig.spokeConfig.chainId,
-        ),
-        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
-          spokeConfig.spokeConfig.chainId,
-        ),
+        loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
+        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(chainId),
       },
       spokePoolIndexerDataHandler,
-      retryProvidersFactory.getProviderForChainId(
-        spokeConfig.spokeConfig.chainId,
-      ),
+      retryProvidersFactory.getProviderForChainId(chainId),
       redisCache,
       logger,
     );
@@ -117,25 +99,18 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
-    acrossConstants.CHAIN_IDs.MAINNET,
-    retryProvidersFactory.getProviderForChainId(
-      acrossConstants.CHAIN_IDs.MAINNET,
-    ),
+    hubChainId,
+    configStoreClientFactory,
+    hubPoolClientFactory,
     new HubPoolRepository(postgres, logger),
   );
   const hubPoolIndexer = new Indexer(
     {
-      loopWaitTimeSeconds: getLoopWaitTimeSeconds(
-        acrossConstants.CHAIN_IDs.MAINNET,
-      ),
-      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
-        acrossConstants.CHAIN_IDs.MAINNET,
-      ),
+      loopWaitTimeSeconds: getLoopWaitTimeSeconds(hubChainId),
+      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(hubChainId),
     },
     hubPoolIndexerDataHandler,
-    retryProvidersFactory.getProviderForChainId(
-      acrossConstants.CHAIN_IDs.MAINNET,
-    ),
+    retryProvidersFactory.getProviderForChainId(hubChainId),
     new RedisCache(redis),
     logger,
   );
@@ -167,8 +142,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     await Promise.allSettled([
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
-      ...spokePoolIndexers.map((s) => s.start(10)),
-      // bundleProcessor.start(10),
       ...spokePoolIndexers.map((s) => s.start()),
     ]);
 
@@ -181,7 +154,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
       hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
-      // bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
     },
   });
 

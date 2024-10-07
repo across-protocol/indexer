@@ -1,18 +1,14 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
 import {
-  CHAIN_IDs,
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
 
 import { BlockRange } from "../data-indexing/model";
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
-import { SpokePoolRepository } from "../database/SpokePoolRepository";
 
 import * as utils from "../utils";
-import { getMaxBlockLookBack } from "../web3/constants";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type FetchEventsResult = {
   v3FundsDepositedEvents: across.interfaces.DepositWithBlock[];
@@ -37,7 +33,10 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   constructor(
     private logger: Logger,
     private chainId: number,
-    private providersFactory: RetryProvidersFactory,
+    private hubPoolChainId: number,
+    private configStoreFactory: utils.ConfigStoreClientFactory,
+    private hubPoolFactory: utils.HubPoolClientFactory,
+    private spokePoolFactory: utils.SpokePoolClientFactory,
   ) {
     this.isInitialized = false;
   }
@@ -61,7 +60,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
 
     if (!this.isInitialized) {
-      await this.initialize(blockRange.from, blockRange.to);
+      this.initialize();
       this.isInitialized = true;
     }
 
@@ -126,29 +125,23 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  private async initialize(fromBlock: number, toBlock: number) {
-    this.configStoreClient = await utils.getConfigStoreClient({
-      logger: this.logger,
-      provider: this.providersFactory.getProviderForChainId(CHAIN_IDs.MAINNET),
-      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
-      chainId: this.chainId,
-    });
-    this.hubPoolClient = await utils.getHubPoolClient({
-      configStoreClient: this.configStoreClient,
-      provider: this.providersFactory.getProviderForChainId(CHAIN_IDs.MAINNET),
-      logger: this.logger,
-      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
-      chainId: this.chainId,
-      toBlock,
-    });
-    this.spokePoolClient = await utils.getSpokeClient({
-      hubPoolClient: this.hubPoolClient,
-      provider: this.providersFactory.getProviderForChainId(this.chainId),
-      logger: this.logger,
-      maxBlockLookBack: getMaxBlockLookBack(this.chainId),
-      chainId: this.chainId,
-      fromBlock,
-      toBlock,
-    });
+  private initialize() {
+    this.configStoreClient = this.configStoreFactory.get(this.hubPoolChainId);
+    this.hubPoolClient = this.hubPoolFactory.get(
+      this.hubPoolChainId,
+      undefined,
+      undefined,
+      {
+        configStoreClient: this.configStoreClient,
+      },
+    );
+    this.spokePoolClient = this.spokePoolFactory.get(
+      this.chainId,
+      undefined,
+      undefined,
+      {
+        hubPoolClient: this.hubPoolClient,
+      },
+    );
   }
 }
