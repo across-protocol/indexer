@@ -141,7 +141,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         this.insertWithFinalisationCheck(
           entities.RequestedSpeedUpV3Deposit,
           eventsChunk,
-          ["depositId", "originChainId"],
+          ["depositId", "originChainId", "transactionHash"],
           lastFinalisedBlock,
         ),
       ),
