@@ -325,7 +325,7 @@ export class BundleRepository extends utils.BaseRepository {
 
     const leafCountSubquery = `(SELECT proposal."poolRebalanceLeafCount"
       FROM "evm"."proposed_root_bundle" proposal
-      WHERE proposal.id = bundle."proposalId"
+      WHERE proposal."id" = bundle."proposalId"
       LIMIT 1)`;
 
     const executedUpdateQuery = bundleRepo
