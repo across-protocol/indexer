@@ -84,6 +84,9 @@ export class V3FundsDeposited {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

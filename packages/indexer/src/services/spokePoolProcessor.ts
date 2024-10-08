@@ -8,7 +8,7 @@ enum SpokePoolEvents {
   RequestedV3SlowFill = "RequestedV3SlowFill",
 }
 
-export class Processor {
+export class SpokePoolProcessor {
   constructor(
     private readonly postgres: DataSource,
     private readonly logger: winston.Logger,

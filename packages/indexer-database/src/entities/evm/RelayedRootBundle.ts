@@ -39,6 +39,9 @@ export class RelayedRootBundle {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

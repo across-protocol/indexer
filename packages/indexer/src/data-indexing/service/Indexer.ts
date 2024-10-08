@@ -34,7 +34,8 @@ export class Indexer {
   public async start() {
     while (!this.stopRequested) {
       try {
-        const { latestBlockNumber, blockRange } = await this.getBlockRange();
+        const { latestBlockNumber, blockRange, lastFinalisedBlock } =
+          await this.getBlockRange();
 
         if (!blockRange) {
           this.logger.info({
@@ -44,18 +45,13 @@ export class Indexer {
             dataIdentifier: this.dataHandler.getDataIdentifier(),
           });
         } else {
-          const lastFinalisedBlockInBlockRange =
-            this.getLastFinalisedBlockInBlockRange(
-              latestBlockNumber,
-              blockRange,
-            );
           await this.dataHandler.processBlockRange(
             blockRange,
-            lastFinalisedBlockInBlockRange,
+            lastFinalisedBlock,
           );
           await this.redisCache.set(
             this.getLastFinalisedBlockCacheKey(),
-            lastFinalisedBlockInBlockRange,
+            lastFinalisedBlock,
           );
         }
       } catch (error) {
@@ -83,36 +79,37 @@ export class Indexer {
     this.stopRequested = true;
   }
 
-  private getLastFinalisedBlockInBlockRange(
-    latestBlockNumber: number,
-    blockRange: BlockRange,
-  ) {
-    const lastOnChainFinalisedBlock =
-      latestBlockNumber - this.config.finalisedBlockBufferDistance + 1;
-    const lastFinalisedBlockInBlockRange = Math.min(
-      blockRange.to,
-      lastOnChainFinalisedBlock,
-    );
-
-    return lastFinalisedBlockInBlockRange;
-  }
-
   private async getBlockRange() {
-    const lastBlockFinalised = await this.redisCache.get<number>(
+    const lastBlockFinalisedStored = await this.redisCache.get<number>(
       this.getLastFinalisedBlockCacheKey(),
     );
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
-    // If the last block finalised is the same as the latest block, no new blocks to process
-    if (latestBlockNumber === lastBlockFinalised) {
-      return { latestBlockNumber, blockRange: undefined };
+    const lastFinalisedBlockOnChain =
+      latestBlockNumber - this.config.finalisedBlockBufferDistance;
+
+    if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
+      return {
+        latestBlockNumber,
+        blockRange: undefined,
+        lastFinalisedBlock: lastFinalisedBlockOnChain,
+      };
     }
-    const fromBlock = lastBlockFinalised
-      ? lastBlockFinalised + 1
+    const fromBlock = lastBlockFinalisedStored
+      ? lastBlockFinalisedStored + 1
       : this.dataHandler.getStartIndexingBlockNumber();
     // TODO: hardcoded 200_000, should be a config or removed
     const toBlock = Math.min(fromBlock + 200_000, latestBlockNumber);
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
-    return { latestBlockNumber, blockRange };
+    const lastFinalisedBlockInBlockRange = Math.min(
+      blockRange.to,
+      lastFinalisedBlockOnChain,
+    );
+
+    return {
+      latestBlockNumber,
+      blockRange,
+      lastFinalisedBlock: lastFinalisedBlockInBlockRange,
+    };
   }
 
   private getLastFinalisedBlockCacheKey() {

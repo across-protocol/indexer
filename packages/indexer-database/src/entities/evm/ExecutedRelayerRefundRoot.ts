@@ -52,6 +52,9 @@ export class ExecutedRelayerRefundRoot {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

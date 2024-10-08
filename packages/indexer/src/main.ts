@@ -2,7 +2,6 @@ import * as services from "./services";
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
-import * as acrossConstants from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
@@ -15,11 +14,14 @@ import {
   Indexer,
 } from "./data-indexing/service";
 import { HubPoolRepository } from "./database/HubPoolRepository";
+import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
-} from "./utils";
+} from "./utils/contractFactoryUtils";
+import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
+import { SpokePoolProcessor } from "./services/spokePoolProcessor";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -52,7 +54,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redisCache,
     logger,
   ).initializeProviders();
-
   const configStoreClientFactory = new ConfigStoreClientFactory(
     retryProvidersFactory,
     logger,
@@ -74,20 +75,31 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     redis,
     postgres,
   });
-  const spokePoolIndexers = spokePoolChainsEnabled.map(
-    (spokePoolChainId) =>
-      new services.spokePoolIndexer.Indexer({
-        logger,
-        redis,
-        postgres,
-        spokePoolChainId,
-        configStoreFactory: configStoreClientFactory,
-        hubPoolFactory: hubPoolClientFactory,
-        spokePoolClientFactory,
-        hubChainId,
-        retryProviderFactory: retryProvidersFactory,
-      }),
-  );
+
+  const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
+    const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
+      logger,
+      chainId,
+      hubChainId,
+      retryProvidersFactory.getProviderForChainId(chainId),
+      configStoreClientFactory,
+      hubPoolClientFactory,
+      spokePoolClientFactory,
+      new SpokePoolRepository(postgres, logger),
+      new SpokePoolProcessor(postgres, logger, chainId),
+    );
+    const spokePoolIndexer = new Indexer(
+      {
+        loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
+        finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(chainId),
+      },
+      spokePoolIndexerDataHandler,
+      retryProvidersFactory.getProviderForChainId(chainId),
+      redisCache,
+      logger,
+    );
+    return spokePoolIndexer;
+  });
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
@@ -98,17 +110,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   );
   const hubPoolIndexer = new Indexer(
     {
-      loopWaitTimeSeconds: getLoopWaitTimeSeconds(
-        acrossConstants.CHAIN_IDs.MAINNET,
-      ),
-      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
-        acrossConstants.CHAIN_IDs.MAINNET,
-      ),
+      loopWaitTimeSeconds: getLoopWaitTimeSeconds(hubChainId),
+      finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(hubChainId),
     },
     hubPoolIndexerDataHandler,
-    retryProvidersFactory.getProviderForChainId(
-      acrossConstants.CHAIN_IDs.MAINNET,
-    ),
+    retryProvidersFactory.getProviderForChainId(hubChainId),
     new RedisCache(redis),
     logger,
   );
@@ -119,7 +125,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.info(
         "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
       );
-      spokePoolIndexers.map((s) => s.stop());
+      spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
     } else {
       logger.info("\nForcing exit...");
@@ -139,7 +145,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     await Promise.allSettled([
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
-      ...spokePoolIndexers.map((s) => s.start(10)),
+      ...spokePoolIndexers.map((s) => s.start()),
     ]);
 
   logger.info({

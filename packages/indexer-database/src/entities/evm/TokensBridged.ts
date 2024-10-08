@@ -44,6 +44,9 @@ export class TokensBridged {
   @Column()
   blockNumber: number;
 
+  @Column()
+  finalised: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }
