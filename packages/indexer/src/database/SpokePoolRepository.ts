@@ -81,7 +81,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
         this.insertWithFinalisationCheck(
           entities.FilledV3Relay,
           eventsChunk,
-          ["depositId", "originChainId"],
+          ["relayHash"],
           lastFinalisedBlock,
         ),
       ),
