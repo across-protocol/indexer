@@ -34,7 +34,8 @@ export class Indexer {
   public async start() {
     while (!this.stopRequested) {
       try {
-        const { latestBlockNumber, blockRange, lastFinalisedBlock } = await this.getBlockRange();
+        const { latestBlockNumber, blockRange, lastFinalisedBlock } =
+          await this.getBlockRange();
 
         if (!blockRange) {
           this.logger.info({
@@ -83,10 +84,15 @@ export class Indexer {
       this.getLastFinalisedBlockCacheKey(),
     );
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
-    const lastFinalisedBlockOnChain = latestBlockNumber - this.config.finalisedBlockBufferDistance;
-    // If the last block finalised is the same as the latest block, no new blocks to process
+    const lastFinalisedBlockOnChain =
+      latestBlockNumber - this.config.finalisedBlockBufferDistance;
+
     if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
-      return { latestBlockNumber, blockRange: undefined, lastFinalisedBlock: lastFinalisedBlockOnChain };
+      return {
+        latestBlockNumber,
+        blockRange: undefined,
+        lastFinalisedBlock: lastFinalisedBlockOnChain,
+      };
     }
     const fromBlock = lastBlockFinalisedStored
       ? lastBlockFinalisedStored + 1
@@ -94,9 +100,16 @@ export class Indexer {
     // TODO: hardcoded 200_000, should be a config or removed
     const toBlock = Math.min(fromBlock + 200_000, latestBlockNumber);
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
-    const lastFinalisedBlockInBlockRange = Math.min(blockRange.to, lastFinalisedBlockOnChain);
+    const lastFinalisedBlockInBlockRange = Math.min(
+      blockRange.to,
+      lastFinalisedBlockOnChain,
+    );
 
-    return { latestBlockNumber, blockRange, lastFinalisedBlock: lastFinalisedBlockInBlockRange };
+    return {
+      latestBlockNumber,
+      blockRange,
+      lastFinalisedBlock: lastFinalisedBlockInBlockRange,
+    };
   }
 
   private getLastFinalisedBlockCacheKey() {
