@@ -22,11 +22,13 @@ export class BaseRepository {
         .returning("*")
         .execute();
       this.logger.info({
+        at: "BaseRepository#insert",
         message: `Saved ${data.length} ${repository.metadata.name} events`,
       });
       return savedData.generatedMaps as Entity[];
     } catch (error) {
       this.logger.error({
+        at: "BaseRepository#insert",
         message: `There was an error while saving ${repository.metadata.name} events`,
         error,
       });
