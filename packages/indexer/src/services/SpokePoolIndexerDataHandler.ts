@@ -61,7 +61,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     lastFinalisedBlock: number,
   ) {
     this.logger.info({
-      message: "SpokePoolIndexerDataHandler::Processing block range",
+      at: "SpokePoolIndexerDataHandler::processBlockRange",
+      message: "Processing block range",
       blockRange,
       lastFinalisedBlock,
       identifier: this.getDataIdentifier(),
@@ -79,7 +80,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       return acc + Object.values(speedUps).length;
     }, 0);
     this.logger.info({
-      message: "SpokePoolIndexerDataHandler::Found events",
+      at: "SpokePoolIndexerDataHandler::processBlockRange",
+      message: "Found events",
       events: {
         v3FundsDepositedEvents: events.v3FundsDepositedEvents.length,
         filledV3RelayEvents: events.filledV3RelayEvents.length,
@@ -90,6 +92,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
           events.executedRelayerRefundRootEvents.length,
         tokensBridgedEvents: events.tokensBridgedEvents.length,
       },
+      blockRange,
+      identifier: this.getDataIdentifier(),
     });
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     await this.spokePoolProcessor.process(storedEvents);

@@ -33,12 +33,20 @@ async function initializeRedis(
 
   return new Promise<Redis>((resolve, reject) => {
     redis.on("ready", () => {
-      logger.info("Redis connection established.", config);
+      logger.info({
+        at: "Indexer#initializeRedis",
+        message: "Redis connection established",
+        config,
+      });
       resolve(redis);
     });
 
     redis.on("error", (err) => {
-      logger.error("Redis connection error:", err);
+      logger.error({
+        at: "Indexer#initializeRedis",
+        message: "Redis connection failed",
+        error: err,
+      });
       reject(err);
     });
   });
@@ -122,16 +130,17 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
-      logger.info(
-        "\nWait for shutdown, or press Ctrl+C again to forcefully exit.",
-      );
+      logger.info({
+        at: "Indexer#Main",
+        message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
+      });
       spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
     } else {
-      logger.info("\nForcing exit...");
+      logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();
-      logger.info("Exiting indexer");
+      logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
       across.utils.delay(5).finally(() => process.exit());
     }
   });
@@ -162,5 +171,5 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   redis?.quit();
   postgres?.destroy();
-  logger.info("Exiting indexer");
+  logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
 }

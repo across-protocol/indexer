@@ -11,10 +11,17 @@ export async function connectToDatabase(
 ) {
   try {
     const database = await createDataSource(databaseConfig).initialize();
-    logger.info("Postgres connection established");
+    logger.info({
+      at: "IndexerAPI#connectToDatabase",
+      message: "Postgres connection established",
+    });
     return database;
   } catch (error) {
-    logger.error("Unable to connect to database", error);
+    logger.error({
+      at: "IndexerAPI#connectToDatabase",
+      message: "Unable to connect to database",
+      error,
+    });
     throw error;
   }
 }
@@ -53,6 +60,7 @@ export async function Main(
 
   logger.info({
     message: `Starting indexer api on port ${port}`,
+    at: "main.ts",
   });
   void (await new Promise((res) => {
     app.listen(port, () => res(app));

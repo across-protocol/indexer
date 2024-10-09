@@ -5,29 +5,11 @@ import * as Template from "@repo/template";
 import * as Indexer from "@repo/indexer";
 import * as PersistenceExample from "@repo/persistence-example";
 import * as IndexerApi from "@repo/indexer-api";
-
-import { createLogger, format, transports } from "winston";
-
-// Create the logger instance
-const logger = createLogger({
-  level: "info", // Set the default log level
-  format: format.combine(
-    format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-    format.errors({ stack: true }),
-    format.printf(({ timestamp, level, message, ...meta }) => {
-      const metaString = Object.keys(meta).length
-        ? JSON.stringify(meta, null, 2)
-        : "";
-      return `[${timestamp}] ${level.toUpperCase()}: ${message} ${metaString}`;
-    }),
-  ),
-
-  transports: [
-    new transports.Console(), // Log to the console
-  ],
-});
+import { Logger } from "@uma/logger";
 
 dotenv.config();
+
+const logger = Logger;
 
 async function run() {
   const { APP } = process.env;
@@ -51,5 +33,5 @@ async function run() {
 }
 
 run()
-  .then((x) => x && logger.info(x))
+  .then((x) => x && logger.info({ at: "app", message: x }))
   .catch(console.log);

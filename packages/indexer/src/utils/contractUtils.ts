@@ -144,6 +144,7 @@ export function getHubPoolClient(
     maxBlockLookBack,
   };
   logger.info({
+    at: "getHubPoolClient",
     message: "Initializing hubpool",
     chainId,
     ...eventSearchConfig,
