@@ -52,7 +52,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     lastFinalisedBlock: number,
   ) {
     this.logger.info({
-      message: "HubPoolIndexerDataHandler::Processing block range",
+      at: "HubPoolIndexerDataHandler::processBlockRange",
+      message: "Processing block range",
       blockRange,
       lastFinalisedBlock,
       identifier: this.getDataIdentifier(),
@@ -63,7 +64,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     }
     const events = await this.fetchEventsByRange(blockRange);
     this.logger.info({
-      message: "HubPoolIndexerDataHandler::Found events",
+      at: "HubPoolIndexerDataHandler::processBlockRange",
+      message: "Found events",
       events: {
         proposedRootBundleEvents: events.proposedRootBundleEvents.length,
         rootBundleExecutedEvents: events.rootBundleExecutedEvents.length,
@@ -71,6 +73,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
         rootBundleDisputedEvents: events.rootBundleDisputedEvents.length,
         setPoolRebalanceRouteEvents: events.setPoolRebalanceRouteEvents.length,
       },
+      blockRange,
+      identifier: this.getDataIdentifier(),
     });
     await this.storeEvents(events, lastFinalisedBlock);
   }
