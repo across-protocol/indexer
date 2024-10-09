@@ -104,6 +104,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const { configStoreClient, hubPoolClient, spokePoolClient } = this;
 
+    spokePoolClient.firstBlockToSearch = blockRange.from;
     spokePoolClient.eventSearchConfig.toBlock = blockRange.to;
 
     await configStoreClient.update();
