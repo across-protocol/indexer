@@ -21,6 +21,16 @@ export type GetSpokeClientParams = {
   hubPoolClient: across.clients.HubPoolClient;
 };
 
+function getAddress(contractName: string, chainId: number): string {
+  const address = getDeployedAddress(contractName, chainId);
+  if (!address) {
+    throw new Error(
+      `Address for contract ${contractName} on ${chainId} not found `,
+    );
+  }
+  return address;
+}
+
 /**
  * Resolves a spoke pool client with the given parameters
  * @param params Parameters to resolve a spoke client.
@@ -32,7 +42,7 @@ export function getSpokeClient(
   params: GetSpokeClientParams,
 ): across.clients.SpokePoolClient {
   const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
-  const address = getDeployedAddress("SpokePool", chainId);
+  const address = getAddress("SpokePool", chainId);
   const deployedBlockNumber = getDeployedBlockNumber("SpokePool", chainId);
 
   const toBlock = params.toBlock;
@@ -85,7 +95,7 @@ export function getConfigStoreClient(
   params: GetConfigStoreClientParams,
 ): across.clients.AcrossConfigStoreClient {
   const { provider, logger, maxBlockLookBack, chainId } = params;
-  const address = getDeployedAddress("AcrossConfigStore", chainId);
+  const address = getAddress("AcrossConfigStore", chainId);
   const deployedBlockNumber = getDeployedBlockNumber(
     "AcrossConfigStore",
     chainId,
@@ -131,7 +141,7 @@ export function getHubPoolClient(
 ): across.clients.HubPoolClient {
   const { provider, logger, maxBlockLookBack, chainId, configStoreClient } =
     params;
-  const address = getDeployedAddress("HubPool", chainId);
+  const address = getAddress("HubPool", chainId);
   const deployedBlockNumber = getDeployedBlockNumber("HubPool", chainId);
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
