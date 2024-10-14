@@ -35,7 +35,9 @@ export class Bundle {
   @Column()
   slowRelayRoot: string;
 
-  @OneToOne(() => ProposedRootBundle, { nullable: false })
+  @OneToOne(() => ProposedRootBundle, (proposal) => proposal.bundle, {
+    nullable: false,
+  })
   @JoinColumn({
     foreignKeyConstraintName: "FK_bundle_rootBundleProposeId",
   })
@@ -44,7 +46,9 @@ export class Bundle {
   @Column({ nullable: false })
   proposalId: number;
 
-  @OneToOne(() => RootBundleCanceled, { nullable: true })
+  @OneToOne(() => RootBundleCanceled, (cancelation) => cancelation.bundle, {
+    nullable: true,
+  })
   @JoinColumn({
     foreignKeyConstraintName: "FK_bundle_rootBundleCanceledId",
   })
@@ -53,7 +57,9 @@ export class Bundle {
   @Column({ nullable: true })
   cancelationId: number;
 
-  @OneToOne(() => RootBundleDisputed, { nullable: true })
+  @OneToOne(() => RootBundleDisputed, (dispute) => dispute.bundle, {
+    nullable: true,
+  })
   @JoinColumn({
     foreignKeyConstraintName: "FK_bundle_rootBundleDisputedId",
   })

@@ -48,14 +48,14 @@ export class BundleRepository extends utils.BaseRepository {
     );
     // Find all canceled events that haven't been associated with a bundle.
     return canceledRootBundleRepository
-      .createQueryBuilder("drb")
+      .createQueryBuilder("crb")
       .select([
-        "drb.id",
-        "drb.blockNumber",
-        "drb.logIndex",
-        "drb.transactionIndex",
+        "crb.id",
+        "crb.blockNumber",
+        "crb.logIndex",
+        "crb.transactionIndex",
       ])
-      .leftJoin("bundle", "b", "b.cancelationId = drb.id")
+      .leftJoin("crb.bundle", "b")
       .where("b.cancelationId IS NULL")
       .getMany();
   }
@@ -80,7 +80,7 @@ export class BundleRepository extends utils.BaseRepository {
         "drb.logIndex",
         "drb.transactionIndex",
       ])
-      .leftJoin("bundle", "b", "b.disputeId = drb.id")
+      .leftJoin("drb.bundle", "b")
       .where("b.disputeId IS NULL")
       .getMany();
   }
@@ -108,7 +108,7 @@ export class BundleRepository extends utils.BaseRepository {
         "prb.relayerRefundRoot",
         "prb.slowRelayRoot",
       ])
-      .leftJoin("bundle", "b", "b.proposalId = prb.id")
+      .leftJoin("prb.bundle", "b")
       .where("b.proposalId IS NULL")
       .getMany();
   }
@@ -177,7 +177,7 @@ export class BundleRepository extends utils.BaseRepository {
     return this.postgres
       .getRepository(entities.ProposedRootBundle)
       .createQueryBuilder("prb")
-      .leftJoin(entities.Bundle, "b", "b.proposalId = prb.id")
+      .leftJoinAndSelect("prb.bundle", "b")
       .where(
         // Proposal is in the past
         "(prb.blockNumber < :blockNumber OR " +

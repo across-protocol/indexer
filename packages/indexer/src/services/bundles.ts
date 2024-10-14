@@ -113,7 +113,7 @@ async function assignDisputeEventToBundle(
           return undefined;
         }
         return {
-          bundleId: proposedBundle.id,
+          bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
       },
@@ -156,7 +156,7 @@ async function assignCanceledEventToBundle(
           return undefined;
         }
         return {
-          bundleId: proposedBundle.id,
+          bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
       },
@@ -201,7 +201,7 @@ async function assignExecutionsToBundle(
           );
         }
         return {
-          bundleId: proposedBundle.id,
+          bundleId: proposedBundle.bundle.id,
           executionId: id,
         };
       },
@@ -268,14 +268,17 @@ async function assignBundleRangesToProposal(
           // matches the previous. For the case that the current bundle adds a new chain
           // to the proposal, the corresponding previous event index should resolve undefined
           // and therefore the start block should be 0.
-          const startBlock =
+          const previousEndBlock =
             previousEvent.bundleEvaluationBlockNumbers[idx] ?? 0;
           return [
             ...acc,
             {
               bundleId: bundle.id,
               chainId,
-              startBlock,
+              startBlock:
+                previousEndBlock !== endBlock
+                  ? previousEndBlock + 1
+                  : previousEndBlock, // Bundle range doesn't change for disabled chains
               endBlock,
             },
           ];
@@ -285,7 +288,11 @@ async function assignBundleRangesToProposal(
     }),
   );
   const insertResults = await dbRepository.associateBlockRangeWithBundle(
-    rangeSegments.filter((segment) => segment !== undefined).flat(),
+    rangeSegments
+      .filter(
+        (segment): segment is BlockRangeInsertType[] => segment !== undefined,
+      )
+      .flat(),
   );
   logResultOfAssignment(
     logger,
