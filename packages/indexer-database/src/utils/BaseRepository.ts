@@ -56,12 +56,6 @@ export class BaseRepository {
       .orUpdate(Object.keys(data[0] as any), uniqueKeysAsStrings)
       .returning("*")
       .execute();
-    await repository
-      .createQueryBuilder()
-      .delete()
-      .where("finalised = false")
-      .andWhere("blockNumber <= :lastFinalisedBlock", { lastFinalisedBlock })
-      .execute();
 
     return savedData.generatedMaps as Entity[];
   }
