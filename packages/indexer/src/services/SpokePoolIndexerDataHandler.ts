@@ -33,7 +33,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
   private hubPoolClient: across.clients.HubPoolClient;
-  private spokePoolClient: across.clients.SpokePoolClient;
 
   constructor(
     private logger: Logger,
@@ -102,10 +101,15 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
-    const { configStoreClient, hubPoolClient, spokePoolClient } = this;
-
-    spokePoolClient.firstBlockToSearch = blockRange.from;
-    spokePoolClient.eventSearchConfig.toBlock = blockRange.to;
+    const { configStoreClient, hubPoolClient } = this;
+    const spokePoolClient = this.spokePoolFactory.get(
+      this.chainId,
+      blockRange.from,
+      blockRange.to,
+      {
+        hubPoolClient: this.hubPoolClient,
+      },
+    );
 
     await configStoreClient.update();
     await hubPoolClient.update([
@@ -209,14 +213,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       undefined,
       {
         configStoreClient: this.configStoreClient,
-      },
-    );
-    this.spokePoolClient = this.spokePoolFactory.get(
-      this.chainId,
-      undefined,
-      undefined,
-      {
-        hubPoolClient: this.hubPoolClient,
       },
     );
   }
