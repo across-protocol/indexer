@@ -98,7 +98,7 @@ export class Indexer {
       ? lastBlockFinalisedStored + 1
       : this.dataHandler.getStartIndexingBlockNumber();
     // TODO: hardcoded 200_000, should be a config or removed
-    const toBlock = Math.min(fromBlock + 200_000, latestBlockNumber);
+    const toBlock = Math.min(fromBlock + 50_000, latestBlockNumber);
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
     const lastFinalisedBlockInBlockRange = Math.min(
       blockRange.to,
