@@ -64,14 +64,22 @@ export class SpokePoolRepository extends utils.BaseRepository {
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       return {
-        ...event,
+        ...Object.keys(event).reduce(
+          (acc, key) => {
+            if (key !== "relayExecutionInfo") {
+              acc[key] = (event as any)[key];
+            }
+            return acc;
+          },
+          {} as { [key: string]: any },
+        ),
         relayHash: getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
-        relayExecutionInfo: {
-          ...event.relayExecutionInfo,
-          updatedOutputAmount:
-            event.relayExecutionInfo.updatedOutputAmount.toString(),
-        },
+        updatedRecipient: event.relayExecutionInfo.updatedRecipient,
+        updatedOutputAmount:
+          event.relayExecutionInfo.updatedOutputAmount.toString(),
+        updatedMessage: event.relayExecutionInfo.updatedMessage,
+        fillType: event.relayExecutionInfo.fillType,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });

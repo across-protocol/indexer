@@ -7,20 +7,6 @@ import {
 } from "typeorm";
 import { interfaces } from "@across-protocol/sdk";
 
-class RelayExecutionInfo {
-  @Column()
-  updatedRecipient: string;
-
-  @Column()
-  updatedMessage: string;
-
-  @Column()
-  updatedOutputAmount: string;
-
-  @Column({ type: "enum", enum: interfaces.FillType })
-  fillType: interfaces.FillType;
-}
-
 @Entity({ schema: "evm" })
 @Unique("UK_filledV3Relay_relayHash", ["relayHash"])
 export class FilledV3Relay {
@@ -69,8 +55,17 @@ export class FilledV3Relay {
   @Column()
   fillDeadline: Date;
 
-  @Column(() => RelayExecutionInfo, { prefix: false })
-  relayExecutionInfo: RelayExecutionInfo;
+  @Column()
+  updatedRecipient: string;
+
+  @Column()
+  updatedMessage: string;
+
+  @Column()
+  updatedOutputAmount: string;
+
+  @Column({ type: "enum", enum: interfaces.FillType })
+  fillType: interfaces.FillType;
 
   @Column()
   relayer: string;
