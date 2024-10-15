@@ -15,8 +15,9 @@ import {
   ProposalRangeResult,
   resolveMostRecentProposedAndExecutedBundles,
   SpokePoolClientFactory,
-} from "../utils";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+} from "../../utils";
+import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+import { BundleLeavesCache } from "../../redis/bundleLeavesCache";
 
 type BundleBuilderConfig = {
   logger: winston.Logger;
@@ -29,6 +30,8 @@ type BundleBuilderConfig = {
 };
 
 export class BundleBuilderService extends BaseIndexer {
+  private currentBundleCache: BundleLeavesCache;
+  private proposedBundleCache: BundleLeavesCache;
   constructor(private config: BundleBuilderConfig) {
     super(config.logger, "bundleBuilder");
   }
@@ -58,6 +61,14 @@ export class BundleBuilderService extends BaseIndexer {
    * Effectively a no-op for the BundleBuilderService.
    */
   protected initialize(): Promise<void> {
+    this.currentBundleCache = new BundleLeavesCache({
+      redis: this.config.redis,
+      prefix: "currentBundleCache",
+    });
+    this.proposedBundleCache = new BundleLeavesCache({
+      redis: this.config.redis,
+      prefix: "proposedBundleCache",
+    });
     return Promise.resolve();
   }
 
@@ -95,6 +106,20 @@ export class BundleBuilderService extends BaseIndexer {
       convertProposalRangeResultToProposalRange(ranges),
     );
     // Persist this to Redis
+    await Promise.all(
+      resultsToPersist
+        .map((leaf) => {
+          return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+            return this.currentBundleCache.set({
+              chainId: leaf.chainId,
+              l1Token,
+              netSendAmount: leaf.netSendAmounts[tokenIndex] ?? "0",
+              runningBalance: leaf.runningBalances[tokenIndex] ?? "0",
+            });
+          });
+        })
+        .flat(),
+    );
   }
 
   /**
@@ -130,6 +155,20 @@ export class BundleBuilderService extends BaseIndexer {
     // in the database
 
     // Persist this to Redis
+    await Promise.all(
+      resultsToPersist
+        .map((leaf) => {
+          return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+            return this.proposedBundleCache.set({
+              chainId: leaf.chainId,
+              l1Token,
+              netSendAmount: leaf.netSendAmounts[tokenIndex] ?? "0",
+              runningBalance: leaf.runningBalances[tokenIndex] ?? "0",
+            });
+          });
+        })
+        .flat(),
+    );
   }
 
   async resolvePoolLeafForBundleRange(
