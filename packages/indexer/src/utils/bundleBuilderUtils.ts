@@ -107,17 +107,11 @@ export async function getBlockRangeFromBundleToHead(
 ): Promise<ProposalRangeResult[]> {
   return Promise.all(
     previous.chainIds.map(async (chainId, idx) => {
-      const previousBlock = previous.bundleEvaluationBlockNumbers[idx];
-      if (!utils.isDefined(previousBlock)) {
-        throw new Error(`Previous block number for chain ${chainId} not found`);
-      }
+      const previousBlock = previous.bundleEvaluationBlockNumbers[idx]!;
       if (disabledChainIds.includes(chainId)) {
         return { chainId, startBlock: previousBlock, endBlock: previousBlock };
       } else {
         const provider = providers.getProviderForChainId(chainId);
-        if (!utils.isDefined(provider)) {
-          throw new Error(`Provider for chain ${chainId} not found`);
-        }
         const currentBlock = await provider.getBlockNumber();
         return {
           chainId,
