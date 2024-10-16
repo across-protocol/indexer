@@ -34,10 +34,24 @@ export class BundleBuilderService extends BaseIndexer {
   }
 
   protected async indexerLogic(): Promise<void> {
-    await Promise.allSettled([
-      this.handleCurrentBundleLoop(),
-      this.handleProposedBundleLoop(),
+    // Get the most recent proposed and executed bundles
+    const { lastExecutedBundle, lastProposedBundle } =
+      await resolveMostRecentProposedAndExecutedBundles(
+        this.config.bundleRepository,
+        this.logger,
+      );
+    // Call the sub logic with the same last executed and proposed bundles
+    // and log the result
+    const [currentLoopResult, proposedLoopResult] = await Promise.allSettled([
+      this.handleCurrentBundleLoop(lastExecutedBundle, lastProposedBundle),
+      this.handleProposedBundleLoop(lastExecutedBundle, lastProposedBundle),
     ]);
+    this.logger.info({
+      at: "BundleBuilder#Processor#indexerLogic",
+      message: "Bundle builder loop completed",
+      currentLoopResult: currentLoopResult.status,
+      proposedLoopResult: proposedLoopResult.status,
+    });
   }
 
   /**
@@ -47,18 +61,22 @@ export class BundleBuilderService extends BaseIndexer {
     return Promise.resolve();
   }
 
-  private async handleCurrentBundleLoop(): Promise<void> {
+  /**
+   * Generates, processes, and persists the pool leaves for a bundle that
+   * spans from the latest proposed (or executed if no proposal is live) to
+   * the head of the chain.
+   * @param lastExecutedBundle The most recent executed bundle.
+   * @param lastProposedBundle The most recent proposed bundle.
+   */
+  private async handleCurrentBundleLoop(
+    lastExecutedBundle: entities.Bundle,
+    lastProposedBundle: entities.Bundle | null,
+  ): Promise<void> {
     // Resolve a latest config store client and update it
     const configStoreClient = this.config.configStoreClientFactory.get(
       CHAIN_IDs.MAINNET,
     );
     void (await configStoreClient.update());
-    // Get the most recent proposed and executed bundles
-    const { lastProposedBundle, lastExecutedBundle } =
-      await resolveMostRecentProposedAndExecutedBundles(
-        this.config.bundleRepository,
-        this.logger,
-      );
     // Resolve the latest proposal
     const latestProposal = (lastProposedBundle ?? lastExecutedBundle).proposal;
     // Grab the block range from the latest bundle to the head of the chain
@@ -79,13 +97,17 @@ export class BundleBuilderService extends BaseIndexer {
     // Persist this to Redis
   }
 
-  private async handleProposedBundleLoop(): Promise<void> {
-    // Get the most recent proposed and executed bundles
-    const { lastProposedBundle, lastExecutedBundle } =
-      await resolveMostRecentProposedAndExecutedBundles(
-        this.config.bundleRepository,
-        this.logger,
-      );
+  /**
+   * Generates, processes, and persists the pool leaves for a bundle that
+   * spans from the latest executed bundle to the latest proposed bundle
+   * @param lastExecutedBundle The most recent executed bundle.
+   * @param lastProposedBundle The most recent proposed bundle.
+   * @throws if the proposed bundle is null
+   */
+  private async handleProposedBundleLoop(
+    lastExecutedBundle: entities.Bundle,
+    lastProposedBundle: entities.Bundle | null,
+  ): Promise<void> {
     // If no proposed bundle is found, skip the rest of the logic
     if (!utils.isDefined(lastProposedBundle)) {
       this.logger.debug({
