@@ -6,7 +6,6 @@ import {
   BlockRangeInsertType,
   BundleRepository,
 } from "../database/BundleRepository";
-import { HubPoolRepository } from "../database/HubPoolRepository";
 
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
@@ -32,14 +31,13 @@ class ConfigurationMalformedError extends Error {
 
 export class Processor extends BaseIndexer {
   private bundleRepository: BundleRepository;
-  private hubPoolRepository: HubPoolRepository;
   constructor(private readonly config: BundleConfig) {
     super(config.logger, "bundle");
   }
 
   protected async indexerLogic(): Promise<void> {
     const { logger } = this.config;
-    const { bundleRepository, hubPoolRepository } = this;
+    const { bundleRepository } = this;
     await assignBundleToProposedEvent(bundleRepository, logger);
     await assignDisputeEventToBundle(bundleRepository, logger);
     await assignCanceledEventToBundle(bundleRepository, logger);
@@ -60,10 +58,6 @@ export class Processor extends BaseIndexer {
       this.config.postgres,
       this.config.logger,
       true,
-    );
-    this.hubPoolRepository = new HubPoolRepository(
-      this.config.postgres,
-      this.config.logger,
     );
   }
 }
