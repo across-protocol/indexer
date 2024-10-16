@@ -42,7 +42,7 @@ export async function resolveMostRecentProposedAndExecutedBundles(
   // If a proposed bundle is found, it must be newer than the last executed bundle
   // otherwise, the system is in an inconsistent state
   if (
-    !utils.isDefined(lastProposedBundle) ||
+    utils.isDefined(lastProposedBundle) &&
     lastProposedBundle.proposal.blockNumber <
       lastExecutedBundle.proposal.blockNumber
   ) {
