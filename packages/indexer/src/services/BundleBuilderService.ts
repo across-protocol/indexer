@@ -1,3 +1,4 @@
+import assert from "assert";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { caching, clients, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
@@ -109,12 +110,20 @@ export class BundleBuilderService extends BaseIndexer {
     await Promise.all(
       resultsToPersist
         .map((leaf) => {
+          assert(
+            leaf.l1Tokens.length == leaf.netSendAmounts.length,
+            "Net send amount count does not match token counts",
+          );
+          assert(
+            leaf.l1Tokens.length == leaf.runningBalances.length,
+            "Running balances count does not match token counts",
+          );
           return leaf.l1Tokens.map((l1Token, tokenIndex) => {
             return this.currentBundleCache.set({
               chainId: leaf.chainId,
               l1Token,
-              netSendAmount: leaf.netSendAmounts[tokenIndex] ?? "0",
-              runningBalance: leaf.runningBalances[tokenIndex] ?? "0",
+              netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+              runningBalance: leaf.runningBalances[tokenIndex]!,
             });
           });
         })
@@ -158,12 +167,20 @@ export class BundleBuilderService extends BaseIndexer {
     await Promise.all(
       resultsToPersist
         .map((leaf) => {
+          assert(
+            leaf.l1Tokens.length == leaf.netSendAmounts.length,
+            "Net send amount count does not match token counts",
+          );
+          assert(
+            leaf.l1Tokens.length == leaf.runningBalances.length,
+            "Running balances count does not match token counts",
+          );
           return leaf.l1Tokens.map((l1Token, tokenIndex) => {
             return this.proposedBundleCache.set({
               chainId: leaf.chainId,
               l1Token,
-              netSendAmount: leaf.netSendAmounts[tokenIndex] ?? "0",
-              runningBalance: leaf.runningBalances[tokenIndex] ?? "0",
+              netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+              runningBalance: leaf.runningBalances[tokenIndex]!,
             });
           });
         })

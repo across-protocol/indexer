@@ -6,6 +6,7 @@ export type Config = {
   redis: Redis;
   prefix: string;
 };
+
 export const BundleLeaf = s.object({
   chainId: s.number(),
   l1Token: s.string(),
@@ -15,9 +16,22 @@ export const BundleLeaf = s.object({
 export type BundleLeaf = s.Infer<typeof BundleLeaf>;
 export type BundleLeaves = BundleLeaf[];
 
+/**
+ * Class to interact with a Redis-backed cache for storing and retrieving BundleLeaves.
+ */
 export class BundleLeavesCache {
+  /**
+   * @param {Config} config - The configuration object, including the Redis instance and prefix.
+   */
   constructor(private config: Config) {}
-  // Set data by chainId and l1Token
+
+  /**
+   * Stores a BundleLeaf object in Redis, indexed by chainId and l1Token.
+   * Also adds the key to separate indexes for chainId and l1Token for efficient lookups.
+   *
+   * @param {BundleLeaf} data - The BundleLeaf data to store.
+   * @returns {Promise<void>} - A promise that resolves when the data is successfully stored.
+   */
   async set(data: BundleLeaf): Promise<void> {
     const key = this.getKey(data.chainId, data.l1Token);
     await this.config.redis.set(key, JSON.stringify(data));
@@ -27,14 +41,25 @@ export class BundleLeavesCache {
     await this.config.redis.sadd(this.getL1TokenIndexKey(data.l1Token), key);
   }
 
-  // Get by chainId and l1Token (both)
+  /**
+   * Retrieves a BundleLeaf from Redis by chainId and l1Token.
+   *
+   * @param {number} chainId - The chainId to query.
+   * @param {string} l1Token - The l1Token to query.
+   * @returns {Promise<BundleLeaf | null>} - The retrieved BundleLeaf or null if not found.
+   */
   async get(chainId: number, l1Token: string): Promise<BundleLeaf | null> {
     const key = this.getKey(chainId, l1Token);
     const data = await this.config.redis.get(key);
     return data ? s.create(JSON.parse(data), BundleLeaf) : null;
   }
 
-  // Get by chainId
+  /**
+   * Retrieves all BundleLeaves from Redis that match the provided chainId.
+   *
+   * @param {number} chainId - The chainId to query.
+   * @returns {Promise<(BundleLeaf | undefined)[]>} - An array of matching BundleLeaves or undefined if not found.
+   */
   async getByChainId(chainId: number): Promise<(BundleLeaf | undefined)[]> {
     const keys = await this.config.redis.smembers(
       this.getChainIdIndexKey(chainId),
@@ -42,7 +67,12 @@ export class BundleLeavesCache {
     return this.getDataByKeys(keys);
   }
 
-  // Get by l1Token
+  /**
+   * Retrieves all BundleLeaves from Redis that match the provided l1Token.
+   *
+   * @param {string} l1Token - The l1Token to query.
+   * @returns {Promise<(BundleLeaf | undefined)[]>} - An array of matching BundleLeaves or undefined if not found.
+   */
   async getByL1Token(l1Token: string): Promise<(BundleLeaf | undefined)[]> {
     const keys = await this.config.redis.smembers(
       this.getL1TokenIndexKey(l1Token),
@@ -50,7 +80,14 @@ export class BundleLeavesCache {
     return this.getDataByKeys(keys);
   }
 
-  // Delete a record by chainId and l1Token
+  /**
+   * Deletes a BundleLeaf from Redis by chainId and l1Token.
+   * Also removes the corresponding key from the chainId and l1Token indexes.
+   *
+   * @param {number} chainId - The chainId to delete.
+   * @param {string} l1Token - The l1Token to delete.
+   * @returns {Promise<boolean>} - True if the record was deleted, false otherwise.
+   */
   async delete(chainId: number, l1Token: string): Promise<boolean> {
     const key = this.getKey(chainId, l1Token);
 
@@ -64,14 +101,25 @@ export class BundleLeavesCache {
     return result > 0;
   }
 
-  // Check if a specific chainId + l1Token pair exists
+  /**
+   * Checks if a specific chainId and l1Token pair exists in Redis.
+   *
+   * @param {number} chainId - The chainId to check.
+   * @param {string} l1Token - The l1Token to check.
+   * @returns {Promise<boolean>} - True if the record exists, false otherwise.
+   */
   async has(chainId: number, l1Token: string): Promise<boolean> {
     const key = this.getKey(chainId, l1Token);
     const result = await this.config.redis.exists(key);
     return result > 0;
   }
 
-  // Check if any entry exists for a specific chainId
+  /**
+   * Checks if any records exist for a specific chainId.
+   *
+   * @param {number} chainId - The chainId to check.
+   * @returns {Promise<boolean>} - True if records exist, false otherwise.
+   */
   async hasByChainId(chainId: number): Promise<boolean> {
     const keys = await this.config.redis.smembers(
       this.getChainIdIndexKey(chainId),
@@ -79,7 +127,12 @@ export class BundleLeavesCache {
     return keys.length > 0;
   }
 
-  // Check if any entry exists for a specific l1Token
+  /**
+   * Checks if any records exist for a specific l1Token.
+   *
+   * @param {string} l1Token - The l1Token to check.
+   * @returns {Promise<boolean>} - True if records exist, false otherwise.
+   */
   async hasByL1Token(l1Token: string): Promise<boolean> {
     const keys = await this.config.redis.smembers(
       this.getL1TokenIndexKey(l1Token),
@@ -87,37 +140,56 @@ export class BundleLeavesCache {
     return keys.length > 0;
   }
 
-  // Helper to retrieve data by list of Redis keys
+  /**
+   * Helper function to retrieve data by a list of Redis keys.
+   *
+   * @private
+   * @param {string[]} keys - The Redis keys to retrieve.
+   * @returns {Promise<(BundleLeaf | undefined)[]>} - An array of BundleLeaves or undefined if not found.
+   */
   private async getDataByKeys(
     keys: string[],
   ): Promise<(BundleLeaf | undefined)[]> {
     const pipeline = this.config.redis.pipeline();
     keys.forEach((key) => pipeline.get(key));
     const results = (await pipeline.exec()) ?? [];
-    return (
-      results
-        .filter(([err, result]) => !err && result)
-        // this is kind of messed up with typescript, since the type could be things other than a string or null
-        // but we are only using gets, so it should theoretically be string or null
-        .map(([_, result]) =>
-          result
-            ? s.create(JSON.parse(result as string), BundleLeaf)
-            : undefined,
-        )
-    );
+    return results
+      .filter(([err, result]) => !err && result)
+      .map(([_, result]) =>
+        result ? s.create(JSON.parse(result as string), BundleLeaf) : undefined,
+      );
   }
 
-  // Helper to generate Redis key for chainId + l1Token
+  /**
+   * Helper function to generate the Redis key for a specific chainId and l1Token.
+   *
+   * @private
+   * @param {number} chainId - The chainId to use in the key.
+   * @param {string} l1Token - The l1Token to use in the key.
+   * @returns {string} - The Redis key for the BundleLeaf.
+   */
   private getKey(chainId: number, l1Token: string): string {
     return `${this.config.prefix}:${chainId}:${l1Token}`;
   }
 
-  // Helper to generate Redis key for chainId index
+  /**
+   * Helper function to generate the Redis key for the chainId index.
+   *
+   * @private
+   * @param {number} chainId - The chainId to use in the index key.
+   * @returns {string} - The Redis key for the chainId index.
+   */
   private getChainIdIndexKey(chainId: number): string {
     return `${this.config.prefix}:chainIdIndex:${chainId}`;
   }
 
-  // Helper to generate Redis key for l1Token index
+  /**
+   * Helper function to generate the Redis key for the l1Token index.
+   *
+   * @private
+   * @param {string} l1Token - The l1Token to use in the index key.
+   * @returns {string} - The Redis key for the l1Token index.
+   */
   private getL1TokenIndexKey(l1Token: string): string {
     return `${this.config.prefix}:l1TokenIndex:${l1Token}`;
   }
