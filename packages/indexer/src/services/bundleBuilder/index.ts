@@ -1,6 +1,10 @@
-import { BaseIndexer } from "../../generics";
-import winston from "winston";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { caching, clients, utils } from "@across-protocol/sdk";
 import { DataSource, entities } from "@repo/indexer-database";
+import Redis from "ioredis";
+import winston from "winston";
+import { BundleRepository } from "../../database/BundleRepository";
+import { BaseIndexer } from "../../generics";
 import {
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
@@ -12,13 +16,7 @@ import {
   resolveMostRecentProposedAndExecutedBundles,
   SpokePoolClientFactory,
 } from "../../utils";
-import { BundleRepository } from "../../database/BundleRepository";
-import { utils } from "@across-protocol/sdk";
-import Redis from "ioredis";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
-import { clients } from "@across-protocol/sdk";
-import { caching } from "@across-protocol/sdk";
 
 type BundleBuilderConfig = {
   logger: winston.Logger;
