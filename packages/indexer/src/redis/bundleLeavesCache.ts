@@ -46,12 +46,12 @@ export class BundleLeavesCache {
    *
    * @param {number} chainId - The chainId to query.
    * @param {string} l1Token - The l1Token to query.
-   * @returns {Promise<BundleLeaf | null>} - The retrieved BundleLeaf or null if not found.
+   * @returns {Promise<BundleLeaf | undefined>} - The retrieved BundleLeaf or undefined if not found.
    */
-  async get(chainId: number, l1Token: string): Promise<BundleLeaf | null> {
+  async get(chainId: number, l1Token: string): Promise<BundleLeaf | undefined> {
     const key = this.getKey(chainId, l1Token);
     const data = await this.config.redis.get(key);
-    return data ? s.create(JSON.parse(data), BundleLeaf) : null;
+    return data ? s.create(JSON.parse(data), BundleLeaf) : undefined;
   }
 
   /**
