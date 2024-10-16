@@ -165,8 +165,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     await Promise.allSettled([
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
-      ...spokePoolIndexers.map((s) => s.start()),
       bundleBuilderProcessor.start(10),
+      ...spokePoolIndexers.map((s) => s.start()),
     ]);
 
   logger.info({
