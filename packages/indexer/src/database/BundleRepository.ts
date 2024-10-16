@@ -222,7 +222,7 @@ export class BundleRepository extends utils.BaseRepository {
     const queryBuilder = this.postgres
       .getRepository(entities.Bundle)
       .createQueryBuilder("b")
-      .leftJoin("b.proposal", "proposal")
+      .leftJoinAndSelect("b.proposal", "proposal")
       .where("b.status = :status", { status });
     if (blockNumber) {
       queryBuilder.andWhere("proposal.blockNumber < :blockNumber", {
