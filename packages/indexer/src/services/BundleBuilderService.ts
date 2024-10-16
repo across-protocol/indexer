@@ -110,26 +110,24 @@ export class BundleBuilderService extends BaseIndexer {
     await this.currentBundleCache.clear();
     // Persist this to Redis
     await Promise.all(
-      resultsToPersist
-        .map((leaf) => {
-          assert(
-            leaf.l1Tokens.length == leaf.netSendAmounts.length,
-            "Net send amount count does not match token counts",
-          );
-          assert(
-            leaf.l1Tokens.length == leaf.runningBalances.length,
-            "Running balances count does not match token counts",
-          );
-          return leaf.l1Tokens.map((l1Token, tokenIndex) => {
-            return this.currentBundleCache.set({
-              chainId: leaf.chainId,
-              l1Token,
-              netSendAmount: leaf.netSendAmounts[tokenIndex]!,
-              runningBalance: leaf.runningBalances[tokenIndex]!,
-            });
+      resultsToPersist.flatMap((leaf) => {
+        assert(
+          leaf.l1Tokens.length == leaf.netSendAmounts.length,
+          "Net send amount count does not match token counts",
+        );
+        assert(
+          leaf.l1Tokens.length == leaf.runningBalances.length,
+          "Running balances count does not match token counts",
+        );
+        return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+          return this.currentBundleCache.set({
+            chainId: leaf.chainId,
+            l1Token,
+            netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+            runningBalance: leaf.runningBalances[tokenIndex]!,
           });
-        })
-        .flat(),
+        });
+      }),
     );
   }
 
@@ -169,26 +167,24 @@ export class BundleBuilderService extends BaseIndexer {
     await this.proposedBundleCache.clear();
     // Persist this to Redis
     await Promise.all(
-      resultsToPersist
-        .map((leaf) => {
-          assert(
-            leaf.l1Tokens.length == leaf.netSendAmounts.length,
-            "Net send amount count does not match token counts",
-          );
-          assert(
-            leaf.l1Tokens.length == leaf.runningBalances.length,
-            "Running balances count does not match token counts",
-          );
-          return leaf.l1Tokens.map((l1Token, tokenIndex) => {
-            return this.proposedBundleCache.set({
-              chainId: leaf.chainId,
-              l1Token,
-              netSendAmount: leaf.netSendAmounts[tokenIndex]!,
-              runningBalance: leaf.runningBalances[tokenIndex]!,
-            });
+      resultsToPersist.flatMap((leaf) => {
+        assert(
+          leaf.l1Tokens.length == leaf.netSendAmounts.length,
+          "Net send amount count does not match token counts",
+        );
+        assert(
+          leaf.l1Tokens.length == leaf.runningBalances.length,
+          "Running balances count does not match token counts",
+        );
+        return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+          return this.proposedBundleCache.set({
+            chainId: leaf.chainId,
+            l1Token,
+            netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+            runningBalance: leaf.runningBalances[tokenIndex]!,
           });
-        })
-        .flat(),
+        });
+      }),
     );
   }
 
