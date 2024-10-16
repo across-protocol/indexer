@@ -64,7 +64,9 @@ export async function resolveMostRecentProposedAndExecutedBundles(
  * @returns The block ranges for each chain. For each chain, this is the previous
  *          proposal's evaluation block number + 1 to the current proposal's evaluation block
  *          number. In the case that the new proposal includes ranges for a chain that was not
- *          previously included, the range starts at block 0 for that chain per the ACX UMIP.
+ *          previously included, the range starts at block 0 for that chain per the ACX UMIP. We
+ *          also ensure that disabled chains aren't ticked up. I.e. if a chain has the same end
+ *          block as the previous proposal range, we don't increment.
  * @dev The ordering of the ranges is the same as the chainIds in the current proposal.
  */
 export function getBlockRangeBetweenBundles(
@@ -73,9 +75,14 @@ export function getBlockRangeBetweenBundles(
 ): ProposalRangeResult[] {
   return current.chainIds.map((chainId, idx) => ({
     chainId,
-    startBlock: previous.bundleEvaluationBlockNumbers[idx]
-      ? previous.bundleEvaluationBlockNumbers[idx] + 1
-      : 0, // If this is a new chain, start from block 0
+    // Prevent incrementing disabled chains by floor-ing the previous block number as
+    // the start block should never be greater than the end block.
+    startBlock: Math.min(
+      previous.bundleEvaluationBlockNumbers[idx]
+        ? previous.bundleEvaluationBlockNumbers[idx] + 1
+        : 0, // If this is a new chain, start from block 0
+      current.bundleEvaluationBlockNumbers[idx]!,
+    ),
     endBlock: current.bundleEvaluationBlockNumbers[idx]!,
   }));
 }
