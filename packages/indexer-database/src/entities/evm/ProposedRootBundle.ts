@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { Bundle } from "../Bundle";
 
 @Entity({ schema: "evm" })
 @Unique("UK_proposedRootBundle_txHash", ["transactionHash"])
@@ -35,6 +37,9 @@ export class ProposedRootBundle {
 
   @Column()
   proposer: string;
+
+  @OneToOne(() => Bundle, (bundle) => bundle.proposal)
+  bundle: Bundle;
 
   @Column()
   transactionHash: string;
