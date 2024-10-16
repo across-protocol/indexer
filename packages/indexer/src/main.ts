@@ -22,6 +22,7 @@ import {
 } from "./utils/contractFactoryUtils";
 import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
 import { SpokePoolProcessor } from "./services/spokePoolProcessor";
+import { BundleRepository } from "./database/BundleRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -109,6 +110,17 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     return spokePoolIndexer;
   });
 
+  const bundleBuilderProcessor =
+    new services.bundleBuilder.BundleBuilderService({
+      logger,
+      redis,
+      bundleRepository: new BundleRepository(postgres, logger),
+      providerFactory: retryProvidersFactory,
+      hubClientFactory: hubPoolClientFactory,
+      spokePoolClientFactory,
+      configStoreClientFactory,
+    });
+
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,
     hubChainId,
@@ -136,6 +148,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       });
       spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
+      bundleProcessor.stop();
+      bundleBuilderProcessor.stop();
     } else {
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
@@ -150,10 +164,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     at: "Indexer#Main",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [bundleResults, hubPoolResult, ...spokeResults] =
+  const [bundleResults, hubPoolResult, bundleBuilderResult, ...spokeResults] =
     await Promise.allSettled([
       bundleProcessor.start(10),
       hubPoolIndexer.start(),
+      bundleBuilderProcessor.start(10),
       ...spokePoolIndexers.map((s) => s.start()),
     ]);
 
@@ -166,6 +181,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ),
       bundleProcessorRunSuccess: bundleResults.status === "fulfilled",
       hubPoolIndexerRunSuccess: hubPoolResult.status === "fulfilled",
+      bundleBuilderProcessorRunSuccess:
+        bundleBuilderResult.status === "fulfilled",
     },
   });
 

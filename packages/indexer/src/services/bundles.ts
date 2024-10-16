@@ -103,7 +103,7 @@ async function assignDisputeEventToBundle(
     unassignedDisputedEvents.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -146,7 +146,7 @@ async function assignCanceledEventToBundle(
     unassignedCanceledEvents.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -185,7 +185,7 @@ async function assignExecutionsToBundle(
     unassociatedExecutions.map(
       async ({ blockNumber, id, logIndex, transactionIndex }) => {
         const proposedBundle =
-          await dbRepository.retrieveClosestProposedRootBundle(
+          await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
             logIndex,
@@ -250,7 +250,7 @@ async function assignBundleRangesToProposal(
   const rangeSegments = await Promise.all(
     bundlesWithoutRanges.map(async (bundle) => {
       const previousEvent =
-        await dbRepository.retrieveClosestProposedRootBundle(
+        await dbRepository.retrieveClosestProposedRootBundleEvent(
           bundle.proposal.blockNumber,
           bundle.proposal.transactionIndex,
           bundle.proposal.logIndex,
