@@ -106,6 +106,8 @@ export class BundleBuilderService extends BaseIndexer {
       // and not any specific proposal
       convertProposalRangeResultToProposalRange(ranges),
     );
+    // first clear the cache to prepare for update
+    await this.currentBundleCache.clear();
     // Persist this to Redis
     await Promise.all(
       resultsToPersist
@@ -163,6 +165,8 @@ export class BundleBuilderService extends BaseIndexer {
     // Filter out any pool leave results that have been executed and are stored
     // in the database
 
+    // first clear the cache to prepare for update
+    await this.proposedBundleCache.clear();
     // Persist this to Redis
     await Promise.all(
       resultsToPersist

@@ -128,6 +128,35 @@ export class BundleLeavesCache {
   }
 
   /**
+   * Clears the entire cache by deleting all keys that match the configured prefix.
+   * This method uses the SCAN command to safely iterate through all matching keys.
+   *
+   * @returns {Promise<void>} - A promise that resolves when the cache is cleared.
+   */
+  async clear(): Promise<void> {
+    const pattern = `${this.config.prefix}:*`;
+    let cursor = "0";
+    do {
+      // SCAN the keys that match the pattern in batches
+      const [newCursor, keys] = await this.config.redis.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100,
+      );
+      cursor = newCursor;
+
+      if (keys.length > 0) {
+        // Use pipeline to efficiently delete multiple keys at once
+        const pipeline = this.config.redis.pipeline();
+        keys.forEach((key) => pipeline.del(key));
+        await pipeline.exec();
+      }
+    } while (cursor !== "0");
+  }
+
+  /**
    * Checks if any records exist for a specific l1Token.
    *
    * @param {string} l1Token - The l1Token to check.
