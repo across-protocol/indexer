@@ -22,6 +22,7 @@ import {
 } from "./utils/contractFactoryUtils";
 import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
 import { SpokePoolProcessor } from "./services/spokePoolProcessor";
+import { BundleRepository } from "./database/BundleRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -109,15 +110,16 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     return spokePoolIndexer;
   });
 
-  const bundleBuilderProcessor = new services.bundleBuilder.Processor({
-    logger,
-    redis,
-    postgres,
-    providerFactory: retryProvidersFactory,
-    hubClientFactory: hubPoolClientFactory,
-    spokePoolClientFactory,
-    configStoreClientFactory,
-  });
+  const bundleBuilderProcessor =
+    new services.bundleBuilder.BundleBuilderService({
+      logger,
+      redis,
+      bundleRepository: new BundleRepository(postgres, logger),
+      providerFactory: retryProvidersFactory,
+      hubClientFactory: hubPoolClientFactory,
+      spokePoolClientFactory,
+      configStoreClientFactory,
+    });
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
     logger,

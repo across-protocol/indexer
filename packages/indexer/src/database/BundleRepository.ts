@@ -31,7 +31,7 @@ export class BundleRepository extends utils.BaseRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
-    throwError: boolean,
+    throwError?: boolean,
   ) {
     super(postgres, logger, throwError);
   }

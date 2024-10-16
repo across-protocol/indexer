@@ -1,6 +1,6 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { caching, clients, utils } from "@across-protocol/sdk";
-import { DataSource, entities } from "@repo/indexer-database";
+import { entities } from "@repo/indexer-database";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
@@ -20,7 +20,7 @@ import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type BundleBuilderConfig = {
   logger: winston.Logger;
-  postgres: DataSource;
+  bundleRepository: BundleRepository;
   redis: Redis;
   providerFactory: RetryProvidersFactory;
   hubClientFactory: HubPoolClientFactory;
@@ -28,9 +28,7 @@ type BundleBuilderConfig = {
   spokePoolClientFactory: SpokePoolClientFactory;
 };
 
-export class Processor extends BaseIndexer {
-  private bundleRepository: BundleRepository;
-
+export class BundleBuilderService extends BaseIndexer {
   constructor(private config: BundleBuilderConfig) {
     super(config.logger, "bundleBuilder");
   }
@@ -42,19 +40,10 @@ export class Processor extends BaseIndexer {
     ]);
   }
 
+  /**
+   * Effectively a no-op for the BundleBuilderService.
+   */
   protected initialize(): Promise<void> {
-    if (!this.config.postgres) {
-      this.logger.error({
-        at: "BundleBuilder#Processor#initialize",
-        message: "Postgres connection not provided",
-      });
-      throw new Error("Postgres connection not provided");
-    }
-    this.bundleRepository = new BundleRepository(
-      this.config.postgres,
-      this.config.logger,
-      true,
-    );
     return Promise.resolve();
   }
 
@@ -67,7 +56,7 @@ export class Processor extends BaseIndexer {
     // Get the most recent proposed and executed bundles
     const { lastProposedBundle, lastExecutedBundle } =
       await resolveMostRecentProposedAndExecutedBundles(
-        this.bundleRepository,
+        this.config.bundleRepository,
         this.logger,
       );
     // Resolve the latest proposal
@@ -94,7 +83,7 @@ export class Processor extends BaseIndexer {
     // Get the most recent proposed and executed bundles
     const { lastProposedBundle, lastExecutedBundle } =
       await resolveMostRecentProposedAndExecutedBundles(
-        this.bundleRepository,
+        this.config.bundleRepository,
         this.logger,
       );
     // If no proposed bundle is found, skip the rest of the logic
@@ -140,7 +129,7 @@ export class Processor extends BaseIndexer {
     // Grab historical ranges from the last 8 bundles
     // FIXME: This is a hardcoded value, we should make this configurable
     const historicalProposal =
-      await this.bundleRepository.retrieveMostRecentBundle(
+      await this.config.bundleRepository.retrieveMostRecentBundle(
         entities.BundleStatus.Executed,
         undefined,
         8,
