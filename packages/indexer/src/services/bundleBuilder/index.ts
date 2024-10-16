@@ -2,6 +2,7 @@ import { BaseIndexer } from "../../generics";
 import winston from "winston";
 import { DataSource, entities } from "@repo/indexer-database";
 import {
+  ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
   getBlockRangeBetweenBundles,
   getBlockRangeFromBundleToHead,
@@ -25,6 +26,7 @@ type BundleBuilderConfig = {
   redis: Redis;
   providerFactory: RetryProvidersFactory;
   hubClientFactory: HubPoolClientFactory;
+  configStoreClientFactory: ConfigStoreClientFactory;
   spokePoolClientFactory: SpokePoolClientFactory;
 };
 
@@ -59,17 +61,26 @@ export class Processor extends BaseIndexer {
   }
 
   private async handleCurrentBundleLoop(): Promise<void> {
+    // Resolve a latest config store client and update it
+    const configStoreClient = this.config.configStoreClientFactory.get(
+      CHAIN_IDs.MAINNET,
+    );
+    void (await configStoreClient.update());
     // Get the most recent proposed and executed bundles
     const { lastProposedBundle, lastExecutedBundle } =
       await resolveMostRecentProposedAndExecutedBundles(
         this.bundleRepository,
         this.logger,
       );
-    // Grab the block range from either the last proposed or last executed bundle
-    // to the head of the chain
+    // Resolve the latest proposal
+    const latestProposal = (lastProposedBundle ?? lastExecutedBundle).proposal;
+    // Grab the block range from the latest bundle to the head of the chain
     const ranges = await getBlockRangeFromBundleToHead(
-      (lastProposedBundle ?? lastExecutedBundle).proposal,
+      latestProposal,
       this.config.providerFactory,
+      // Check what chains are disabled for the latest proposal since it will be
+      // the start of our new temporary bundle from latest to head
+      configStoreClient.getDisabledChainsForBlock(latestProposal.blockNumber),
     );
     // Resolve the pool leaf for the bundle range
     const resultsToPersist = await this.resolvePoolLeafForBundleRange(

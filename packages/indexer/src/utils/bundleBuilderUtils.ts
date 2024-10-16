@@ -93,30 +93,38 @@ export function getBlockRangeBetweenBundles(
  * for each chain.
  * @param previous The previous proposed bundle range.
  * @param providers A lookup of RetryProviders for each chain.
+ * @param disabledChainIds a list of chainIds whose ranges will *not* tick forward
  * @returns The block ranges for each chain. For each chain, this is the previous proposal's
- *          evaluation block number + 1 to the current head block number.
+ *          evaluation block number + 1 to the current head block number. If a chainId is
+ *          included in the `disabledChainIds` list it will not be incremented to head and
+ *          will be returned as [previousBlock, previousBlock]
  * @dev The ordering of the ranges is the same as the chainIds in the previous proposal.
  */
 export async function getBlockRangeFromBundleToHead(
   previous: ProposalRange,
   providers: RetryProvidersFactory,
+  disabledChainIds: number[] = [],
 ): Promise<ProposalRangeResult[]> {
   return Promise.all(
     previous.chainIds.map(async (chainId, idx) => {
       const previousBlock = previous.bundleEvaluationBlockNumbers[idx];
-      const provider = providers.getProviderForChainId(chainId);
-      if (!utils.isDefined(provider)) {
-        throw new Error(`Provider for chain ${chainId} not found`);
-      }
       if (!utils.isDefined(previousBlock)) {
         throw new Error(`Previous block number for chain ${chainId} not found`);
       }
-      const currentBlock = await provider.getBlockNumber();
-      return {
-        chainId,
-        startBlock: previousBlock + 1,
-        endBlock: currentBlock,
-      };
+      if (disabledChainIds.includes(chainId)) {
+        return { chainId, startBlock: previousBlock, endBlock: previousBlock };
+      } else {
+        const provider = providers.getProviderForChainId(chainId);
+        if (!utils.isDefined(provider)) {
+          throw new Error(`Provider for chain ${chainId} not found`);
+        }
+        const currentBlock = await provider.getBlockNumber();
+        return {
+          chainId,
+          startBlock: previousBlock + 1,
+          endBlock: currentBlock,
+        };
+      }
     }),
   );
 }
