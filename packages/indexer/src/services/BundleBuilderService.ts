@@ -3,8 +3,8 @@ import { caching, clients, utils } from "@across-protocol/sdk";
 import { DataSource, entities } from "@repo/indexer-database";
 import Redis from "ioredis";
 import winston from "winston";
-import { BundleRepository } from "../../database/BundleRepository";
-import { BaseIndexer } from "../../generics";
+import { BundleRepository } from "../database/BundleRepository";
+import { BaseIndexer } from "../generics";
 import {
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
@@ -15,8 +15,8 @@ import {
   ProposalRangeResult,
   resolveMostRecentProposedAndExecutedBundles,
   SpokePoolClientFactory,
-} from "../../utils";
-import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+} from "../utils";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type BundleBuilderConfig = {
   logger: winston.Logger;
