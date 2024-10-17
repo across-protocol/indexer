@@ -8,6 +8,7 @@ import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";
 import {
+  buildPoolRebalanceRoot,
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
   getBlockRangeBetweenBundles,
@@ -260,30 +261,17 @@ export class BundleBuilderService extends BaseIndexer {
       chainsToBuildBundleFor,
     );
     // Load the bundle data
-    const {
-      bundleDepositsV3,
-      expiredDepositsToRefundV3,
-      bundleFillsV3,
-      unexecutableSlowFills,
-      bundleSlowFillsV3,
-    } = await bundleDataClient.loadData(
+    const bundleData = await bundleDataClient.loadData(
       bundleRangeForBundleClient,
       spokeClients,
       false,
     );
     // Build pool rebalance root and resolve the leaves
-    const { leaves } = clients.BundleDataClient._buildPoolRebalanceRoot(
-      bundleRangeForBundleClient[0]![1]!, // Mainnet is always the first chain. Second element is the end block
-      bundleRangeForBundleClient[0]![1]!, // Mainnet is always the first chain. Second element is the end block
-      bundleDepositsV3,
-      bundleFillsV3,
-      bundleSlowFillsV3,
-      unexecutableSlowFills,
-      expiredDepositsToRefundV3,
-      {
-        hubPoolClient,
-        configStoreClient,
-      },
+    const { leaves } = buildPoolRebalanceRoot(
+      bundleRangeForBundleClient,
+      bundleData,
+      hubPoolClient,
+      configStoreClient,
     );
     // Map the leaves to the desired format
     return leaves.map((leaf) => ({

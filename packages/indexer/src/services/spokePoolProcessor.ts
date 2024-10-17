@@ -40,8 +40,7 @@ export class SpokePoolProcessor {
         events.fills,
       );
     await this.updateExpiredRelays();
-    if (events.executedRefundRoots.length > 0)
-      await this.updateRefundedDepositsStatus(events.executedRefundRoots);
+    await this.updateRefundedDepositsStatus();
   }
 
   /**
@@ -130,60 +129,87 @@ export class SpokePoolProcessor {
   }
 
   /**
-   * Calls the database to find expired relays and looks for related refunds within
-   * the recently saved executedRelayerRefundRoot events.
+   * Calls the database to find expired relays and looks for related
+   * refunds in the bundle events table.
    * When a matching refund is found, updates the relay status to refunded
-   * @param executedRefundRoots An array of already stored executedRelayerRefundRoot events
    * @returns A void promise
    */
-  private async updateRefundedDepositsStatus(
-    executedRefundRoots: entities.ExecutedRelayerRefundRoot[],
-  ): Promise<void> {
+  private async updateRefundedDepositsStatus(): Promise<void> {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
-    const expiredDeposits = await relayHashInfoRepository.find({
-      where: {
-        status: entities.RelayStatus.Expired,
-        originChainId: this.chainId,
-      },
-      relations: ["depositEvent"],
-    });
+    const bundleEventsRepository = this.postgres.getRepository(
+      entities.BundleEvents,
+    );
+
+    const expiredDeposits = await relayHashInfoRepository
+      .createQueryBuilder("rhi")
+      .select("rhi.relayHash")
+      .where("rhi.status = :expired", { expired: entities.RelayStatus.Expired })
+      .andWhere("rhi.originChainId = :chainId", { chainId: this.chainId })
+      .limit(100)
+      .getMany();
+
     let updatedRows = 0;
     for (const expiredDeposit of expiredDeposits) {
-      const {
-        depositor,
-        inputAmount,
-        inputToken,
-        blockNumber: depositBlockNumber,
-      } = expiredDeposit.depositEvent;
-      // TODO: modify this once we are associating events with bundles. This is a temporary solution.
-      const matchingRefunds = executedRefundRoots.filter((refund) => {
-        return (
-          refund.l2TokenAddress === inputToken &&
-          refund.blockNumber > depositBlockNumber &&
-          refund.refundAddresses.some(
-            (address, idx) =>
-              address === depositor &&
-              refund.refundAmounts[idx] === inputAmount,
-          )
-        );
-      });
-      if (matchingRefunds.length > 1) {
-        this.logger.warn({
-          at: "SpokePoolProcessor#updateRefundedDepositsStatus",
-          message: `Unable to set refund for deposit with id ${expiredDeposit.depositEventId}. Found ${matchingRefunds.length} matches.`,
-        });
-      } else if (matchingRefunds[0]) {
-        await relayHashInfoRepository.update(
-          { id: expiredDeposit.id },
-          {
-            depositRefundTxHash: matchingRefunds[0].transactionHash,
-            status: entities.RelayStatus.Refunded,
-          },
-        );
-        updatedRows += 1;
-      }
+      // Check if this deposited is associated with a bundle
+      const refundBundleEvent = await bundleEventsRepository
+        .createQueryBuilder("be")
+        .leftJoinAndSelect("bundle", "bundle", "be.bundleId = bundle.id")
+        .where("be.eventType = :expiredDeposit", {
+          expiredDeposit: entities.BundleEventTypes.ExpiredDeposit,
+        })
+        .andWhere("be.relayHash = :expiredDepositRelayHash", {
+          expiredDepositRelayHash: expiredDeposit.relayHash,
+        })
+        .getOne();
+      if (!refundBundleEvent) continue;
+
+      // Get the relayerRefundRoot that included this refund
+      const relayerRefundRoot = refundBundleEvent.bundle.relayerRefundRoot;
+
+      // Look for a relayed root bundle event that matches the relayerRefundRoot
+      const relayRootBundleRepo = this.postgres.getRepository(
+        entities.RelayedRootBundle,
+      );
+      const relayedRootBundleEvent = await relayRootBundleRepo
+        .createQueryBuilder("rrb")
+        .select("rrb.rootBundleId")
+        .where("rrb.relayerRefundRoot = :relayerRefundRoot", {
+          relayerRefundRoot,
+        })
+        .andWhere("rrb.chainId = :chainId", { chainId: this.chainId })
+        .getOne();
+      if (!relayedRootBundleEvent) continue;
+
+      // Look for the execution of the relayer refund root using the rootBundleId
+      const rootBundleId = relayedRootBundleEvent.rootBundleId;
+      const executedRelayerRefundRepo = this.postgres.getRepository(
+        entities.ExecutedRelayerRefundRoot,
+      );
+      const executedRelayerRefundRootEvent = await executedRelayerRefundRepo
+        .createQueryBuilder("err")
+        .where("err.rootBundleId = :rootBundleId", {
+          rootBundleId,
+        })
+        .andWhere("err.chainId = :chainId", { chainId: this.chainId })
+        .getOne();
+      if (!executedRelayerRefundRootEvent) continue;
+
+      // If we found the execution of the relayer refund root, we can update the relay status
+      await relayHashInfoRepository
+        .createQueryBuilder()
+        .update()
+        .set({
+          status: entities.RelayStatus.Refunded,
+          depositRefundTxHash: executedRelayerRefundRootEvent.transactionHash,
+        })
+        .where("relayHash = :relayHash", {
+          relayHash: expiredDeposit.relayHash,
+        })
+        .execute();
+
+      updatedRows += 1;
     }
     if (updatedRows > 0) {
       this.logger.info({

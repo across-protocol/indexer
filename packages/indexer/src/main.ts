@@ -83,6 +83,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     redis,
     postgres,
+    hubPoolClientFactory,
+    spokePoolClientFactory,
   });
 
   const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
