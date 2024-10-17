@@ -1,4 +1,13 @@
 import winston from "winston";
+import {
+  BundleDepositsV3,
+  BundleExcessSlowFills,
+  BundleFillsV3,
+  BundleSlowFills,
+  ExpiredDepositsToRefundV3,
+  LoadDataReturnValue,
+} from "@across-protocol/sdk/dist/cjs/interfaces/BundleData";
+import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 export type BlockRangeInsertType = {
@@ -370,5 +379,167 @@ export class BundleRepository extends utils.BaseRepository {
       .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
 
     return (await executedUpdateQuery.execute())?.affected ?? 0;
+  }
+
+  /**
+   * Retrieves executed bundles that do not have events associated with them.
+   * The query can be filtered by the block number and a limit on the number of results returned.
+   * @param filters - Optional filters for the query.
+   * @param filters.fromBlock - If provided, retrieves bundles where the proposal's block number is greater than this value.
+   * @param limit - The maximum number of bundles to retrieve.
+   * @returns An array of bundles that match the given criteria.
+   */
+  public async getExecutedBundlesWithoutEventsAssociated(
+    filters: {
+      fromBlock?: number;
+    },
+    limit = 5,
+  ): Promise<entities.Bundle[]> {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+    const query = bundleRepo
+      .createQueryBuilder("b")
+      .select(["b", "proposal", "ranges"])
+      .leftJoinAndSelect("b.ranges", "ranges")
+      .leftJoinAndSelect("b.proposal", "proposal")
+      .where("b.status = :executed", {
+        executed: entities.BundleStatus.Executed,
+      })
+      .andWhere("b.eventsAssociated = false");
+    if (filters.fromBlock) {
+      query.andWhere("proposal.blockNumber > :fromBlock", {
+        fromBlock: filters.fromBlock,
+      });
+    }
+    return query.orderBy("proposal.blockNumber", "DESC").take(limit).getMany();
+  }
+
+  /**
+   * Updates the `eventsAssociated` flag to `true` for a specific bundle.
+   * @param bundleId - The ID of the bundle to update.
+   * @returns A promise that resolves when the update is complete.
+   */
+  public async updateBundleEventsAssociatedFlag(bundleId: number) {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+    const updatedBundle = await bundleRepo
+      .createQueryBuilder()
+      .update()
+      .set({ eventsAssociated: true })
+      .where("id = :id", { id: bundleId })
+      .execute();
+    return updatedBundle.affected;
+  }
+
+  /**
+   * Stores bundle events relating them to a given bundle.
+   * @param bundleData The reconstructed bundle data.
+   * @param bundleId ID of the bundle to associate these events with.
+   * @returns A promise that resolves when all the events have been inserted into the database.
+   */
+  public async storeBundleEvents(
+    bundleData: LoadDataReturnValue,
+    bundleId: number,
+  ) {
+    const eventsRepo = this.postgres.getRepository(entities.BundleEvents);
+
+    // Store bundle deposits
+    const formattedDeposits = this.formatBundleEvents(
+      entities.BundleEventTypes.Deposit,
+      bundleData.bundleDepositsV3,
+      bundleId,
+    );
+    const storedDeposits = await eventsRepo.insert(formattedDeposits);
+
+    // Store bundle refunded deposits
+    const formattedRefundedDeposits = this.formatBundleEvents(
+      entities.BundleEventTypes.ExpiredDeposit,
+      bundleData.expiredDepositsToRefundV3,
+      bundleId,
+    );
+    const storedExpiredDeposits = await eventsRepo.insert(
+      formattedRefundedDeposits,
+    );
+
+    // Store bundle slow fills
+    const formattedSlowFills = this.formatBundleEvents(
+      entities.BundleEventTypes.SlowFill,
+      bundleData.bundleSlowFillsV3,
+      bundleId,
+    );
+    const storedSlowFills = await eventsRepo.insert(formattedSlowFills);
+
+    // Store bundle unexecutable slow fills
+    const formattedUnexecutableSlowFills = this.formatBundleEvents(
+      entities.BundleEventTypes.UnexecutableSlowFill,
+      bundleData.unexecutableSlowFills,
+      bundleId,
+    );
+    const storedUnexecutableSlowFills = await eventsRepo.insert(
+      formattedUnexecutableSlowFills,
+    );
+
+    // Store bundle fills
+    const formattedFills = this.formatBundleFillEvents(
+      entities.BundleEventTypes.Fill,
+      bundleData.bundleFillsV3,
+      bundleId,
+    );
+    const storedFills = await eventsRepo.insert(formattedFills);
+
+    return {
+      deposits: storedDeposits.generatedMaps.length,
+      expiredDeposits: storedExpiredDeposits.generatedMaps.length,
+      slowFills: storedSlowFills.generatedMaps.length,
+      unexecutableSlowFills: storedUnexecutableSlowFills.generatedMaps.length,
+      fills: storedFills.generatedMaps.length,
+    };
+  }
+
+  private formatBundleEvents(
+    eventsType: entities.BundleEventTypes,
+    bundleEvents:
+      | BundleDepositsV3
+      | BundleSlowFills
+      | BundleExcessSlowFills
+      | ExpiredDepositsToRefundV3,
+    bundleId: number,
+  ): {
+    bundleId: number;
+    relayHash: any;
+    eventType: entities.BundleEventTypes;
+  }[] {
+    return Object.values(bundleEvents).flatMap((tokenEvents) =>
+      Object.values(tokenEvents).flatMap((events) =>
+        events.map((event) => {
+          return {
+            bundleId,
+            relayHash: getRelayHashFromEvent(event),
+            eventType: eventsType,
+          };
+        }),
+      ),
+    );
+  }
+
+  private formatBundleFillEvents(
+    eventsType: entities.BundleEventTypes.Fill,
+    bundleEvents: BundleFillsV3,
+    bundleId: number,
+  ): {
+    bundleId: number;
+    relayHash: any;
+    eventType: entities.BundleEventTypes.Fill;
+  }[] {
+    return Object.entries(bundleEvents).flatMap(([chainId, tokenEvents]) =>
+      Object.values(tokenEvents).flatMap((fillsData) =>
+        fillsData.fills.map((event) => {
+          return {
+            bundleId,
+            relayHash: getRelayHashFromEvent(event),
+            eventType: eventsType,
+            repaymentChainId: Number(chainId),
+          };
+        }),
+      ),
+    );
   }
 }
