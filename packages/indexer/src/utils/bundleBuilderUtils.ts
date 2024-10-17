@@ -1,7 +1,8 @@
+import { utils, clients } from "@across-protocol/sdk";
+import { LoadDataReturnValue } from "@across-protocol/sdk/dist/cjs/interfaces/BundleData";
+import winston from "winston";
 import { entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
-import winston from "winston";
-import { utils } from "@across-protocol/sdk";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 export type ProposalRange = Pick<
@@ -58,6 +59,27 @@ export async function resolveMostRecentProposedAndExecutedBundles(
 }
 
 /**
+ * Given a bundle entitie with its related ranges and proposals,
+ * format the bundle ranges to an array of [startBlock, endBlock] following
+ * the order of the proposal chain ids.
+ * @param bundle A bundle entity with its related proposal and ranges
+ * @returns An array of [startBlock, endBlock] for each chain on the proposal chain ids.
+ */
+export function getBundleBlockRanges(bundle: entities.Bundle) {
+  return bundle.proposal.chainIds.map((chainId) => {
+    const bundleRange = bundle.ranges.find(
+      (range) => range.chainId === chainId,
+    );
+    if (!bundleRange) {
+      throw Error(
+        `Range for bundle ${bundle.id} and chainId ${chainId} not found`,
+      );
+    }
+    return [bundleRange.startBlock, bundleRange.endBlock];
+  });
+}
+
+/**
  * Given the previous and current proposed bundles, returns the block ranges for each chain.
  * @param previous The previous proposed bundle range.
  * @param current The current proposed bundle range.
@@ -79,7 +101,7 @@ export function getBlockRangeBetweenBundles(
     // the start block should never be greater than the end block.
     startBlock: Math.min(
       previous.bundleEvaluationBlockNumbers[idx]
-        ? previous.bundleEvaluationBlockNumbers[idx] + 1
+        ? previous.bundleEvaluationBlockNumbers[idx]! + 1
         : 0, // If this is a new chain, start from block 0
       current.bundleEvaluationBlockNumbers[idx]!,
     ),
@@ -130,4 +152,25 @@ export function convertProposalRangeResultToProposalRange(
     chainIds: ranges.map((r) => r.chainId),
     bundleEvaluationBlockNumbers: ranges.map((r) => r.endBlock),
   };
+}
+
+export function buildPoolRebalanceRoot(
+  ranges: number[][],
+  bundleData: LoadDataReturnValue,
+  hubPoolClient: clients.HubPoolClient,
+  configStoreClient: clients.AcrossConfigStoreClient,
+) {
+  return clients.BundleDataClient._buildPoolRebalanceRoot(
+    ranges[0]![1]!, // Mainnet is always the first chain. Second element is the end block
+    ranges[0]![1]!, // Mainnet is always the first chain. Second element is the end block
+    bundleData.bundleDepositsV3,
+    bundleData.bundleFillsV3,
+    bundleData.bundleSlowFillsV3,
+    bundleData.unexecutableSlowFills,
+    bundleData.expiredDepositsToRefundV3,
+    {
+      hubPoolClient,
+      configStoreClient,
+    },
+  );
 }
