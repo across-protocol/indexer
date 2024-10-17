@@ -1,4 +1,3 @@
-import assert from "assert";
 import Redis from "ioredis";
 import * as s from "superstruct";
 

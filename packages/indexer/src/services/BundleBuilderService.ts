@@ -1,5 +1,5 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { caching, clients, utils } from "@across-protocol/sdk";
+import { caching, clients, typechain, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
 import assert from "assert";
 import Redis from "ioredis";
@@ -7,7 +7,9 @@ import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";
+import { HubPoolBalanceCache } from "../redis/hubBalancesCache";
 import {
+  BN_ZERO,
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
   getBlockRangeBetweenBundles,
@@ -42,6 +44,7 @@ type BundleBuilderConfig = {
 export class BundleBuilderService extends BaseIndexer {
   private currentBundleCache: BundleLeavesCache;
   private proposedBundleCache: BundleLeavesCache;
+  private hubBalanceCache: HubPoolBalanceCache;
   constructor(private config: BundleBuilderConfig) {
     super(config.logger, "bundleBuilder");
   }
@@ -73,11 +76,17 @@ export class BundleBuilderService extends BaseIndexer {
       this.handleCurrentBundleLoop(lastExecutedBundle, lastProposedBundle),
       this.handleProposedBundleLoop(lastExecutedBundle, lastProposedBundle),
     ]);
+
+    const [hubBalanceResult] = await Promise.allSettled([
+      this.handleHubBalanceAggregation(lastExecutedBundle),
+    ]);
+
     this.logger.info({
       at: "BundleBuilder#Processor#indexerLogic",
       message: "Bundle builder loop completed",
       currentLoopResult: currentLoopResult.status,
       proposedLoopResult: proposedLoopResult.status,
+      hubBalanceResult: hubBalanceResult.status,
     });
   }
 
@@ -89,6 +98,10 @@ export class BundleBuilderService extends BaseIndexer {
     this.proposedBundleCache = new BundleLeavesCache({
       redis: this.config.redis,
       prefix: "proposedBundleCache",
+    });
+    this.hubBalanceCache = new HubPoolBalanceCache({
+      redis: this.config.redis,
+      prefix: "hubBalanceCache",
     });
     return Promise.resolve();
   }
@@ -110,6 +123,94 @@ export class BundleBuilderService extends BaseIndexer {
       lastExecutedBundle.bundleEvaluationBlockNumbers[0]!;
     const distanceToHead = currentMainnetBlock - lastExecutedMainnetBlock;
     return distanceToHead < MAX_DISTANCE_TO_MAINNET_HEAD;
+  }
+
+  /**
+   * Handles the hub balance aggregation logic.
+   * @dev Ensure that this function is run after the proposed and current bundle
+   *      loops have been completed.
+   */
+  private async handleHubBalanceAggregation(
+    executedBundle: entities.Bundle,
+  ): Promise<void> {
+    // Resolve a hub client and config store client
+    const hubClient = this.config.hubClientFactory.get(CHAIN_IDs.MAINNET);
+    const configStoreClient = hubClient.configStoreClient;
+    void (await configStoreClient.update());
+    void (await hubClient.update());
+
+    // Resolve the L1 tokens to aggregate
+    const l1Tokens = hubClient.getL1Tokens();
+
+    // Iterate over all l1 tokens and resolve the liquid reserves
+    const hubBalances = await Promise.all(
+      l1Tokens.map(async ({ address: l1Token }) => {
+        const hubPoolContract = hubClient.hubPool as typechain.HubPool;
+
+        // Resolve the liquid reserve for the given L1Token stored in the
+        // pooledTokens structure at the end of the last executed bundle
+        // range for mainnet
+        const { liquidReserves } = await hubPoolContract.pooledTokens(l1Token, {
+          blockTag:
+            executedBundle.proposal.bundleEvaluationBlockNumbers[
+              CHAIN_IDs.MAINNET
+            ]!,
+        });
+        // Resolve the current and proposed bundle data for the given L1Token from
+        // redis
+        const [currentBundleData, proposedBundleData] = await Promise.all([
+          this.currentBundleCache.getByL1Token(l1Token),
+          this.proposedBundleCache.getByL1Token(l1Token),
+        ]);
+        // Filter out any undefined values
+        const currentBundleDataFiltered = currentBundleData.filter(
+          utils.isDefined,
+        );
+        const proposedBundleDataFiltered = proposedBundleData.filter(
+          utils.isDefined,
+        );
+        // Confirm that our current bundle data is not empty
+        if (!currentBundleData || currentBundleData.length === 0) {
+          this.logger.error({
+            at: "BundleBuilder#Processor#handleHubBalanceAggregation",
+            message:
+              "No current bundle data found. Ensure that the current bundle loop has been run.",
+            l1Token,
+          });
+          return;
+        }
+        const currentNetSendAmounts = currentBundleDataFiltered.reduce(
+          (acc, leaf) => acc.add(leaf.netSendAmount),
+          BN_ZERO,
+        );
+        const proposedNetSendAmounts = proposedBundleDataFiltered.reduce(
+          (acc, leaf) => acc.add(leaf.netSendAmount),
+          BN_ZERO,
+        );
+        const pendingLiquidReserves = liquidReserves.add(
+          proposedNetSendAmounts,
+        );
+        const currentLiquidReserves = pendingLiquidReserves.add(
+          currentNetSendAmounts,
+        );
+        const hasPendingBundle = proposedBundleDataFiltered.length > 0;
+        return {
+          l1Token,
+          currentNetSendAmounts: currentNetSendAmounts.toString(),
+          pendingNetSendAmounts: hasPendingBundle
+            ? proposedNetSendAmounts.toString()
+            : null,
+          currentLiquidReserves: currentLiquidReserves.toString(),
+          pendingLiquidReserves: hasPendingBundle
+            ? pendingLiquidReserves.toString()
+            : null,
+        };
+      }),
+    );
+    // Remove all l1 tokens from the redis cache
+    await this.hubBalanceCache.clear();
+    // Persist the hub balances to the redis cache
+    await this.hubBalanceCache.set(...hubBalances.filter(utils.isDefined));
   }
 
   /**
@@ -187,6 +288,8 @@ export class BundleBuilderService extends BaseIndexer {
         at: "BundleBuilder#Processor#handleProposedBundleLoop",
         message: "No proposed bundles found, skipping.",
       });
+      // Clear the cache so that we don't have any stale data
+      await this.proposedBundleCache.clear();
       return;
     }
     // Grab the ranges between the last executed and proposed bundles
@@ -225,26 +328,6 @@ export class BundleBuilderService extends BaseIndexer {
         });
       }),
     );
-  }
-
-  /**
-   * Resolves the aggregated data per L1 token for a list of leaves.
-   * @param leaves
-   * @returns
-   */
-  async resolveAggregatedDataPerL1Token(leaves: BundleLeafType[]): Promise<{
-    [chainId: number]: {
-      netSendAmounts: string;
-      runningBalances: string;
-    };
-  }> {
-    // Resolve a list of all relevant L1 Tokens in all leaves
-    const l1TokenSet = new Set<string>();
-    leaves.forEach(({ l1Tokens }) =>
-      l1Tokens.forEach((token) => l1TokenSet.add(token)),
-    );
-
-    return {};
   }
 
   async resolvePoolLeafForBundleRange(
