@@ -1,11 +1,12 @@
-import assert from "assert";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { caching, clients, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
+import assert from "assert";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
+import { BundleLeavesCache } from "../redis/bundleLeavesCache";
 import {
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
@@ -16,9 +17,8 @@ import {
   ProposalRangeResult,
   resolveMostRecentProposedAndExecutedBundles,
   SpokePoolClientFactory,
-} from "../../utils";
-import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import { BundleLeavesCache } from "../../redis/bundleLeavesCache";
+} from "../utils";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type BundleBuilderConfig = {
   logger: winston.Logger;
@@ -58,9 +58,6 @@ export class BundleBuilderService extends BaseIndexer {
     });
   }
 
-  /**
-   * Effectively a no-op for the BundleBuilderService.
-   */
   protected initialize(): Promise<void> {
     this.currentBundleCache = new BundleLeavesCache({
       redis: this.config.redis,
