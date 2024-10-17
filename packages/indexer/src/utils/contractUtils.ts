@@ -207,3 +207,5 @@ export function getRetryProvider(
     params.logger,
   );
 }
+
+export const BN_ZERO = across.utils.bnZero;
