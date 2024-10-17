@@ -1,10 +1,12 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { caching, clients, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
+import assert from "assert";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
+import { BundleLeavesCache } from "../redis/bundleLeavesCache";
 import {
   ConfigStoreClientFactory,
   convertProposalRangeResultToProposalRange,
@@ -29,6 +31,8 @@ type BundleBuilderConfig = {
 };
 
 export class BundleBuilderService extends BaseIndexer {
+  private currentBundleCache: BundleLeavesCache;
+  private proposedBundleCache: BundleLeavesCache;
   constructor(private config: BundleBuilderConfig) {
     super(config.logger, "bundleBuilder");
   }
@@ -54,10 +58,15 @@ export class BundleBuilderService extends BaseIndexer {
     });
   }
 
-  /**
-   * Effectively a no-op for the BundleBuilderService.
-   */
   protected initialize(): Promise<void> {
+    this.currentBundleCache = new BundleLeavesCache({
+      redis: this.config.redis,
+      prefix: "currentBundleCache",
+    });
+    this.proposedBundleCache = new BundleLeavesCache({
+      redis: this.config.redis,
+      prefix: "proposedBundleCache",
+    });
     return Promise.resolve();
   }
 
@@ -94,7 +103,29 @@ export class BundleBuilderService extends BaseIndexer {
       // and not any specific proposal
       convertProposalRangeResultToProposalRange(ranges),
     );
+    // first clear the cache to prepare for update
+    await this.currentBundleCache.clear();
     // Persist this to Redis
+    await Promise.all(
+      resultsToPersist.flatMap((leaf) => {
+        assert(
+          leaf.l1Tokens.length == leaf.netSendAmounts.length,
+          "Net send amount count does not match token counts",
+        );
+        assert(
+          leaf.l1Tokens.length == leaf.runningBalances.length,
+          "Running balances count does not match token counts",
+        );
+        return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+          return this.currentBundleCache.set({
+            chainId: leaf.chainId,
+            l1Token,
+            netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+            runningBalance: leaf.runningBalances[tokenIndex]!,
+          });
+        });
+      }),
+    );
   }
 
   /**
@@ -129,7 +160,29 @@ export class BundleBuilderService extends BaseIndexer {
     // Filter out any pool leave results that have been executed and are stored
     // in the database
 
+    // first clear the cache to prepare for update
+    await this.proposedBundleCache.clear();
     // Persist this to Redis
+    await Promise.all(
+      resultsToPersist.flatMap((leaf) => {
+        assert(
+          leaf.l1Tokens.length == leaf.netSendAmounts.length,
+          "Net send amount count does not match token counts",
+        );
+        assert(
+          leaf.l1Tokens.length == leaf.runningBalances.length,
+          "Running balances count does not match token counts",
+        );
+        return leaf.l1Tokens.map((l1Token, tokenIndex) => {
+          return this.proposedBundleCache.set({
+            chainId: leaf.chainId,
+            l1Token,
+            netSendAmount: leaf.netSendAmounts[tokenIndex]!,
+            runningBalance: leaf.runningBalances[tokenIndex]!,
+          });
+        });
+      }),
+    );
   }
 
   async resolvePoolLeafForBundleRange(
