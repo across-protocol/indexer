@@ -22,6 +22,13 @@ import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 const MAX_DISTANCE_TO_MAINNET_HEAD = 10_000;
 
+type BundleLeafType = {
+  chainId: number;
+  l1Tokens: string[];
+  netSendAmounts: string[];
+  runningBalances: string[];
+};
+
 type BundleBuilderConfig = {
   logger: winston.Logger;
   bundleRepository: BundleRepository;
@@ -220,17 +227,30 @@ export class BundleBuilderService extends BaseIndexer {
     );
   }
 
+  /**
+   * Resolves the aggregated data per L1 token for a list of leaves.
+   * @param leaves
+   * @returns
+   */
+  async resolveAggregatedDataPerL1Token(leaves: BundleLeafType[]): Promise<{
+    [chainId: number]: {
+      netSendAmounts: string;
+      runningBalances: string;
+    };
+  }> {
+    // Resolve a list of all relevant L1 Tokens in all leaves
+    const l1TokenSet = new Set<string>();
+    leaves.forEach(({ l1Tokens }) =>
+      l1Tokens.forEach((token) => l1TokenSet.add(token)),
+    );
+
+    return {};
+  }
+
   async resolvePoolLeafForBundleRange(
     ranges: ProposalRangeResult[],
     bundleHead: ProposalRange,
-  ): Promise<
-    {
-      chainId: number;
-      l1Tokens: string[];
-      netSendAmounts: string[];
-      runningBalances: string[];
-    }[]
-  > {
+  ): Promise<BundleLeafType[]> {
     // Convert into array of [start, end] for each chain
     const bundleRangeForBundleClient = ranges.map(
       ({ startBlock, endBlock }) => [startBlock, endBlock],
