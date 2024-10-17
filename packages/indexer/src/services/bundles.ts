@@ -55,7 +55,7 @@ export class Processor extends BaseIndexer {
     await assignCanceledEventToBundle(bundleRepository, logger);
     await assignBundleRangesToProposal(bundleRepository, logger);
     await assignExecutionsToBundle(bundleRepository, logger);
-    // await assignBundleExecutedStatus(bundleRepository, logger);
+    await assignBundleExecutedStatus(bundleRepository, logger);
     await assignSpokePoolEventsToExecutedBundles(
       bundleRepository,
       hubPoolClientFactory,
