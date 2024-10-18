@@ -20,6 +20,8 @@ import {
 } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
+const MAX_DISTANCE_TO_MAINNET_HEAD = 10_000;
+
 type BundleBuilderConfig = {
   logger: winston.Logger;
   bundleRepository: BundleRepository;
@@ -44,6 +46,20 @@ export class BundleBuilderService extends BaseIndexer {
         this.config.bundleRepository,
         this.logger,
       );
+
+    // We only want to aggregate/build proposed/current bundles if we are
+    // sufficiently close to the head of the chain. This is to prevent out
+    // of heap memory errors from needing to aggregate too much historical data
+    // from all the chains.
+    if (!(await this.isCloseEnoughToHead(lastExecutedBundle.proposal))) {
+      this.logger.info({
+        at: "BundleBuilder#Processor#indexerLogic",
+        message: "Last executed bundle is too far from head, skipping",
+        lastExecutedBundleBlock: lastExecutedBundle.proposal.blockNumber,
+      });
+      return;
+    }
+
     // Call the sub logic with the same last executed and proposed bundles
     // and log the result
     const [currentLoopResult, proposedLoopResult] = await Promise.allSettled([
@@ -68,6 +84,25 @@ export class BundleBuilderService extends BaseIndexer {
       prefix: "proposedBundleCache",
     });
     return Promise.resolve();
+  }
+
+  /**
+   * Checks if the last executed bundle is close enough to the head of the chain to build a bundle
+   * without requiring too much historical data such that we receive out of heap memory errors.
+   * @param lastExecutedBundle The most recent executed bundle within the database
+   * @returns True if the last executed bundle is close enough to the head of the chain, false otherwise
+   * @see {@link MAX_DISTANCE_TO_MAINNET_HEAD}
+   */
+  private async isCloseEnoughToHead(
+    lastExecutedBundle: entities.ProposedRootBundle,
+  ) {
+    const currentMainnetBlock = await this.config.providerFactory
+      .getProviderForChainId(CHAIN_IDs.MAINNET)
+      .getBlockNumber();
+    const lastExecutedMainnetBlock =
+      lastExecutedBundle.bundleEvaluationBlockNumbers[0]!;
+    const distanceToHead = currentMainnetBlock - lastExecutedMainnetBlock;
+    return distanceToHead < MAX_DISTANCE_TO_MAINNET_HEAD;
   }
 
   /**
