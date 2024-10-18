@@ -150,12 +150,13 @@ export class BundleBuilderService extends BaseIndexer {
         // Resolve the liquid reserve for the given L1Token stored in the
         // pooledTokens structure at the end of the last executed bundle
         // range for mainnet
-        const { liquidReserves } = await hubPoolContract.pooledTokens(l1Token, {
-          blockTag:
-            executedBundle.proposal.bundleEvaluationBlockNumbers[
-              CHAIN_IDs.MAINNET
-            ]!,
-        });
+        const { liquidReserves } =
+          await hubPoolContract.callStatic.pooledTokens(l1Token, {
+            blockTag:
+              executedBundle.proposal.bundleEvaluationBlockNumbers[
+                CHAIN_IDs.MAINNET
+              ]!,
+          });
         // Resolve the current and proposed bundle data for the given L1Token from
         // redis
         const [currentBundleData, proposedBundleData] = await Promise.all([
