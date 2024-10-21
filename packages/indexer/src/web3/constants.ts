@@ -18,6 +18,7 @@ export const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.SCROLL]: 57600,
   [CHAIN_IDs.ZK_SYNC]: 172800,
   [CHAIN_IDs.ZORA]: 86400,
+  [CHAIN_IDs.WORLD_CHAIN]: 86400,
 };
 
 // This is the max anticipated distance on each chain before RPC data is likely to be consistent amongst providers.
@@ -39,6 +40,8 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.SCROLL]: 100,
   [CHAIN_IDs.ZK_SYNC]: 512,
   [CHAIN_IDs.ZORA]: 120,
+  [CHAIN_IDs.WORLD_CHAIN]: 120,
+
   // Testnets:
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 0,
   [CHAIN_IDs.BASE_SEPOLIA]: 0,
@@ -53,7 +56,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
 export const getChainCacheFollowDistance = (chainId: number) => {
   const chainCacheFollowDistance = CHAIN_CACHE_FOLLOW_DISTANCE[chainId];
 
-  if (!chainCacheFollowDistance) {
+  if (chainCacheFollowDistance === undefined) {
     throw new Error(`Invalid chain cache distance for chain id ${chainId}`);
   }
 
@@ -75,6 +78,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.BLAST]: 10000,
   [CHAIN_IDs.SCROLL]: 3000,
   [CHAIN_IDs.ZORA]: 10000,
+  [CHAIN_IDs.WORLD_CHAIN]: 10000,
 };
 
 /**
