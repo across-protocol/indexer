@@ -208,7 +208,7 @@ export class BundleBuilderService extends BaseIndexer {
     // Remove all l1 tokens from the redis cache
     await this.hubBalanceCache.clear();
     // Persist the hub balances to the redis cache
-    await this.hubBalanceCache.set(...hubBalances.filter(utils.isDefined));
+    await this.hubBalanceCache.setAll(hubBalances.filter(utils.isDefined));
   }
 
   /**

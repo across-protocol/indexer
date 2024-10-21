@@ -1,3 +1,4 @@
+import { isDefined } from "@across-protocol/sdk/dist/cjs/utils/TypeGuards";
 import Redis from "ioredis";
 import * as s from "superstruct";
 
@@ -26,26 +27,27 @@ export class HubPoolBalanceCache {
   constructor(private config: Config) {}
 
   /**
-   * Stores a HubPoolBalance object in Redis, indexed by chainId and l1Token.
-   * Also adds the key to separate indexes for chainId and l1Token for efficient lookups.
+   * Stores a HubPoolBalance object in Redis, indexed by l1Token.
+   * Also adds the key to separate index for its l1Token for efficient lookups.
    *
-   * @param data A list of HubPoolBalance data to store.
-   * @returns A promise that resolves when the data is successfully stored.
+   * @param datum A HubPoolBalance record to store.
+   * @returns A promise that resolves when the datum is successfully stored.
    */
-  async set(...data: HubPoolBalance[]): Promise<void> {
-    await Promise.all(
-      data.map(async (datum) => {
-        const key = this.getKey(datum.l1Token);
+  async set(datum: HubPoolBalance): Promise<void> {
+    const key = this.getKey(datum.l1Token);
+    await Promise.all([
+      this.config.redis.set(key, JSON.stringify(datum)),
+      // Add to indexes for quick retrieval by l1Token separately
+      this.config.redis.sadd(this.getL1TokenIndexKey(), key),
+    ]);
+  }
 
-        await this.config.redis.set(key, JSON.stringify(datum));
-
-        // Add to indexes for quick retrieval by chainId and l1Token separately
-        await this.config.redis.sadd(
-          this.getL1TokenIndexKey(datum.l1Token),
-          key,
-        );
-      }),
-    );
+  /**
+   * Stores multiple HubPoolBalance objects in Redis, indexed by l1Token.
+   * @param data An array of HubPoolBalance records to store.
+   */
+  async setAll(data: HubPoolBalance[]): Promise<void> {
+    await Promise.all(data.map((datum) => this.set(datum)));
   }
 
   /**
@@ -61,15 +63,12 @@ export class HubPoolBalanceCache {
   }
 
   /**
-   * Retrieves all BundleLeaves from Redis that match the provided l1Token.
+   * Retrieves all HubPoolBalances from Redis that exist across all recorded l1 tokens.
    *
-   * @param l1Token The l1Token to query.
-   * @returns An array of matching BundleLeaves or undefined if not found.
+   * @returns An array of HubPoolBalances.
    */
-  async getByL1Token(l1Token: string): Promise<(HubPoolBalance | undefined)[]> {
-    const keys = await this.config.redis.smembers(
-      this.getL1TokenIndexKey(l1Token),
-    );
+  async getAllL1Tokens(): Promise<HubPoolBalance[]> {
+    const keys = await this.config.redis.smembers(this.getL1TokenIndexKey());
     return this.getDataByKeys(keys);
   }
 
@@ -87,7 +86,7 @@ export class HubPoolBalanceCache {
     const result = await this.config.redis.del(key);
 
     // Also remove from the indexes
-    await this.config.redis.srem(this.getL1TokenIndexKey(l1Token), key);
+    await this.config.redis.srem(this.getL1TokenIndexKey(), key);
 
     return result > 0;
   }
@@ -138,11 +137,9 @@ export class HubPoolBalanceCache {
    *
    * @private
    * @param keys The Redis keys to retrieve.
-   * @returns An array of BundleLeaves or undefined if not found.
+   * @returns An array of HubPoolBalances.
    */
-  private async getDataByKeys(
-    keys: string[],
-  ): Promise<(HubPoolBalance | undefined)[]> {
+  private async getDataByKeys(keys: string[]): Promise<HubPoolBalance[]> {
     const pipeline = this.config.redis.pipeline();
     keys.forEach((key) => pipeline.get(key));
     const results = (await pipeline.exec()) ?? [];
@@ -152,7 +149,8 @@ export class HubPoolBalanceCache {
         result
           ? s.create(JSON.parse(result as string), HubPoolBalance)
           : undefined,
-      );
+      )
+      .filter(isDefined);
   }
 
   /**
@@ -168,10 +166,9 @@ export class HubPoolBalanceCache {
    * Helper function to generate the Redis key for the l1Token index.
    *
    * @private
-   * @param l1Token - The l1Token to use in the index key.
-   * @returns The Redis key for the l1Token index.
+   * @returns The Redis key for the l1Token set of indices.
    */
-  private getL1TokenIndexKey(l1Token: string): string {
-    return `${this.config.prefix}:l1TokenIndex:${l1Token}`;
+  private getL1TokenIndexKey(): string {
+    return `${this.config.prefix}:l1TokenIndex`;
   }
 }
