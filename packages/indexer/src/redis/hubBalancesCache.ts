@@ -44,6 +44,7 @@ export class HubPoolBalanceCache {
 
   /**
    * Stores multiple HubPoolBalance objects in Redis, indexed by l1Token.
+   *
    * @param data An array of HubPoolBalance records to store.
    */
   async setAll(data: HubPoolBalance[]): Promise<void> {
@@ -51,7 +52,7 @@ export class HubPoolBalanceCache {
   }
 
   /**
-   * Retrieves a HubPoolBalance from Redis by chainId and l1Token.
+   * Retrieves a HubPoolBalance from Redis by l1Token.
    *
    * @param l1Token The l1Token to query.
    * @returns The retrieved HubPoolBalance or undefined if not found.
@@ -73,8 +74,8 @@ export class HubPoolBalanceCache {
   }
 
   /**
-   * Deletes a HubPoolBalance from Redis by chainId and l1Token.
-   * Also removes the corresponding key from the chainId and l1Token indexes.
+   * Deletes a HubPoolBalance from Redis by l1Token.
+   * Also removes the corresponding key from the l1Token index.
    *
    * @param l1Token The l1Token to delete.
    * @returns True if the record was deleted, false otherwise.
@@ -92,7 +93,7 @@ export class HubPoolBalanceCache {
   }
 
   /**
-   * Checks if a specific chainId and l1Token pair exists in Redis.
+   * Checks if a specific l1Token key exists in Redis.
    *
    * @param l1Token The l1Token to check.
    * @returns True if the record exists, false otherwise.
@@ -155,6 +156,7 @@ export class HubPoolBalanceCache {
 
   /**
    * Helper function to generate the Redis key for a specific l1Token.
+   *
    * @param l1Token - The l1Token to use in the key.
    * @returns The Redis key for the HubPoolBalance.
    */
