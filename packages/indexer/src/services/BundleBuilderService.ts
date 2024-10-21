@@ -1,4 +1,3 @@
-import { CHAIN_IDs } from "@across-protocol/constants";
 import { caching, clients, typechain, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
 import assert from "assert";
@@ -39,6 +38,7 @@ type BundleBuilderConfig = {
   hubClientFactory: HubPoolClientFactory;
   configStoreClientFactory: ConfigStoreClientFactory;
   spokePoolClientFactory: SpokePoolClientFactory;
+  hubChainId: number;
 };
 
 export class BundleBuilderService extends BaseIndexer {
@@ -117,7 +117,7 @@ export class BundleBuilderService extends BaseIndexer {
     lastExecutedBundle: entities.ProposedRootBundle,
   ) {
     const currentMainnetBlock = await this.config.providerFactory
-      .getProviderForChainId(CHAIN_IDs.MAINNET)
+      .getProviderForChainId(this.config.hubChainId)
       .getBlockNumber();
     const lastExecutedMainnetBlock =
       lastExecutedBundle.bundleEvaluationBlockNumbers[0]!;
@@ -134,7 +134,7 @@ export class BundleBuilderService extends BaseIndexer {
     executedBundle: entities.Bundle,
   ): Promise<void> {
     // Resolve a hub client and config store client
-    const hubClient = this.config.hubClientFactory.get(CHAIN_IDs.MAINNET);
+    const hubClient = this.config.hubClientFactory.get(this.config.hubChainId);
     const configStoreClient = hubClient.configStoreClient;
     void (await configStoreClient.update());
     void (await hubClient.update());
@@ -224,7 +224,7 @@ export class BundleBuilderService extends BaseIndexer {
   ): Promise<void> {
     // Resolve a latest config store client and update it
     const configStoreClient = this.config.configStoreClientFactory.get(
-      CHAIN_IDs.MAINNET,
+      this.config.hubChainId,
     );
     void (await configStoreClient.update());
     // Resolve the latest proposal
@@ -356,7 +356,9 @@ export class BundleBuilderService extends BaseIndexer {
     }
     const historicalProposedBundle = historicalProposal.proposal;
     // Instantiate the Hub & ConfigStore Client from genesis
-    const hubPoolClient = this.config.hubClientFactory.get(CHAIN_IDs.MAINNET);
+    const hubPoolClient = this.config.hubClientFactory.get(
+      this.config.hubChainId,
+    );
     const configStoreClient = hubPoolClient.configStoreClient;
     // Resolve lookback range for the spoke clients
     const lookbackRange = getBlockRangeBetweenBundles(

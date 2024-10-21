@@ -119,6 +119,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       hubClientFactory: hubPoolClientFactory,
       spokePoolClientFactory,
       configStoreClientFactory,
+      hubChainId,
     });
 
   const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
