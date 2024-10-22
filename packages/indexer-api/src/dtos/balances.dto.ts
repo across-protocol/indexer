@@ -8,8 +8,19 @@ export const HubPoolBalanceQueryParams = s.object({
 // query spokepools by chainId, must specify
 export const SpokePoolBalanceParams = s.object({
   chainId: s.number(),
+  l1Token: s.optional(s.string()),
   // unsure why we have timestamp, implies we are storign history of balances? this is in the spec.
   timestamp: s.number(),
-  // unsure why specified as l2Token in spec, don't we have spoke pool on L1?
-  l2Token: s.optional(s.number()),
 });
+
+export type SpokePoolBalanceResultElement = {
+  lastExecutedRunningBalance: string;
+  pendingRunningBalance: string | null;
+  pendingNetSendAmount: string | null;
+  currentRunningBalance: string;
+  currentNetSendAmount: string;
+};
+
+export type SpokePoolBalanceResults = {
+  [chainId: string]: SpokePoolBalanceResultElement;
+};
