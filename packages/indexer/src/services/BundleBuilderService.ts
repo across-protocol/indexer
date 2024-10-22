@@ -82,7 +82,7 @@ export class BundleBuilderService extends BaseIndexer {
     ]);
 
     this.logger.info({
-      at: "BundleBuilder#Processor#indexerLogic",
+      at: "BundleBuilderService#indexerLogic",
       message: "Bundle builder loop completed",
       currentLoopResult: currentLoopResult.status,
       proposedLoopResult: proposedLoopResult.status,
