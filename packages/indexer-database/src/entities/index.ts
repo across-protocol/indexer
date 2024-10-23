@@ -15,7 +15,7 @@ export * from "./evm/TokensBridged";
 
 // Others
 export * from "./Bundle";
-export * from "./BundleEvents";
+export * from "./BundleEvent";
 export * from "./BundleBlockRange";
 export * from "./RootBundleExecutedJoinTable";
 export * from "./RelayHashInfo";

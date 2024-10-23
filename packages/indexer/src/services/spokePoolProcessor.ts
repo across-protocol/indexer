@@ -139,7 +139,7 @@ export class SpokePoolProcessor {
       entities.RelayHashInfo,
     );
     const bundleEventsRepository = this.postgres.getRepository(
-      entities.BundleEvents,
+      entities.BundleEvent,
     );
 
     const expiredDeposits = await relayHashInfoRepository
@@ -157,7 +157,7 @@ export class SpokePoolProcessor {
         .createQueryBuilder("be")
         .leftJoinAndSelect("bundle", "bundle", "be.bundleId = bundle.id")
         .where("be.eventType = :expiredDeposit", {
-          expiredDeposit: entities.BundleEventTypes.ExpiredDeposit,
+          expiredDeposit: entities.BundleEventType.ExpiredDeposit,
         })
         .andWhere("be.relayHash = :expiredDepositRelayHash", {
           expiredDepositRelayHash: expiredDeposit.relayHash,

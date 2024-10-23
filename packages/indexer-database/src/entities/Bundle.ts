@@ -13,7 +13,7 @@ import { RootBundleCanceled } from "./evm/RootBundleCanceled";
 import { RootBundleExecuted } from "./evm/RootBundleExecuted";
 import { RootBundleDisputed } from "./evm/RootBundleDisputed";
 import { BundleBlockRange } from "./BundleBlockRange";
-import { BundleEvents } from "./BundleEvents";
+import { BundleEvent } from "./BundleEvent";
 
 export enum BundleStatus {
   Proposed = "Proposed",
@@ -94,6 +94,6 @@ export class Bundle {
   @Column({ default: false })
   eventsAssociated: boolean;
 
-  @OneToMany(() => BundleEvents, (event) => event.bundle)
-  events: BundleEvents[];
+  @OneToMany(() => BundleEvent, (event) => event.bundle)
+  events: BundleEvent[];
 }

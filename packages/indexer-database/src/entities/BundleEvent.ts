@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 import { Bundle } from "./Bundle";
 
-export enum BundleEventTypes {
+export enum BundleEventType {
   Deposit = "deposit",
   ExpiredDeposit = "expiredDeposit",
   Fill = "fill",
@@ -16,8 +16,8 @@ export enum BundleEventTypes {
 }
 
 @Entity()
-@Unique("UK_bundleEvents_eventType_relayHash", ["eventType", "relayHash"])
-export class BundleEvents {
+@Unique("UK_bundleEvent_eventType_relayHash", ["type", "relayHash"])
+export class BundleEvent {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -27,8 +27,8 @@ export class BundleEvents {
   @Column()
   bundleId: number;
 
-  @Column({ type: "enum", enum: BundleEventTypes })
-  eventType: BundleEventTypes;
+  @Column({ type: "enum", enum: BundleEventType })
+  type: BundleEventType;
 
   @Column()
   relayHash: string;

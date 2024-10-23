@@ -439,19 +439,19 @@ export class BundleRepository extends utils.BaseRepository {
     bundleData: LoadDataReturnValue,
     bundleId: number,
   ) {
-    const eventsRepo = this.postgres.getRepository(entities.BundleEvents);
+    const eventsRepo = this.postgres.getRepository(entities.BundleEvent);
 
     // Store bundle deposits
-    const formattedDeposits = this.formatBundleEvents(
-      entities.BundleEventTypes.Deposit,
+    const deposits = this.formatBundleEvents(
+      entities.BundleEventType.Deposit,
       bundleData.bundleDepositsV3,
       bundleId,
     );
     const storedDeposits = await eventsRepo.insert(formattedDeposits);
 
     // Store bundle refunded deposits
-    const formattedRefundedDeposits = this.formatBundleEvents(
-      entities.BundleEventTypes.ExpiredDeposit,
+    const expiredDeposits = this.formatBundleEvents(
+      entities.BundleEventType.ExpiredDeposit,
       bundleData.expiredDepositsToRefundV3,
       bundleId,
     );
@@ -460,16 +460,16 @@ export class BundleRepository extends utils.BaseRepository {
     );
 
     // Store bundle slow fills
-    const formattedSlowFills = this.formatBundleEvents(
-      entities.BundleEventTypes.SlowFill,
+    const slowFills = this.formatBundleEvents(
+      entities.BundleEventType.SlowFill,
       bundleData.bundleSlowFillsV3,
       bundleId,
     );
     const storedSlowFills = await eventsRepo.insert(formattedSlowFills);
 
     // Store bundle unexecutable slow fills
-    const formattedUnexecutableSlowFills = this.formatBundleEvents(
-      entities.BundleEventTypes.UnexecutableSlowFill,
+    const unexecutableSlowFills = this.formatBundleEvents(
+      entities.BundleEventType.UnexecutableSlowFill,
       bundleData.unexecutableSlowFills,
       bundleId,
     );
@@ -478,8 +478,8 @@ export class BundleRepository extends utils.BaseRepository {
     );
 
     // Store bundle fills
-    const formattedFills = this.formatBundleFillEvents(
-      entities.BundleEventTypes.Fill,
+    const fills = this.formatBundleFillEvents(
+      entities.BundleEventType.Fill,
       bundleData.bundleFillsV3,
       bundleId,
     );
@@ -495,7 +495,7 @@ export class BundleRepository extends utils.BaseRepository {
   }
 
   private formatBundleEvents(
-    eventsType: entities.BundleEventTypes,
+    eventsType: entities.BundleEventType,
     bundleEvents:
       | BundleDepositsV3
       | BundleSlowFills
@@ -504,16 +504,16 @@ export class BundleRepository extends utils.BaseRepository {
     bundleId: number,
   ): {
     bundleId: number;
-    relayHash: any;
-    eventType: entities.BundleEventTypes;
+    relayHash: string;
+    type: entities.BundleEventType;
   }[] {
     return Object.values(bundleEvents).flatMap((tokenEvents) =>
       Object.values(tokenEvents).flatMap((events) =>
         events.map((event) => {
           return {
             bundleId,
-            relayHash: getRelayHashFromEvent(event),
-            eventType: eventsType,
+            relayHash: across.utils.getRelayHashFromEvent(event),
+            type: eventsType,
           };
         }),
       ),
@@ -521,21 +521,21 @@ export class BundleRepository extends utils.BaseRepository {
   }
 
   private formatBundleFillEvents(
-    eventsType: entities.BundleEventTypes.Fill,
-    bundleEvents: BundleFillsV3,
+    eventsType: entities.BundleEventType.Fill,
+    bundleEvents: across.interfaces.BundleFillsV3,
     bundleId: number,
   ): {
     bundleId: number;
-    relayHash: any;
-    eventType: entities.BundleEventTypes.Fill;
+    relayHash: string;
+    type: entities.BundleEventType.Fill;
   }[] {
     return Object.entries(bundleEvents).flatMap(([chainId, tokenEvents]) =>
       Object.values(tokenEvents).flatMap((fillsData) =>
         fillsData.fills.map((event) => {
           return {
             bundleId,
-            relayHash: getRelayHashFromEvent(event),
-            eventType: eventsType,
+            relayHash: across.utils.getRelayHashFromEvent(event),
+            type: eventsType,
             repaymentChainId: Number(chainId),
           };
         }),
