@@ -7,10 +7,11 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_requestedSpeedUpV3_depositId_originChain_txHash", [
+@Unique("UK_speedUpV3_depositId_originChain_txHash_logIdx", [
   "depositId",
   "originChainId",
   "transactionHash",
+  "logIndex",
 ])
 export class RequestedSpeedUpV3Deposit {
   @PrimaryGeneratedColumn()
