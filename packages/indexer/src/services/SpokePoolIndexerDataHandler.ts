@@ -12,10 +12,12 @@ import * as utils from "../utils";
 import { providers } from "@across-protocol/sdk";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "./spokePoolProcessor";
+import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
+import { IntegratorIdMessage } from "../messaging/IntegratorIdWorker";
 
 type FetchEventsResult = {
   v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
-    integratorId: string | undefined;
+    integratorId?: string | undefined;
   })[];
   filledV3RelayEvents: across.interfaces.FillWithBlock[];
   requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
@@ -44,6 +46,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private spokePoolFactory: utils.SpokePoolClientFactory,
     private spokePoolClientRepository: SpokePoolRepository,
     private spokePoolProcessor: SpokePoolProcessor,
+    private indexerQueuesService: IndexerQueuesService,
   ) {
     this.isInitialized = false;
   }
@@ -122,14 +125,25 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       fromBlock: blockRange.from,
       toBlock: blockRange.to,
     });
-    const v3FundsDepositedWithIntegradorId = await Promise.all(
-      v3FundsDepositedEvents.map(async (deposit) => {
-        return {
-          ...deposit,
-          integratorId: await this.getIntegratorId(deposit),
-        };
-      }),
-    );
+    let v3FundsDepositedWithIntegradorId;
+    // If fewer than 1000 deposits, fetch integrator ID synchronously.
+    // For larger sets, use the IntegratorId queue for asynchronous processing.
+    if (v3FundsDepositedEvents.length < 1000) {
+      v3FundsDepositedWithIntegradorId = await Promise.all(
+        v3FundsDepositedEvents.map(async (deposit) => {
+          return {
+            ...deposit,
+            integratorId: await utils.getIntegratorId(
+              this.provider,
+              deposit.quoteTimestamp,
+              deposit.transactionHash,
+            ),
+          };
+        }),
+      );
+    } else {
+      await this.publishIntegratorIdMessages(v3FundsDepositedEvents);
+    }
     const filledV3RelayEvents = spokePoolClient.getFills();
     const requestedV3SlowFillEvents =
       spokePoolClient.getSlowFillRequestsForOriginChain(this.chainId);
@@ -140,7 +154,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
 
     return {
-      v3FundsDepositedEvents: v3FundsDepositedWithIntegradorId,
+      v3FundsDepositedEvents:
+        v3FundsDepositedWithIntegradorId || v3FundsDepositedEvents,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
       requestedSpeedUpV3Events,
@@ -217,18 +232,22 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
-  private async getIntegratorId(deposit: across.interfaces.DepositWithBlock) {
-    const INTEGRATOR_DELIMITER = "1dc0de";
-    const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
-    let integratorId = undefined;
-    const txn = await this.provider.getTransaction(deposit.transactionHash);
-    const txnData = txn.data;
-    if (txnData.includes(INTEGRATOR_DELIMITER)) {
-      integratorId = txnData
-        .split(INTEGRATOR_DELIMITER)
-        .pop()
-        ?.substring(0, INTEGRATOR_ID_LENGTH);
-    }
-    return integratorId;
+  private async publishIntegratorIdMessages(
+    deposits: across.interfaces.DepositWithBlock[],
+  ) {
+    const messages: IntegratorIdMessage[] = deposits.map((deposit) => {
+      return {
+        depositId: deposit.depositId,
+        originChainId: deposit.originChainId,
+        depositQuoteTimestamp: deposit.quoteTimestamp,
+        txHash: deposit.transactionHash,
+      };
+    });
+    await this.indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.IntegratorId,
+      IndexerQueues.IntegratorId, // Use queue name as job name
+      messages,
+      { delay: 5000 }, // 5-second delay to wait for deposits to be stored in the database before processing
+    );
   }
 }

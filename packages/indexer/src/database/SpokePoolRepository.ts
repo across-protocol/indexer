@@ -31,7 +31,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
 
   public async formatAndSaveV3FundsDepositedEvents(
     v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
-      integratorId: string | undefined;
+      integratorId?: string | undefined;
     })[],
     lastFinalisedBlock: number,
   ) {

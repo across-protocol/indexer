@@ -23,6 +23,8 @@ import {
 import { SpokePoolIndexerDataHandler } from "./services/SpokePoolIndexerDataHandler";
 import { SpokePoolProcessor } from "./services/spokePoolProcessor";
 import { BundleRepository } from "./database/BundleRepository";
+import { IndexerQueuesService } from "./messaging/service";
+import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -85,6 +87,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
   });
 
+  const indexerQueuesService = new IndexerQueuesService(redis);
+  // Set up message workers
+  new IntegratorIdWorker(redis, postgres, logger, retryProvidersFactory);
+
   const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
     const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
       logger,
@@ -96,6 +102,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       spokePoolClientFactory,
       new SpokePoolRepository(postgres, logger),
       new SpokePoolProcessor(postgres, logger, chainId),
+      indexerQueuesService,
     );
     const spokePoolIndexer = new Indexer(
       {
