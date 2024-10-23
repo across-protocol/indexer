@@ -110,6 +110,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 2,
   [CHAIN_IDs.REDSTONE]: 2,
   [CHAIN_IDs.SCROLL]: 3,
+  [CHAIN_IDs.WORLD_CHAIN]: 2,
   [CHAIN_IDs.ZK_SYNC]: 1,
   [CHAIN_IDs.ZORA]: 2,
 };

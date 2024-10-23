@@ -429,7 +429,7 @@ async function assignSpokePoolEventsToExecutedBundles(
           // We need to instantiate spoke clients using a higher end block than
           // the bundle range as deposits which fills are included in this bundle could
           // have occured outside the bundle range of the origin chain
-          // NOTE: A buffer time of 15 minutes has been proved to work for older bundles
+          // NOTE: A buffer time of 15 minutes has been proven to work for older bundles
           const blockTime = getBlockTime(chainId);
           const endBlockTimeBuffer = 60 * 15;
           const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
