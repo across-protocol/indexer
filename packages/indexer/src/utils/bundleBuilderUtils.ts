@@ -1,5 +1,4 @@
-import { utils, clients } from "@across-protocol/sdk";
-import { LoadDataReturnValue } from "@across-protocol/sdk/dist/cjs/interfaces/BundleData";
+import { utils, clients, interfaces } from "@across-protocol/sdk";
 import winston from "winston";
 import { entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
@@ -59,7 +58,7 @@ export async function resolveMostRecentProposedAndExecutedBundles(
 }
 
 /**
- * Given a bundle entitie with its related ranges and proposals,
+ * Given a bundle entity with its related ranges and proposals,
  * format the bundle ranges to an array of [startBlock, endBlock] following
  * the order of the proposal chain ids.
  * @param bundle A bundle entity with its related proposal and ranges
@@ -156,7 +155,7 @@ export function convertProposalRangeResultToProposalRange(
 
 export function buildPoolRebalanceRoot(
   ranges: number[][],
-  bundleData: LoadDataReturnValue,
+  bundleData: interfaces.LoadDataReturnValue,
   hubPoolClient: clients.HubPoolClient,
   configStoreClient: clients.AcrossConfigStoreClient,
 ) {

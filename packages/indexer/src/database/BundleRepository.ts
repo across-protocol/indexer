@@ -1,13 +1,5 @@
 import winston from "winston";
-import {
-  BundleDepositsV3,
-  BundleExcessSlowFills,
-  BundleFillsV3,
-  BundleSlowFills,
-  ExpiredDepositsToRefundV3,
-  LoadDataReturnValue,
-} from "@across-protocol/sdk/dist/cjs/interfaces/BundleData";
-import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
+import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 export type BlockRangeInsertType = {
@@ -436,7 +428,7 @@ export class BundleRepository extends utils.BaseRepository {
    * @returns A promise that resolves when all the events have been inserted into the database.
    */
   public async storeBundleEvents(
-    bundleData: LoadDataReturnValue,
+    bundleData: across.interfaces.LoadDataReturnValue,
     bundleId: number,
   ) {
     const eventsRepo = this.postgres.getRepository(entities.BundleEvent);
@@ -497,10 +489,10 @@ export class BundleRepository extends utils.BaseRepository {
   private formatBundleEvents(
     eventsType: entities.BundleEventType,
     bundleEvents:
-      | BundleDepositsV3
-      | BundleSlowFills
-      | BundleExcessSlowFills
-      | ExpiredDepositsToRefundV3,
+      | across.interfaces.BundleDepositsV3
+      | across.interfaces.BundleSlowFills
+      | across.interfaces.BundleExcessSlowFills
+      | across.interfaces.ExpiredDepositsToRefundV3,
     bundleId: number,
   ): {
     bundleId: number;
