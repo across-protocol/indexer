@@ -25,12 +25,6 @@ export class RequestedV3SlowFill {
   destinationChainId: number;
 
   @Column()
-  fromLiteChain: boolean;
-
-  @Column()
-  toLiteChain: boolean;
-
-  @Column()
   depositor: string;
 
   @Column()
