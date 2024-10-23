@@ -33,6 +33,7 @@ export class BundleRepository extends utils.BaseRepository {
     postgres: DataSource,
     logger: winston.Logger,
     throwError?: boolean,
+    private chunkSize = 2000,
   ) {
     super(postgres, logger, throwError);
   }
@@ -439,7 +440,10 @@ export class BundleRepository extends utils.BaseRepository {
       bundleData.bundleDepositsV3,
       bundleId,
     );
-    const storedDeposits = await eventsRepo.insert(formattedDeposits);
+    const chunkedDeposits = across.utils.chunk(deposits, this.chunkSize);
+    await Promise.all(
+      chunkedDeposits.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
 
     // Store bundle refunded deposits
     const expiredDeposits = this.formatBundleEvents(
@@ -447,8 +451,9 @@ export class BundleRepository extends utils.BaseRepository {
       bundleData.expiredDepositsToRefundV3,
       bundleId,
     );
-    const storedExpiredDeposits = await eventsRepo.insert(
-      formattedRefundedDeposits,
+    const chunkedRefunds = across.utils.chunk(expiredDeposits, this.chunkSize);
+    await Promise.all(
+      chunkedRefunds.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
     );
 
     // Store bundle slow fills
@@ -457,7 +462,10 @@ export class BundleRepository extends utils.BaseRepository {
       bundleData.bundleSlowFillsV3,
       bundleId,
     );
-    const storedSlowFills = await eventsRepo.insert(formattedSlowFills);
+    const chunkedSlowFills = across.utils.chunk(slowFills, this.chunkSize);
+    await Promise.all(
+      chunkedSlowFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
 
     // Store bundle unexecutable slow fills
     const unexecutableSlowFills = this.formatBundleEvents(
@@ -465,8 +473,14 @@ export class BundleRepository extends utils.BaseRepository {
       bundleData.unexecutableSlowFills,
       bundleId,
     );
-    const storedUnexecutableSlowFills = await eventsRepo.insert(
-      formattedUnexecutableSlowFills,
+    const chunkedUnexecutableSlowFills = across.utils.chunk(
+      unexecutableSlowFills,
+      this.chunkSize,
+    );
+    await Promise.all(
+      chunkedUnexecutableSlowFills.map((eventsChunk) =>
+        eventsRepo.insert(eventsChunk),
+      ),
     );
 
     // Store bundle fills
@@ -475,14 +489,17 @@ export class BundleRepository extends utils.BaseRepository {
       bundleData.bundleFillsV3,
       bundleId,
     );
-    const storedFills = await eventsRepo.insert(formattedFills);
+    const chunkedFills = across.utils.chunk(fills, this.chunkSize);
+    await Promise.all(
+      chunkedFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
 
     return {
-      deposits: storedDeposits.generatedMaps.length,
-      expiredDeposits: storedExpiredDeposits.generatedMaps.length,
-      slowFills: storedSlowFills.generatedMaps.length,
-      unexecutableSlowFills: storedUnexecutableSlowFills.generatedMaps.length,
-      fills: storedFills.generatedMaps.length,
+      deposits: deposits.length,
+      expiredDeposits: expiredDeposits.length,
+      slowFills: slowFills.length,
+      unexecutableSlowFills: unexecutableSlowFills.length,
+      fills: fills.length,
     };
   }
 
