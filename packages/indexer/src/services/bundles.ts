@@ -384,114 +384,113 @@ async function assignSpokePoolEventsToExecutedBundles(
     await bundleRepo.getExecutedBundlesWithoutEventsAssociated({
       fromBlock: utils.ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK,
     });
+  if (executedBundles.length === 0) return;
 
-  if (executedBundles.length > 0) {
-    // Get and update HubPool and ConfigStore clients
-    const hubPoolClient = hubClientFactory.get(CHAIN_IDs.MAINNET);
-    const configStoreClient = hubPoolClient.configStoreClient;
-    await configStoreClient.update();
-    await hubPoolClient.update();
-    const clients = {
+  // Get and update HubPool and ConfigStore clients
+  const hubPoolClient = hubClientFactory.get(CHAIN_IDs.MAINNET);
+  const configStoreClient = hubPoolClient.configStoreClient;
+  await configStoreClient.update();
+  await hubPoolClient.update();
+  const clients = {
+    hubPoolClient,
+    configStoreClient,
+    arweaveClient: null as unknown as across.caching.ArweaveClient, // FIXME: This is a hack to avoid instantiating the Arweave client
+  };
+
+  for (const executedBundle of executedBundles) {
+    // Get bundle ranges as an array of [startBlock, endBlock] for each chain
+    const ranges = getBundleBlockRanges(executedBundle);
+
+    // Grab historical ranges from the last 8 bundles
+    // FIXME: This is a hardcoded value, we should make this configurable
+    const historicalBundle = await bundleRepo.retrieveMostRecentBundle(
+      entities.BundleStatus.Executed,
+      undefined,
+      8,
+    );
+    // Check if we have enough historical data to build the bundle with
+    // an ample lookback range. Otherwise skip current bundle
+    if (!historicalBundle) {
+      logger.warn({
+        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
+        message: `No historical bundle found. Skipping bundle reconstruction of bundle ${executedBundle.id}`,
+      });
+      continue;
+    }
+    // Resolve lookback range for the spoke clients
+    const lookbackRange = getBlockRangeBetweenBundles(
+      historicalBundle.proposal,
+      executedBundle.proposal,
+    );
+
+    // Get spoke pool clients
+    const spokeClients = lookbackRange.reduce(
+      (acc, { chainId, startBlock, endBlock }) => {
+        // We need to instantiate spoke clients using a higher end block than
+        // the bundle range as deposits which fills are included in this bundle could
+        // have occured outside the bundle range of the origin chain
+        // NOTE: A buffer time of 15 minutes has been proven to work for older bundles
+        const blockTime = getBlockTime(chainId);
+        const endBlockTimeBuffer = 60 * 15;
+        const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
+        return {
+          ...acc,
+          [chainId]: spokeClientFactory.get(
+            chainId,
+            startBlock,
+            endBlock + blockBuffer,
+            {
+              hubPoolClient,
+            },
+          ),
+        };
+      },
+      {} as Record<number, across.clients.SpokePoolClient>,
+    );
+
+    // Update spoke clients
+    await Promise.all(
+      Object.values(spokeClients).map((client) => client.update()),
+    );
+
+    // Instantiate bundle data client and reconstruct bundle
+    const bundleDataClient =
+      new across.clients.BundleDataClient.BundleDataClient(
+        logger,
+        clients,
+        spokeClients,
+        executedBundle.proposal.chainIds,
+      );
+    const bundleData = await bundleDataClient.loadData(ranges, spokeClients);
+
+    // Build pool rebalance root and check it matches with the root of the stored bundle
+    const poolRebalanceRoot = buildPoolRebalanceRoot(
+      ranges,
+      bundleData,
       hubPoolClient,
       configStoreClient,
-      arweaveClient: null as unknown as across.caching.ArweaveClient, // FIXME: This is a hack to avoid instantiating the Arweave client
-    };
-
-    for (const executedBundle of executedBundles) {
-      // Get bundle ranges as an array of [startBlock, endBlock] for each chain
-      const ranges = getBundleBlockRanges(executedBundle);
-
-      // Grab historical ranges from the last 8 bundles
-      // FIXME: This is a hardcoded value, we should make this configurable
-      const historicalBundle = await bundleRepo.retrieveMostRecentBundle(
-        entities.BundleStatus.Executed,
-        undefined,
-        8,
-      );
-      // Check if we have enough historical data to build the bundle with
-      // an ample lookback range. Otherwise skip current bundle
-      if (!historicalBundle) {
-        logger.warn({
-          at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-          message: `No historical bundle found. Skipping bundle reconstruction of bundle ${executedBundle.id}`,
-        });
-        continue;
-      }
-      // Resolve lookback range for the spoke clients
-      const lookbackRange = getBlockRangeBetweenBundles(
-        historicalBundle.proposal,
-        executedBundle.proposal,
-      );
-
-      // Get spoke pool clients
-      const spokeClients = lookbackRange.reduce(
-        (acc, { chainId, startBlock, endBlock }) => {
-          // We need to instantiate spoke clients using a higher end block than
-          // the bundle range as deposits which fills are included in this bundle could
-          // have occured outside the bundle range of the origin chain
-          // NOTE: A buffer time of 15 minutes has been proven to work for older bundles
-          const blockTime = getBlockTime(chainId);
-          const endBlockTimeBuffer = 60 * 15;
-          const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
-          return {
-            ...acc,
-            [chainId]: spokeClientFactory.get(
-              chainId,
-              startBlock,
-              endBlock + blockBuffer,
-              {
-                hubPoolClient,
-              },
-            ),
-          };
-        },
-        {} as Record<number, across.clients.SpokePoolClient>,
-      );
-
-      // Update spoke clients
-      await Promise.all(
-        Object.values(spokeClients).map((client) => client.update()),
-      );
-
-      // Instantiate bundle data client and reconstruct bundle
-      const bundleDataClient =
-        new across.clients.BundleDataClient.BundleDataClient(
-          logger,
-          clients,
-          spokeClients,
-          executedBundle.proposal.chainIds,
-        );
-      const bundleData = await bundleDataClient.loadData(ranges, spokeClients);
-
-      // Build pool rebalance root and check it matches with the root of the stored bundle
-      const poolRebalanceRoot = buildPoolRebalanceRoot(
-        ranges,
+    );
+    if (
+      executedBundle.poolRebalanceRoot === poolRebalanceRoot.tree.getHexRoot()
+    ) {
+      // Store bundle events
+      const storedEvents = await bundleRepo.storeBundleEvents(
         bundleData,
-        hubPoolClient,
-        configStoreClient,
+        executedBundle.id,
       );
-      if (
-        executedBundle.poolRebalanceRoot === poolRebalanceRoot.tree.getHexRoot()
-      ) {
-        // Store bundle events
-        const storedEvents = await bundleRepo.storeBundleEvents(
-          bundleData,
-          executedBundle.id,
-        );
-        // Set bundle 'eventsAssociated' flag to true
-        await bundleRepo.updateBundleEventsAssociatedFlag(executedBundle.id);
-        logger.info({
-          at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-          message: "Events associated with bundle",
-          storedEvents,
-        });
-      } else {
-        logger.warn({
-          at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-          message: `Mismatching roots. Skipping bundle ${executedBundle.id}.`,
-        });
-        continue;
-      }
+      // Set bundle 'eventsAssociated' flag to true
+      await bundleRepo.updateBundleEventsAssociatedFlag(executedBundle.id);
+      logger.info({
+        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
+        message: "Events associated with bundle",
+        storedEvents,
+      });
+    } else {
+      logger.warn({
+        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
+        message: `Mismatching roots. Skipping bundle ${executedBundle.id}.`,
+      });
+      continue;
     }
   }
 }
