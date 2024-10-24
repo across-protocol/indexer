@@ -14,6 +14,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.ARBITRUM]: 240,
   [CHAIN_IDs.LINEA]: 40,
   [CHAIN_IDs.SCROLL]: 40,
+  [CHAIN_IDs.WORLD_CHAIN]: 60,
   [CHAIN_IDs.ZORA]: 60,
   // BOBA is disabled
   [CHAIN_IDs.BOBA]: 0,
@@ -44,6 +45,7 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.ARBITRUM]: 2,
   [CHAIN_IDs.LINEA]: 6,
   [CHAIN_IDs.SCROLL]: 6,
+  [CHAIN_IDs.WORLD_CHAIN]: 4,
   [CHAIN_IDs.ZORA]: 4,
   // BOBA is disabled
   [CHAIN_IDs.BOBA]: 0,
