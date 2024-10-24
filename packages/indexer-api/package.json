@@ -22,11 +22,13 @@
   "license": "ISC",
   "dependencies": {
     "@repo/indexer-database": "workspace:*",
+    "@repo/indexer": "workspace:*",
     "@types/express": "^4.17.21",
     "@types/supertest": "^6.0.2",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "ioredis": "^5.4.1",
     "superstruct": "2.0.3-1",
     "winston": "^3.13.1"
   },
