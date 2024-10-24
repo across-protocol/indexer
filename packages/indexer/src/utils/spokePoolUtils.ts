@@ -1,4 +1,8 @@
-import { providers } from "@across-protocol/sdk";
+import { interfaces, providers } from "@across-protocol/sdk";
+
+export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
+  integratorId?: string | undefined;
+};
 
 /**
  * Retrieves the 4-character integrator ID from the transaction data
@@ -6,17 +10,18 @@ import { providers } from "@across-protocol/sdk";
  * The integrator ID is expected to be found after the delimiter "1dc0de" in the transaction data.
  * @async
  * @param provider The provider to fetch transaction details from.
+ * @param depositDate
  * @param txHash The transaction hash to retrieve the input data of.
  * @returns The 4-character integrator ID if found, otherwise undefined.
  */
 export async function getIntegratorId(
   provider: providers.RetryProvider,
-  depositQuoteTimestamp: number,
+  depositDate: Date,
   txHash: string,
 ) {
   // If deposit was made before integratorId implementation, skip request
-  const INTEGRATOR_ID_IMPLEMENTATION_TIMESTAMP = 1718274000;
-  if (depositQuoteTimestamp < INTEGRATOR_ID_IMPLEMENTATION_TIMESTAMP) {
+  const INTEGRATOR_ID_IMPLEMENTATION_DATE = new Date(1718274000 * 1000);
+  if (depositDate < INTEGRATOR_ID_IMPLEMENTATION_DATE) {
     return;
   }
   const INTEGRATOR_DELIMITER = "1dc0de";

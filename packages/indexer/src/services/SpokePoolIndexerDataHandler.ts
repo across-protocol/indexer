@@ -4,21 +4,19 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import { entities } from "@repo/indexer-database";
 
 import { BlockRange } from "../data-indexing/model";
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
 
 import * as utils from "../utils";
-import { providers } from "@across-protocol/sdk";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "./spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
 import { IntegratorIdMessage } from "../messaging/IntegratorIdWorker";
 
 type FetchEventsResult = {
-  v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
-    integratorId?: string | undefined;
-  })[];
+  v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
   filledV3RelayEvents: across.interfaces.FillWithBlock[];
   requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
   requestedSpeedUpV3Events: {
@@ -40,7 +38,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private logger: Logger,
     private chainId: number,
     private hubPoolChainId: number,
-    private provider: providers.RetryProvider,
+    private provider: across.providers.RetryProvider,
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
     private spokePoolFactory: utils.SpokePoolClientFactory,
@@ -97,7 +95,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
+
+    // Fetch integratorId synchronously when there are fewer than 1K deposit events
+    // For larger sets, use the IntegratorId queue for asynchronous processing
+    const fetchIntegratorIdSync = events.v3FundsDepositedEvents.length < 1000;
+    if (fetchIntegratorIdSync) {
+      this.appendIntegratorIdToDeposits(events.v3FundsDepositedEvents);
+    }
+
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+
+    if (!fetchIntegratorIdSync) {
+      await this.publishIntegratorIdMessages(storedEvents.deposits);
+    }
+
     await this.spokePoolProcessor.process(storedEvents);
   }
 
@@ -125,25 +136,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       fromBlock: blockRange.from,
       toBlock: blockRange.to,
     });
-    let v3FundsDepositedWithIntegradorId;
-    // If fewer than 1000 deposits, fetch integrator ID synchronously.
-    // For larger sets, use the IntegratorId queue for asynchronous processing.
-    if (v3FundsDepositedEvents.length < 1000) {
-      v3FundsDepositedWithIntegradorId = await Promise.all(
-        v3FundsDepositedEvents.map(async (deposit) => {
-          return {
-            ...deposit,
-            integratorId: await utils.getIntegratorId(
-              this.provider,
-              deposit.quoteTimestamp,
-              deposit.transactionHash,
-            ),
-          };
-        }),
-      );
-    } else {
-      await this.publishIntegratorIdMessages(v3FundsDepositedEvents);
-    }
     const filledV3RelayEvents = spokePoolClient.getFills();
     const requestedV3SlowFillEvents =
       spokePoolClient.getSlowFillRequestsForOriginChain(this.chainId);
@@ -154,8 +146,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
 
     return {
-      v3FundsDepositedEvents:
-        v3FundsDepositedWithIntegradorId || v3FundsDepositedEvents,
+      v3FundsDepositedEvents,
       filledV3RelayEvents,
       requestedV3SlowFillEvents,
       requestedSpeedUpV3Events,
@@ -232,22 +223,34 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
+  private async appendIntegratorIdToDeposits(
+    deposits: utils.V3FundsDepositedWithIntegradorId[],
+  ) {
+    await across.utils.forEachAsync(
+      deposits,
+      async (deposit, index, deposits) => {
+        const integratorId = await utils.getIntegratorId(
+          this.provider,
+          new Date(deposit.quoteTimestamp * 1000),
+          deposit.transactionHash,
+        );
+        deposits[index] = { ...deposit, integratorId };
+      },
+    );
+  }
+
   private async publishIntegratorIdMessages(
-    deposits: across.interfaces.DepositWithBlock[],
+    deposits: entities.V3FundsDeposited[],
   ) {
     const messages: IntegratorIdMessage[] = deposits.map((deposit) => {
       return {
-        depositId: deposit.depositId,
-        originChainId: deposit.originChainId,
-        depositQuoteTimestamp: deposit.quoteTimestamp,
-        txHash: deposit.transactionHash,
+        relayHash: deposit.relayHash,
       };
     });
     await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.IntegratorId,
       IndexerQueues.IntegratorId, // Use queue name as job name
       messages,
-      { delay: 5000 }, // 5-second delay to wait for deposits to be stored in the database before processing
     );
   }
 }

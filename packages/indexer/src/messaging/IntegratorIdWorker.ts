@@ -7,12 +7,16 @@ import { getIntegratorId } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 export type IntegratorIdMessage = {
-  depositId: number;
-  originChainId: number;
-  depositQuoteTimestamp: number;
-  txHash: string;
+  relayHash: string;
 };
 
+/**
+ * This worker listens to the `IntegratorId` queue and processes each job by:
+ * - Retrieving the deposit information from the database based on the provided relay hash.
+ * - Checking if the deposit record already has an integrator ID.
+ * - If the integrator ID is not set, the worker fetches it from the transaction data.
+ * - If found, the integrator ID is saved back into the deposit record in the database.
+ */
 export class IntegratorIdWorker {
   public worker: Worker;
   constructor(
@@ -28,33 +32,37 @@ export class IntegratorIdWorker {
     this.worker = new Worker(
       IndexerQueues.IntegratorId,
       async (job: Job<IntegratorIdMessage>) => {
-        const { depositId, originChainId, depositQuoteTimestamp, txHash } =
-          job.data;
+        const { relayHash } = job.data;
         const repository = this.postgres.getRepository(
           entities.V3FundsDeposited,
         );
-        const storedDeposit = await repository.findOne({
-          where: { depositId, originChainId, transactionHash: txHash },
+        const deposit = await repository.findOne({
+          where: { relayHash },
         });
-        if (!storedDeposit) {
+        if (!deposit) {
           this.logger.warn({
             at: "IntegratorIdWorker",
-            message: `Skipping deposit with id ${depositId}, origin chain ${originChainId} and tx hash ${txHash}. Not found in the database.`,
+            message: `Skipping deposit with relay hash ${relayHash}. Not found in the database.`,
           });
-          throw new Error("Deposit not found");
+          return;
         }
-        const provider =
-          this.providerFactory.getProviderForChainId(originChainId);
+        if (deposit.integratorId !== null) {
+          this.logger.info({
+            at: "IntegratorIdWorker",
+            message: `Skipping deposit with relay hash ${relayHash}. IntegratorId field already populated.`,
+          });
+          return;
+        }
+        const provider = this.providerFactory.getProviderForChainId(
+          deposit.originChainId,
+        );
         const integratorId = await getIntegratorId(
           provider,
-          depositQuoteTimestamp,
-          txHash,
+          deposit.quoteTimestamp,
+          deposit.transactionHash,
         );
         if (integratorId) {
-          await repository.update(
-            { depositId, originChainId, transactionHash: txHash },
-            { integratorId },
-          );
+          await repository.update({ relayHash }, { integratorId });
         }
         return;
       },
