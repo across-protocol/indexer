@@ -1,10 +1,12 @@
 import Redis from "ioredis";
-import { Queue, JobsOptions } from "bullmq";
+import { Queue, JobsOptions, BulkJobOptions } from "bullmq";
 
-export enum IndexerQueues {}
+export enum IndexerQueues {
+  IntegratorId = "IntegratorId",
+}
 
 export class IndexerQueuesService {
-  private queues = {} as Record<string, Queue>;
+  private queues = {} as Record<IndexerQueues, Queue>;
 
   constructor(private connection: Redis) {
     this.initializeQueues();
@@ -16,6 +18,10 @@ export class IndexerQueuesService {
       (queueName) =>
         (this.queues[queueName] = new Queue(queueName, {
           connection: this.connection,
+          defaultJobOptions: {
+            attempts: Number.MAX_SAFE_INTEGER,
+            removeOnComplete: true,
+          },
         })),
     );
   }
@@ -36,10 +42,13 @@ export class IndexerQueuesService {
     queue: IndexerQueues,
     jobName: string,
     messages: T[],
+    options: BulkJobOptions = {},
   ) {
     const q = this.queues[queue];
     if (q) {
-      await q.addBulk(messages.map((m) => ({ name: jobName, data: m })));
+      await q.addBulk(
+        messages.map((m) => ({ name: jobName, data: m, opts: options })),
+      );
     }
   }
 }
