@@ -22,11 +22,16 @@ export class BalancesController {
   };
 
   public getSpokePoolBalance = (
-    req: Request,
+    { query }: Request,
     res: Response,
     next: NextFunction,
   ) => {
-    req.query && s.assert(req.query, SpokePoolBalanceParams);
-    res.json([]);
+    if (!s.is(query, SpokePoolBalanceParams)) {
+      return res.status(400).json({ error: "Invalid query" });
+    }
+    this.service
+      .spokePoolBalance(query)
+      .then((result) => res.json(result))
+      .catch((err) => next(err));
   };
 }

@@ -244,11 +244,22 @@ export class BundleBuilderService extends BaseIndexer {
       // and not any specific proposal
       convertProposalRangeResultToProposalRange(ranges),
     );
+
     // first clear the cache to prepare for update
     await this.currentBundleCache.clear();
     // Persist this to Redis
     await Promise.all(
       resultsToPersist.flatMap((leaf) => {
+        const lastExecutedRunningBalance =
+          lastExecutedBundle.proposal.bundleEvaluationBlockNumbers[
+            lastExecutedBundle.proposal.chainIds.findIndex(
+              (chainId) => leaf.chainId === chainId,
+            )
+          ];
+        assert(
+          lastExecutedRunningBalance,
+          "Last executed running balance not found",
+        );
         assert(
           leaf.l1Tokens.length == leaf.netSendAmounts.length,
           "Net send amount count does not match token counts",
@@ -263,6 +274,7 @@ export class BundleBuilderService extends BaseIndexer {
             l1Token,
             netSendAmount: leaf.netSendAmounts[tokenIndex]!,
             runningBalance: leaf.runningBalances[tokenIndex]!,
+            lastExecutedRunningBalance: String(lastExecutedRunningBalance),
           });
         });
       }),
@@ -308,6 +320,16 @@ export class BundleBuilderService extends BaseIndexer {
     // Persist this to Redis
     await Promise.all(
       resultsToPersist.flatMap((leaf) => {
+        const lastExecutedRunningBalance =
+          lastExecutedBundle.proposal.bundleEvaluationBlockNumbers[
+            lastExecutedBundle.proposal.chainIds.findIndex(
+              (chainId) => leaf.chainId === chainId,
+            )
+          ];
+        assert(
+          lastExecutedRunningBalance,
+          "Last executed running balance not found",
+        );
         assert(
           leaf.l1Tokens.length == leaf.netSendAmounts.length,
           "Net send amount count does not match token counts",
@@ -322,6 +344,7 @@ export class BundleBuilderService extends BaseIndexer {
             l1Token,
             netSendAmount: leaf.netSendAmounts[tokenIndex]!,
             runningBalance: leaf.runningBalances[tokenIndex]!,
+            lastExecutedRunningBalance: String(lastExecutedRunningBalance),
           });
         });
       }),
