@@ -1,4 +1,5 @@
 import winston from "winston";
+import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 export type BlockRangeInsertType = {
@@ -32,6 +33,7 @@ export class BundleRepository extends utils.BaseRepository {
     postgres: DataSource,
     logger: winston.Logger,
     throwError?: boolean,
+    private chunkSize = 2000,
   ) {
     super(postgres, logger, throwError);
   }
@@ -370,5 +372,183 @@ export class BundleRepository extends utils.BaseRepository {
       .andWhere(`${executionCountSubquery} = ${leafCountSubquery}`);
 
     return (await executedUpdateQuery.execute())?.affected ?? 0;
+  }
+
+  /**
+   * Retrieves executed bundles that do not have events associated with them.
+   * The query can be filtered by the block number and a limit on the number of results returned.
+   * @param filters - Optional filters for the query.
+   * @param filters.fromBlock - If provided, retrieves bundles where the proposal's block number is greater than this value.
+   * @param limit - The maximum number of bundles to retrieve.
+   * @returns An array of bundles that match the given criteria.
+   */
+  public async getExecutedBundlesWithoutEventsAssociated(
+    filters: {
+      fromBlock?: number;
+    },
+    limit = 5,
+  ): Promise<entities.Bundle[]> {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+    const query = bundleRepo
+      .createQueryBuilder("b")
+      .select(["b", "proposal", "ranges"])
+      .leftJoinAndSelect("b.ranges", "ranges")
+      .leftJoinAndSelect("b.proposal", "proposal")
+      .where("b.status = :executed", {
+        executed: entities.BundleStatus.Executed,
+      })
+      .andWhere("b.eventsAssociated = false");
+    if (filters.fromBlock) {
+      query.andWhere("proposal.blockNumber > :fromBlock", {
+        fromBlock: filters.fromBlock,
+      });
+    }
+    return query.orderBy("proposal.blockNumber", "DESC").take(limit).getMany();
+  }
+
+  /**
+   * Updates the `eventsAssociated` flag to `true` for a specific bundle.
+   * @param bundleId - The ID of the bundle to update.
+   * @returns A promise that resolves when the update is complete.
+   */
+  public async updateBundleEventsAssociatedFlag(bundleId: number) {
+    const bundleRepo = this.postgres.getRepository(entities.Bundle);
+    const updatedBundle = await bundleRepo
+      .createQueryBuilder()
+      .update()
+      .set({ eventsAssociated: true })
+      .where("id = :id", { id: bundleId })
+      .execute();
+    return updatedBundle.affected;
+  }
+
+  /**
+   * Stores bundle events relating them to a given bundle.
+   * @param bundleData The reconstructed bundle data.
+   * @param bundleId ID of the bundle to associate these events with.
+   * @returns A promise that resolves when all the events have been inserted into the database.
+   */
+  public async storeBundleEvents(
+    bundleData: across.interfaces.LoadDataReturnValue,
+    bundleId: number,
+  ) {
+    const eventsRepo = this.postgres.getRepository(entities.BundleEvent);
+
+    // Store bundle deposits
+    const deposits = this.formatBundleEvents(
+      entities.BundleEventType.Deposit,
+      bundleData.bundleDepositsV3,
+      bundleId,
+    );
+    const chunkedDeposits = across.utils.chunk(deposits, this.chunkSize);
+    await Promise.all(
+      chunkedDeposits.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
+
+    // Store bundle refunded deposits
+    const expiredDeposits = this.formatBundleEvents(
+      entities.BundleEventType.ExpiredDeposit,
+      bundleData.expiredDepositsToRefundV3,
+      bundleId,
+    );
+    const chunkedRefunds = across.utils.chunk(expiredDeposits, this.chunkSize);
+    await Promise.all(
+      chunkedRefunds.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
+
+    // Store bundle slow fills
+    const slowFills = this.formatBundleEvents(
+      entities.BundleEventType.SlowFill,
+      bundleData.bundleSlowFillsV3,
+      bundleId,
+    );
+    const chunkedSlowFills = across.utils.chunk(slowFills, this.chunkSize);
+    await Promise.all(
+      chunkedSlowFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
+
+    // Store bundle unexecutable slow fills
+    const unexecutableSlowFills = this.formatBundleEvents(
+      entities.BundleEventType.UnexecutableSlowFill,
+      bundleData.unexecutableSlowFills,
+      bundleId,
+    );
+    const chunkedUnexecutableSlowFills = across.utils.chunk(
+      unexecutableSlowFills,
+      this.chunkSize,
+    );
+    await Promise.all(
+      chunkedUnexecutableSlowFills.map((eventsChunk) =>
+        eventsRepo.insert(eventsChunk),
+      ),
+    );
+
+    // Store bundle fills
+    const fills = this.formatBundleFillEvents(
+      entities.BundleEventType.Fill,
+      bundleData.bundleFillsV3,
+      bundleId,
+    );
+    const chunkedFills = across.utils.chunk(fills, this.chunkSize);
+    await Promise.all(
+      chunkedFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+    );
+
+    return {
+      deposits: deposits.length,
+      expiredDeposits: expiredDeposits.length,
+      slowFills: slowFills.length,
+      unexecutableSlowFills: unexecutableSlowFills.length,
+      fills: fills.length,
+    };
+  }
+
+  private formatBundleEvents(
+    eventsType: entities.BundleEventType,
+    bundleEvents:
+      | across.interfaces.BundleDepositsV3
+      | across.interfaces.BundleSlowFills
+      | across.interfaces.BundleExcessSlowFills
+      | across.interfaces.ExpiredDepositsToRefundV3,
+    bundleId: number,
+  ): {
+    bundleId: number;
+    relayHash: string;
+    type: entities.BundleEventType;
+  }[] {
+    return Object.values(bundleEvents).flatMap((tokenEvents) =>
+      Object.values(tokenEvents).flatMap((events) =>
+        events.map((event) => {
+          return {
+            bundleId,
+            relayHash: across.utils.getRelayHashFromEvent(event),
+            type: eventsType,
+          };
+        }),
+      ),
+    );
+  }
+
+  private formatBundleFillEvents(
+    eventsType: entities.BundleEventType.Fill,
+    bundleEvents: across.interfaces.BundleFillsV3,
+    bundleId: number,
+  ): {
+    bundleId: number;
+    relayHash: string;
+    type: entities.BundleEventType.Fill;
+  }[] {
+    return Object.entries(bundleEvents).flatMap(([chainId, tokenEvents]) =>
+      Object.values(tokenEvents).flatMap((fillsData) =>
+        fillsData.fills.map((event) => {
+          return {
+            bundleId,
+            relayHash: across.utils.getRelayHashFromEvent(event),
+            type: eventsType,
+            repaymentChainId: Number(chainId),
+          };
+        }),
+      ),
+    );
   }
 }

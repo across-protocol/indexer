@@ -95,3 +95,37 @@ export function getMaxBlockLookBack(chainId: number) {
 
   return maxBlockLookBack;
 }
+
+// Average block time in seconds by chain
+export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
+  [CHAIN_IDs.ARBITRUM]: 0.25,
+  [CHAIN_IDs.BASE]: 2,
+  [CHAIN_IDs.BLAST]: 2,
+  [CHAIN_IDs.BOBA]: 2,
+  [CHAIN_IDs.LINEA]: 3,
+  [CHAIN_IDs.LISK]: 2,
+  [CHAIN_IDs.MAINNET]: 12,
+  [CHAIN_IDs.MODE]: 2,
+  [CHAIN_IDs.OPTIMISM]: 2,
+  [CHAIN_IDs.POLYGON]: 2,
+  [CHAIN_IDs.REDSTONE]: 2,
+  [CHAIN_IDs.SCROLL]: 3,
+  [CHAIN_IDs.WORLD_CHAIN]: 2,
+  [CHAIN_IDs.ZK_SYNC]: 1,
+  [CHAIN_IDs.ZORA]: 2,
+};
+
+/**
+ * Resolves the block time in seconds for a given chain id
+ * @param chainId Chain id to resolve block time for
+ * @returns The average block time in seconds from {@link BLOCK_TIME_SECONDS} or a default of 10
+ */
+export function getBlockTime(chainId: number) {
+  const blockTime = BLOCK_TIME_SECONDS[chainId];
+
+  if (!blockTime) {
+    return 10;
+  }
+
+  return blockTime;
+}
