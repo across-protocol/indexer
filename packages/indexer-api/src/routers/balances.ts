@@ -7,7 +7,7 @@ export function getRouter(redis: Redis): Router {
   const router = Router();
   const service = new BalancesService(redis);
   const controller = new BalancesController(service);
-  router.get("/hubPoolBalance", controller.getHubPoolBalance);
-  router.get("/spokePoolBalance", controller.getSpokePoolBalance);
+  router.get("/hubpool-balance", controller.getHubPoolBalance);
+  router.get("/spokepool-balance", controller.getSpokePoolBalance);
   return router;
 }
