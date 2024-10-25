@@ -17,7 +17,7 @@ export type ProviderConfig = [providerUrl: string, chainId: number];
 
 export type Env = Record<string, string | undefined>;
 
-function parseRedisConfig(env: Env): RedisConfig {
+export function parseRedisConfig(env: Env): RedisConfig {
   assert(env.REDIS_HOST, "requires REDIS_HOST");
   assert(env.REDIS_PORT, "requires REDIS_PORT");
   const port = parseNumber(env.REDIS_PORT);

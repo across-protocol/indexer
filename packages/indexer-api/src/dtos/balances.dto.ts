@@ -1,9 +1,8 @@
 import * as s from "superstruct";
 
 // query hub pools by chainId? default to 1 if not specified. will leave option in case of testnets?
-export const HubPoolBalanceParams = s.object({
-  chainId: s.defaulted(s.number(), 1),
-  l1Token: s.string(),
+export const HubPoolBalanceQueryParams = s.object({
+  l1Token: s.optional(s.string()),
 });
 
 // query spokepools by chainId, must specify
