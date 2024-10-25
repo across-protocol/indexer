@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as s from "superstruct";
 import { BalancesService } from "../services/balances";
 import {
-  HubPoolBalanceParams,
+  HubPoolBalanceQueryParams,
   SpokePoolBalanceParams,
 } from "../dtos/balances.dto";
 
@@ -14,7 +14,7 @@ export class BalancesController {
     res: Response,
     next: NextFunction,
   ) => {
-    req.query && s.assert(req.query, HubPoolBalanceParams);
+    req.query && s.assert(req.query, HubPoolBalanceQueryParams);
     this.service
       .hubPoolBalance(req.query)
       .then((result) => res.json(result))
