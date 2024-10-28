@@ -12,6 +12,7 @@ export type Config = {
 export type RedisConfig = {
   host: string;
   port: number;
+  maxRetriesPerRequest: null;
 };
 export type ProviderConfig = [providerUrl: string, chainId: number];
 
@@ -24,6 +25,8 @@ export function parseRedisConfig(env: Env): RedisConfig {
   return {
     host: env.REDIS_HOST,
     port,
+    // @dev: this retry config is needed for bullmq workers
+    maxRetriesPerRequest: null,
   };
 }
 

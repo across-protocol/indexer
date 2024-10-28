@@ -1,9 +1,9 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { getRelayHashFromEvent } from "@across-protocol/sdk/dist/cjs/utils/SpokeUtils";
-import { DataSource, entities, utils } from "@repo/indexer-database";
+import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
+import * as utils from "../utils";
 
-export class SpokePoolRepository extends utils.BaseRepository {
+export class SpokePoolRepository extends dbUtils.BaseRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
@@ -30,15 +30,13 @@ export class SpokePoolRepository extends utils.BaseRepository {
   }
 
   public async formatAndSaveV3FundsDepositedEvents(
-    v3FundsDepositedEvents: (across.interfaces.DepositWithBlock & {
-      integratorId: string | undefined;
-    })[],
+    v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[],
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
         ...event,
-        relayHash: getRelayHashFromEvent(event),
+        relayHash: across.utils.getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
         finalised: event.blockNumber <= lastFinalisedBlock,
@@ -73,7 +71,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
           },
           {} as { [key: string]: any },
         ),
-        relayHash: getRelayHashFromEvent(event),
+        relayHash: across.utils.getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
         updatedRecipient: event.relayExecutionInfo.updatedRecipient,
         updatedOutputAmount:
@@ -104,7 +102,7 @@ export class SpokePoolRepository extends utils.BaseRepository {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...event,
-        relayHash: getRelayHashFromEvent(event),
+        relayHash: across.utils.getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
