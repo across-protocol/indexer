@@ -11,6 +11,7 @@ export const BundleLeaf = s.object({
   l1Token: s.string(),
   netSendAmount: s.string(),
   runningBalance: s.string(),
+  lastExecutedRunningBalance: s.string(),
 });
 export type BundleLeaf = s.Infer<typeof BundleLeaf>;
 export type BundleLeaves = BundleLeaf[];

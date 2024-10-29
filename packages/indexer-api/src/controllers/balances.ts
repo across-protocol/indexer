@@ -3,7 +3,7 @@ import * as s from "superstruct";
 import { BalancesService } from "../services/balances";
 import {
   HubPoolBalanceQueryParams,
-  SpokePoolBalanceParams,
+  SpokePoolBalanceQueryParams,
 } from "../dtos/balances.dto";
 
 export class BalancesController {
@@ -22,11 +22,16 @@ export class BalancesController {
   };
 
   public getSpokePoolBalance = (
-    req: Request,
+    { query }: Request,
     res: Response,
     next: NextFunction,
   ) => {
-    req.query && s.assert(req.query, SpokePoolBalanceParams);
-    res.json([]);
+    if (!s.is(query, SpokePoolBalanceQueryParams)) {
+      return res.status(400).json({ error: "Invalid query" });
+    }
+    this.service
+      .spokePoolBalance(query)
+      .then((result) => res.json(result))
+      .catch((err) => next(err));
   };
 }
