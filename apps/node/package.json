@@ -35,6 +35,7 @@
     "@repo/template": "workspace:*",
     "@uma/logger": "^1.3.0",
     "dotenv": "^16.4.5",
+    "source-map-support": "^0.5.21",
     "winston": "^3.13.1"
   }
 }
