@@ -9,8 +9,6 @@ import {
 import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
 import { BlockRange } from "../data-indexing/model";
 import { HubPoolRepository } from "../database/HubPoolRepository";
-import { getMaxBlockLookBack } from "../web3/constants";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -53,7 +51,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   ) {
     this.logger.info({
       at: "HubPoolIndexerDataHandler::processBlockRange",
-      message: "Processing block range",
+      message: `Start processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,
       identifier: this.getDataIdentifier(),
@@ -65,7 +63,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     const events = await this.fetchEventsByRange(blockRange);
     this.logger.info({
       at: "HubPoolIndexerDataHandler::processBlockRange",
-      message: "Found events",
+      message: `Fetched events ${this.getDataIdentifier()}`,
       events: {
         proposedRootBundleEvents: events.proposedRootBundleEvents.length,
         rootBundleExecutedEvents: events.rootBundleExecutedEvents.length,
@@ -76,7 +74,15 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-    await this.storeEvents(events, lastFinalisedBlock);
+    const eventsWithoutDuplicates = await this.removeDuplicateEvents(events);
+    await this.storeEvents(eventsWithoutDuplicates, lastFinalisedBlock);
+    this.logger.info({
+      at: "HubPoolIndexerDataHandler::processBlockRange",
+      message: `Finished processing block range ${this.getDataIdentifier()}`,
+      blockRange,
+      lastFinalisedBlock,
+      identifier: this.getDataIdentifier(),
+    });
   }
 
   private async initialize() {
@@ -139,6 +145,41 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
           event.blockNumber <= blockRange.to,
       ),
       setPoolRebalanceRouteEvents,
+    };
+  }
+
+  private async removeDuplicateEvents(events: FetchEventsResult) {
+    const { proposedRootBundleEvents } = events;
+    const proposedRootBundleEventsMap = proposedRootBundleEvents.reduce(
+      (acc, event) => {
+        return {
+          ...acc,
+          [event.transactionHash]: event,
+        };
+      },
+      {} as Record<
+        string,
+        across.interfaces.ProposedRootBundle & { chainIds: number[] }
+      >,
+    );
+    const uniqueProposedRootBundleEvents = Object.values(
+      proposedRootBundleEventsMap,
+    );
+
+    if (
+      proposedRootBundleEvents.length !== uniqueProposedRootBundleEvents.length
+    ) {
+      this.logger.info({
+        at: "HubPoolIndexerDataHandler::removeDuplicateEvents",
+        message: `Duplicated proposed root bundle events found`,
+        proposedRootBundleEvents: proposedRootBundleEvents.length,
+        uniqueProposedRootBundleEvents: uniqueProposedRootBundleEvents.length,
+      });
+    }
+
+    return {
+      ...events,
+      proposedRootBundleEvents: uniqueProposedRootBundleEvents,
     };
   }
 
