@@ -3,7 +3,7 @@ import * as s from "superstruct";
 import { BalancesService } from "../services/balances";
 import {
   HubPoolBalanceQueryParams,
-  SpokePoolBalanceParams,
+  SpokePoolBalanceQueryParams,
 } from "../dtos/balances.dto";
 
 export class BalancesController {
@@ -26,7 +26,7 @@ export class BalancesController {
     res: Response,
     next: NextFunction,
   ) => {
-    if (!s.is(query, SpokePoolBalanceParams)) {
+    if (!s.is(query, SpokePoolBalanceQueryParams)) {
       return res.status(400).json({ error: "Invalid query" });
     }
     this.service

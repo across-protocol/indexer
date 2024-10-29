@@ -6,7 +6,7 @@ export const HubPoolBalanceQueryParams = s.object({
 });
 
 // query spokepools by chainId, must specify
-export const SpokePoolBalanceParams = s.object({
+export const SpokePoolBalanceQueryParams = s.object({
   chainId: s.number(),
   l1Token: s.optional(s.string()),
 });
