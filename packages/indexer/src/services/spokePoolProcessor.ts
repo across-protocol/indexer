@@ -156,7 +156,7 @@ export class SpokePoolProcessor {
       const refundBundleEvent = await bundleEventsRepository
         .createQueryBuilder("be")
         .leftJoinAndSelect("bundle", "bundle", "be.bundleId = bundle.id")
-        .where("be.eventType = :expiredDeposit", {
+        .where("be.type = :expiredDeposit", {
           expiredDeposit: entities.BundleEventType.ExpiredDeposit,
         })
         .andWhere("be.relayHash = :expiredDepositRelayHash", {
