@@ -74,8 +74,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-    const eventsWithoutDuplicates = await this.removeDuplicateEvents(events);
-    await this.storeEvents(eventsWithoutDuplicates, lastFinalisedBlock);
+    await this.storeEvents(events, lastFinalisedBlock);
     this.logger.info({
       at: "HubPoolIndexerDataHandler::processBlockRange",
       message: `Finished processing block range ${this.getDataIdentifier()}`,
@@ -145,41 +144,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
           event.blockNumber <= blockRange.to,
       ),
       setPoolRebalanceRouteEvents,
-    };
-  }
-
-  private async removeDuplicateEvents(events: FetchEventsResult) {
-    const { proposedRootBundleEvents } = events;
-    const proposedRootBundleEventsMap = proposedRootBundleEvents.reduce(
-      (acc, event) => {
-        return {
-          ...acc,
-          [event.transactionHash]: event,
-        };
-      },
-      {} as Record<
-        string,
-        across.interfaces.ProposedRootBundle & { chainIds: number[] }
-      >,
-    );
-    const uniqueProposedRootBundleEvents = Object.values(
-      proposedRootBundleEventsMap,
-    );
-
-    if (
-      proposedRootBundleEvents.length !== uniqueProposedRootBundleEvents.length
-    ) {
-      this.logger.info({
-        at: "HubPoolIndexerDataHandler::removeDuplicateEvents",
-        message: `Duplicated proposed root bundle events found`,
-        proposedRootBundleEvents: proposedRootBundleEvents.length,
-        uniqueProposedRootBundleEvents: uniqueProposedRootBundleEvents.length,
-      });
-    }
-
-    return {
-      ...events,
-      proposedRootBundleEvents: uniqueProposedRootBundleEvents,
     };
   }
 
