@@ -9,8 +9,6 @@ export const HubPoolBalanceQueryParams = s.object({
 export const SpokePoolBalanceParams = s.object({
   chainId: s.number(),
   l1Token: s.optional(s.string()),
-  // unsure why we have timestamp, implies we are storign history of balances? this is in the spec.
-  timestamp: s.optional(s.number()),
 });
 
 export type SpokePoolBalanceResultElement = {
