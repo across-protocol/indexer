@@ -11,19 +11,19 @@ export class HubPoolFinalised1727686818331 implements MigrationInterface {
       `ALTER TABLE "evm"."set_pool_rebalance_route" ADD CONSTRAINT "UK_spr_transactionHash_transactionIndex_logIndex" UNIQUE ("transactionHash", "transactionIndex", "logIndex")`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."proposed_root_bundle" ADD "finalised" boolean NOT NULL`,
+      `ALTER TABLE "evm"."proposed_root_bundle" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."root_bundle_disputed" ADD "finalised" boolean NOT NULL`,
+      `ALTER TABLE "evm"."root_bundle_disputed" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."root_bundle_executed" ADD "finalised" boolean NOT NULL`,
+      `ALTER TABLE "evm"."root_bundle_executed" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."root_bundle_canceled" ADD "finalised" boolean NOT NULL`,
+      `ALTER TABLE "evm"."root_bundle_canceled" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."set_pool_rebalance_route" ADD "finalised" boolean NOT NULL`,
+      `ALTER TABLE "evm"."set_pool_rebalance_route" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
   }
 

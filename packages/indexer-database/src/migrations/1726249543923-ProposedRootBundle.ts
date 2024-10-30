@@ -5,7 +5,7 @@ export class ProposedRootBundle1726249543923 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "evm"."proposed_root_bundle" ADD "chainIds" jsonb NOT NULL`,
+      `ALTER TABLE "evm"."proposed_root_bundle" ADD "chainIds" jsonb DEFAULT '[]' NOT NULL`,
     );
   }
 
