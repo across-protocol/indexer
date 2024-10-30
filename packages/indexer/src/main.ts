@@ -91,7 +91,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   const indexerQueuesService = new IndexerQueuesService(redis);
   // Set up message workers
-  new IntegratorIdWorker(redis, postgres, logger, retryProvidersFactory);
+  const integratorIdWorker = new IntegratorIdWorker(
+    redis,
+    postgres,
+    logger,
+    retryProvidersFactory,
+  );
 
   const spokePoolIndexers = spokePoolChainsEnabled.map((chainId) => {
     const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
@@ -156,11 +161,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         at: "Indexer#Main",
         message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
       });
+      integratorIdWorker.close();
       spokePoolIndexers.map((s) => s.stopGracefully());
       hubPoolIndexer.stopGracefully();
       bundleProcessor.stop();
       bundleBuilderProcessor.stop();
     } else {
+      integratorIdWorker.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();
@@ -195,7 +202,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         bundleBuilderResult.status === "fulfilled",
     },
   });
-
+  await integratorIdWorker.close();
   redis?.quit();
   postgres?.destroy();
   logger.info({ at: "Indexer#Main", message: "Exiting indexer" });

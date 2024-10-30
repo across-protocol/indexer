@@ -47,7 +47,6 @@ export class IntegratorIdWorker {
       { connection: this.redis, concurrency: 10 },
     );
   }
-
   private async run(relayHash: string) {
     const repository = this.postgres.getRepository(entities.V3FundsDeposited);
     const deposit = await repository.findOne({
@@ -79,5 +78,8 @@ export class IntegratorIdWorker {
       await repository.update({ relayHash }, { integratorId });
     }
     return;
+  }
+  public async close() {
+    return this.worker.close();
   }
 }

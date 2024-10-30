@@ -74,7 +74,7 @@ export class Indexer {
   public stopGracefully() {
     this.logger.info({
       at: "Indexer::stopGracefully",
-      message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stoped`,
+      message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
     });
     this.stopRequested = true;
   }

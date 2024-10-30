@@ -61,7 +61,7 @@ export abstract class BaseIndexer {
   public stop(): void {
     this.logger.info({
       at: "BaseIndexer#stop",
-      message: `Requesting indexer ${this.name} to be stoped`,
+      message: `Requesting indexer ${this.name} to be stopped`,
     });
     this.stopRequested = true;
   }
