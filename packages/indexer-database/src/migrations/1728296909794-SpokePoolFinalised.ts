@@ -5,25 +5,25 @@ export class SpokePoolFinalised1728296909794 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "evm"."v3_funds_deposited" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."v3_funds_deposited" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."filled_v3_relay" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."filled_v3_relay" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."requested_v3_slow_fill" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."requested_v3_slow_fill" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."requested_speed_up_v3_deposit" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."requested_speed_up_v3_deposit" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."relayed_root_bundle" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."relayed_root_bundle" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."executed_relayer_refund_root" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."executed_relayer_refund_root" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."tokens_bridged" ADD "finalised" boolean DEFAULT false NOT NULL`,
+      `ALTER TABLE "evm"."tokens_bridged" ADD "finalised" boolean DEFAULT true NOT NULL`,
     );
   }
 
