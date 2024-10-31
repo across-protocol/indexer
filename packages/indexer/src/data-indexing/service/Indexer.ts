@@ -13,6 +13,12 @@ export type ConstructorConfig = {
   finalisedBlockBufferDistance: number;
 };
 
+type BlockRangeResult = {
+  latestBlockNumber: number;
+  blockRange: BlockRange | undefined;
+  lastFinalisedBlock: number;
+};
+
 /**
  * Indexer class that accepts a data handler and passes block ranges to it for processing.
  * It also handles on chain data finalisation.
@@ -32,28 +38,35 @@ export class Indexer {
   }
 
   public async start() {
+    let blockRangeResult: BlockRangeResult | undefined = undefined;
+    let blockRangeProcessedSuccessfully = true;
+
     while (!this.stopRequested) {
       try {
-        const { latestBlockNumber, blockRange, lastFinalisedBlock } =
-          await this.getBlockRange();
+        // if the previous block range was processed successfully or if this is the first loop iteration,
+        // get the next block range to process
+        if (blockRangeProcessedSuccessfully || !blockRangeResult) {
+          blockRangeResult = await this.getBlockRange();
+        }
 
-        if (!blockRange) {
+        if (!blockRangeResult?.blockRange) {
           this.logger.info({
             at: "Indexer::start",
-            message: "No new blocks to process",
-            latestBlockNumber,
+            message: `No new blocks to process ${this.dataHandler.getDataIdentifier()}`,
+            blockRangeResult,
             dataIdentifier: this.dataHandler.getDataIdentifier(),
           });
         } else {
           await this.dataHandler.processBlockRange(
-            blockRange,
-            lastFinalisedBlock,
+            blockRangeResult.blockRange,
+            blockRangeResult.lastFinalisedBlock,
           );
           await this.redisCache.set(
             this.getLastFinalisedBlockCacheKey(),
-            lastFinalisedBlock,
+            blockRangeResult.lastFinalisedBlock,
           );
         }
+        blockRangeProcessedSuccessfully = true;
       } catch (error) {
         this.logger.error({
           at: "Indexer::start",
@@ -61,6 +74,7 @@ export class Indexer {
           dataIdentifier: this.dataHandler.getDataIdentifier(),
           error,
         });
+        blockRangeProcessedSuccessfully = false;
       } finally {
         await across.utils.delay(this.config.loopWaitTimeSeconds);
       }
@@ -79,7 +93,14 @@ export class Indexer {
     this.stopRequested = true;
   }
 
-  private async getBlockRange() {
+  /**
+   * Gets the next block range to process.
+   * `from` block is the last finalised block stored in redis + 1 or the start block number for the data handler.
+   * `to` block is the latest block number onchain, but `to` - `from` is capped at a certain value.
+   *  If the last finalised block onchain is the same as the last finalised block stored in redis,
+   *  i.e no new blocks have been mined, then the block range is `undefined`.
+   */
+  private async getBlockRange(): Promise<BlockRangeResult> {
     const lastBlockFinalisedStored = await this.redisCache.get<number>(
       this.getLastFinalisedBlockCacheKey(),
     );
@@ -97,7 +118,6 @@ export class Indexer {
     const fromBlock = lastBlockFinalisedStored
       ? lastBlockFinalisedStored + 1
       : this.dataHandler.getStartIndexingBlockNumber();
-    // TODO: hardcoded 200_000, should be a config or removed
     const toBlock = Math.min(fromBlock + 50_000, latestBlockNumber);
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
     const lastFinalisedBlockInBlockRange = Math.min(
