@@ -115,7 +115,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const { hubPoolClient, configStoreClient } = this;
 
-    hubPoolClient.firstBlockToSearch = blockRange.from;
     configStoreClient.eventSearchConfig.toBlock = blockRange.to;
     hubPoolClient.eventSearchConfig.toBlock = blockRange.to;
 
