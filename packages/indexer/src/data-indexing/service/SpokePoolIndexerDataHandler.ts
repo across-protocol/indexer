@@ -6,14 +6,14 @@ import {
 } from "@across-protocol/contracts";
 import { entities } from "@repo/indexer-database";
 
-import { BlockRange } from "../data-indexing/model";
-import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
+import { BlockRange } from "../model";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
-import * as utils from "../utils";
-import { SpokePoolRepository } from "../database/SpokePoolRepository";
-import { SpokePoolProcessor } from "./spokePoolProcessor";
-import { IndexerQueues, IndexerQueuesService } from "../messaging/service";
-import { IntegratorIdMessage } from "../messaging/IntegratorIdWorker";
+import * as utils from "../../utils";
+import { SpokePoolRepository } from "../../database/SpokePoolRepository";
+import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
+import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
+import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 
 type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];

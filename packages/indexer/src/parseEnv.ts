@@ -8,6 +8,9 @@ export type Config = {
   postgresConfig: DatabaseConfig;
   hubChainId: number;
   spokePoolChainsEnabled: number[];
+  enableHubPoolIndexer: boolean;
+  enableBundleEventsProcessor: boolean;
+  enableBundleBuilder: boolean;
 };
 export type RedisConfig = {
   host: string;
@@ -156,6 +159,15 @@ export function envToConfig(env: Env): Config {
     `Requires at least one RPC_PROVIDER_URLS_CHAIN_ID`,
   );
   const hubChainId = hubPoolChain;
+  const enableHubPoolIndexer = env.ENABLE_HUBPOOL_INDEXER
+    ? env.ENABLE_HUBPOOL_INDEXER === "true"
+    : true;
+  const enableBundleEventsProcessor = env.ENABLE_BUNDLE_EVENTS_PROCESSOR
+    ? env.ENABLE_BUNDLE_EVENTS_PROCESSOR === "true"
+    : true;
+  const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
+    ? env.ENABLE_BUNDLE_BUILDER === "true"
+    : true;
   spokePoolChainsEnabled.forEach((chainId) => {
     const providerConfigs = allProviderConfigs.filter(
       (provider) => provider[1] == chainId,
@@ -170,5 +182,8 @@ export function envToConfig(env: Env): Config {
     postgresConfig,
     hubChainId,
     spokePoolChainsEnabled,
+    enableHubPoolIndexer,
+    enableBundleEventsProcessor,
+    enableBundleBuilder,
   };
 }

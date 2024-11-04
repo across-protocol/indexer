@@ -17,6 +17,7 @@ type BlockRangeResult = {
   latestBlockNumber: number;
   blockRange: BlockRange | undefined;
   lastFinalisedBlock: number;
+  isBackfilling: boolean;
 };
 
 /**
@@ -76,7 +77,15 @@ export class Indexer {
         });
         blockRangeProcessedSuccessfully = false;
       } finally {
-        await across.utils.delay(this.config.loopWaitTimeSeconds);
+        if (!blockRangeResult?.isBackfilling) {
+          await across.utils.delay(this.config.loopWaitTimeSeconds);
+        } else {
+          this.logger.info({
+            at: "Indexer::start",
+            message: `Skip delay ${this.dataHandler.getDataIdentifier()}. Backfill in progress...`,
+            dataIdentifier: this.dataHandler.getDataIdentifier(),
+          });
+        }
       }
     }
   }
@@ -113,6 +122,7 @@ export class Indexer {
         latestBlockNumber,
         blockRange: undefined,
         lastFinalisedBlock: lastFinalisedBlockOnChain,
+        isBackfilling: false,
       };
     }
     const fromBlock = lastBlockFinalisedStored
@@ -124,11 +134,12 @@ export class Indexer {
       blockRange.to,
       lastFinalisedBlockOnChain,
     );
-
+    const isBackfilling = latestBlockNumber - blockRange.to > 100_000;
     return {
       latestBlockNumber,
       blockRange,
       lastFinalisedBlock: lastFinalisedBlockInBlockRange,
+      isBackfilling,
     };
   }
 
