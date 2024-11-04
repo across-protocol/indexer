@@ -25,6 +25,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
   private isInitialized: boolean;
+  private cachedFetchEventsResult?: FetchEventsResult;
 
   constructor(
     private logger: Logger,
@@ -60,7 +61,19 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       await this.initialize();
       this.isInitialized = true;
     }
-    const events = await this.fetchEventsByRange(blockRange);
+    let events: FetchEventsResult;
+
+    if (this.cachedFetchEventsResult) {
+      this.logger.info({
+        at: "HubPoolIndexerDataHandler::processBlockRange",
+        message: `Using cached events for ${this.getDataIdentifier()}`,
+      });
+      events = this.cachedFetchEventsResult;
+    } else {
+      events = await this.fetchEventsByRange(blockRange);
+      this.cachedFetchEventsResult = events;
+    }
+
     this.logger.info({
       at: "HubPoolIndexerDataHandler::processBlockRange",
       message: `Fetched events ${this.getDataIdentifier()}`,
@@ -82,6 +95,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       lastFinalisedBlock,
       identifier: this.getDataIdentifier(),
     });
+    this.cachedFetchEventsResult = undefined;
   }
 
   private async initialize() {
@@ -101,7 +115,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const { hubPoolClient, configStoreClient } = this;
 
-    hubPoolClient.firstBlockToSearch = blockRange.from;
     configStoreClient.eventSearchConfig.toBlock = blockRange.to;
     hubPoolClient.eventSearchConfig.toBlock = blockRange.to;
 
