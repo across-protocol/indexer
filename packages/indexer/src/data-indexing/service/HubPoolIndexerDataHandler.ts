@@ -1,14 +1,14 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
 
-import * as utils from "../utils";
+import * as utils from "../../utils";
 import {
   getDeployedBlockNumber,
   getDeployedAddress,
 } from "@across-protocol/contracts";
-import { IndexerDataHandler } from "../data-indexing/service/IndexerDataHandler";
-import { BlockRange } from "../data-indexing/model";
-import { HubPoolRepository } from "../database/HubPoolRepository";
+import { IndexerDataHandler } from "./IndexerDataHandler";
+import { BlockRange } from "../model";
+import { HubPoolRepository } from "../../database/HubPoolRepository";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {

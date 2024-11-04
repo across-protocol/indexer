@@ -40,7 +40,7 @@ class ConfigurationMalformedError extends Error {
   }
 }
 
-export class Processor extends BaseIndexer {
+export class BundleEventsProcessor extends BaseIndexer {
   private bundleRepository: BundleRepository;
   constructor(private readonly config: BundleConfig) {
     super(config.logger, "bundle");
