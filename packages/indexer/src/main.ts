@@ -1,7 +1,13 @@
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
-import { WebhookFactory, WebhookTypes } from "@repo/webhooks";
+import {
+  JSONValue,
+  WebhookFactory,
+  WebhookTypes,
+  eventProcessors,
+} from "@repo/webhooks";
+import { providers } from "ethers";
 
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
@@ -19,6 +25,8 @@ import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
+import { BenchmarkStats } from "@repo/benchmark";
+import { listenForDeposits } from "./utils/benchmarks";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -55,6 +63,14 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
+  const depositBenchmark = new BenchmarkStats();
+  const providerChainIds = config.allProviderConfigs
+    .filter(([_, chainId]) => config.spokePoolChainsEnabled.includes(chainId))
+    .map(([providerUrl, chainId]) => ({
+      provider: new providers.JsonRpcProvider(providerUrl),
+      chainId: Number(chainId),
+    }));
+
   // Call write to kick off webhook calls
   const { write } = await WebhookFactory(config.webhookConfig, {
     postgres,
@@ -95,7 +111,32 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new SpokePoolRepository(postgres, logger),
     redisCache,
     indexerQueuesService,
-    write,
+    (params: { type: WebhookTypes; event: JSONValue }) => {
+      // stop any benchmarks based on origin and deposit it
+      if (params.type === WebhookTypes.DepositStatus) {
+        const depositStatusEvent =
+          params.event as eventProcessors.DepositStatusEvent;
+        const uniqueId = `${depositStatusEvent.originChainId}-${depositStatusEvent.depositId}`;
+        try {
+          const duration = depositBenchmark.end(uniqueId);
+          logger.debug({
+            message: "Profiled deposit",
+            duration,
+            uniqueId,
+            ...depositStatusEvent,
+          });
+        } catch (err) {
+          logger.debug({
+            message: "Error profiling deposit",
+            uniqueId,
+            ...depositStatusEvent,
+            err,
+          });
+          // ignore errors, but it can happen if we are ending before starting
+        }
+      }
+      write(params);
+    },
   );
   const bundleServicesManager = new BundleServicesManager(
     config,
@@ -117,6 +158,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
   );
 
+  const stopDepositListener = listenForDeposits(
+    depositBenchmark,
+    providerChainIds,
+    logger,
+  );
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
@@ -127,6 +173,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close();
       acrossIndexerManager.stopGracefully();
       bundleServicesManager.stop();
+      stopDepositListener();
     } else {
       integratorIdWorker.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
@@ -141,6 +188,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     at: "Indexer#Main",
     message: "Running indexers",
   });
+
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [bundleServicesManagerResults, acrossIndexerManagerResult] =
     await Promise.allSettled([

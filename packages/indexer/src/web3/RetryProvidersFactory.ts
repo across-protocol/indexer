@@ -15,7 +15,6 @@ export class RetryProvidersFactory {
 
   public initializeProviders(): RetryProvidersFactory {
     const providersUrls = parseProvidersUrls();
-
     for (const [chainId, providerUrls] of providersUrls.entries()) {
       const retryProviderEnvs = parseRetryProviderEnvs(chainId);
       if (!providerUrls || providerUrls.length === 0) {

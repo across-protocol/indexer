@@ -18,6 +18,7 @@ export type Config = {
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
+  allProviderConfigs: ProviderConfig[];
 };
 export type RedisConfig = {
   host: string;
@@ -73,9 +74,9 @@ function parsePostgresConfig(
   };
 }
 
-function parseProviderConfigs(env: Env): ProviderConfig[] {
+export function parseProviderConfigs(env: Env = process.env): ProviderConfig[] {
   const results: ProviderConfig[] = [];
-  for (const [key, value] of Object.entries(process.env)) {
+  for (const [key, value] of Object.entries(env)) {
     const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
     if (match) {
       const chainId = match[1] ? parseNumber(match[1]) : undefined;
@@ -90,9 +91,9 @@ function parseProviderConfigs(env: Env): ProviderConfig[] {
   return results;
 }
 
-export function parseProvidersUrls() {
+export function parseProvidersUrls(env: Env = process.env) {
   const results: Map<number, string[]> = new Map();
-  for (const [key, value] of Object.entries(process.env)) {
+  for (const [key, value] of Object.entries(env)) {
     const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
     if (match) {
       const chainId = match[1] ? parseNumber(match[1]) : undefined;
@@ -105,39 +106,38 @@ export function parseProvidersUrls() {
   return results;
 }
 
-export function parseRetryProviderEnvs(chainId: number) {
+export function parseRetryProviderEnvs(
+  chainId: number,
+  env: Env = process.env,
+) {
   const providerCacheNamespace =
-    process.env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
+    env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
   const maxConcurrency = Number(
-    process.env[`NODE_MAX_CONCURRENCY_${chainId}`] ||
-      process.env.NODE_MAX_CONCURRENCY ||
-      "25",
+    env[`NODE_MAX_CONCURRENCY_${chainId}`] || env.NODE_MAX_CONCURRENCY || "25",
   );
   const pctRpcCallsLogged = Number(
-    process.env[`NODE_PCT_RPC_CALLS_LOGGED_${chainId}`] ||
-      process.env.NODE_PCT_RPC_CALLS_LOGGED ||
+    env[`NODE_PCT_RPC_CALLS_LOGGED_${chainId}`] ||
+      env.NODE_PCT_RPC_CALLS_LOGGED ||
       "0",
   );
-  const providerCacheTtl = process.env.PROVIDER_CACHE_TTL
-    ? Number(process.env.PROVIDER_CACHE_TTL)
+  const providerCacheTtl = env.PROVIDER_CACHE_TTL
+    ? Number(env.PROVIDER_CACHE_TTL)
     : undefined;
   const nodeQuorumThreshold = Number(
-    process.env[`NODE_QUORUM_${chainId}`] || process.env.NODE_QUORUM || "1",
+    env[`NODE_QUORUM_${chainId}`] || env.NODE_QUORUM || "1",
   );
   const retries = Number(
-    process.env[`NODE_RETRIES_${chainId}`] || process.env.NODE_RETRIES || "0",
+    env[`NODE_RETRIES_${chainId}`] || env.NODE_RETRIES || "0",
   );
   const retryDelay = Number(
-    process.env[`NODE_RETRY_DELAY_${chainId}`] ||
-      process.env.NODE_RETRY_DELAY ||
-      "1",
+    env[`NODE_RETRY_DELAY_${chainId}`] || env.NODE_RETRY_DELAY || "1",
   );
   // Note: if there is no env var override _and_ no default, this will remain undefined and
   // effectively disable indefinite caching of old blocks/keys.
-  const noTtlBlockDistance: number | undefined = process.env[
+  const noTtlBlockDistance: number | undefined = env[
     `NO_TTL_BLOCK_DISTANCE_${chainId}`
   ]
-    ? Number(process.env[`NO_TTL_BLOCK_DISTANCE_${chainId}`])
+    ? Number(env[`NO_TTL_BLOCK_DISTANCE_${chainId}`])
     : getNoTtlBlockDistance(chainId);
 
   return {
@@ -203,5 +203,6 @@ export function envToConfig(env: Env): Config {
     enableBundleIncludedEventsService,
     enableBundleBuilder,
     webhookConfig,
+    allProviderConfigs,
   };
 }

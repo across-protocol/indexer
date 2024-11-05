@@ -77,7 +77,7 @@ export class EventProcessorManager {
       `Attempting to register webhook of type: ${params.type} with URL: ${params.url}`,
     );
     const client = await this.clientRepository.getClientByApiKey(apiKey);
-    // TODO: Reinable this potentially when we need it, but not great for testing
+    // TODO: Re-enable this potentially when we need it, but not great for testing
     // const urlDomain = new URL(params.url).hostname;
     // const isDomainValid = client.domains.includes(urlDomain);
     // assert(

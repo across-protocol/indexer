@@ -138,6 +138,7 @@ export class SpokePoolProcessor {
 
   /**
    * Updates relayHashInfo table to include recently stored events
+   * @param eventType The type of event being processed.
    * @param events An array of already stored deposits, fills or slow fill requests
    * @returns A void promise
    */

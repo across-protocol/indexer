@@ -76,12 +76,16 @@ export async function WebhookFactory(config: Config, deps: Dependencies) {
     }
   });
   if (config.enabledWebhookRequestWorkers) {
-    new WebhookRequestWorker(
+    const worker = new WebhookRequestWorker(
       redis,
       postgres,
       logger,
       eventProcessorManager.write,
     );
+    process.on("SIGINT", () => {
+      // Shutdown worker on exit
+      worker.close();
+    });
   }
   const router = WebhookRouter({ eventProcessorManager });
   return {
