@@ -4,6 +4,7 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 // These are all intended to be roughly 2 days of blocks for each chain.
 // blocks = 172800 / avg_block_time
 export const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
+  [CHAIN_IDs.ALEPH_ZERO]: 691200,
   [CHAIN_IDs.ARBITRUM]: 691200,
   [CHAIN_IDs.BASE]: 86400,
   [CHAIN_IDs.BLAST]: 86400,
@@ -26,6 +27,7 @@ export const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
 // Provider caching will not be allowed for queries whose responses depend on blocks closer than this many blocks.
 // This is intended to be conservative.
 export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
+  [CHAIN_IDs.ALEPH_ZERO]: 32,
   [CHAIN_IDs.ARBITRUM]: 32,
   [CHAIN_IDs.BASE]: 120,
   [CHAIN_IDs.BLAST]: 120,
@@ -73,6 +75,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.LISK]: 10000,
   [CHAIN_IDs.BASE]: 10000,
   [CHAIN_IDs.MODE]: 10000,
+  [CHAIN_IDs.ALEPH_ZERO]: 10000,
   [CHAIN_IDs.ARBITRUM]: 10000,
   [CHAIN_IDs.LINEA]: 5000,
   [CHAIN_IDs.BLAST]: 10000,
@@ -98,6 +101,7 @@ export function getMaxBlockLookBack(chainId: number) {
 
 // Average block time in seconds by chain
 export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
+  [CHAIN_IDs.ALEPH_ZERO]: 0.25,
   [CHAIN_IDs.ARBITRUM]: 0.25,
   [CHAIN_IDs.BASE]: 2,
   [CHAIN_IDs.BLAST]: 2,
