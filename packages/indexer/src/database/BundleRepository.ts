@@ -1,6 +1,13 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { DataSource, entities, utils } from "@repo/indexer-database";
+import {
+  DataSource,
+  entities,
+  LessThan,
+  utils,
+  Not,
+  In,
+} from "@repo/indexer-database";
 
 export type BlockRangeInsertType = {
   bundleId: number;
@@ -130,7 +137,6 @@ export class BundleRepository extends utils.BaseRepository {
       .where("br.bundleId IS NULL")
       .select(["b.id", "proposal"])
       .orderBy("proposal.blockNumber", "ASC")
-      .limit(1000) // Limit to 1000 bundles to process at a time
       .getMany();
   }
 
@@ -158,7 +164,6 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .where("be.executionId IS NULL")
       .orderBy("rbe.blockNumber", "ASC")
-      .limit(100) // Primarily for initial filling
       .getMany();
   }
 
@@ -171,40 +176,69 @@ export class BundleRepository extends utils.BaseRepository {
    * @param maxLookbackFromBlock The maximum number of blocks to look back from the provided block number (optional)
    * @returns The closest proposed (undisputed/non-canceled) root bundle back in time, or undefined if none are found
    */
-  public retrieveClosestProposedRootBundleEvent(
+  public async retrieveClosestProposedRootBundleEvent(
     blockNumber: number,
     transactionIndex: number,
     logIndex: number,
     maxLookbackFromBlock?: number,
-  ): Promise<entities.ProposedRootBundle | null> {
-    return this.postgres
+  ): Promise<entities.ProposedRootBundle | undefined> {
+    const proposeBundleEvent = await this.postgres
       .getRepository(entities.ProposedRootBundle)
-      .createQueryBuilder("prb")
-      .leftJoinAndSelect("prb.bundle", "b")
-      .where(
-        // Proposal is in the past
-        "(prb.blockNumber < :blockNumber OR " +
-          // Proposal happened earlier in the block
-          "(prb.blockNumber = :blockNumber AND prb.transactionIndex < :transactionIndex) OR " +
-          // Proposal happened earlier in the same transaction
-          "(prb.blockNumber = :blockNumber AND prb.transactionIndex = :transactionIndex AND prb.logIndex < :logIndex)) AND " +
-          // Ensure the block difference is less than an average bundle length in ETH blocks
-          "prb.blockNumber > :blockDiff AND" +
-          // The bundle hasn't been disputed or canceled. This is a valid bundle to execute.
-          "(b.disputeId IS NULL AND b.cancelationId IS NULL)",
-        {
-          blockNumber,
-          transactionIndex,
-          logIndex,
-          // If maxLookbackFromBlock is undefined, then allow the full range of blocks to be searched
-          blockDiff:
-            maxLookbackFromBlock !== undefined
-              ? blockNumber - maxLookbackFromBlock
-              : 0,
-        },
-      )
-      .orderBy("prb.blockNumber", "DESC") // Grab the most recent proposal
-      .getOne();
+      .findOne({
+        where: [
+          {
+            blockNumber: LessThan(blockNumber),
+            bundle: {
+              status: Not(
+                In([
+                  entities.BundleStatus.Canceled,
+                  entities.BundleStatus.Disputed,
+                ]),
+              ),
+            },
+          },
+          {
+            blockNumber,
+            transactionIndex: LessThan(transactionIndex),
+            bundle: {
+              status: Not(
+                In([
+                  entities.BundleStatus.Canceled,
+                  entities.BundleStatus.Disputed,
+                ]),
+              ),
+            },
+          },
+          {
+            blockNumber,
+            transactionIndex,
+            logIndex: LessThan(logIndex),
+            bundle: {
+              status: Not(
+                In([
+                  entities.BundleStatus.Canceled,
+                  entities.BundleStatus.Disputed,
+                ]),
+              ),
+            },
+          },
+        ],
+        relations: { bundle: true },
+        order: { blockNumber: "DESC" },
+      });
+
+    if (!proposeBundleEvent) {
+      return undefined;
+    }
+
+    if (
+      maxLookbackFromBlock &&
+      blockNumber - proposeBundleEvent.blockNumber > maxLookbackFromBlock
+    ) {
+      return undefined;
+    }
+
+    return proposeBundleEvent;
   }
 
   /**
@@ -250,18 +284,25 @@ export class BundleRepository extends utils.BaseRepository {
     >[],
   ): Promise<number> {
     const bundleRepository = this.postgres.getRepository(entities.Bundle);
-    const results = await bundleRepository.insert(
-      proposalEvents.map((event) =>
-        bundleRepository.create({
-          poolRebalanceRoot: event.poolRebalanceRoot,
-          relayerRefundRoot: event.relayerRefundRoot,
-          slowRelayRoot: event.slowRelayRoot,
-          proposalId: event.id,
-          status: entities.BundleStatus.Proposed, // Default to proposed status
-        }),
+    const promises = await Promise.all(
+      across.utils.chunk(proposalEvents, 1000).map((chunk) =>
+        bundleRepository.insert(
+          chunk.map((event) =>
+            bundleRepository.create({
+              poolRebalanceRoot: event.poolRebalanceRoot,
+              relayerRefundRoot: event.relayerRefundRoot,
+              slowRelayRoot: event.slowRelayRoot,
+              proposalId: event.id,
+              status: entities.BundleStatus.Proposed, // Default to proposed status
+            }),
+          ),
+        ),
       ),
     );
-    return results.identifiers.length;
+    return promises.reduce(
+      (acc, insertResult) => acc + insertResult.identifiers.length,
+      0,
+    );
   }
 
   /**
@@ -317,13 +358,22 @@ export class BundleRepository extends utils.BaseRepository {
    * @param ranges A list of block ranges to associate with a bundle
    * @returns The result of the inserts
    */
-  public associateBlockRangeWithBundle(ranges: BlockRangeInsertType[]) {
-    return this.postgres
-      .getRepository(entities.BundleBlockRange)
-      .createQueryBuilder()
-      .insert()
-      .values(ranges)
-      .execute();
+  public async associateBlockRangeWithBundle(ranges: BlockRangeInsertType[]) {
+    const promises = await Promise.all(
+      across.utils
+        .chunk(ranges, 1000)
+        .map((chunk) =>
+          this.postgres
+            .getRepository(entities.BundleBlockRange)
+            .createQueryBuilder()
+            .insert()
+            .values(chunk)
+            .execute(),
+        ),
+    );
+    return promises
+      .flat()
+      .reduce((acc, insertResult) => acc + insertResult.identifiers.length, 0);
   }
 
   /**
@@ -337,12 +387,21 @@ export class BundleRepository extends utils.BaseRepository {
       executionId: number;
     }[],
   ) {
-    return this.postgres
-      .getRepository(entities.RootBundleExecutedJoinTable)
-      .createQueryBuilder()
-      .insert()
-      .values(events)
-      .execute();
+    const promises = await Promise.all(
+      across.utils
+        .chunk(events, 1000)
+        .map((chunk) =>
+          this.postgres
+            .getRepository(entities.RootBundleExecutedJoinTable)
+            .createQueryBuilder()
+            .insert()
+            .values(chunk)
+            .execute(),
+        ),
+    );
+    return promises
+      .flat()
+      .reduce((acc, insertResult) => acc + insertResult.identifiers.length, 0);
   }
 
   /**

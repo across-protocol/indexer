@@ -50,6 +50,7 @@ export class BundleServicesManager {
       postgres: this.postgres,
       hubPoolClientFactory: this.hubPoolClientFactory,
       spokePoolClientFactory: this.spokePoolClientFactory,
+      bundleRepository: this.bundleRepository,
     });
     return this.bundleEventsProcessor.start(10);
   }

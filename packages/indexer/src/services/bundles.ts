@@ -28,6 +28,7 @@ export type BundleConfig = {
   postgres: DataSource;
   hubPoolClientFactory: utils.HubPoolClientFactory;
   spokePoolClientFactory: utils.SpokePoolClientFactory;
+  bundleRepository: BundleRepository;
 };
 
 /**
@@ -41,27 +42,41 @@ class ConfigurationMalformedError extends Error {
 }
 
 export class BundleEventsProcessor extends BaseIndexer {
-  private bundleRepository: BundleRepository;
   constructor(private readonly config: BundleConfig) {
     super(config.logger, "bundle");
   }
 
   protected async indexerLogic(): Promise<void> {
-    const { logger, hubPoolClientFactory, spokePoolClientFactory } =
-      this.config;
-    const { bundleRepository } = this;
-    await assignBundleToProposedEvent(bundleRepository, logger);
-    await assignDisputeEventToBundle(bundleRepository, logger);
-    await assignCanceledEventToBundle(bundleRepository, logger);
-    await assignBundleRangesToProposal(bundleRepository, logger);
-    await assignExecutionsToBundle(bundleRepository, logger);
-    await assignBundleExecutedStatus(bundleRepository, logger);
-    await assignSpokePoolEventsToExecutedBundles(
-      bundleRepository,
-      hubPoolClientFactory,
-      spokePoolClientFactory,
-      logger,
-    );
+    try {
+      this.config.logger.info({
+        at: "BundleEventsProcessor#indexerLogic",
+        message: "Starting bundle events processor",
+      });
+      const {
+        logger,
+        hubPoolClientFactory,
+        spokePoolClientFactory,
+        bundleRepository,
+      } = this.config;
+      await assignBundleToProposedEvent(bundleRepository, logger);
+      await assignDisputeEventToBundle(bundleRepository, logger);
+      await assignCanceledEventToBundle(bundleRepository, logger);
+      await assignBundleRangesToProposal(bundleRepository, logger);
+      await assignExecutionsToBundle(bundleRepository, logger);
+      await assignBundleExecutedStatus(bundleRepository, logger);
+      // await assignSpokePoolEventsToExecutedBundles(
+      //   bundleRepository,
+      //   hubPoolClientFactory,
+      //   spokePoolClientFactory,
+      //   logger,
+      // );
+      this.config.logger.info({
+        at: "BundleEventsProcessor#indexerLogic",
+        message: "Finished bundle events processor",
+      });
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   protected async initialize(): Promise<void> {
@@ -72,11 +87,6 @@ export class BundleEventsProcessor extends BaseIndexer {
       });
       throw new ConfigurationMalformedError();
     }
-    this.bundleRepository = new BundleRepository(
-      this.config.postgres,
-      this.config.logger,
-      true,
-    );
   }
 }
 
@@ -235,7 +245,7 @@ async function assignExecutionsToBundle(
     logger,
     "RootBundleExecuted",
     unassociatedExecutions.length,
-    insertResults.generatedMaps.length,
+    insertResults,
   );
 }
 
@@ -306,17 +316,13 @@ async function assignBundleRangesToProposal(
     }),
   );
   const insertResults = await dbRepository.associateBlockRangeWithBundle(
-    rangeSegments
-      .filter(
-        (segment): segment is BlockRangeInsertType[] => segment !== undefined,
-      )
-      .flat(),
+    rangeSegments.filter((segment) => segment !== undefined).flat(),
   );
   logResultOfAssignment(
     logger,
     "BundleBlockRange",
     rangeSegments.length,
-    insertResults.generatedMaps.length,
+    insertResults,
   );
 }
 
