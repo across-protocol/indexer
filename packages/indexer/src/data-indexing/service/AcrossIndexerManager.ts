@@ -111,7 +111,7 @@ export class AcrossIndexerManager {
       },
     );
 
-    if (this.spokePoolIndexers.length === 0) {
+    if (spokePoolIndexers.length === 0) {
       this.logger.warn("No spoke pool indexers to start");
       return;
     }
