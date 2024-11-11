@@ -501,7 +501,11 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedDeposits = across.utils.chunk(deposits, this.chunkSize);
     await Promise.all(
-      chunkedDeposits.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+      chunkedDeposits.map((eventsChunk) =>
+        eventsRepo.upsert(eventsChunk, {
+          conflictPaths: { relayHash: true, type: true },
+        }),
+      ),
     );
 
     // Store bundle refunded deposits
@@ -512,7 +516,11 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedRefunds = across.utils.chunk(expiredDeposits, this.chunkSize);
     await Promise.all(
-      chunkedRefunds.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+      chunkedRefunds.map((eventsChunk) =>
+        eventsRepo.upsert(eventsChunk, {
+          conflictPaths: { relayHash: true, type: true },
+        }),
+      ),
     );
 
     // Store bundle slow fills
@@ -523,7 +531,11 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedSlowFills = across.utils.chunk(slowFills, this.chunkSize);
     await Promise.all(
-      chunkedSlowFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+      chunkedSlowFills.map((eventsChunk) =>
+        eventsRepo.upsert(eventsChunk, {
+          conflictPaths: { relayHash: true, type: true },
+        }),
+      ),
     );
 
     // Store bundle unexecutable slow fills
@@ -538,7 +550,9 @@ export class BundleRepository extends utils.BaseRepository {
     );
     await Promise.all(
       chunkedUnexecutableSlowFills.map((eventsChunk) =>
-        eventsRepo.insert(eventsChunk),
+        eventsRepo.upsert(eventsChunk, {
+          conflictPaths: { relayHash: true, type: true },
+        }),
       ),
     );
 
@@ -550,7 +564,11 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedFills = across.utils.chunk(fills, this.chunkSize);
     await Promise.all(
-      chunkedFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
+      chunkedFills.map((eventsChunk) =>
+        eventsRepo.upsert(eventsChunk, {
+          conflictPaths: { relayHash: true, type: true },
+        }),
+      ),
     );
 
     return {
