@@ -10,7 +10,7 @@ import {
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
 const BLOCKS_PER_BUNDLE = Math.floor(
-  BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
+  BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK
 );
 
 export type BundleConfig = {
@@ -80,7 +80,7 @@ function logResultOfAssignment(
   logger: winston.Logger,
   eventType: string,
   unassociatedRecordsCount: number,
-  persistedRecordsCount: number,
+  persistedRecordsCount: number
 ): void {
   if (unassociatedRecordsCount > 0) {
     logger.info({
@@ -101,7 +101,7 @@ function logResultOfAssignment(
  */
 async function assignDisputeEventToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedDisputedEvents =
     await dbRepository.retrieveUnassociatedDisputedEvents();
@@ -113,7 +113,7 @@ async function assignDisputeEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE
           );
         if (!proposedBundle) {
           return undefined;
@@ -122,18 +122,18 @@ async function assignDisputeEventToBundle(
           bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
-      },
-    ),
+      }
+    )
   );
   const updatedEventCount = await dbRepository.associateEventsToBundle(
     eventAssociations,
-    "disputed",
+    "disputed"
   );
   logResultOfAssignment(
     logger,
     "RootBundleDisputed",
     unassignedDisputedEvents.length,
-    updatedEventCount,
+    updatedEventCount
   );
 }
 
@@ -144,7 +144,7 @@ async function assignDisputeEventToBundle(
  */
 async function assignCanceledEventToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedCanceledEvents =
     await dbRepository.retrieveUnassociatedCanceledEvents();
@@ -156,7 +156,7 @@ async function assignCanceledEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE
           );
         if (!proposedBundle) {
           return undefined;
@@ -165,24 +165,24 @@ async function assignCanceledEventToBundle(
           bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
-      },
-    ),
+      }
+    )
   );
   const numberUpdated = await dbRepository.associateEventsToBundle(
     eventAssociations,
-    "canceled",
+    "canceled"
   );
   logResultOfAssignment(
     logger,
     "RootBundleCanceled",
     unassignedCanceledEvents.length,
-    numberUpdated,
+    numberUpdated
   );
 }
 
 async function assignExecutionsToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassociatedExecutions =
     await dbRepository.retrieveUnassociatedRootBundleExecutedEvents();
@@ -194,7 +194,7 @@ async function assignExecutionsToBundle(
           await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
-            logIndex,
+            logIndex
           );
         if (!proposedBundle) {
           logger.error({
@@ -203,33 +203,33 @@ async function assignExecutionsToBundle(
             executionId: id,
           });
           throw new Error(
-            `Unable to find a proposed bundle for the given execution ${id}`,
+            `Unable to find a proposed bundle for the given execution ${id}`
           );
         }
         return {
           bundleId: proposedBundle.bundle.id,
           executionId: id,
         };
-      },
-    ),
+      }
+    )
   );
 
   const insertResults =
     await dbRepository.associateRootBundleExecutedEventsToBundle(
-      mappingOfExecutionsToBundles,
+      mappingOfExecutionsToBundles
     );
 
   logResultOfAssignment(
     logger,
     "RootBundleExecuted",
     unassociatedExecutions.length,
-    insertResults,
+    insertResults
   );
 }
 
 async function assignBundleRangesToProposal(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   // We first want to confirm that there's no outstanding disputes or cancelations that
   // haven't been associated with a bundle. We need to ensure that all events are associated
@@ -259,7 +259,7 @@ async function assignBundleRangesToProposal(
         await dbRepository.retrieveClosestProposedRootBundleEvent(
           bundle.proposal.blockNumber,
           bundle.proposal.transactionIndex,
-          bundle.proposal.logIndex,
+          bundle.proposal.logIndex
         );
       if (!previousEvent) {
         return undefined;
@@ -289,18 +289,18 @@ async function assignBundleRangesToProposal(
             },
           ];
         },
-        [] as BlockRangeInsertType[],
+        [] as BlockRangeInsertType[]
       );
-    }),
+    })
   );
   const insertResults = await dbRepository.associateBlockRangeWithBundle(
-    rangeSegments.filter((segment) => segment !== undefined).flat(),
+    rangeSegments.filter((segment) => segment !== undefined).flat()
   );
   logResultOfAssignment(
     logger,
     "BundleBlockRange",
     rangeSegments.length,
-    insertResults,
+    insertResults
   );
 }
 
@@ -313,19 +313,19 @@ async function assignBundleRangesToProposal(
  */
 async function assignBundleToProposedEvent(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedProposedEvents =
     await dbRepository.retrieveUnassociatedProposedRootBundleEvents();
   const createdBundleCount = await dbRepository.createBundlesForProposedEvents(
-    unassignedProposedEvents,
+    unassignedProposedEvents
   );
   // Log the results of the operation.
   logResultOfAssignment(
     logger,
     "ProposedRootBundle",
     unassignedProposedEvents.length,
-    createdBundleCount,
+    createdBundleCount
   );
 }
 
@@ -338,7 +338,7 @@ async function assignBundleToProposedEvent(
  */
 async function assignBundleExecutedStatus(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const updateCount = await dbRepository.updateBundleExecutedStatus();
   if (updateCount) {
