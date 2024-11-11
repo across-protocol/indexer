@@ -48,8 +48,6 @@ export class BundleServicesManager {
       logger: this.logger,
       redis: this.redis,
       postgres: this.postgres,
-      hubPoolClientFactory: this.hubPoolClientFactory,
-      spokePoolClientFactory: this.spokePoolClientFactory,
       bundleRepository: this.bundleRepository,
     });
     return this.bundleEventsProcessor.start(10);

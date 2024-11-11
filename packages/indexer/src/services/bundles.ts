@@ -1,33 +1,22 @@
-import { CHAIN_IDs } from "@across-protocol/constants";
-import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
-import { DataSource, entities } from "@repo/indexer-database";
+import { DataSource } from "@repo/indexer-database";
 import { BaseIndexer } from "../generics";
 import {
   BlockRangeInsertType,
   BundleRepository,
 } from "../database/BundleRepository";
-import * as utils from "../utils";
-import { getBlockTime } from "../web3/constants";
-import {
-  buildPoolRebalanceRoot,
-  getBlockRangeBetweenBundles,
-  getBundleBlockRanges,
-} from "../utils/bundleBuilderUtils";
 
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
 const BLOCKS_PER_BUNDLE = Math.floor(
-  BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
+  BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK
 );
 
 export type BundleConfig = {
   logger: winston.Logger;
   redis: Redis | undefined;
   postgres: DataSource;
-  hubPoolClientFactory: utils.HubPoolClientFactory;
-  spokePoolClientFactory: utils.SpokePoolClientFactory;
   bundleRepository: BundleRepository;
 };
 
@@ -52,24 +41,13 @@ export class BundleEventsProcessor extends BaseIndexer {
         at: "BundleEventsProcessor#indexerLogic",
         message: "Starting bundle events processor",
       });
-      const {
-        logger,
-        hubPoolClientFactory,
-        spokePoolClientFactory,
-        bundleRepository,
-      } = this.config;
+      const { logger, bundleRepository } = this.config;
       await assignBundleToProposedEvent(bundleRepository, logger);
       await assignDisputeEventToBundle(bundleRepository, logger);
       await assignCanceledEventToBundle(bundleRepository, logger);
       await assignBundleRangesToProposal(bundleRepository, logger);
       await assignExecutionsToBundle(bundleRepository, logger);
       await assignBundleExecutedStatus(bundleRepository, logger);
-      // await assignSpokePoolEventsToExecutedBundles(
-      //   bundleRepository,
-      //   hubPoolClientFactory,
-      //   spokePoolClientFactory,
-      //   logger,
-      // );
       this.config.logger.info({
         at: "BundleEventsProcessor#indexerLogic",
         message: "Finished bundle events processor",
@@ -102,7 +80,7 @@ function logResultOfAssignment(
   logger: winston.Logger,
   eventType: string,
   unassociatedRecordsCount: number,
-  persistedRecordsCount: number,
+  persistedRecordsCount: number
 ): void {
   if (unassociatedRecordsCount > 0) {
     logger.info({
@@ -123,7 +101,7 @@ function logResultOfAssignment(
  */
 async function assignDisputeEventToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedDisputedEvents =
     await dbRepository.retrieveUnassociatedDisputedEvents();
@@ -135,7 +113,7 @@ async function assignDisputeEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE
           );
         if (!proposedBundle) {
           return undefined;
@@ -144,18 +122,18 @@ async function assignDisputeEventToBundle(
           bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
-      },
-    ),
+      }
+    )
   );
   const updatedEventCount = await dbRepository.associateEventsToBundle(
     eventAssociations,
-    "disputed",
+    "disputed"
   );
   logResultOfAssignment(
     logger,
     "RootBundleDisputed",
     unassignedDisputedEvents.length,
-    updatedEventCount,
+    updatedEventCount
   );
 }
 
@@ -166,7 +144,7 @@ async function assignDisputeEventToBundle(
  */
 async function assignCanceledEventToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedCanceledEvents =
     await dbRepository.retrieveUnassociatedCanceledEvents();
@@ -178,7 +156,7 @@ async function assignCanceledEventToBundle(
             blockNumber,
             transactionIndex,
             logIndex,
-            BLOCKS_PER_BUNDLE,
+            BLOCKS_PER_BUNDLE
           );
         if (!proposedBundle) {
           return undefined;
@@ -187,24 +165,24 @@ async function assignCanceledEventToBundle(
           bundleId: proposedBundle.bundle.id,
           eventId: id,
         };
-      },
-    ),
+      }
+    )
   );
   const numberUpdated = await dbRepository.associateEventsToBundle(
     eventAssociations,
-    "canceled",
+    "canceled"
   );
   logResultOfAssignment(
     logger,
     "RootBundleCanceled",
     unassignedCanceledEvents.length,
-    numberUpdated,
+    numberUpdated
   );
 }
 
 async function assignExecutionsToBundle(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassociatedExecutions =
     await dbRepository.retrieveUnassociatedRootBundleExecutedEvents();
@@ -216,7 +194,7 @@ async function assignExecutionsToBundle(
           await dbRepository.retrieveClosestProposedRootBundleEvent(
             blockNumber,
             transactionIndex,
-            logIndex,
+            logIndex
           );
         if (!proposedBundle) {
           logger.error({
@@ -225,33 +203,33 @@ async function assignExecutionsToBundle(
             executionId: id,
           });
           throw new Error(
-            `Unable to find a proposed bundle for the given execution ${id}`,
+            `Unable to find a proposed bundle for the given execution ${id}`
           );
         }
         return {
           bundleId: proposedBundle.bundle.id,
           executionId: id,
         };
-      },
-    ),
+      }
+    )
   );
 
   const insertResults =
     await dbRepository.associateRootBundleExecutedEventsToBundle(
-      mappingOfExecutionsToBundles,
+      mappingOfExecutionsToBundles
     );
 
   logResultOfAssignment(
     logger,
     "RootBundleExecuted",
     unassociatedExecutions.length,
-    insertResults,
+    insertResults
   );
 }
 
 async function assignBundleRangesToProposal(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   // We first want to confirm that there's no outstanding disputes or cancelations that
   // haven't been associated with a bundle. We need to ensure that all events are associated
@@ -281,7 +259,7 @@ async function assignBundleRangesToProposal(
         await dbRepository.retrieveClosestProposedRootBundleEvent(
           bundle.proposal.blockNumber,
           bundle.proposal.transactionIndex,
-          bundle.proposal.logIndex,
+          bundle.proposal.logIndex
         );
       if (!previousEvent) {
         return undefined;
@@ -311,18 +289,18 @@ async function assignBundleRangesToProposal(
             },
           ];
         },
-        [] as BlockRangeInsertType[],
+        [] as BlockRangeInsertType[]
       );
-    }),
+    })
   );
   const insertResults = await dbRepository.associateBlockRangeWithBundle(
-    rangeSegments.filter((segment) => segment !== undefined).flat(),
+    rangeSegments.filter((segment) => segment !== undefined).flat()
   );
   logResultOfAssignment(
     logger,
     "BundleBlockRange",
     rangeSegments.length,
-    insertResults,
+    insertResults
   );
 }
 
@@ -335,19 +313,19 @@ async function assignBundleRangesToProposal(
  */
 async function assignBundleToProposedEvent(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const unassignedProposedEvents =
     await dbRepository.retrieveUnassociatedProposedRootBundleEvents();
   const createdBundleCount = await dbRepository.createBundlesForProposedEvents(
-    unassignedProposedEvents,
+    unassignedProposedEvents
   );
   // Log the results of the operation.
   logResultOfAssignment(
     logger,
     "ProposedRootBundle",
     unassignedProposedEvents.length,
-    createdBundleCount,
+    createdBundleCount
   );
 }
 
@@ -360,7 +338,7 @@ async function assignBundleToProposedEvent(
  */
 async function assignBundleExecutedStatus(
   dbRepository: BundleRepository,
-  logger: winston.Logger,
+  logger: winston.Logger
 ): Promise<void> {
   const updateCount = await dbRepository.updateBundleExecutedStatus();
   if (updateCount) {
@@ -369,134 +347,5 @@ async function assignBundleExecutedStatus(
       message: "Updated bundles with executed status",
       bundlesUpdatedWithExecutedStatus: updateCount,
     });
-  }
-}
-
-/**
- * Assigns spoke pool events to executed bundles by reconstructing the bundle data using the BundleDataClient.
- * @param bundleRepo Repository to interact with the Bundle entity.
- * @param hubClientFactory Factory to get HubPool clients.
- * @param spokeClientFactory Factory to get SpokePool clients.
- * @param logger A logger instance.
- * @returns A void promise when all executed bundles have been processed.
- */
-async function assignSpokePoolEventsToExecutedBundles(
-  bundleRepo: BundleRepository,
-  hubClientFactory: utils.HubPoolClientFactory,
-  spokeClientFactory: utils.SpokePoolClientFactory,
-  logger: winston.Logger,
-): Promise<void> {
-  const executedBundles =
-    await bundleRepo.getExecutedBundlesWithoutEventsAssociated({
-      fromBlock: utils.ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK,
-    });
-  if (executedBundles.length === 0) return;
-
-  // Get and update HubPool and ConfigStore clients
-  const hubPoolClient = hubClientFactory.get(CHAIN_IDs.MAINNET);
-  const configStoreClient = hubPoolClient.configStoreClient;
-  await configStoreClient.update();
-  await hubPoolClient.update();
-  const clients = {
-    hubPoolClient,
-    configStoreClient,
-    arweaveClient: null as unknown as across.caching.ArweaveClient, // FIXME: This is a hack to avoid instantiating the Arweave client
-  };
-
-  for (const executedBundle of executedBundles) {
-    // Get bundle ranges as an array of [startBlock, endBlock] for each chain
-    const ranges = getBundleBlockRanges(executedBundle);
-
-    // Grab historical ranges from the last 8 bundles
-    // FIXME: This is a hardcoded value, we should make this configurable
-    const historicalBundle = await bundleRepo.retrieveMostRecentBundle(
-      entities.BundleStatus.Executed,
-      undefined,
-      8,
-    );
-    // Check if we have enough historical data to build the bundle with
-    // an ample lookback range. Otherwise skip current bundle
-    if (!historicalBundle) {
-      logger.warn({
-        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-        message: `No historical bundle found. Skipping bundle reconstruction of bundle ${executedBundle.id}`,
-      });
-      continue;
-    }
-    // Resolve lookback range for the spoke clients
-    const lookbackRange = getBlockRangeBetweenBundles(
-      historicalBundle.proposal,
-      executedBundle.proposal,
-    );
-
-    // Get spoke pool clients
-    const spokeClients = lookbackRange.reduce(
-      (acc, { chainId, startBlock, endBlock }) => {
-        // We need to instantiate spoke clients using a higher end block than
-        // the bundle range as deposits which fills are included in this bundle could
-        // have occured outside the bundle range of the origin chain
-        // NOTE: A buffer time of 15 minutes has been proven to work for older bundles
-        const blockTime = getBlockTime(chainId);
-        const endBlockTimeBuffer = 60 * 15;
-        const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
-        return {
-          ...acc,
-          [chainId]: spokeClientFactory.get(
-            chainId,
-            startBlock,
-            endBlock + blockBuffer,
-            {
-              hubPoolClient,
-            },
-          ),
-        };
-      },
-      {} as Record<number, across.clients.SpokePoolClient>,
-    );
-
-    // Update spoke clients
-    await Promise.all(
-      Object.values(spokeClients).map((client) => client.update()),
-    );
-
-    // Instantiate bundle data client and reconstruct bundle
-    const bundleDataClient =
-      new across.clients.BundleDataClient.BundleDataClient(
-        logger,
-        clients,
-        spokeClients,
-        executedBundle.proposal.chainIds,
-      );
-    const bundleData = await bundleDataClient.loadData(ranges, spokeClients);
-
-    // Build pool rebalance root and check it matches with the root of the stored bundle
-    const poolRebalanceRoot = buildPoolRebalanceRoot(
-      ranges,
-      bundleData,
-      hubPoolClient,
-      configStoreClient,
-    );
-    if (
-      executedBundle.poolRebalanceRoot === poolRebalanceRoot.tree.getHexRoot()
-    ) {
-      // Store bundle events
-      const storedEvents = await bundleRepo.storeBundleEvents(
-        bundleData,
-        executedBundle.id,
-      );
-      // Set bundle 'eventsAssociated' flag to true
-      await bundleRepo.updateBundleEventsAssociatedFlag(executedBundle.id);
-      logger.info({
-        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-        message: "Events associated with bundle",
-        storedEvents,
-      });
-    } else {
-      logger.warn({
-        at: "BundleProcessor#assignSpokePoolEventsToExecutedBundles",
-        message: `Mismatching roots. Skipping bundle ${executedBundle.id}.`,
-      });
-      continue;
-    }
   }
 }
