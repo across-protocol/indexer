@@ -17,6 +17,8 @@ export function ExpressApp(routers: RouterConfigs): Express {
 
   // enable if behind proxy like cloudflare/ginx
   app.set("trust proxy", true);
+  app.set("views", `${__dirname}/views`);
+  app.set("view engine", "ejs");
 
   app.use(cors());
   app.use(bodyParser.json({ limit: "1mb" }));
