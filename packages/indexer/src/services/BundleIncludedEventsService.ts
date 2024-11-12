@@ -62,13 +62,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
   }
 
   private async assignSpokePoolEventsToExecutedBundles(): Promise<void> {
-    const {
-      logger,
-      hubPoolClientFactory,
-      spokePoolClientFactory,
-      bundleRepository,
-      hubChainId,
-    } = this.config;
+    const { logger, bundleRepository } = this.config;
     const executedBundles =
       await bundleRepository.getExecutedBundlesWithoutEventsAssociated({
         fromBlock: utils.ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK,
