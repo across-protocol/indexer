@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('../partials/head'); %>
+</head>
+
+<body>
+  <%- include('../partials/header'); %>
+  <h1>Recent Bundles</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Block</th>
+        <th>Status</th>
+        <th>Transaction</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% bundles.forEach(function(bundle) { %>
+        <tr>
+          <td>
+            <%=bundle.proposal.blockNumber%>
+          </td>
+          <td class=<%= bundle.status == 'Executed' ? "green" : "" %>>
+            <%=bundle.status%>
+          </td>
+          <td>
+            <a href="https://etherscan.io/tx/<%= bundle.proposal.transactionHash %>" target="_blank">
+              <%=bundle.proposal.transactionHash%>
+            </a>
+          </td>
+        </tr>
+        <% }); %>
+    </tbody>
+  </table>
+</body>
+
+</html>

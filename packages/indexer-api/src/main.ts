@@ -89,6 +89,7 @@ export async function Main(
   const allRouters: Record<string, Router> = {
     deposits: routers.deposits.getRouter(postgres),
     balances: routers.balances.getRouter(redis),
+    statsPage: routers.statsPage.getRouter(postgres),
   };
   const app = ExpressApp(allRouters);
 
