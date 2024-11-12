@@ -10,6 +10,7 @@ export type Config = {
   spokePoolChainsEnabled: number[];
   enableHubPoolIndexer: boolean;
   enableBundleEventsProcessor: boolean;
+  enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
 };
 export type RedisConfig = {
@@ -165,6 +166,10 @@ export function envToConfig(env: Env): Config {
   const enableBundleEventsProcessor = env.ENABLE_BUNDLE_EVENTS_PROCESSOR
     ? env.ENABLE_BUNDLE_EVENTS_PROCESSOR === "true"
     : true;
+  const enableBundleIncludedEventsService =
+    env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
+      ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
+      : true;
   const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
     ? env.ENABLE_BUNDLE_BUILDER === "true"
     : true;
@@ -184,6 +189,7 @@ export function envToConfig(env: Env): Config {
     spokePoolChainsEnabled,
     enableHubPoolIndexer,
     enableBundleEventsProcessor,
+    enableBundleIncludedEventsService,
     enableBundleBuilder,
   };
 }

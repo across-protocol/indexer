@@ -11,10 +11,12 @@ import {
 } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { BundleRepository } from "../database/BundleRepository";
+import { BundleIncludedEventsService } from "./BundleIncludedEventsService";
 
 export class BundleServicesManager {
   private bundleEventsProcessor?: BundleEventsProcessor;
   private bundleBuilderService?: BundleBuilderService;
+  private bundleIncludedEventsService?: BundleIncludedEventsService;
 
   public constructor(
     private config: Config,
@@ -31,12 +33,31 @@ export class BundleServicesManager {
     return Promise.all([
       this.startBundleEventsProcessor(),
       this.startBundleBuilderService(),
+      this.startBundleIncludedEventsService(),
     ]);
   }
 
   public stop() {
     this.bundleEventsProcessor?.stop();
     this.bundleBuilderService?.stop();
+    this.bundleIncludedEventsService?.stop();
+  }
+
+  private startBundleIncludedEventsService() {
+    if (!this.config.enableBundleIncludedEventsService) {
+      this.logger.warn("Bundle included events service is disabled");
+      return;
+    }
+    this.bundleIncludedEventsService = new BundleIncludedEventsService({
+      hubChainId: this.config.hubChainId,
+      logger: this.logger,
+      redis: this.redis,
+      postgres: this.postgres,
+      hubPoolClientFactory: this.hubPoolClientFactory,
+      spokePoolClientFactory: this.spokePoolClientFactory,
+      bundleRepository: this.bundleRepository,
+    });
+    return this.bundleIncludedEventsService.start(10);
   }
 
   private startBundleEventsProcessor() {
