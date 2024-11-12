@@ -7,6 +7,6 @@ export function getRouter(db: DataSource): Router {
   const router = Router();
   const statsPageService = new StatsPageService(db);
   const statsPageController = new StatsPageController(statsPageService);
-  router.get("/stats-page", statsPageController.getStatsPage as any);
+  router.get("/pages/stats", statsPageController.getStatsPage as any);
   return router;
 }
