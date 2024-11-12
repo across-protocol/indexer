@@ -1,9 +1,8 @@
 import "reflect-metadata";
-import { DataSource } from "typeorm";
+import { DataSource, LessThan, Not, In } from "typeorm";
 import * as entities from "./entities";
 
-export { DataSource };
-
+export { DataSource, LessThan, Not, In };
 export type DatabaseConfig = {
   host: string;
   port: string;
