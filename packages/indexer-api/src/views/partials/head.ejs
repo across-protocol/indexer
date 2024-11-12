@@ -1,11 +1,77 @@
 <meta charset="UTF-8">
-<title>EJS Is Fun</title>
-
-<!-- CSS (load bootstrap from a CDN) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.min.css">
+<title>Across Indexer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow&display=swap" rel="stylesheet">
 <style>
-  body { padding-top:50px;
-    /* // rgb(45, 46, 51) to hex */
+
+  * {
+    box-sizing: border-box;
+    line-height: 1.5;
+    font-family: "Barlow", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
     background-color: #2d2e33;
-    color: #e0f3ff; }
+    color: #e0f3ff;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  h1 {
+    font-size: 1.125rem;
+    line-height: 1.625rem;
+    color: rgb(224, 243, 255);
+    text-transform: capitalize;
+  }
+
+  table {
+    border-collapse: collapse;
+    border-spacing: 0px;
+    white-space: nowrap;
+    table-layout: fixed;
+  }
+
+  tr {
+    padding: 0px 24px;
+  }
+
+  thead tr {
+    height: 40px;
+    background-color: #34353b;
+    border-radius: 12px 12px 0px 0px;
+    border: #3e4047 1px solid;
+  }
+
+  tbody tr {
+    border-width: 0px 1px 1px;
+    border-style: solid;
+    border-color: #3e4047;
+  }
+
+  td {
+    padding: 8px 12px;
+  }
+
+  a {
+    text-decoration: none;
+    color: #e0f3ff;
+    cursor: pointer;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  .green {
+    color: #6cf9d8;
+  }
 </style>
