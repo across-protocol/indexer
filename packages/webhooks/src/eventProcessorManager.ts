@@ -3,10 +3,9 @@ import { WebhookClientManager, WebhookClient } from "./clients";
 import { DataSource, entities } from "@repo/indexer-database";
 import { Logger } from "winston";
 import assert from "assert";
-import { JSONValue, IWebhook, NotificationPayload } from "./types";
-import { DepositStatusWebhook } from "./webhook";
+import { JSONValue, IEventProcessor } from "./types";
 
-export type WebhookRecord = Record<string, IWebhook>;
+export type EventProcessorRecord = Record<string, IEventProcessor>;
 
 type EventType = {
   type: string;
@@ -21,10 +20,10 @@ export type Dependencies = {
   postgres: DataSource;
   logger: Logger;
 };
-export class Webhooks {
+export class EventProcessorManager {
   private logger: Logger;
   private clientManager: WebhookClientManager;
-  private webhooks = new Map<string, IWebhook>();
+  private processors = new Map<string, IEventProcessor>();
 
   constructor(
     private config: Config,
@@ -34,16 +33,16 @@ export class Webhooks {
     this.clientManager = new WebhookClientManager(new MemoryStore()); // Initialize the client manager
   }
   // Register a new type of webhook processor able to be written to
-  public registerWebhookProcessor(name: string, webhook: IWebhook) {
+  public registerWebhookProcessor(name: string, webhook: IEventProcessor) {
     assert(
-      !this.webhooks.has(name),
+      !this.processors.has(name),
       `Webhook with that name already exists: ${name}`,
     );
-    this.webhooks.set(name, webhook);
+    this.processors.set(name, webhook);
   }
 
   private getWebhook(name: string) {
-    const webhook = this.webhooks.get(name);
+    const webhook = this.processors.get(name);
     assert(webhook, "Webhook does not exist by type: ${event.type}");
     return webhook;
   }

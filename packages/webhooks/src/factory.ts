@@ -1,21 +1,16 @@
 import assert from "assert";
-import { Webhooks } from "./webhooks";
+import { EventProcessorManager } from "./eventProcessorManager";
 import { MemoryStore } from "./store";
-import { ExpressApp } from "./express";
 import { DataSource } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { WebhookNotifier } from "./notifier";
-import { DepositStatusWebhook } from "./webhook";
+import { DepositStatusProcessor } from "./eventProcessors";
 import { WebhookRequests } from "./webhookRequests";
+import { WebhookRouter } from "./router";
 
 type Config = {
-  express?: {
-    port: number;
-  };
-  webhooks?: {
-    requireApiKey: boolean;
-  };
-  enable: string[];
+  requireApiKey: boolean;
+  enabledEventProcessors: string[];
 };
 type Dependencies = {
   postgres: DataSource;
@@ -29,19 +24,25 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
     pending: new MemoryStore(),
     completed: new MemoryStore(),
   });
-  assert(config.enable.length, "No webhooks enabled, specify one in config");
-  const webhooks = new Webhooks(config?.webhooks ?? { requireApiKey: false }, {
-    postgres,
-    logger,
-  });
-  config.enable.forEach((name) => {
+  assert(
+    config.enabledEventProcessors.length,
+    "No webhooks enabled, specify one in config",
+  );
+  const eventProcessorManager = new EventProcessorManager(
+    config ?? { requireApiKey: false },
+    {
+      postgres,
+      logger,
+    },
+  );
+  config.enabledEventProcessors.forEach((name) => {
     const hooks = new WebhookRequests(new MemoryStore());
     switch (name) {
       // add more webhook types here
       case "DepositStatus": {
-        webhooks.registerWebhookProcessor(
+        eventProcessorManager.registerWebhookProcessor(
           name,
-          new DepositStatusWebhook({
+          new DepositStatusProcessor({
             postgres,
             hooks,
             notify: notifier.notify,
@@ -54,6 +55,11 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
       }
     }
   });
-  const express = ExpressApp(config?.express ?? { port: 3000 }, { webhooks });
-  return { webhooks, express, notifier };
+  const router = WebhookRouter({ eventProcessorManager });
+  return {
+    eventProcessorManager,
+    router,
+    notifier,
+  };
 }
+export type WebhookFactory = ReturnType<typeof WebhookFactory>;

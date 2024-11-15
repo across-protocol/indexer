@@ -1,7 +1,12 @@
 import assert from "assert";
-import { WebhookRequests } from "./webhookRequests";
 import { DataSource, entities } from "@repo/indexer-database";
-import { JSONValue, IWebhook, NotificationPayload, Webhook } from "./types";
+import { WebhookRequests } from "../webhookRequests";
+import {
+  JSONValue,
+  IEventProcessor,
+  NotificationPayload,
+  Webhook,
+} from "../types";
 
 import * as ss from "superstruct";
 
@@ -27,7 +32,7 @@ export type Dependencies = {
   notify: (params: NotificationPayload) => void;
   postgres: DataSource;
 };
-export class DepositStatusWebhook implements IWebhook {
+export class DepositStatusProcessor implements IEventProcessor {
   private hooks: WebhookRequests;
   private notify: (params: NotificationPayload) => void;
   private postgres: DataSource;

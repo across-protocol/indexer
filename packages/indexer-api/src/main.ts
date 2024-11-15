@@ -7,6 +7,8 @@ import { type Router } from "express";
 import Redis from "ioredis";
 import * as s from "superstruct";
 import * as Indexer from "@repo/indexer";
+import * as Webhooks from "@repo/webhooks";
+import { asyncInterval } from "./utils";
 
 async function initializeRedis(
   config: Indexer.RedisConfig,
@@ -85,11 +87,19 @@ export async function Main(
   const postgres = await connectToDatabase(postgresConfig, logger);
   const redisConfig = Indexer.parseRedisConfig(env);
   const redis = await initializeRedis(redisConfig, logger);
+  const webhooks = Webhooks.WebhookFactory(
+    {
+      requireApiKey: false,
+      enabledEventProcessors: ["DepositStatus"],
+    },
+    { postgres, logger },
+  );
 
   const allRouters: Record<string, Router> = {
     deposits: routers.deposits.getRouter(postgres),
     balances: routers.balances.getRouter(redis),
     statsPage: routers.statsPage.getRouter(postgres),
+    webhook: webhooks.router,
   };
   const app = ExpressApp(allRouters);
 
@@ -100,4 +110,18 @@ export async function Main(
   void (await new Promise((res) => {
     app.listen(port, () => res(app));
   }));
+
+  // call webhooks on an interval
+  const stop = asyncInterval(async () => {
+    await webhooks.notifier.tick();
+  }, 10);
+
+  process.on("SIGTERM", async () => {
+    logger.info({
+      message: "Received SIGTERM, shutting down gracefully...",
+      at: "main.ts",
+    });
+    // Stop the async interval
+    stop();
+  });
 }
