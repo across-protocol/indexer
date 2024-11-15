@@ -4,18 +4,24 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
-import { entities } from "@repo/indexer-database";
+import {
+  entities,
+  utils as indexerDatabaseUtils,
+  SaveQueryResult,
+} from "@repo/indexer-database";
+import { SaveQueryResultType } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
+import { getIntegratorId } from "../../utils/spokePoolUtils";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 
-type FetchEventsResult = {
+export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
   filledV3RelayEvents: across.interfaces.FillWithBlock[];
   requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
@@ -27,6 +33,13 @@ type FetchEventsResult = {
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
   executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
   tokensBridgedEvents: across.interfaces.TokensBridged[];
+};
+
+export type StoreEventsResult = {
+  deposits: SaveQueryResult<entities.V3FundsDeposited>[];
+  fills: SaveQueryResult<entities.FilledV3Relay>[];
+  slowFillRequests: SaveQueryResult<entities.RequestedV3SlowFill>[];
+  executedRefundRoots: SaveQueryResult<entities.ExecutedRelayerRefundRoot>[];
 };
 
 export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
@@ -95,20 +108,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-
-    // Fetch integratorId synchronously when there are fewer than 1K deposit events
-    // For larger sets, use the IntegratorId queue for asynchronous processing
-    const fetchIntegratorIdSync = events.v3FundsDepositedEvents.length < 1000;
-    if (fetchIntegratorIdSync) {
-      this.appendIntegratorIdToDeposits(events.v3FundsDepositedEvents);
-    }
-
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
-
-    if (!fetchIntegratorIdSync) {
-      await this.publishIntegratorIdMessages(storedEvents.deposits);
-    }
-
+    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.deposits,
+      SaveQueryResultType.Inserted,
+    );
+    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
     await this.spokePoolProcessor.process(storedEvents);
   }
 
@@ -159,7 +164,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private async storeEvents(
     params: FetchEventsResult,
     lastFinalisedBlock: number,
-  ) {
+  ): Promise<StoreEventsResult> {
     const { spokePoolClientRepository } = this;
     const {
       v3FundsDepositedEvents,
@@ -223,20 +228,22 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
-  private async appendIntegratorIdToDeposits(
-    deposits: utils.V3FundsDepositedWithIntegradorId[],
+  private async updateNewDepositsWithIntegratorId(
+    deposits: entities.V3FundsDeposited[],
   ) {
-    await across.utils.forEachAsync(
-      deposits,
-      async (deposit, index, deposits) => {
-        const integratorId = await utils.getIntegratorId(
-          this.provider,
-          new Date(deposit.quoteTimestamp * 1000),
-          deposit.transactionHash,
+    await across.utils.forEachAsync(deposits, async (deposit) => {
+      const integratorId = await getIntegratorId(
+        this.provider,
+        deposit.quoteTimestamp,
+        deposit.transactionHash,
+      );
+      if (integratorId) {
+        await this.spokePoolClientRepository.updateDepositEventWithIntegratorId(
+          deposit.id,
+          integratorId,
         );
-        deposits[index] = { ...deposit, integratorId };
-      },
-    );
+      }
+    });
   }
 
   private async publishIntegratorIdMessages(

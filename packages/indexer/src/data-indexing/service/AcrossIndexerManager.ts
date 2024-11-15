@@ -110,12 +110,12 @@ export class AcrossIndexerManager {
         return spokePoolIndexer;
       },
     );
+    this.spokePoolIndexers = spokePoolIndexers;
 
-    if (spokePoolIndexers.length === 0) {
+    if (this.spokePoolIndexers.length === 0) {
       this.logger.warn("No spoke pool indexers to start");
       return;
     }
-    this.spokePoolIndexers = spokePoolIndexers;
     return Promise.all(
       this.spokePoolIndexers.map((indexer) => indexer.start()),
     );

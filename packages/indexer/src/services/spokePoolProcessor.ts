@@ -1,7 +1,13 @@
 import { utils } from "@across-protocol/sdk";
-import { DataSource, entities } from "@repo/indexer-database";
+import {
+  DataSource,
+  entities,
+  utils as dbUtils,
+  SaveQueryResultType,
+} from "@repo/indexer-database";
 import winston from "winston";
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
+import { StoreEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 
 enum SpokePoolEvents {
   V3FundsDeposited = "V3FundsDeposited",
@@ -18,27 +24,52 @@ export class SpokePoolProcessor {
     private readonly chainId: number,
   ) {}
 
-  public async process(events: {
-    deposits: entities.V3FundsDeposited[];
-    fills: entities.FilledV3Relay[];
-    slowFillRequests: entities.RequestedV3SlowFill[];
-    executedRefundRoots: entities.ExecutedRelayerRefundRoot[];
-  }) {
-    if (events.deposits.length > 0)
-      await this.assignSpokeEventsToRelayHashInfo(
-        SpokePoolEvents.V3FundsDeposited,
-        events.deposits,
-      );
-    if (events.slowFillRequests.length > 0)
-      await this.assignSpokeEventsToRelayHashInfo(
-        SpokePoolEvents.RequestedV3SlowFill,
-        events.slowFillRequests,
-      );
-    if (events.fills.length > 0)
-      await this.assignSpokeEventsToRelayHashInfo(
-        SpokePoolEvents.FilledV3Relay,
-        events.fills,
-      );
+  public async process(events: StoreEventsResult) {
+    const newDeposits = dbUtils.filterSaveQueryResults(
+      events.deposits,
+      SaveQueryResultType.Inserted,
+    );
+    const updatedDeposits = dbUtils.filterSaveQueryResults(
+      events.deposits,
+      SaveQueryResultType.Updated,
+    );
+    await this.assignSpokeEventsToRelayHashInfo(
+      SpokePoolEvents.V3FundsDeposited,
+      [...newDeposits, ...updatedDeposits],
+    );
+    // TODO: for new deposits, notify status change to unfilled
+    // here...
+
+    const newSlowFillRequests = dbUtils.filterSaveQueryResults(
+      events.slowFillRequests,
+      SaveQueryResultType.Inserted,
+    );
+    const updatedSlowFillRequests = dbUtils.filterSaveQueryResults(
+      events.slowFillRequests,
+      SaveQueryResultType.Updated,
+    );
+    await this.assignSpokeEventsToRelayHashInfo(
+      SpokePoolEvents.RequestedV3SlowFill,
+      [...newSlowFillRequests, ...updatedSlowFillRequests],
+    );
+    // TODO: for new slow fill requests, notify status change to slow fill requested
+    // here...
+
+    const newFills = dbUtils.filterSaveQueryResults(
+      events.fills,
+      SaveQueryResultType.Inserted,
+    );
+    const updatedFills = dbUtils.filterSaveQueryResults(
+      events.fills,
+      SaveQueryResultType.Updated,
+    );
+    await this.assignSpokeEventsToRelayHashInfo(SpokePoolEvents.FilledV3Relay, [
+      ...newFills,
+      ...updatedFills,
+    ]);
+    // TODO: for new fills, notify status change to filled
+    // here...
+
     await this.updateExpiredRelays();
     await this.updateRefundedDepositsStatus();
   }
@@ -108,6 +139,10 @@ export class SpokePoolProcessor {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
+    this.logger.info({
+      at: "SpokePoolProcessor#updateExpiredRelays",
+      message: `Updating status for expired relays`,
+    });
     const expiredDeposits = await relayHashInfoRepository
       .createQueryBuilder()
       .update()
@@ -123,8 +158,7 @@ export class SpokePoolProcessor {
       .execute();
     this.logger.info({
       at: "SpokePoolProcessor#updateExpiredRelays",
-      message: `Updated status for expired relays`,
-      updatedRelayHashInfoRows: expiredDeposits.generatedMaps.length,
+      message: `Updated status for ${expiredDeposits.generatedMaps.length} expired relays`,
     });
   }
 
@@ -135,6 +169,10 @@ export class SpokePoolProcessor {
    * @returns A void promise
    */
   private async updateRefundedDepositsStatus(): Promise<void> {
+    this.logger.info({
+      at: "SpokePoolProcessor#updateRefundedDepositsStatus",
+      message: `Updating status for refunded deposits`,
+    });
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
