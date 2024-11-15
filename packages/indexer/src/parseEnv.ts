@@ -1,7 +1,7 @@
 import assert from "assert";
 import * as s from "superstruct";
 import { DatabaseConfig } from "@repo/indexer-database";
-import { DEFAULT_NO_TTL_DISTANCE } from "./web3/constants";
+import { getNoTtlBlockDistance } from "./web3/constants";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -132,7 +132,7 @@ export function parseRetryProviderEnvs(chainId: number) {
     `NO_TTL_BLOCK_DISTANCE_${chainId}`
   ]
     ? Number(process.env[`NO_TTL_BLOCK_DISTANCE_${chainId}`])
-    : DEFAULT_NO_TTL_DISTANCE[chainId];
+    : getNoTtlBlockDistance(chainId);
 
   return {
     providerCacheNamespace,

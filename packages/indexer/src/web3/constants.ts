@@ -3,7 +3,7 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 // This is the block distance at which the bot, by default, stores in redis with no TTL.
 // These are all intended to be roughly 2 days of blocks for each chain.
 // blocks = 172800 / avg_block_time
-export const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
+const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ALEPH_ZERO]: 691200,
   [CHAIN_IDs.ARBITRUM]: 691200,
   [CHAIN_IDs.BASE]: 86400,
@@ -21,6 +21,15 @@ export const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ZORA]: 86400,
   [CHAIN_IDs.WORLD_CHAIN]: 86400,
 };
+
+export function getNoTtlBlockDistance(chainId: number) {
+  return 1_000_000_000_000;
+  // const noTtlBlockDistance = DEFAULT_NO_TTL_DISTANCE[chainId];
+  // if (!noTtlBlockDistance) {
+  //   throw new Error(`No noTtlBlockDistance found for chainId: ${chainId}`);
+  // }
+  // return noTtlBlockDistance;
+}
 
 // This is the max anticipated distance on each chain before RPC data is likely to be consistent amongst providers.
 // This distance should consider re-orgs, but also the time needed for various RPC providers to agree on chain state.
