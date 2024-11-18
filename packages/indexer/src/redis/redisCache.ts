@@ -8,10 +8,14 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
     if (result === null) return result;
     return JSON.parse(result);
   }
-  async set<ObjectType>(
+  set<ObjectType, OverrideType>(
     key: string,
     value: ObjectType,
+    ttl?: number,
   ): Promise<string | undefined> {
+    if (ttl !== undefined) {
+      return this.redis.set(key, JSON.stringify(value), "EX", ttl);
+    }
     return this.redis.set(key, JSON.stringify(value));
   }
 }
