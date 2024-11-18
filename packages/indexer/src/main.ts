@@ -1,6 +1,7 @@
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
+import { WebhookFactory } from "@repo/webhooks";
 
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
@@ -53,6 +54,14 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
+  // Call eventProcessManager.write to kick off webhook calls
+  const { eventProcessorManager } = WebhookFactory(
+    {
+      requireApiKey: false,
+      enabledEventProcessors: ["DepositStatus"],
+    },
+    { postgres, logger },
+  );
   // Retry providers factory
   const retryProvidersFactory = new RetryProvidersFactory(
     redisCache,

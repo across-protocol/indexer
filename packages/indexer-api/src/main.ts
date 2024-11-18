@@ -5,10 +5,8 @@ import * as routers from "./routers";
 import winston from "winston";
 import { type Router } from "express";
 import Redis from "ioredis";
-import * as s from "superstruct";
 import * as Indexer from "@repo/indexer";
 import * as Webhooks from "@repo/webhooks";
-import { asyncInterval } from "./utils";
 
 async function initializeRedis(
   config: Indexer.RedisConfig,
@@ -110,18 +108,4 @@ export async function Main(
   void (await new Promise((res) => {
     app.listen(port, () => res(app));
   }));
-
-  // call webhooks on an interval
-  const stop = asyncInterval(async () => {
-    await webhooks.notifier.tick();
-  }, 10);
-
-  process.on("SIGTERM", async () => {
-    logger.info({
-      message: "Received SIGTERM, shutting down gracefully...",
-      at: "main.ts",
-    });
-    // Stop the async interval
-    stop();
-  });
 }

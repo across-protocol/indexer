@@ -1,4 +1,4 @@
-import { AsyncStore } from "./store";
+import { AsyncStore } from "../store";
 
 export interface WebhookClient {
   id: string;
@@ -8,7 +8,7 @@ export interface WebhookClient {
 }
 
 // This class is intended to store integration clients allowed to use the webhook service.
-export class WebhookClientManager {
+export class WebhookClientRepository {
   constructor(private store: AsyncStore<WebhookClient>) {}
 
   public async registerClient(client: WebhookClient): Promise<void> {

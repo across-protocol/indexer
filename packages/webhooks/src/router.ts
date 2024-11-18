@@ -1,4 +1,3 @@
-import assert from "assert";
 import express from "express";
 import { EventProcessorManager } from "./eventProcessorManager";
 import * as ss from "superstruct";

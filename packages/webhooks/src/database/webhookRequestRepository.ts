@@ -1,10 +1,10 @@
-import { AsyncStore } from "./store";
-import { Webhook } from "./types";
+import { AsyncStore } from "../store";
+import { WebhookRequest } from "../types";
 
-export class WebhookRequests {
-  constructor(private store: AsyncStore<Webhook>) {}
+export class WebhookRequestRepository {
+  constructor(private store: AsyncStore<WebhookRequest>) {}
 
-  public async register(webhook: Webhook): Promise<void> {
+  public async register(webhook: WebhookRequest): Promise<void> {
     if (await this.store.has(webhook.id)) {
       throw new Error(`Webhook with id ${webhook.id} already exists.`);
     }
@@ -18,20 +18,22 @@ export class WebhookRequests {
     await this.store.delete(webhookId);
   }
 
-  public async getWebhook(webhookId: string): Promise<Webhook | undefined> {
+  public async getWebhook(
+    webhookId: string,
+  ): Promise<WebhookRequest | undefined> {
     return this.store.get(webhookId);
   }
 
-  public async listWebhooks(): Promise<Webhook[]> {
-    const webhooks: Webhook[] = [];
+  public async listWebhooks(): Promise<WebhookRequest[]> {
+    const webhooks: WebhookRequest[] = [];
     for await (const webhook of this.store.values()) {
       webhooks.push(webhook);
     }
     return webhooks;
   }
 
-  public async filterWebhooks(filter: string): Promise<Webhook[]> {
-    const webhooks: Webhook[] = [];
+  public async filterWebhooks(filter: string): Promise<WebhookRequest[]> {
+    const webhooks: WebhookRequest[] = [];
     for await (const webhook of this.store.values()) {
       if (webhook.filter === filter) {
         webhooks.push(webhook);

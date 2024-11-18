@@ -1,6 +1,6 @@
 import * as ss from "superstruct";
 
-export interface Webhook {
+export interface WebhookRequest {
   id: string;
   url: string;
   filter: string;
@@ -22,7 +22,7 @@ export type JSONValue =
 
 export type NotificationPayload = {
   url: string;
-  event: JSONValue;
+  data: JSONValue;
 };
 
 export const RegistrationParams = ss.object({

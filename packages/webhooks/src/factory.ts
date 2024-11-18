@@ -5,7 +5,7 @@ import { DataSource } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { WebhookNotifier } from "./notifier";
 import { DepositStatusProcessor } from "./eventProcessors";
-import { WebhookRequests } from "./webhookRequests";
+import { WebhookRequestRepository } from "./database/webhookRequestRepository";
 import { WebhookRouter } from "./router";
 
 type Config = {
@@ -19,11 +19,7 @@ type Dependencies = {
 
 export function WebhookFactory(config: Config, deps: Dependencies) {
   const { logger, postgres } = deps;
-  const notifier = new WebhookNotifier({
-    logger,
-    pending: new MemoryStore(),
-    completed: new MemoryStore(),
-  });
+  const notifier = new WebhookNotifier({ logger });
   assert(
     config.enabledEventProcessors.length,
     "No webhooks enabled, specify one in config",
@@ -36,15 +32,15 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
     },
   );
   config.enabledEventProcessors.forEach((name) => {
-    const hooks = new WebhookRequests(new MemoryStore());
+    const hooks = new WebhookRequestRepository(new MemoryStore());
     switch (name) {
       // add more webhook types here
       case "DepositStatus": {
-        eventProcessorManager.registerWebhookProcessor(
+        eventProcessorManager.registerEventProcessor(
           name,
           new DepositStatusProcessor({
             postgres,
-            hooks,
+            webhookRequests: hooks,
             notify: notifier.notify,
           }),
         );
@@ -59,7 +55,6 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
   return {
     eventProcessorManager,
     router,
-    notifier,
   };
 }
 export type WebhookFactory = ReturnType<typeof WebhookFactory>;

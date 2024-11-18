@@ -1,5 +1,8 @@
 import { MemoryStore } from "./store";
-import { WebhookClientManager, WebhookClient } from "./clients";
+import {
+  WebhookClientRepository,
+  WebhookClient,
+} from "./database/webhookClientRepository";
 import { DataSource, entities } from "@repo/indexer-database";
 import { Logger } from "winston";
 import assert from "assert";
@@ -22,7 +25,7 @@ export type Dependencies = {
 };
 export class EventProcessorManager {
   private logger: Logger;
-  private clientManager: WebhookClientManager;
+  private clientRepository: WebhookClientRepository;
   private processors = new Map<string, IEventProcessor>();
 
   constructor(
@@ -30,10 +33,10 @@ export class EventProcessorManager {
     deps: Dependencies,
   ) {
     this.logger = deps.logger;
-    this.clientManager = new WebhookClientManager(new MemoryStore()); // Initialize the client manager
+    this.clientRepository = new WebhookClientRepository(new MemoryStore()); // Initialize the client manager
   }
   // Register a new type of webhook processor able to be written to
-  public registerWebhookProcessor(name: string, webhook: IEventProcessor) {
+  public registerEventProcessor(name: string, webhook: IEventProcessor) {
     assert(
       !this.processors.has(name),
       `Webhook with that name already exists: ${name}`,
@@ -41,13 +44,16 @@ export class EventProcessorManager {
     this.processors.set(name, webhook);
   }
 
-  private getWebhook(name: string) {
-    const webhook = this.processors.get(name);
-    assert(webhook, "Webhook does not exist by type: ${event.type}");
-    return webhook;
+  private getEventProcessor(name: string) {
+    const eventProcessor = this.processors.get(name);
+    assert(
+      eventProcessor,
+      "EventProcessor does not exist by type: ${event.type}",
+    );
+    return eventProcessor;
   }
   write(event: EventType): void {
-    const webhook = this.getWebhook(event.type);
+    const webhook = this.getEventProcessor(event.type);
     webhook.write(event.payload);
   }
 
@@ -57,7 +63,7 @@ export class EventProcessorManager {
   ) {
     if (this.config.requireApiKey) {
       if (apiKey === undefined) throw new Error("Api Key required");
-      const clients = await this.clientManager.findClientsByApiKey(apiKey);
+      const clients = await this.clientRepository.findClientsByApiKey(apiKey);
       assert(clients.length > 0, "Invalid api key");
       const urlDomain = new URL(params.url).hostname;
       const isDevDomain =
@@ -72,7 +78,7 @@ export class EventProcessorManager {
         );
       }
     }
-    const webhook = this.getWebhook(params.type);
+    const webhook = this.getEventProcessor(params.type);
     return webhook.register(params.url, params.filter);
   }
 
@@ -82,11 +88,11 @@ export class EventProcessorManager {
     apiKey?: string,
   ) {
     // Assuming the IWebhook interface has an unregister method
-    const webhook = this.getWebhook(params.type);
+    const webhook = this.getEventProcessor(params.type);
     return webhook.unregister(params.id);
   }
 
   async registerClient(client: WebhookClient) {
-    return this.clientManager.registerClient(client);
+    return this.clientRepository.registerClient(client);
   }
 }
