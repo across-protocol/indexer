@@ -3,13 +3,13 @@ import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import * as utils from "../utils";
 
-export class SpokePoolRepository extends dbUtils.BaseRepository {
+export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
     private chunkSize = 2000,
   ) {
-    super(postgres, logger, true);
+    super(postgres, logger);
   }
 
   public updateDepositEventWithIntegratorId(id: number, integratorId: string) {
