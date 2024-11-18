@@ -12,7 +12,7 @@ export type EventProcessorRecord = Record<string, IEventProcessor>;
 
 type EventType = {
   type: string;
-  payload: JSONValue;
+  event: JSONValue;
 };
 
 export type Config = {
@@ -54,7 +54,7 @@ export class EventProcessorManager {
   }
   write(event: EventType): void {
     const webhook = this.getEventProcessor(event.type);
-    webhook.write(event.payload);
+    webhook.write(event.event);
   }
 
   async registerWebhook(

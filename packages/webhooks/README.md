@@ -11,10 +11,8 @@ The `factory.ts` file provides a `WebhookFactory` function that sets up the webh
 To use the `WebhookFactory`, you need to provide a configuration object and dependencies:
 
 - **Config**: This object should include:
-
-  - `express`: Configuration for the express server, such as the port number.
-  - `webhooks`: Configuration for the webhooks, including whether an API key is required.
-  - `enable`: An array of webhook types to enable, e.g., `["DepositStatus"]`.
+  - requireApiKey: boolean; - Should registration of new webhooks require an api key
+  - enabledEventProcessors: string[]; - What event processors should be enabled, like 'DepositStatus'
 
 - **Dependencies**: This object should include:
   - `postgres`: An instance of `DataSource` for database interactions.
@@ -23,40 +21,40 @@ To use the `WebhookFactory`, you need to provide a configuration object and depe
 ### Adding an event Example
 
 ```js
-import { WebhookFactory } from "./webhooks";
+import { WebhookFactory } from "@repo/webhooks";
 import { Logger } from "winston";
 import { DataSource } from "@repo/indexer-database";
 
-const config = {
-  // you need to specify a webhook to enable
-  enable: ["DepositStatus"],
-  express: {
-    port: 3000,
-  },
-  webhooks: {
-    requireApiKey: false,
-  },
-};
-const dependencies = {
-  postgres: Datasource,
-  logger: Logger,
-};
-const webhookLib = WebhookFactory(config, dependencies);
+  const webhooks = WebhookFactory(
+    {
+      requireApiKey: false,
+      enabledEventProcessors: ["DepositStatus"],
+    },
+    { postgres, logger },
+  );
 
 // respond to some event in the form:
 // type EventType = {
 //     type:string,
-//     payload:JSONValue
+//     event:JSONValue
 // }
-webhookLib.webhooks.write({
+// webhooks will be called after a successful write
+webhooks.EventProcessorManager.write({
   type: "DepositStatus",
-  payload: {
+  event: {
     originChainId,
     depositTxHash,
     depositId,
     status,
   },
 });
+
+
+// Connecting the router to express app
+// It will automatically create a /webhooks route to POST to to create hook
+const app = express();
+app.use("/", webhooks.router);
+
 ```
 
 # Webhooks API Documentation
