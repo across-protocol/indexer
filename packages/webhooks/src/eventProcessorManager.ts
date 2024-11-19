@@ -52,10 +52,10 @@ export class EventProcessorManager {
     );
     return eventProcessor;
   }
-  write(event: EventType): void {
+  write = (event: EventType): void => {
     const webhook = this.getEventProcessor(event.type);
     webhook.write(event.event);
-  }
+  };
 
   async registerWebhook(
     params: { type: string; url: string; filter: JSONValue },

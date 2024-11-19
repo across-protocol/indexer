@@ -8,9 +8,13 @@ import { DepositStatusProcessor } from "./eventProcessors";
 import { WebhookRequestRepository } from "./database/webhookRequestRepository";
 import { WebhookRouter } from "./router";
 
-type Config = {
+export enum WebhookTypes {
+  DepositStatus = "DepositStatus",
+}
+
+export type Config = {
   requireApiKey: boolean;
-  enabledEventProcessors: string[];
+  enabledWebhooks: WebhookTypes[];
 };
 type Dependencies = {
   postgres: DataSource;
@@ -21,7 +25,7 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
   const { logger, postgres } = deps;
   const notifier = new WebhookNotifier({ logger });
   assert(
-    config.enabledEventProcessors.length,
+    config.enabledWebhooks.length,
     "No webhooks enabled, specify one in config",
   );
   const eventProcessorManager = new EventProcessorManager(
@@ -31,7 +35,7 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
       logger,
     },
   );
-  config.enabledEventProcessors.forEach((name) => {
+  config.enabledWebhooks.forEach((name) => {
     const hooks = new WebhookRequestRepository(new MemoryStore());
     switch (name) {
       // add more webhook types here
@@ -53,7 +57,7 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
   });
   const router = WebhookRouter({ eventProcessorManager });
   return {
-    eventProcessorManager,
+    write: eventProcessorManager.write,
     router,
   };
 }

@@ -88,7 +88,7 @@ export async function Main(
   const webhooks = Webhooks.WebhookFactory(
     {
       requireApiKey: false,
-      enabledEventProcessors: ["DepositStatus"],
+      enabledWebhooks: [Webhooks.WebhookTypes.DepositStatus],
     },
     { postgres, logger },
   );

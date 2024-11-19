@@ -12,7 +12,7 @@ To use the `WebhookFactory`, you need to provide a configuration object and depe
 
 - **Config**: This object should include:
   - requireApiKey: boolean; - Should registration of new webhooks require an api key
-  - enabledEventProcessors: string[]; - What event processors should be enabled, like 'DepositStatus'
+  - enabledWebhooks: WebhookTypes[]; - What event processors should be enabled, like 'DepositStatus'
 
 - **Dependencies**: This object should include:
   - `postgres`: An instance of `DataSource` for database interactions.
@@ -21,14 +21,14 @@ To use the `WebhookFactory`, you need to provide a configuration object and depe
 ### Adding an event Example
 
 ```js
-import { WebhookFactory } from "@repo/webhooks";
+import { WebhookFactory, WebhookTypes } from "@repo/webhooks";
 import { Logger } from "winston";
 import { DataSource } from "@repo/indexer-database";
 
   const webhooks = WebhookFactory(
     {
       requireApiKey: false,
-      enabledEventProcessors: ["DepositStatus"],
+      enableWebhooks: [WebhookTypes.DepositStatus],
     },
     { postgres, logger },
   );
@@ -39,7 +39,7 @@ import { DataSource } from "@repo/indexer-database";
 //     event:JSONValue
 // }
 // webhooks will be called after a successful write
-webhooks.EventProcessorManager.write({
+webhooks.write({
   type: "DepositStatus",
   event: {
     originChainId,
