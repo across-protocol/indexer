@@ -2,6 +2,8 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 
+import { AlertingService } from "@repo/alerting";
+
 import { connectToDatabase } from "./database/database.provider";
 import * as parseEnv from "./parseEnv";
 import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
@@ -49,7 +51,11 @@ async function initializeRedis(
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
-  const { redisConfig, postgresConfig, hubChainId } = config;
+  const { redisConfig, postgresConfig, hubChainId, alertingConfig } = config;
+  const alertingService: AlertingService | undefined = alertingConfig.slack
+    .enabled
+    ? new AlertingService(alertingConfig, logger)
+    : undefined;
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
@@ -87,6 +93,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new SpokePoolRepository(postgres, logger),
     redisCache,
     indexerQueuesService,
+    alertingService,
   );
   const bundleServicesManager = new BundleServicesManager(
     config,
@@ -98,6 +105,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     configStoreClientFactory,
     retryProvidersFactory,
     new BundleRepository(postgres, logger, true),
+    alertingService,
   );
 
   // Set up message workers

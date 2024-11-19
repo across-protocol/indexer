@@ -2,7 +2,10 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
+import { AlertingService } from "@repo/alerting";
+
 import { BaseIndexer } from "../generics";
 import {
   BlockRangeInsertType,
@@ -24,6 +27,7 @@ export type BundleConfig = {
   hubPoolClientFactory: utils.HubPoolClientFactory;
   spokePoolClientFactory: utils.SpokePoolClientFactory;
   bundleRepository: BundleRepository;
+  alertingService?: AlertingService;
 };
 
 export class BundleIncludedEventsService extends BaseIndexer {
@@ -31,28 +35,20 @@ export class BundleIncludedEventsService extends BaseIndexer {
   private configStoreClient: across.clients.AcrossConfigStoreClient;
 
   constructor(private readonly config: BundleConfig) {
-    super(config.logger, "BundleIncludedEventsService");
+    super(config.logger, "BundleIncludedEventsService", config.alertingService);
   }
 
   protected async indexerLogic(): Promise<void> {
-    try {
-      this.config.logger.info({
-        at: "BundleIncludedEventsService#indexerLogic",
-        message: "Starting BundleIncludedEventsService",
-      });
-      await this.assignSpokePoolEventsToExecutedBundles();
+    this.config.logger.info({
+      at: "BundleIncludedEventsService#indexerLogic",
+      message: "Starting BundleIncludedEventsService",
+    });
+    await this.assignSpokePoolEventsToExecutedBundles();
 
-      this.config.logger.info({
-        at: "BundleIncludedEventsService#indexerLogic",
-        message: "Finished BundleIncludedEventsService",
-      });
-    } catch (error) {
-      this.logger.error({
-        at: "BundleIncludedEventsService#indexerLogic",
-        message: "Error in BundleIncludedEventsService",
-        error,
-      });
-    }
+    this.config.logger.info({
+      at: "BundleIncludedEventsService#indexerLogic",
+      message: "Finished BundleIncludedEventsService",
+    });
   }
 
   protected async initialize(): Promise<void> {

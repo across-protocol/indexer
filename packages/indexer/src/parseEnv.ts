@@ -1,6 +1,9 @@
 import assert from "assert";
 import * as s from "superstruct";
+
 import { DatabaseConfig } from "@repo/indexer-database";
+import { AlertingConfig } from "@repo/alerting";
+
 import { getNoTtlBlockDistance } from "./web3/constants";
 
 export type Config = {
@@ -12,6 +15,7 @@ export type Config = {
   enableBundleEventsProcessor: boolean;
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
+  alertingConfig: AlertingConfig;
 };
 export type RedisConfig = {
   host: string;
@@ -64,6 +68,20 @@ function parsePostgresConfig(
     user: env.DATABASE_USER,
     password: env.DATABASE_PASSWORD,
     dbName: env.DATABASE_NAME,
+  };
+}
+
+function parseAlertingConfig(): AlertingConfig {
+  const enabled = process.env.ENABLE_SLACK_WEBHOOK === "true";
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+
+  if (enabled) assert(webhookUrl, "requires SLACK_WEBHOOK_URL");
+
+  return {
+    slack: {
+      enabled,
+      webhookUrl,
+    },
   };
 }
 
@@ -155,6 +173,7 @@ export function envToConfig(env: Env): Config {
   const spokePoolChainsEnabled = parseArray(env.SPOKEPOOL_CHAINS_ENABLED).map(
     parseNumber,
   );
+  const alertingConfig = parseAlertingConfig();
   assert(
     allProviderConfigs.length > 0,
     `Requires at least one RPC_PROVIDER_URLS_CHAIN_ID`,
@@ -191,5 +210,6 @@ export function envToConfig(env: Env): Config {
     enableBundleEventsProcessor,
     enableBundleIncludedEventsService,
     enableBundleBuilder,
+    alertingConfig,
   };
 }

@@ -3,6 +3,9 @@ import { entities } from "@repo/indexer-database";
 import assert from "assert";
 import Redis from "ioredis";
 import winston from "winston";
+
+import { AlertingService } from "@repo/alerting";
+
 import { BundleRepository } from "../database/BundleRepository";
 import { BaseIndexer } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";
@@ -40,6 +43,7 @@ type BundleBuilderConfig = {
   configStoreClientFactory: ConfigStoreClientFactory;
   spokePoolClientFactory: SpokePoolClientFactory;
   hubChainId: number;
+  alertingService?: AlertingService;
 };
 
 export class BundleBuilderService extends BaseIndexer {
@@ -47,7 +51,7 @@ export class BundleBuilderService extends BaseIndexer {
   private proposedBundleCache: BundleLeavesCache;
   private hubBalanceCache: HubPoolBalanceCache;
   constructor(private config: BundleBuilderConfig) {
-    super(config.logger, "bundleBuilder");
+    super(config.logger, "bundleBuilder", config.alertingService);
   }
 
   protected async indexerLogic(): Promise<void> {

@@ -3,7 +3,10 @@ import { Config } from "../parseEnv";
 import { BundleBuilderService } from "./BundleBuilderService";
 import { BundleEventsProcessor } from "./bundles";
 import { Redis } from "ioredis";
+
 import { DataSource } from "@repo/indexer-database";
+import { AlertingService } from "@repo/alerting";
+
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
@@ -28,6 +31,7 @@ export class BundleServicesManager {
     private configStoreClientFactory: ConfigStoreClientFactory,
     private retryProvidersFactory: RetryProvidersFactory,
     private bundleRepository: BundleRepository,
+    private alertingService?: AlertingService,
   ) {}
   public start() {
     return Promise.all([
@@ -56,6 +60,7 @@ export class BundleServicesManager {
       hubPoolClientFactory: this.hubPoolClientFactory,
       spokePoolClientFactory: this.spokePoolClientFactory,
       bundleRepository: this.bundleRepository,
+      alertingService: this.alertingService,
     });
     return this.bundleIncludedEventsService.start(10);
   }
@@ -70,6 +75,7 @@ export class BundleServicesManager {
       redis: this.redis,
       postgres: this.postgres,
       bundleRepository: this.bundleRepository,
+      alertingService: this.alertingService,
     });
     return this.bundleEventsProcessor.start(10);
   }
@@ -89,6 +95,7 @@ export class BundleServicesManager {
       spokePoolClientFactory: this.spokePoolClientFactory,
       configStoreClientFactory: this.configStoreClientFactory,
       hubChainId: this.config.hubChainId,
+      alertingService: this.alertingService,
     });
     return this.bundleBuilderService.start(10);
   }

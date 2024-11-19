@@ -5,6 +5,7 @@ import { Logger } from "winston";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { RedisCache } from "../../redis/redisCache";
+import { AlertingService, SlackMessageFormatter } from "@repo/alerting";
 
 export type ConstructorConfig = {
   /** Time to wait before going to the next block ranges. */
@@ -34,6 +35,7 @@ export class Indexer {
     private rpcProvider: ethers.providers.JsonRpcProvider,
     private redisCache: RedisCache,
     private logger: Logger,
+    private alertingService?: AlertingService,
   ) {
     this.stopRequested = false;
   }
@@ -69,10 +71,12 @@ export class Indexer {
         }
         blockRangeProcessedSuccessfully = true;
       } catch (error) {
+        this.postErrorOnSlack(error, blockRangeResult);
         this.logger.error({
           at: "Indexer::start",
           message: "Error processing block range",
           dataIdentifier: this.dataHandler.getDataIdentifier(),
+          blockRangeResult,
           error,
         });
         blockRangeProcessedSuccessfully = false;
@@ -100,6 +104,39 @@ export class Indexer {
       message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
     });
     this.stopRequested = true;
+  }
+
+  private postErrorOnSlack(error: any, blockRangeResult?: BlockRangeResult) {
+    this.alertingService
+      ?.postMessageOnSlack(
+        SlackMessageFormatter.formatMessage({
+          header: `Indexer ${this.dataHandler.getDataIdentifier()}`,
+          messages: [
+            "Error processing block range",
+            "```" +
+              JSON.stringify(
+                {
+                  blockRangeResult,
+                  error:
+                    (error as Error).stack ||
+                    (error as Error).message ||
+                    (error as Error).name ||
+                    "Unknown error",
+                },
+                undefined,
+                2,
+              ) +
+              "```",
+          ],
+        }),
+      )
+      .catch((err) => {
+        this.logger.error({
+          at: "Indexer::start",
+          message: "Error posting message on slack",
+          error: err,
+        });
+      });
   }
 
   /**

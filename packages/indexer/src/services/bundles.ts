@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import winston from "winston";
 import { DataSource } from "@repo/indexer-database";
+import { AlertingService } from "@repo/alerting";
 import { BaseIndexer } from "../generics";
 import {
   BlockRangeInsertType,
@@ -18,6 +19,7 @@ export type BundleConfig = {
   redis: Redis | undefined;
   postgres: DataSource;
   bundleRepository: BundleRepository;
+  alertingService?: AlertingService;
 };
 
 /**
@@ -32,29 +34,25 @@ class ConfigurationMalformedError extends Error {
 
 export class BundleEventsProcessor extends BaseIndexer {
   constructor(private readonly config: BundleConfig) {
-    super(config.logger, "bundle");
+    super(config.logger, "bundle", config.alertingService);
   }
 
   protected async indexerLogic(): Promise<void> {
-    try {
-      this.config.logger.info({
-        at: "BundleEventsProcessor#indexerLogic",
-        message: "Starting bundle events processor",
-      });
-      const { logger, bundleRepository } = this.config;
-      await assignBundleToProposedEvent(bundleRepository, logger);
-      await assignDisputeEventToBundle(bundleRepository, logger);
-      await assignCanceledEventToBundle(bundleRepository, logger);
-      await assignBundleRangesToProposal(bundleRepository, logger);
-      await assignExecutionsToBundle(bundleRepository, logger);
-      await assignBundleExecutedStatus(bundleRepository, logger);
-      this.config.logger.info({
-        at: "BundleEventsProcessor#indexerLogic",
-        message: "Finished bundle events processor",
-      });
-    } catch (error) {
-      console.log(error);
-    }
+    this.config.logger.info({
+      at: "BundleEventsProcessor#indexerLogic",
+      message: "Starting bundle events processor",
+    });
+    const { logger, bundleRepository } = this.config;
+    await assignBundleToProposedEvent(bundleRepository, logger);
+    await assignDisputeEventToBundle(bundleRepository, logger);
+    await assignCanceledEventToBundle(bundleRepository, logger);
+    await assignBundleRangesToProposal(bundleRepository, logger);
+    await assignExecutionsToBundle(bundleRepository, logger);
+    await assignBundleExecutedStatus(bundleRepository, logger);
+    this.config.logger.info({
+      at: "BundleEventsProcessor#indexerLogic",
+      message: "Finished bundle events processor",
+    });
   }
 
   protected async initialize(): Promise<void> {

@@ -1,6 +1,7 @@
 import { Logger } from "winston";
 
 import { DataSource } from "@repo/indexer-database";
+import { AlertingService } from "@repo/alerting";
 
 import { Config } from "../../parseEnv";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
@@ -39,6 +40,7 @@ export class AcrossIndexerManager {
     private spokePoolRepository: SpokePoolRepository,
     private redisCache: RedisCache,
     private indexerQueuesService: IndexerQueuesService,
+    private alertingService?: AlertingService,
   ) {}
 
   public async start() {
@@ -76,6 +78,7 @@ export class AcrossIndexerManager {
       this.retryProvidersFactory.getProviderForChainId(this.config.hubChainId),
       this.redisCache,
       this.logger,
+      this.alertingService,
     );
 
     return this.hubPoolIndexer.start();
@@ -106,6 +109,7 @@ export class AcrossIndexerManager {
           this.retryProvidersFactory.getProviderForChainId(chainId),
           this.redisCache,
           this.logger,
+          this.alertingService,
         );
         return spokePoolIndexer;
       },

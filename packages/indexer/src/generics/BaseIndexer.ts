@@ -1,6 +1,8 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
 
+import { AlertingService, SlackMessageFormatter } from "@repo/alerting";
+
 /**
  * Base indexer class that all indexers should extend
  */
@@ -10,6 +12,7 @@ export abstract class BaseIndexer {
   constructor(
     protected readonly logger: winston.Logger,
     private readonly name: string,
+    private readonly alertingService?: AlertingService,
   ) {
     this.logger.debug({
       at: "BaseIndexer#constructor",
@@ -44,7 +47,16 @@ export abstract class BaseIndexer {
 
     this.stopRequested = false;
     do {
-      await this.indexerLogic();
+      try {
+        await this.indexerLogic();
+      } catch (error) {
+        this.postErrorOnSlack(error);
+        this.logger.error({
+          at: "BaseIndexer::start",
+          message: `Error processing ${this.name}`,
+          error,
+        });
+      }
       await across.utils.delay(delay);
     } while (!this.stopRequested);
 
@@ -75,4 +87,35 @@ export abstract class BaseIndexer {
    * The initialization logic of the indexer. This method should be implemented by the child class and is expected to be run before the indexer starts running.
    */
   protected abstract initialize(): Promise<void>;
+
+  private postErrorOnSlack(error: any) {
+    this.alertingService
+      ?.postMessageOnSlack(
+        SlackMessageFormatter.formatMessage({
+          header: `BaseIndexer ${this.name}`,
+          messages: [
+            "```" +
+              JSON.stringify(
+                {
+                  error:
+                    (error as Error).stack ||
+                    (error as Error).message ||
+                    (error as Error).name ||
+                    "Unknown error",
+                },
+                undefined,
+                2,
+              ) +
+              "```",
+          ],
+        }),
+      )
+      .catch((err) => {
+        this.logger.error({
+          at: "Indexer::start",
+          message: "Error posting message on slack",
+          error: err,
+        });
+      });
+  }
 }
