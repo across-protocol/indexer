@@ -5,8 +5,8 @@ import * as routers from "./routers";
 import winston from "winston";
 import { type Router } from "express";
 import Redis from "ioredis";
-import * as s from "superstruct";
 import * as Indexer from "@repo/indexer";
+import * as Webhooks from "@repo/webhooks";
 
 async function initializeRedis(
   config: Indexer.RedisConfig,
@@ -85,11 +85,19 @@ export async function Main(
   const postgres = await connectToDatabase(postgresConfig, logger);
   const redisConfig = Indexer.parseRedisConfig(env);
   const redis = await initializeRedis(redisConfig, logger);
+  const webhooks = Webhooks.WebhookFactory(
+    {
+      requireApiKey: false,
+      enabledWebhooks: [Webhooks.WebhookTypes.DepositStatus],
+    },
+    { postgres, logger },
+  );
 
   const allRouters: Record<string, Router> = {
     deposits: routers.deposits.getRouter(postgres),
     balances: routers.balances.getRouter(redis),
     statsPage: routers.statsPage.getRouter(postgres),
+    webhook: webhooks.router,
   };
   const app = ExpressApp(allRouters);
 
