@@ -1,14 +1,11 @@
 import assert from "assert";
+import * as ss from "superstruct";
+
 import { DataSource, entities } from "@repo/indexer-database";
 import { WebhookRequestRepository } from "../database/webhookRequestRepository";
-import {
-  JSONValue,
-  IEventProcessor,
-  NotificationPayload,
-  WebhookRequest,
-} from "../types";
+import { customId } from "../utils";
 
-import * as ss from "superstruct";
+import { IEventProcessor, NotificationPayload } from "../types";
 
 export const DepositStatusEvent = ss.object({
   originChainId: ss.number(),
@@ -25,7 +22,6 @@ export const DepositStatusFilter = ss.object({
 export type DepositStatusFilter = ss.Infer<typeof DepositStatusFilter>;
 
 export type Dependencies = {
-  webhookRequests: WebhookRequestRepository;
   notify: (params: NotificationPayload) => void;
   postgres: DataSource;
 };
@@ -33,14 +29,21 @@ export class DepositStatusProcessor implements IEventProcessor {
   private webhookRequests: WebhookRequestRepository;
   private notify: (params: NotificationPayload) => void;
   private postgres: DataSource;
+  // Type shoudl be uniqe across all event processors, this is to avoid colliding with multiple
+  // processors writing to the same tables
+  public type = "DepositStatus";
 
   constructor(deps: Dependencies) {
-    this.webhookRequests = deps.webhookRequests;
+    this.webhookRequests = new WebhookRequestRepository(deps.postgres);
     this.notify = deps.notify;
     this.postgres = deps.postgres;
   }
   private async _write(event: DepositStatusEvent): Promise<void> {
-    const filter = [event.originChainId, event.depositTxHash].join("!");
+    const filter = customId(
+      this.type,
+      event.originChainId,
+      event.depositTxHash,
+    );
     const hooks = await this.webhookRequests.filterWebhooks(filter);
     //TODO: unregister any hooks where event has reached terminal state
     await Promise.all(
@@ -61,8 +64,17 @@ export class DepositStatusProcessor implements IEventProcessor {
     url: string,
     params: DepositStatusFilter,
   ): Promise<string> {
-    const id = [url, params.originChainId, params.depositTxHash].join("!");
-    const filter = [params.originChainId, params.depositTxHash].join("!");
+    const id = customId(
+      this.type,
+      url,
+      params.originChainId,
+      params.depositTxHash,
+    );
+    const filter = customId(
+      this.type,
+      params.originChainId,
+      params.depositTxHash,
+    );
     assert(
       !(await this.webhookRequests.hasWebhook(id)),
       "This webhook already exists",
