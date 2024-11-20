@@ -1,12 +1,12 @@
 import assert from "assert";
 import { EventProcessorManager } from "./eventProcessorManager";
-import { MemoryStore } from "./store";
 import { DataSource } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { WebhookNotifier } from "./notifier";
 import { DepositStatusProcessor } from "./eventProcessors";
 import { WebhookRequestRepository } from "./database/webhookRequestRepository";
 import { WebhookRouter } from "./router";
+import { entities } from "@repo/indexer-database";
 
 export enum WebhookTypes {
   DepositStatus = "DepositStatus",
@@ -36,7 +36,6 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
     },
   );
   config.enabledWebhooks.forEach((name) => {
-    const hooks = new WebhookRequestRepository(new MemoryStore());
     switch (name) {
       // add more webhook types here
       case "DepositStatus": {
@@ -44,7 +43,6 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
           name,
           new DepositStatusProcessor({
             postgres,
-            webhookRequests: hooks,
             notify: notifier.notify,
           }),
         );
