@@ -3,13 +3,19 @@ import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import * as utils from "../utils";
 
-export class SpokePoolRepository extends dbUtils.BaseRepository {
+export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
-    private chunkSize = 2000,
+    private chunkSize = 100,
   ) {
-    super(postgres, logger, true);
+    super(postgres, logger);
+  }
+
+  public updateDepositEventWithIntegratorId(id: number, integratorId: string) {
+    return this.postgres
+      .getRepository(entities.V3FundsDeposited)
+      .update({ id }, { integratorId });
   }
 
   private formatRelayData(
@@ -45,11 +51,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
           entities.V3FundsDeposited,
           eventsChunk,
           ["depositId", "originChainId"],
-          lastFinalisedBlock,
+          ["relayHash", "transactionHash"],
         ),
       ),
     );
@@ -84,11 +90,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
           entities.FilledV3Relay,
           eventsChunk,
           ["relayHash"],
-          lastFinalisedBlock,
+          ["transactionHash"],
         ),
       ),
     );
@@ -110,11 +116,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
           entities.RequestedV3SlowFill,
           eventsChunk,
-          ["relayHash"],
-          lastFinalisedBlock,
+          ["depositId", "originChainId"],
+          ["relayHash", "transactionHash"],
         ),
       ),
     );
@@ -144,11 +150,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
           entities.RequestedSpeedUpV3Deposit,
           eventsChunk,
           ["depositId", "originChainId", "transactionHash", "logIndex"],
-          lastFinalisedBlock,
+          ["transactionHash"],
         ),
       ),
     );
@@ -171,11 +177,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
           entities.RelayedRootBundle,
           eventsChunk,
           ["chainId", "rootBundleId"],
-          lastFinalisedBlock,
+          ["transactionHash"],
         ),
       ),
     );
@@ -197,11 +203,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
           entities.ExecutedRelayerRefundRoot,
           eventsChunk,
           ["chainId", "rootBundleId", "leafId"],
-          lastFinalisedBlock,
+          ["transactionHash"],
         ),
       ),
     );
@@ -222,11 +228,11 @@ export class SpokePoolRepository extends dbUtils.BaseRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.insertWithFinalisationCheck(
+        this.saveAndHandleFinalisationBatch<entities.TokensBridged>(
           entities.TokensBridged,
           eventsChunk,
           ["chainId", "leafId", "l2TokenAddress", "transactionHash"],
-          lastFinalisedBlock,
+          ["transactionHash"],
         ),
       ),
     );
