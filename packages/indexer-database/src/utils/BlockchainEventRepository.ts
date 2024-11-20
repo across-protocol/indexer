@@ -69,13 +69,12 @@ export class BlockchainEventRepository {
     const dbEntity = await this.postgres
       .getRepository(entity)
       .findOne({ where });
+    const repository = this.postgres.getRepository(entity);
 
     if (!dbEntity) {
-      await this.postgres.getRepository(entity).insert(data);
+      await repository.insert(data);
       return {
-        data: (await this.postgres
-          .getRepository(entity)
-          .findOne({ where })) as Entity,
+        data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Inserted,
       };
     }
@@ -86,29 +85,23 @@ export class BlockchainEventRepository {
     const isFinalisedChanged = data.finalised && !dbEntity.finalised;
 
     if (isChanged) {
-      await this.postgres.getRepository(entity).update(where, data);
+      await repository.update(where, data);
       if (isFinalisedChanged) {
         return {
-          data: (await this.postgres
-            .getRepository(entity)
-            .findOne({ where })) as Entity,
+          data: (await repository.findOne({ where })) as Entity,
           result: SaveQueryResultType.UpdatedAndFinalised,
         };
       }
       return {
-        data: (await this.postgres
-          .getRepository(entity)
-          .findOne({ where })) as Entity,
+        data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Updated,
       };
     }
 
     if (isFinalisedChanged) {
-      await this.postgres.getRepository(entity).update(where, data);
+      await repository.update(where, data);
       return {
-        data: (await this.postgres
-          .getRepository(entity)
-          .findOne({ where })) as Entity,
+        data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Finalised,
       };
     }
