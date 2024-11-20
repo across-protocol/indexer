@@ -79,7 +79,7 @@ export class BlockchainEventRepository {
       };
     }
 
-    // Check if the any of values of the comparison keys have changed
+    // Check if any of the values of the comparison keys have changed
     const isChanged = comparisonKeys.some((key) => data[key] !== dbEntity[key]);
     // Check if the data moved in finalised state
     const isFinalisedChanged = data.finalised && !dbEntity.finalised;
