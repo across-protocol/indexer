@@ -34,3 +34,10 @@ export function asyncInterval(fn: () => Promise<void>, delay: number) {
     isStopped = true;
   };
 }
+
+export function exists<T>(val: T | null | undefined): val is T {
+  return val !== null && val !== undefined;
+}
+export function customId(...args: (string | number)[]): string {
+  return args.join("!");
+}

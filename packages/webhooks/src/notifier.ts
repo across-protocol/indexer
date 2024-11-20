@@ -1,6 +1,5 @@
 import { post } from "./utils";
 import { NotificationPayload } from "./types";
-import { AsyncStore } from "./store";
 import { Logger } from "winston";
 
 export type Dependencies = {
