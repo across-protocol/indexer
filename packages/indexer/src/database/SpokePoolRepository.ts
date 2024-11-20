@@ -7,7 +7,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
     postgres: DataSource,
     logger: winston.Logger,
-    private chunkSize = 2000,
+    private chunkSize = 100,
   ) {
     super(postgres, logger);
   }
@@ -48,7 +48,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, 100);
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
