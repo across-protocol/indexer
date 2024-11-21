@@ -1,11 +1,5 @@
 import * as ss from "superstruct";
 
-export interface WebhookRequest {
-  id: string;
-  url: string;
-  filter: string;
-}
-
 export interface IEventProcessor {
   write(event: JSONValue): void;
   register(url: string, params: JSONValue): Promise<string>;

@@ -1,6 +1,4 @@
-import { DataSource } from "typeorm";
-import { WebhookRequest } from "../types";
-import { entities } from "@repo/indexer-database";
+import { entities, DataSource } from "@repo/indexer-database";
 
 export class WebhookRequestRepository {
   private repository;
@@ -9,7 +7,7 @@ export class WebhookRequestRepository {
     this.repository = this.dataSource.getRepository(entities.WebhookRequest);
   }
 
-  public async register(webhook: WebhookRequest): Promise<void> {
+  public async register(webhook: entities.WebhookRequest): Promise<void> {
     const existingWebhook = await this.repository.findOne({
       where: { id: webhook.id },
     });
@@ -31,17 +29,19 @@ export class WebhookRequestRepository {
 
   public async getWebhook(
     webhookId: string,
-  ): Promise<WebhookRequest | undefined> {
+  ): Promise<entities.WebhookRequest | undefined> {
     return (
       (await this.repository.findOne({ where: { id: webhookId } })) ?? undefined
     );
   }
 
-  public async listWebhooks(): Promise<WebhookRequest[]> {
+  public async listWebhooks(): Promise<entities.WebhookRequest[]> {
     return this.repository.find();
   }
 
-  public async filterWebhooks(filter: string): Promise<WebhookRequest[]> {
+  public async filterWebhooks(
+    filter: string,
+  ): Promise<entities.WebhookRequest[]> {
     return this.repository.find({ where: { filter } });
   }
 
