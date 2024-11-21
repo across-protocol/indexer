@@ -31,7 +31,7 @@ export class DepositStatusProcessor implements IEventProcessor {
   private postgres: DataSource;
   // Type shoudl be uniqe across all event processors, this is to avoid colliding with multiple
   // processors writing to the same tables
-  public type = "DepositStatus";
+  static type = "DepositStatus";
 
   constructor(deps: Dependencies) {
     this.webhookRequests = new WebhookRequestRepository(deps.postgres);
@@ -40,7 +40,7 @@ export class DepositStatusProcessor implements IEventProcessor {
   }
   private async _write(event: DepositStatusEvent): Promise<void> {
     const filter = customId(
-      this.type,
+      DepositStatusProcessor.type,
       event.originChainId,
       event.depositTxHash,
     );
@@ -65,13 +65,13 @@ export class DepositStatusProcessor implements IEventProcessor {
     params: DepositStatusFilter,
   ): Promise<string> {
     const id = customId(
-      this.type,
+      DepositStatusProcessor.type,
       url,
       params.originChainId,
       params.depositTxHash,
     );
     const filter = customId(
-      this.type,
+      DepositStatusProcessor.type,
       params.originChainId,
       params.depositTxHash,
     );
