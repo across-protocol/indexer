@@ -1,5 +1,4 @@
-import { DataSource } from "typeorm";
-import { entities } from "@repo/indexer-database";
+import { entities, DataSource } from "@repo/indexer-database";
 
 // This class is intended to store integration clients allowed to use the webhook service.
 export class WebhookClientRepository {

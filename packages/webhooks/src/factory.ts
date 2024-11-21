@@ -4,9 +4,7 @@ import { DataSource } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { WebhookNotifier } from "./notifier";
 import { DepositStatusProcessor } from "./eventProcessors";
-import { WebhookRequestRepository } from "./database/webhookRequestRepository";
 import { WebhookRouter } from "./router";
-import { entities } from "@repo/indexer-database";
 
 export enum WebhookTypes {
   DepositStatus = "DepositStatus",
