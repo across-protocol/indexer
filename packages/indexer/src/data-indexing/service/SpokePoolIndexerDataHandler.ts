@@ -75,10 +75,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   ) {
     this.logger.info({
       at: "SpokePoolIndexerDataHandler::processBlockRange",
-      message: "Processing block range",
+      message: `Processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,
-      identifier: this.getDataIdentifier(),
     });
 
     if (!this.isInitialized) {
@@ -94,7 +93,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     }, 0);
     this.logger.info({
       at: "SpokePoolIndexerDataHandler::processBlockRange",
-      message: "Found events",
+      message: `Found events for ${this.getDataIdentifier()}`,
       events: {
         v3FundsDepositedEvents: events.v3FundsDepositedEvents.length,
         filledV3RelayEvents: events.filledV3RelayEvents.length,
@@ -106,7 +105,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         tokensBridgedEvents: events.tokensBridgedEvents.length,
       },
       blockRange,
-      identifier: this.getDataIdentifier(),
     });
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
