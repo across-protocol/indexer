@@ -71,7 +71,9 @@ export class SpokePoolProcessor {
     // here...
 
     await this.updateExpiredRelays();
-    await this.updateRefundedDepositsStatus();
+    const refundedDeposits = await this.updateRefundedDepositsStatus();
+    // TODO: for refunded deposits, notify status change to refunded
+    // here...
   }
 
   /**
@@ -166,9 +168,11 @@ export class SpokePoolProcessor {
    * Calls the database to find expired relays and looks for related
    * refunds in the bundle events table.
    * When a matching refund is found, updates the relay status to refunded
-   * @returns A void promise
+   * @returns An array with the updated relays
    */
-  private async updateRefundedDepositsStatus(): Promise<void> {
+  private async updateRefundedDepositsStatus(): Promise<
+    entities.RelayHashInfo[]
+  > {
     this.logger.info({
       at: "SpokePoolProcessor#updateRefundedDepositsStatus",
       message: `Updating status for refunded deposits`,
@@ -191,7 +195,7 @@ export class SpokePoolProcessor {
       .limit(100)
       .getMany();
 
-    let updatedRows = 0;
+    let updatedRows = [];
     for (const refundEvent of refundEvents) {
       // Get the relayerRefundRoot that included this refund
       const relayerRefundRoot = refundEvent.bundle.relayerRefundRoot;
@@ -225,8 +229,10 @@ export class SpokePoolProcessor {
       if (!executedRelayerRefundRootEvent) continue;
 
       // If we found the execution of the relayer refund root, we can update the relay status
-      await this.postgres
-        .getRepository(entities.RelayHashInfo)
+      const relayHashInfoRepo = this.postgres.getRepository(
+        entities.RelayHashInfo,
+      );
+      await relayHashInfoRepo
         .createQueryBuilder()
         .update()
         .set({
@@ -237,14 +243,17 @@ export class SpokePoolProcessor {
           relayHash: refundEvent.relayHash,
         })
         .execute();
-
-      updatedRows += 1;
+      const updatedRow = await relayHashInfoRepo.findOne({
+        where: { relayHash: refundEvent.relayHash },
+      });
+      updatedRow && updatedRows.push(updatedRow);
     }
-    if (updatedRows > 0) {
+    if (updatedRows.length > 0) {
       this.logger.info({
         at: "SpokePoolProcessor#updateRefundedDepositsStatus",
-        message: `Updated ${updatedRows} refunded deposits`,
+        message: `Updated ${updatedRows.length} refunded deposits`,
       });
     }
+    return updatedRows;
   }
 }
