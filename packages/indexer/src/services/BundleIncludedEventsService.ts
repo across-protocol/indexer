@@ -1,13 +1,9 @@
-import { CHAIN_IDs } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
 import { DataSource, entities } from "@repo/indexer-database";
 import { BaseIndexer } from "../generics";
-import {
-  BlockRangeInsertType,
-  BundleRepository,
-} from "../database/BundleRepository";
+import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
 import { getBlockTime } from "../web3/constants";
 import {

@@ -71,7 +71,9 @@ export class SpokePoolProcessor {
     // here...
 
     await this.updateExpiredRelays();
-    await this.updateRefundedDepositsStatus();
+    const refundedDeposits = await this.updateRefundedDepositsStatus();
+    // TODO: for refunded deposits, notify status change to refunded
+    // here...
   }
 
   /**
@@ -166,45 +168,37 @@ export class SpokePoolProcessor {
    * Calls the database to find expired relays and looks for related
    * refunds in the bundle events table.
    * When a matching refund is found, updates the relay status to refunded
-   * @returns A void promise
+   * @returns An array with the updated relays
    */
-  private async updateRefundedDepositsStatus(): Promise<void> {
+  private async updateRefundedDepositsStatus(): Promise<
+    entities.RelayHashInfo[]
+  > {
     this.logger.info({
       at: "SpokePoolProcessor#updateRefundedDepositsStatus",
       message: `Updating status for refunded deposits`,
     });
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
     const bundleEventsRepository = this.postgres.getRepository(
       entities.BundleEvent,
     );
-
-    const expiredDeposits = await relayHashInfoRepository
-      .createQueryBuilder("rhi")
-      .select("rhi.relayHash")
-      .where("rhi.status = :expired", { expired: entities.RelayStatus.Expired })
+    const refundEvents = await bundleEventsRepository
+      .createQueryBuilder("be")
+      .innerJoinAndSelect("be.bundle", "bundle")
+      .innerJoin(entities.RelayHashInfo, "rhi", "be.relayHash = rhi.relayHash")
+      .where("be.type = :expiredDeposit", {
+        expiredDeposit: entities.BundleEventType.ExpiredDeposit,
+      })
+      .andWhere("rhi.status = :expired", {
+        expired: entities.RelayStatus.Expired,
+      })
       .andWhere("rhi.originChainId = :chainId", { chainId: this.chainId })
+      .orderBy("be.bundleId", "DESC")
       .limit(100)
       .getMany();
 
-    let updatedRows = 0;
-    for (const expiredDeposit of expiredDeposits) {
-      // Check if this deposited is associated with a bundle
-      const refundBundleEvent = await bundleEventsRepository
-        .createQueryBuilder("be")
-        .leftJoinAndSelect("bundle", "bundle", "be.bundleId = bundle.id")
-        .where("be.type = :expiredDeposit", {
-          expiredDeposit: entities.BundleEventType.ExpiredDeposit,
-        })
-        .andWhere("be.relayHash = :expiredDepositRelayHash", {
-          expiredDepositRelayHash: expiredDeposit.relayHash,
-        })
-        .getOne();
-      if (!refundBundleEvent) continue;
-
+    let updatedRows = [];
+    for (const refundEvent of refundEvents) {
       // Get the relayerRefundRoot that included this refund
-      const relayerRefundRoot = refundBundleEvent.bundle.relayerRefundRoot;
+      const relayerRefundRoot = refundEvent.bundle.relayerRefundRoot;
 
       // Look for a relayed root bundle event that matches the relayerRefundRoot
       const relayRootBundleRepo = this.postgres.getRepository(
@@ -235,7 +229,10 @@ export class SpokePoolProcessor {
       if (!executedRelayerRefundRootEvent) continue;
 
       // If we found the execution of the relayer refund root, we can update the relay status
-      await relayHashInfoRepository
+      const relayHashInfoRepo = this.postgres.getRepository(
+        entities.RelayHashInfo,
+      );
+      await relayHashInfoRepo
         .createQueryBuilder()
         .update()
         .set({
@@ -243,17 +240,20 @@ export class SpokePoolProcessor {
           depositRefundTxHash: executedRelayerRefundRootEvent.transactionHash,
         })
         .where("relayHash = :relayHash", {
-          relayHash: expiredDeposit.relayHash,
+          relayHash: refundEvent.relayHash,
         })
         .execute();
-
-      updatedRows += 1;
+      const updatedRow = await relayHashInfoRepo.findOne({
+        where: { relayHash: refundEvent.relayHash },
+      });
+      updatedRow && updatedRows.push(updatedRow);
     }
-    if (updatedRows > 0) {
+    if (updatedRows.length > 0) {
       this.logger.info({
         at: "SpokePoolProcessor#updateRefundedDepositsStatus",
-        message: `Updated ${updatedRows} refunded deposits`,
+        message: `Updated ${updatedRows.length} refunded deposits`,
       });
     }
+    return updatedRows;
   }
 }
