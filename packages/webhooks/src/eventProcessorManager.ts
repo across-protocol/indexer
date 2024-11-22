@@ -33,7 +33,7 @@ export class EventProcessorManager {
   }
   // Register a new type of webhook processor able to be written to
   public registerEventProcessor(name: string, webhook: IEventProcessor) {
-    this.logger.info(
+    this.logger.debug(
       `Attempting to register event processor with name: ${name}`,
     );
     assert(
@@ -41,7 +41,7 @@ export class EventProcessorManager {
       `Webhook with that name already exists: ${name}`,
     );
     this.processors.set(name, webhook);
-    this.logger.info(
+    this.logger.debug(
       `Successfully registered event processor with name: ${name}`,
     );
   }
@@ -60,23 +60,22 @@ export class EventProcessorManager {
   };
 
   async registerWebhook(
+    id: string,
     params: { type: string; url: string; filter: JSONValue },
     apiKey?: string,
   ) {
-    this.logger.info(
+    this.logger.debug(
       `Attempting to register webhook of type: ${params.type} with URL: ${params.url}`,
     );
+    let client;
     if (this.config.requireApiKey) {
       if (apiKey === undefined) throw new Error("Api Key required");
-      const clients = await this.clientRepository.findClientsByApiKey(apiKey);
-      assert(clients.length > 0, "Invalid api key");
+      client = await this.clientRepository.getClientByApiKey(apiKey);
       const urlDomain = new URL(params.url).hostname;
       const isDevDomain =
         urlDomain === "localhost" || urlDomain.startsWith("127.");
       if (!isDevDomain) {
-        const isDomainValid = clients.some((client) =>
-          client.domains.includes(urlDomain),
-        );
+        const isDomainValid = client.domains.includes(urlDomain);
         assert(
           isDomainValid,
           "The base URL of the provided webhook does not match any of the client domains",
@@ -84,8 +83,13 @@ export class EventProcessorManager {
       }
     }
     const webhook = this.getEventProcessor(params.type);
-    const result = await webhook.register(params.url, params.filter);
-    this.logger.info(`Successfully registered webhook with ID: ${result}`);
+    const result = await webhook.register(
+      id,
+      params.url,
+      params.filter,
+      client?.id,
+    );
+    this.logger.debug(`Successfully registered webhook with ID: ${result}`);
     return result;
   }
 
@@ -94,17 +98,19 @@ export class EventProcessorManager {
     params: { type: string; id: string },
     apiKey?: string,
   ) {
-    this.logger.info(
+    this.logger.debug(
       `Attempting to unregister webhook of type: ${params.type} with ID: ${params.id}`,
     );
     const webhook = this.getEventProcessor(params.type);
     await webhook.unregister(params.id);
-    this.logger.info(`Successfully unregistered webhook with ID: ${params.id}`);
+    this.logger.debug(
+      `Successfully unregistered webhook with ID: ${params.id}`,
+    );
   }
 
   async registerClient(client: entities.WebhookClient) {
-    this.logger.info(`Attempting to register client with ID: ${client.id}`);
+    this.logger.debug(`Attempting to register client with ID: ${client.id}`);
     await this.clientRepository.registerClient(client);
-    this.logger.info(`Successfully registered client with ID: ${client.id}`);
+    this.logger.debug(`Successfully registered client with ID: ${client.id}`);
   }
 }

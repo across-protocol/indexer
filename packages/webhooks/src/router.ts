@@ -2,6 +2,7 @@ import express from "express";
 import { EventProcessorManager } from "./eventProcessorManager";
 import * as ss from "superstruct";
 import bearerToken from "express-bearer-token";
+import { v4 as uuidv4 } from "uuid";
 
 type Dependencies = {
   eventProcessorManager: EventProcessorManager;
@@ -32,7 +33,9 @@ export function WebhookRouter(deps: Dependencies): express.Router {
     ) => {
       try {
         const parsedBody = RegistrationParams.create(req.body);
-        const id = await deps.eventProcessorManager.registerWebhook(
+        const id = uuidv4();
+        await deps.eventProcessorManager.registerWebhook(
+          id,
           parsedBody,
           req.token,
         );

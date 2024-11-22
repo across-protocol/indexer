@@ -1,4 +1,5 @@
 import { entities, DataSource } from "@repo/indexer-database";
+import assert from "assert";
 
 // This class is intended to store integration clients allowed to use the webhook service.
 export class WebhookClientRepository {
@@ -15,7 +16,7 @@ export class WebhookClientRepository {
     if (existingClient) {
       throw new Error(`Client with id ${client.id} already exists.`);
     }
-    await this.repository.save(client);
+    await this.repository.insert(client);
   }
 
   public async unregisterClient(clientId: string): Promise<void> {
@@ -40,9 +41,11 @@ export class WebhookClientRepository {
     return this.repository.find();
   }
 
-  public async findClientsByApiKey(
+  public async getClientByApiKey(
     apiKey: string,
-  ): Promise<entities.WebhookClient[]> {
-    return this.repository.find({ where: { apiKey } });
+  ): Promise<entities.WebhookClient> {
+    const result = await this.repository.findOne({ where: { apiKey } });
+    assert(result, "Invalid api key");
+    return result;
   }
 }
