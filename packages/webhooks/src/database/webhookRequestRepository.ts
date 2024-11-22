@@ -1,4 +1,6 @@
 import { entities, DataSource } from "@repo/indexer-database";
+import assert from "assert";
+import { exists } from "../utils";
 
 export class WebhookRequestRepository {
   private repository;
@@ -14,7 +16,7 @@ export class WebhookRequestRepository {
     if (existingWebhook) {
       throw new Error(`Webhook with id ${webhook.id} already exists.`);
     }
-    await this.repository.save(webhook);
+    await this.repository.insert(webhook);
   }
 
   public async unregister(webhookId: string): Promise<void> {
@@ -27,26 +29,28 @@ export class WebhookRequestRepository {
     await this.repository.delete({ id: webhookId });
   }
 
-  public async getWebhook(
+  public async getWebhookRequest(
     webhookId: string,
-  ): Promise<entities.WebhookRequest | undefined> {
-    return (
-      (await this.repository.findOne({ where: { id: webhookId } })) ?? undefined
-    );
+  ): Promise<entities.WebhookRequest> {
+    const result = await this.repository.findOne({ where: { id: webhookId } });
+    assert(result, "Webhook request not found");
+    return result;
   }
 
-  public async listWebhooks(): Promise<entities.WebhookRequest[]> {
+  public async listWebhookRequests(): Promise<entities.WebhookRequest[]> {
     return this.repository.find();
   }
 
-  public async filterWebhooks(
+  public async findWebhookRequestsByFilter(
     filter: string,
   ): Promise<entities.WebhookRequest[]> {
     return this.repository.find({ where: { filter } });
   }
 
-  public async hasWebhook(webhookId: string): Promise<boolean> {
-    const count = await this.repository.count({ where: { id: webhookId } });
-    return count > 0;
+  public async hasWebhookRequest(webhookId: string): Promise<boolean> {
+    const result = await this.repository.findOne({
+      where: { id: webhookId },
+    });
+    return exists(result);
   }
 }

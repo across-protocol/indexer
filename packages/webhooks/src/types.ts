@@ -2,7 +2,12 @@ import * as ss from "superstruct";
 
 export interface IEventProcessor {
   write(event: JSONValue): void;
-  register(url: string, params: JSONValue): Promise<string>;
+  register(
+    id: string,
+    url: string,
+    params: JSONValue,
+    clientId?: string,
+  ): Promise<string>;
   unregister(id: string): Promise<void>;
 }
 

@@ -36,13 +36,16 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
   config.enabledWebhooks.forEach((name) => {
     switch (name) {
       // add more webhook types here
-      case "DepositStatus": {
+      case WebhookTypes.DepositStatus: {
         eventProcessorManager.registerEventProcessor(
           name,
-          new DepositStatusProcessor({
-            postgres,
-            notify: notifier.notify,
-          }),
+          new DepositStatusProcessor(
+            {
+              postgres,
+              notify: notifier.notify,
+            },
+            WebhookTypes.DepositStatus,
+          ),
         );
         break;
       }

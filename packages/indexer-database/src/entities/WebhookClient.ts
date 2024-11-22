@@ -1,16 +1,16 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+import { Entity, PrimaryColumn, Column, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class WebhookClient {
   @Column()
   name: string;
 
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
   id: string;
 
-  @Column()
+  @Column({ unique: true })
   apiKey: string;
 
-  @Column("simple-array")
+  @Column("jsonb")
   domains: string[];
 }
