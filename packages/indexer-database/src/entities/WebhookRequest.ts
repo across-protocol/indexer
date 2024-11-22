@@ -10,4 +10,7 @@ export class WebhookRequest {
 
   @Column()
   filter: string;
+
+  @Column({ type: "text", nullable: true, default: undefined })
+  clientId?: string | undefined;
 }
