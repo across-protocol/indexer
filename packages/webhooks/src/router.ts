@@ -33,15 +33,12 @@ export function WebhookRouter(deps: Dependencies): express.Router {
     ) => {
       try {
         const parsedBody = RegistrationParams.create(req.body);
-        if (!req.token) {
+        const token = req.token;
+        if (!token) {
           throw new Error("API Key required");
         }
         const id = uuidv4();
-        await deps.eventProcessorManager.registerWebhook(
-          id,
-          parsedBody,
-          req.token as string,
-        );
+        await deps.eventProcessorManager.registerWebhook(id, parsedBody, token);
         res.status(201).send(id);
       } catch (error) {
         next(error);
