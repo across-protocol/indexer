@@ -6,7 +6,7 @@ export interface IEventProcessor {
     id: string,
     url: string,
     params: JSONValue,
-    clientId?: string,
+    clientId: number,
   ): Promise<string>;
   unregister(id: string): Promise<void>;
 }
@@ -22,6 +22,7 @@ export type JSONValue =
 export type NotificationPayload = {
   url: string;
   data: JSONValue;
+  apiKey: string;
 };
 
 export const RegistrationParams = ss.object({

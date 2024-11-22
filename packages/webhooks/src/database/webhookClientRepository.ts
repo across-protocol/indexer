@@ -19,7 +19,7 @@ export class WebhookClientRepository {
     await this.repository.insert(client);
   }
 
-  public async unregisterClient(clientId: string): Promise<void> {
+  public async unregisterClient(clientId: number): Promise<void> {
     const existingClient = await this.repository.findOne({
       where: { id: clientId },
     });
@@ -30,7 +30,7 @@ export class WebhookClientRepository {
   }
 
   public async getClient(
-    clientId: string,
+    clientId: number,
   ): Promise<entities.WebhookClient | undefined> {
     return (
       (await this.repository.findOne({ where: { id: clientId } })) ?? undefined
@@ -47,5 +47,12 @@ export class WebhookClientRepository {
     const result = await this.repository.findOne({ where: { apiKey } });
     assert(result, "Invalid api key");
     return result;
+  }
+
+  public async getWebhookClientById(
+    id: number,
+  ): Promise<entities.WebhookClient | undefined> {
+    const client = await this.repository.findOne({ where: { id } });
+    return client ?? undefined;
   }
 }

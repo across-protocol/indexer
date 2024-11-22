@@ -1,6 +1,7 @@
 import { Logger } from "winston";
 
 import { DataSource } from "@repo/indexer-database";
+import { eventProcessorManager } from "@repo/webhooks";
 
 import { Config } from "../../parseEnv";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
@@ -39,6 +40,7 @@ export class AcrossIndexerManager {
     private spokePoolRepository: SpokePoolRepository,
     private redisCache: RedisCache,
     private indexerQueuesService: IndexerQueuesService,
+    private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
   public async start() {
@@ -93,7 +95,12 @@ export class AcrossIndexerManager {
           this.hubPoolClientFactory,
           this.spokePoolClientFactory,
           this.spokePoolRepository,
-          new SpokePoolProcessor(this.postgres, this.logger, chainId),
+          new SpokePoolProcessor(
+            this.postgres,
+            this.logger,
+            chainId,
+            this.webhookWriteFn,
+          ),
           this.indexerQueuesService,
         );
         const spokePoolIndexer = new Indexer(

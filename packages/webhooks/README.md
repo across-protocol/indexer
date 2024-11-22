@@ -11,7 +11,6 @@ The `factory.ts` file provides a `WebhookFactory` function that sets up the webh
 To use the `WebhookFactory`, you need to provide a configuration object and dependencies:
 
 - **Config**: This object should include:
-  - requireApiKey: boolean; - Should registration of new webhooks require an api key
   - enabledWebhooks: WebhookTypes[]; - What event processors should be enabled, like 'DepositStatus'
 
 - **Dependencies**: This object should include:
@@ -27,8 +26,8 @@ import { DataSource } from "@repo/indexer-database";
 
   const webhooks = WebhookFactory(
     {
-      requireApiKey: false,
-      enableWebhooks: [WebhookTypes.DepositStatus],
+      enabledWebhooks: [WebhookTypes.DepositStatus],
+      enabledWebhookRequestWorkers: false,
     },
     { postgres, logger },
   );

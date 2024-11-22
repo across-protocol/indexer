@@ -57,10 +57,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   // Call write to kick off webhook calls
   const { write } = WebhookFactory(
     {
-      requireApiKey: false,
       enabledWebhooks: [WebhookTypes.DepositStatus],
+      enabledWebhookRequestWorkers: true,
     },
-    { postgres, logger },
+    { postgres, logger, redis },
   );
   // Retry providers factory
   const retryProvidersFactory = new RetryProvidersFactory(
@@ -96,6 +96,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new SpokePoolRepository(postgres, logger),
     redisCache,
     indexerQueuesService,
+    write,
   );
   const bundleServicesManager = new BundleServicesManager(
     config,
