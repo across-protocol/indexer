@@ -70,7 +70,10 @@ export class SpokePoolProcessor {
     // TODO: for new fills, notify status change to filled
     // here...
 
-    await this.updateExpiredRelays();
+    const expiredDeposits = await this.updateExpiredRelays();
+    // TODO: for expired deposits, notify status change to expired
+    // here...
+
     const refundedDeposits = await this.updateRefundedDepositsStatus();
     // TODO: for refunded deposits, notify status change to refunded
     // here...
@@ -135,9 +138,9 @@ export class SpokePoolProcessor {
 
   /**
    * Updates the status of expired relays originated from this processor's chain id
-   * @returns A void promise
+   * @returns An array with the updated relays
    */
-  private async updateExpiredRelays(): Promise<void> {
+  private async updateExpiredRelays(): Promise<entities.RelayHashInfo[]> {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
@@ -157,11 +160,17 @@ export class SpokePoolProcessor {
           entities.RelayStatus.SlowFillRequested,
         ],
       })
+      .returning("*")
       .execute();
-    this.logger.info({
-      at: "SpokePoolProcessor#updateExpiredRelays",
-      message: `Updated status for ${expiredDeposits.generatedMaps.length} expired relays`,
-    });
+
+    if ((expiredDeposits.affected ?? 0) > 0) {
+      this.logger.info({
+        at: "SpokePoolProcessor#updateExpiredRelays",
+        message: `Updated status for ${expiredDeposits.affected} expired relays`,
+      });
+    }
+
+    return expiredDeposits.raw;
   }
 
   /**
