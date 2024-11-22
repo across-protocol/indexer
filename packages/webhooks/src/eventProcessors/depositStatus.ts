@@ -84,18 +84,18 @@ export class DepositStatusProcessor implements IEventProcessor {
       url,
       clientId,
     });
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
-    const relayHashInfo = await relayHashInfoRepository.findOne({
-      where: params,
-    });
-    if (relayHashInfo)
-      this._write({
-        depositId: relayHashInfo.depositId,
-        status: relayHashInfo.status,
-        ...params,
-      });
+    // const relayHashInfoRepository = this.postgres.getRepository(
+    //   entities.RelayHashInfo,
+    // );
+    // const relayHashInfo = await relayHashInfoRepository.findOne({
+    //   where: params,
+    // });
+    // if (relayHashInfo)
+    //   this._write({
+    //     depositId: relayHashInfo.depositId,
+    //     status: relayHashInfo.status,
+    //     ...params,
+    //   });
     return id;
   }
   async register(id: string, url: string, params: unknown, clientId?: string) {
