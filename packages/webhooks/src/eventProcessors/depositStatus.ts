@@ -51,9 +51,11 @@ export class DepositStatusProcessor implements IEventProcessor {
     );
     const webhookRequests =
       await this.webhookRequests.findWebhookRequestsByFilter(filter);
-    const clientIds = webhookRequests.map((hook) => hook.clientId);
+    const uniqueClientIds = [
+      ...new Set(webhookRequests.map((hook) => hook.clientId)),
+    ];
     const clients = await Promise.all(
-      clientIds.map((id) =>
+      uniqueClientIds.map((id) =>
         this.webhookClientsRepository.getWebhookClientById(id),
       ),
     );
@@ -68,24 +70,22 @@ export class DepositStatusProcessor implements IEventProcessor {
       );
 
     //TODO: unregister any hooks where event has reached terminal state
-    await Promise.all(
-      webhookRequests.map((hook) => {
-        const client = clientsMap[hook.clientId];
-        if (client) {
-          this.notify({
-            url: hook.url,
-            data: { ...event, webhookRequestId: hook.id },
-            apiKey: client.apiKey,
-          });
-        } else {
-          this.logger.error({
-            at: "DepositStatusProcessor::_write",
-            message: `Client not found for webhook request ${hook.id}`,
-            webhookRequest: hook,
-          });
-        }
-      }),
-    );
+    webhookRequests.forEach((hook) => {
+      const client = clientsMap[hook.clientId];
+      if (client) {
+        this.notify({
+          url: hook.url,
+          data: { ...event, webhookRequestId: hook.id },
+          apiKey: client.apiKey,
+        });
+      } else {
+        this.logger.error({
+          at: "DepositStatusProcessor::_write",
+          message: `Client not found for webhook request ${hook.id}`,
+          webhookRequest: hook,
+        });
+      }
+    });
   }
 
   write(e: unknown) {
