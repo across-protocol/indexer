@@ -20,6 +20,7 @@ COPY packages/persistence-example/package.json ./packages/persistence-example/pa
 COPY packages/template/package.json ./packages/template/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
 COPY packages/webhooks/package.json ./packages/webhooks/package.json
+COPY packages/error-handling/package.json ./packages/error-handling/package.json
 
 # Build the dependencies into a node_modules folder
 RUN pnpm install --frozen-lockfile
