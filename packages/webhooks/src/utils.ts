@@ -1,10 +1,11 @@
 import { NotificationPayload } from "./types";
 export async function post(params: NotificationPayload): Promise<void> {
-  const { url, data } = params;
+  const { url, data, apiKey } = params;
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(data),
   });

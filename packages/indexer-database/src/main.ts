@@ -36,6 +36,9 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RootBundleExecutedJoinTable,
       // Others
       entities.RelayHashInfo,
+      // Webhooks
+      entities.WebhookRequest,
+      entities.WebhookClient,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

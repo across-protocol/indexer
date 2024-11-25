@@ -9,7 +9,9 @@ export class WebhookRequestRepository {
     this.repository = this.dataSource.getRepository(entities.WebhookRequest);
   }
 
-  public async register(webhook: entities.WebhookRequest): Promise<void> {
+  public async register(
+    webhook: Omit<entities.WebhookRequest, "createdAt">,
+  ): Promise<void> {
     const existingWebhook = await this.repository.findOne({
       where: { id: webhook.id },
     });
@@ -45,6 +47,13 @@ export class WebhookRequestRepository {
     filter: string,
   ): Promise<entities.WebhookRequest[]> {
     return this.repository.find({ where: { filter } });
+  }
+
+  public async findWebhookRequestsByFilterAndClient(
+    filter: string,
+    clientId: number,
+  ): Promise<entities.WebhookRequest[]> {
+    return this.repository.find({ where: { filter, clientId } });
   }
 
   public async hasWebhookRequest(webhookId: string): Promise<boolean> {

@@ -10,7 +10,9 @@ export type Dependencies = {
 export class BaseNotifier {
   private logger: Logger;
 
-  constructor(private deps: Dependencies) {}
+  constructor(private deps: Dependencies) {
+    this.logger = deps.logger;
+  }
 
   public notify = (payload: NotificationPayload): void => {
     this.deps.notify(payload).catch((error) => {

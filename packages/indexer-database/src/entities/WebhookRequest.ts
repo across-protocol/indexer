@@ -1,9 +1,21 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+import {
+  Entity,
+  PrimaryColumn,
+  Column,
+  Unique,
+  CreateDateColumn,
+  Index,
+} from "typeorm";
 
 @Entity()
+@Unique("UK_webhook_request_clientId_filter", ["clientId", "filter"])
+@Index("IX_webhook_request_filter", ["filter"])
 export class WebhookRequest {
   @PrimaryColumn()
   id: string;
+
+  @Column({ type: "integer" })
+  clientId: number;
 
   @Column()
   url: string;
@@ -11,6 +23,6 @@ export class WebhookRequest {
   @Column()
   filter: string;
 
-  @Column({ type: "text", nullable: true, default: undefined })
-  clientId?: string | undefined;
+  @CreateDateColumn()
+  createdAt: Date;
 }

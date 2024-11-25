@@ -1,14 +1,15 @@
-import { Entity, PrimaryColumn, Column, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 @Entity()
+@Unique("UK_webhook_client_api_key", ["apiKey"])
 export class WebhookClient {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column()
   name: string;
 
-  @PrimaryGeneratedColumn()
-  id: string;
-
-  @Column({ unique: true })
+  @Column()
   apiKey: string;
 
   @Column("jsonb")

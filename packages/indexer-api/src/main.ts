@@ -87,10 +87,10 @@ export async function Main(
   const redis = await initializeRedis(redisConfig, logger);
   const webhooks = Webhooks.WebhookFactory(
     {
-      requireApiKey: false,
       enabledWebhooks: [Webhooks.WebhookTypes.DepositStatus],
+      enabledWebhookRequestWorkers: false,
     },
-    { postgres, logger },
+    { postgres, logger, redis },
   );
 
   const allRouters: Record<string, Router> = {
