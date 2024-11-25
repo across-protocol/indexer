@@ -1,9 +1,13 @@
 import * as s from "superstruct";
 import { entities } from "@repo/indexer-database";
 
-const stringToInt = s.coerce(s.number(), s.string(), (value) =>
-  parseInt(value),
-);
+const stringToInt = s.coerce(s.number(), s.string(), (value) => {
+  // Ensure the value is a valid integer string
+  if (!/^-?\d+$/.test(value)) {
+    return value;
+  }
+  return parseInt(value, 10);
+});
 
 export const DepositsParams = s.object({
   depositor: s.optional(s.string()),
