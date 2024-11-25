@@ -1,6 +1,8 @@
 import { StatusCodes } from "http-status-codes";
 import { IndexerError } from "./IndexerError";
 
+export { StatusCodes };
+
 /**
  * Used to distinguish a similar design pattern as {@link IndexerError} but with
  * additional HTTP context
