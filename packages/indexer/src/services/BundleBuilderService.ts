@@ -63,8 +63,8 @@ export class BundleBuilderService extends BaseIndexer {
     // of heap memory errors from needing to aggregate too much historical data
     // from all the chains.
     if (!(await this.isCloseEnoughToHead(lastExecutedBundle.proposal))) {
-      this.logger.info({
-        at: "BundleBuilder#Processor#indexerLogic",
+      this.logger.debug({
+        at: "Indexer#BundleBuilderService#indexerLogic",
         message: "Last executed bundle is too far from head, skipping",
         lastExecutedBundleBlock: lastExecutedBundle.proposal.blockNumber,
       });
@@ -82,8 +82,8 @@ export class BundleBuilderService extends BaseIndexer {
       this.handleHubBalanceAggregation(lastExecutedBundle),
     ]);
 
-    this.logger.info({
-      at: "BundleBuilderService#indexerLogic",
+    this.logger.debug({
+      at: "Indexer#BundleBuilderService#indexerLogic",
       message: "Bundle builder loop completed",
       currentLoopResult: currentLoopResult.status,
       proposedLoopResult: proposedLoopResult.status,
@@ -171,9 +171,10 @@ export class BundleBuilderService extends BaseIndexer {
         // Confirm that our current bundle data is not empty
         if (!currentBundleData || currentBundleData.length === 0) {
           this.logger.error({
-            at: "BundleBuilder#Processor#handleHubBalanceAggregation",
+            at: "Indexer#BundleBuilderService#handleHubBalanceAggregation",
             message:
               "No current bundle data found. Ensure that the current bundle loop has been run.",
+            notificationPath: "across-indexer-error",
             l1Token,
           });
           return;
@@ -296,7 +297,7 @@ export class BundleBuilderService extends BaseIndexer {
     // If no proposed bundle is found, skip the rest of the logic
     if (!utils.isDefined(lastProposedBundle)) {
       this.logger.debug({
-        at: "BundleBuilder#Processor#handleProposedBundleLoop",
+        at: "Indexer#BundleBuilderService#handleProposedBundleLoop",
         message: "No proposed bundles found, skipping.",
       });
       // Clear the cache so that we don't have any stale data
@@ -373,8 +374,9 @@ export class BundleBuilderService extends BaseIndexer {
     // an ample lookback range
     if (!historicalProposal) {
       this.logger.error({
-        at: "BundleBuilder#Processor#callRange",
+        at: "Indexer#BundleBuilderService#callRange",
         message: "No historical proposal found",
+        notificationPath: "across-indexer-error",
       });
       throw new Error("No historical proposal found");
     }

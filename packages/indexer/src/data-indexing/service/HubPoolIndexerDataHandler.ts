@@ -50,8 +50,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
     lastFinalisedBlock: number,
   ) {
-    this.logger.info({
-      at: "HubPoolIndexerDataHandler::processBlockRange",
+    this.logger.debug({
+      at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Start processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,
@@ -64,8 +64,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     let events: FetchEventsResult;
 
     if (this.cachedFetchEventsResult) {
-      this.logger.info({
-        at: "HubPoolIndexerDataHandler::processBlockRange",
+      this.logger.debug({
+        at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
         message: `Using cached events for ${this.getDataIdentifier()}`,
       });
       events = this.cachedFetchEventsResult;
@@ -74,8 +74,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       this.cachedFetchEventsResult = events;
     }
 
-    this.logger.info({
-      at: "HubPoolIndexerDataHandler::processBlockRange",
+    this.logger.debug({
+      at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Fetched events ${this.getDataIdentifier()}`,
       events: {
         proposedRootBundleEvents: events.proposedRootBundleEvents.length,
@@ -88,8 +88,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       identifier: this.getDataIdentifier(),
     });
     await this.storeEvents(events, lastFinalisedBlock);
-    this.logger.info({
-      at: "HubPoolIndexerDataHandler::processBlockRange",
+    this.logger.debug({
+      at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Finished processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,

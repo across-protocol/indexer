@@ -37,8 +37,8 @@ export class BundleEventsProcessor extends BaseIndexer {
 
   protected async indexerLogic(): Promise<void> {
     try {
-      this.config.logger.info({
-        at: "BundleEventsProcessor#indexerLogic",
+      this.config.logger.debug({
+        at: "Indexer#BundleEventsProcessor#indexerLogic",
         message: "Starting bundle events processor",
       });
       const { logger, bundleRepository } = this.config;
@@ -48,8 +48,8 @@ export class BundleEventsProcessor extends BaseIndexer {
       await assignBundleRangesToProposal(bundleRepository, logger);
       await assignExecutionsToBundle(bundleRepository, logger);
       await assignBundleExecutedStatus(bundleRepository, logger);
-      this.config.logger.info({
-        at: "BundleEventsProcessor#indexerLogic",
+      this.config.logger.debug({
+        at: "Indexer#BundleEventsProcessor#indexerLogic",
         message: "Finished bundle events processor",
       });
     } catch (error) {
@@ -60,7 +60,7 @@ export class BundleEventsProcessor extends BaseIndexer {
   protected async initialize(): Promise<void> {
     if (!this.config.postgres) {
       this.logger.error({
-        at: "Bundles#Processor",
+        at: "Indexer#BundleEventsProcessor#initialize",
         message: "Postgres connection not provided",
       });
       throw new ConfigurationMalformedError();
@@ -83,8 +83,8 @@ function logResultOfAssignment(
   persistedRecordsCount: number,
 ): void {
   if (unassociatedRecordsCount > 0) {
-    logger.info({
-      at: `Bundles#assignToBundle`,
+    logger.debug({
+      at: `Indexer#BundleEventsProcessor#assignToBundle`,
       message: "Found and associated events with bundles",
       unassociatedRecordsCount,
       persistedRecordsCount,
@@ -198,7 +198,7 @@ async function assignExecutionsToBundle(
           );
         if (!proposedBundle) {
           logger.error({
-            at: "Bundles#assignExecutionsToBundle",
+            at: "Indexer#BundleEventsProcessor#assignExecutionsToBundle",
             message: "Unable to find a proposed bundle for the given execution",
             executionId: id,
           });
@@ -239,8 +239,8 @@ async function assignBundleRangesToProposal(
     dbRepository.retrieveUnassociatedCanceledEvents(),
   ]);
   if (unassociatedDisputes.length > 0 || unassociatedCancellations.length > 0) {
-    logger.info({
-      at: "Bundles#assignBundleRangesToProposal",
+    logger.debug({
+      at: "Indexer#BundleEventsProcessor#assignBundleRangesToProposal",
       message:
         "Unassociated disputes or cancellations found. Unable to assign ranges.",
       unassociatedDisputes: unassociatedDisputes.length,
@@ -342,8 +342,8 @@ async function assignBundleExecutedStatus(
 ): Promise<void> {
   const updateCount = await dbRepository.updateBundleExecutedStatus();
   if (updateCount) {
-    logger.info({
-      at: "Bundles#assignBundleExecutedStatus",
+    logger.debug({
+      at: "Indexer#BundleEventsProcessor#assignBundleExecutedStatus",
       message: "Updated bundles with executed status",
       bundlesUpdatedWithExecutedStatus: updateCount,
     });

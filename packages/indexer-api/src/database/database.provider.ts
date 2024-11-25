@@ -7,7 +7,7 @@ export async function connectToDatabase(
 ) {
   try {
     const database = await createDataSource(databaseConfig).initialize();
-    logger.info({
+    logger.debug({
       at: "IndexerAPI#connectToDatabase",
       message: "Postgres connection established",
     });
@@ -16,6 +16,7 @@ export async function connectToDatabase(
     logger.error({
       at: "IndexerAPI#connectToDatabase",
       message: "Unable to connect to database",
+      notificationPath: "across-indexer-error",
       error,
     });
     throw error;

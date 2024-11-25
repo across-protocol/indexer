@@ -51,8 +51,8 @@ export class Indexer {
         }
 
         if (!blockRangeResult?.blockRange) {
-          this.logger.info({
-            at: "Indexer::start",
+          this.logger.debug({
+            at: "Indexer#start",
             message: `No new blocks to process ${this.dataHandler.getDataIdentifier()}`,
             blockRangeResult,
             dataIdentifier: this.dataHandler.getDataIdentifier(),
@@ -70,8 +70,10 @@ export class Indexer {
         blockRangeProcessedSuccessfully = true;
       } catch (error) {
         this.logger.error({
-          at: "Indexer::start",
+          at: "Indexer#start",
           message: "Error processing block range",
+          notificationPath: "across-indexer-error",
+          blockRangeResult,
           dataIdentifier: this.dataHandler.getDataIdentifier(),
           error,
         });
@@ -80,8 +82,8 @@ export class Indexer {
         if (!blockRangeResult?.isBackfilling) {
           await across.utils.delay(this.config.loopWaitTimeSeconds);
         } else {
-          this.logger.info({
-            at: "Indexer::start",
+          this.logger.debug({
+            at: "Indexer#start",
             message: `Skip delay ${this.dataHandler.getDataIdentifier()}. Backfill in progress...`,
             dataIdentifier: this.dataHandler.getDataIdentifier(),
           });
@@ -96,7 +98,7 @@ export class Indexer {
    */
   public stopGracefully() {
     this.logger.info({
-      at: "Indexer::stopGracefully",
+      at: "Indexer#stopGracefully",
       message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
     });
     this.stopRequested = true;

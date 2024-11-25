@@ -55,8 +55,8 @@ export function getSpokeClient(
     maxBlockLookBack,
   };
   logger.debug({
+    at: "Indexer#contractUtils#getSpokePoolClient",
     message: "Initializing spoke pool",
-    at: "getSpokeClient",
     chainId,
     address,
     deployedBlockNumber,
@@ -154,8 +154,8 @@ export function getHubPoolClient(
     toBlock,
     maxBlockLookBack,
   };
-  logger.info({
-    at: "getHubPoolClient",
+  logger.debug({
+    at: "Indexer#contractUtils#getHubPoolClient",
     message: "Initializing hubpool",
     chainId,
     ...eventSearchConfig,
