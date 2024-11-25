@@ -1,12 +1,12 @@
 import "source-map-support/register";
 
 import dotenv from "dotenv";
-import assert from "assert";
 
 import * as Template from "@repo/template";
 import * as Indexer from "@repo/indexer";
 import * as PersistenceExample from "@repo/persistence-example";
 import * as IndexerApi from "@repo/indexer-api";
+import { assert } from "@repo/error-handling";
 import { Logger } from "@uma/logger";
 
 dotenv.config();

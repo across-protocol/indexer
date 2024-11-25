@@ -1,6 +1,6 @@
 import { caching, clients, typechain, utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
-import assert from "assert";
+import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";

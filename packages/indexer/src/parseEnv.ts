@@ -1,7 +1,7 @@
-import assert from "assert";
 import * as s from "superstruct";
 import { DatabaseConfig } from "@repo/indexer-database";
 import { getNoTtlBlockDistance } from "./web3/constants";
+import { assert } from "@repo/error-handling";
 
 export type Config = {
   redisConfig: RedisConfig;

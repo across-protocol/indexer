@@ -1,8 +1,9 @@
-import assert from "assert";
 import * as ss from "superstruct";
 import { Logger } from "winston";
 
+import { assert } from "@repo/error-handling";
 import { DataSource, entities } from "@repo/indexer-database";
+
 import { WebhookRequestRepository } from "../database/webhookRequestRepository";
 import { customId } from "../utils";
 

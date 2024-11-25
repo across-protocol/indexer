@@ -1,7 +1,7 @@
 import { Logger } from "winston";
-import assert from "assert";
 
 import { DataSource, entities } from "@repo/indexer-database";
+import { assert } from "@repo/error-handling";
 
 import { WebhookClientRepository } from "./database/webhookClientRepository";
 import { JSONValue, IEventProcessor } from "./types";
