@@ -47,7 +47,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
         at: "Indexer#BundleIncludedEventsService#indexerLogic",
         message: "Error in BundleIncludedEventsService",
         notificationPath: "across-indexer-error",
-        error,
+        error: JSON.stringify(error),
       });
     }
   }
