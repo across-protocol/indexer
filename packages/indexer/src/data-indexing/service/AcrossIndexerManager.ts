@@ -57,7 +57,10 @@ export class AcrossIndexerManager {
 
   private startHubPoolIndexer() {
     if (!this.config.enableHubPoolIndexer) {
-      this.logger.warn("Hub pool indexer is disabled");
+      this.logger.warn({
+        at: "Indexer#AcrossIndexerManager#startHubPoolIndexer",
+        message: "Hub pool indexer is disabled",
+      });
       return;
     }
     const hubPoolIndexerDataHandler = new HubPoolIndexerDataHandler(
@@ -120,7 +123,10 @@ export class AcrossIndexerManager {
     this.spokePoolIndexers = spokePoolIndexers;
 
     if (this.spokePoolIndexers.length === 0) {
-      this.logger.warn("No spoke pool indexers to start");
+      this.logger.warn({
+        at: "Indexer#AcrossIndexerManager#startSpokePoolIndexers",
+        message: "No spoke pool indexers to start",
+      });
       return;
     }
     return Promise.all(

@@ -21,7 +21,7 @@ export class BaseRepository {
         .values(data)
         .returning("*")
         .execute();
-      this.logger.info({
+      this.logger.debug({
         at: "BaseRepository#insert",
         message: `Saved ${data.length} ${repository.metadata.name} events`,
       });
@@ -30,6 +30,7 @@ export class BaseRepository {
       this.logger.error({
         at: "BaseRepository#insert",
         message: `There was an error while saving ${repository.metadata.name} events`,
+        notificationPath: "across-indexer-error",
         error,
       });
       if (throwError || this.throwError) {

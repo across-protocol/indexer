@@ -45,7 +45,10 @@ export class BundleServicesManager {
 
   private startBundleIncludedEventsService() {
     if (!this.config.enableBundleIncludedEventsService) {
-      this.logger.warn("Bundle included events service is disabled");
+      this.logger.warn({
+        at: "Indexer#BundleServicesManager#startBundleIncludedEventsService",
+        message: "Bundle included events service is disabled",
+      });
       return;
     }
     this.bundleIncludedEventsService = new BundleIncludedEventsService({
@@ -62,7 +65,10 @@ export class BundleServicesManager {
 
   private startBundleEventsProcessor() {
     if (!this.config.enableBundleEventsProcessor) {
-      this.logger.warn("Bundle events processor is disabled");
+      this.logger.warn({
+        at: "Indexer#BundleServicesManager#startBundleEventsProcessor",
+        message: "Bundle events processor is disabled",
+      });
       return;
     }
     this.bundleEventsProcessor = new BundleEventsProcessor({
@@ -76,7 +82,10 @@ export class BundleServicesManager {
 
   private startBundleBuilderService() {
     if (!this.config.enableBundleBuilder) {
-      this.logger.warn("Bundle builder service is disabled");
+      this.logger.warn({
+        at: "Indexer#BundleServicesManager#startBundleBuilderService",
+        message: "Bundle builder service is disabled",
+      });
       return;
     }
 

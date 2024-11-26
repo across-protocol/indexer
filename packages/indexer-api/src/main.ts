@@ -18,8 +18,8 @@ async function initializeRedis(
 
   return new Promise<Redis>((resolve, reject) => {
     redis.on("ready", () => {
-      logger.info({
-        at: "Indexer-API",
+      logger.debug({
+        at: "IndexerAPI#initializeRedis",
         message: "Redis connection established",
         config,
       });
@@ -28,8 +28,9 @@ async function initializeRedis(
 
     redis.on("error", (err) => {
       logger.error({
-        at: "Indexer-API",
+        at: "IndexerAPI#initializeRedis",
         message: "Redis connection failed",
+        notificationPath: "across-indexer-error",
         error: err,
       });
       reject(err);
@@ -42,7 +43,7 @@ export async function connectToDatabase(
 ) {
   try {
     const database = await createDataSource(databaseConfig).initialize();
-    logger.info({
+    logger.debug({
       at: "IndexerAPI#connectToDatabase",
       message: "Postgres connection established",
     });
@@ -51,6 +52,7 @@ export async function connectToDatabase(
     logger.error({
       at: "IndexerAPI#connectToDatabase",
       message: "Unable to connect to database",
+      notificationPath: "across-indexer-error",
       error,
     });
     throw error;
@@ -102,8 +104,8 @@ export async function Main(
   const app = ExpressApp(allRouters);
 
   logger.info({
+    at: "IndexerAPI#Main",
     message: `Starting indexer api on port ${port}`,
-    at: "main.ts",
   });
   void (await new Promise((res) => {
     app.listen(port, () => res(app));

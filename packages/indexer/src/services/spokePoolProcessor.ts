@@ -183,8 +183,8 @@ export class SpokePoolProcessor {
         relayHashInfoRepository.upsert(chunk, ["relayHash"]),
       ),
     );
-    this.logger.info({
-      at: "SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
+    this.logger.debug({
+      at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
       updatedRelayHashInfoRows: upsertResult.reduce(
         (acc, res) => acc + res.generatedMaps.length,
@@ -201,8 +201,8 @@ export class SpokePoolProcessor {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
-    this.logger.info({
-      at: "SpokePoolProcessor#updateExpiredRelays",
+    this.logger.debug({
+      at: "Indexer#SpokePoolProcessor#updateExpiredRelays",
       message: `Updating status for expired relays`,
     });
     const expiredDeposits = await relayHashInfoRepository
@@ -221,8 +221,8 @@ export class SpokePoolProcessor {
       .execute();
 
     if ((expiredDeposits.affected ?? 0) > 0) {
-      this.logger.info({
-        at: "SpokePoolProcessor#updateExpiredRelays",
+      this.logger.debug({
+        at: "Indexer#SpokePoolProcessor#updateExpiredRelays",
         message: `Updated status for ${expiredDeposits.affected} expired relays`,
       });
     }
@@ -239,8 +239,8 @@ export class SpokePoolProcessor {
   private async updateRefundedDepositsStatus(): Promise<
     entities.RelayHashInfo[]
   > {
-    this.logger.info({
-      at: "SpokePoolProcessor#updateRefundedDepositsStatus",
+    this.logger.debug({
+      at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
       message: `Updating status for refunded deposits`,
     });
     const bundleEventsRepository = this.postgres.getRepository(
@@ -315,8 +315,8 @@ export class SpokePoolProcessor {
       updatedRow && updatedRows.push(updatedRow);
     }
     if (updatedRows.length > 0) {
-      this.logger.info({
-        at: "SpokePoolProcessor#updateRefundedDepositsStatus",
+      this.logger.debug({
+        at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
         message: `Updated ${updatedRows.length} refunded deposits`,
       });
     }

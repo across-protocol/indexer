@@ -34,8 +34,9 @@ export async function resolveMostRecentProposedAndExecutedBundles(
   // If no executed bundle is found, the system is in an inconsistent state
   if (!utils.isDefined(lastExecutedBundle)) {
     logger.error({
+      at: "Indexer#resolveMostRecentProposedAndExecutedBundles",
       message: "No executed bundles found",
-      at: "resolveMostRecentProposedAndExecutedBundles",
+      notificationPath: "across-indexer-error",
     });
     throw new Error("No executed bundles found");
   }
@@ -47,9 +48,10 @@ export async function resolveMostRecentProposedAndExecutedBundles(
       lastExecutedBundle.proposal.blockNumber
   ) {
     logger.error({
+      at: "Indexer#resolveMostRecentProposedAndExecutedBundles",
       message:
         "Inconsistent state: found proposed bundle is older than last executed bundle",
-      at: "resolveMostRecentProposedAndExecutedBundles",
+      notificationPath: "across-indexer-error",
       proposedBundleHash: lastProposedBundle!.proposal.transactionHash,
       lastExecutedBundleHash: lastExecutedBundle.proposal.transactionHash,
     });

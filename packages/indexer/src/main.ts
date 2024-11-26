@@ -30,7 +30,7 @@ async function initializeRedis(
 
   return new Promise<Redis>((resolve, reject) => {
     redis.on("ready", () => {
-      logger.info({
+      logger.debug({
         at: "Indexer#initializeRedis",
         message: "Redis connection established",
         config,
@@ -42,6 +42,7 @@ async function initializeRedis(
       logger.error({
         at: "Indexer#initializeRedis",
         message: "Redis connection failed",
+        notificationPath: "across-indexer-error",
         error: err,
       });
       reject(err);
@@ -50,7 +51,7 @@ async function initializeRedis(
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
-  const { redisConfig, postgresConfig, hubChainId } = config;
+  const { redisConfig, postgresConfig } = config;
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
@@ -138,9 +139,9 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     }
   });
 
-  logger.info({
-    message: "Running indexers",
+  logger.debug({
     at: "Indexer#Main",
+    message: "Running indexers",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const [bundleServicesManagerResults, acrossIndexerManagerResult] =

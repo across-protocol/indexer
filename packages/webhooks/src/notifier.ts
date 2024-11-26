@@ -16,7 +16,12 @@ export class BaseNotifier {
 
   public notify = (payload: NotificationPayload): void => {
     this.deps.notify(payload).catch((error) => {
-      this.logger.error(`Error calling webhook`, error);
+      this.logger.error({
+        at: "BaseNotifier#notify",
+        message: `Error calling webhook`,
+        notificationPath: "across-indexer-error",
+        error,
+      });
     });
   };
 }

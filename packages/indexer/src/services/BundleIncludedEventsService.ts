@@ -32,21 +32,22 @@ export class BundleIncludedEventsService extends BaseIndexer {
 
   protected async indexerLogic(): Promise<void> {
     try {
-      this.config.logger.info({
-        at: "BundleIncludedEventsService#indexerLogic",
+      this.config.logger.debug({
+        at: "Indexer#BundleIncludedEventsService#indexerLogic",
         message: "Starting BundleIncludedEventsService",
       });
       await this.assignSpokePoolEventsToExecutedBundles();
 
-      this.config.logger.info({
-        at: "BundleIncludedEventsService#indexerLogic",
+      this.config.logger.debug({
+        at: "Indexer#BundleIncludedEventsService#indexerLogic",
         message: "Finished BundleIncludedEventsService",
       });
     } catch (error) {
       this.logger.error({
-        at: "BundleIncludedEventsService#indexerLogic",
+        at: "Indexer#BundleIncludedEventsService#indexerLogic",
         message: "Error in BundleIncludedEventsService",
-        error,
+        notificationPath: "across-indexer-error",
+        error: JSON.stringify(error),
       });
     }
   }
@@ -63,8 +64,8 @@ export class BundleIncludedEventsService extends BaseIndexer {
       await bundleRepository.getExecutedBundlesWithoutEventsAssociated({
         fromBlock: utils.ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK,
       });
-    logger.info({
-      at: "ExecutedBundleEventsService#assignSpokePoolEventsToExecutedBundles",
+    logger.debug({
+      at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
       message: `Found ${executedBundles.length} executed bundles without events associated`,
     });
     if (executedBundles.length === 0) {
@@ -72,7 +73,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     }
 
     logger.debug({
-      at: "BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
+      at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
       message: "Updating HubPool and ConfigStore clients",
     });
     const startTime = Date.now();
@@ -81,7 +82,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     const endTime = Date.now();
     const duration = endTime - startTime;
     logger.debug({
-      at: "BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
+      at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
       message: `Updated HubPool and ConfigStore clients in ${duration / 1000} seconds`,
     });
 
@@ -102,7 +103,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     // Skip the bundle if we don't have enough historical data
     if (!historicalBundle) {
       logger.warn({
-        at: "BundleIncludedEventsService#getEventsIncludedInBundle",
+        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
         message: `No historical bundle found. Skipping bundle reconstruction of bundle ${bundle.id}`,
       });
       return;
@@ -116,7 +117,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
       spokePoolClientFactory,
     );
     logger.debug({
-      at: "BundleIncludedEventsService#getEventsIncludedInBundle",
+      at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
       message: `Updating spoke clients for lookback range for bundle ${bundle.id}`,
       lookbackRange,
     });
@@ -127,7 +128,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     const endTime = Date.now();
     const duration = endTime - startTime;
     logger.debug({
-      at: "BundleIncludedEventsService#getEventsIncludedInBundle",
+      at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
       message: `Updated spoke clients in ${duration / 1000} seconds for bundle ${bundle.id}`,
     });
     const clients = {
@@ -159,7 +160,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     );
     if (bundle.poolRebalanceRoot !== poolRebalanceRoot.tree.getHexRoot()) {
       logger.warn({
-        at: "BundleIncludedEventsService#getEventsIncludedInBundle",
+        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
         message: `Mismatching roots. Skipping bundle ${bundle.id}.`,
       });
       return;
@@ -169,8 +170,8 @@ export class BundleIncludedEventsService extends BaseIndexer {
         bundle.id,
       );
       await bundleRepository.updateBundleEventsAssociatedFlag(bundle.id);
-      logger.info({
-        at: "BundleIncludedEventsService#getEventsIncludedInBundle",
+      logger.debug({
+        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
         message: `Stored bundle events for bundle ${bundle.id}`,
         storedEvents,
       });

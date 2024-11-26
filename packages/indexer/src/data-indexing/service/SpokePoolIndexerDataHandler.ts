@@ -73,8 +73,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
     lastFinalisedBlock: number,
   ) {
-    this.logger.info({
-      at: "SpokePoolIndexerDataHandler::processBlockRange",
+    this.logger.debug({
+      at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,
@@ -91,8 +91,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     ).reduce((acc, speedUps) => {
       return acc + Object.values(speedUps).length;
     }, 0);
-    this.logger.info({
-      at: "SpokePoolIndexerDataHandler::processBlockRange",
+    this.logger.debug({
+      at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Found events for ${this.getDataIdentifier()}`,
       events: {
         v3FundsDepositedEvents: events.v3FundsDepositedEvents.length,

@@ -12,7 +12,7 @@ export abstract class BaseIndexer {
     private readonly name: string,
   ) {
     this.logger.debug({
-      at: "BaseIndexer#constructor",
+      at: "Indexer#BaseIndexer#constructor",
       message: `Instantiated indexer ${name}`,
     });
   }
@@ -25,8 +25,8 @@ export abstract class BaseIndexer {
    * @param delay The delay in seconds between each iteration of the indexer
    */
   public async start(delay: number): Promise<void> {
-    this.logger.info({
-      at: "BaseIndexer#start",
+    this.logger.debug({
+      at: "Indexer#BaseIndexer#start",
       message: `Starting indexer ${this.name}`,
     });
 
@@ -35,8 +35,9 @@ export abstract class BaseIndexer {
       await this.initialize();
     } catch (e) {
       this.logger.error({
-        at: "BaseIndexer#start",
+        at: "Indexer#BaseIndexer#start",
         message: `Failed to initialize ${this.name}`,
+        notificationPath: "across-indexer-error",
         error: (e as unknown as Error).message,
       });
       return;
@@ -48,8 +49,8 @@ export abstract class BaseIndexer {
       await across.utils.delay(delay);
     } while (!this.stopRequested);
 
-    this.logger.info({
-      at: "BaseIndexer#start",
+    this.logger.debug({
+      at: "Indexer#BaseIndexer#start",
       message: `Ended halted ${this.name}`,
     });
   }
@@ -60,7 +61,7 @@ export abstract class BaseIndexer {
    */
   public stop(): void {
     this.logger.info({
-      at: "BaseIndexer#stop",
+      at: "Indexer#BaseIndexer#stop",
       message: `Requesting indexer ${this.name} to be stopped`,
     });
     this.stopRequested = true;

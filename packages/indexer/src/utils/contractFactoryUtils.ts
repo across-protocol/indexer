@@ -20,9 +20,9 @@ abstract class ContractClientFactory<
     protected readonly requiredFactories: RequiredFactories,
   ) {
     logger.debug({
+      at: "Indexer#ContractClientFactory#constructor",
       message: "Initializing contract client factory",
       factory: this.constructor.name,
-      at: "ContractClientFactory#constructor",
     });
   }
 
