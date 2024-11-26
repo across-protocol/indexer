@@ -107,8 +107,18 @@ export class SpokePoolProcessor {
     });
 
     const expiredDeposits = await this.updateExpiredRelays();
-    // TODO: for expired deposits, notify status change to expired
-    // here...
+    // Notify webhook of expired deposits
+    expiredDeposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.depositTxHash,
+          status: RelayStatus.Expired,
+        },
+      });
+    });
 
     const refundedDeposits = await this.updateRefundedDepositsStatus();
 
