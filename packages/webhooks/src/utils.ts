@@ -1,10 +1,11 @@
 import { NotificationPayload } from "./types";
 export async function post(params: NotificationPayload): Promise<void> {
-  const { url, data } = params;
+  const { url, data, apiKey } = params;
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(data),
   });
@@ -33,4 +34,11 @@ export function asyncInterval(fn: () => Promise<void>, delay: number) {
   return () => {
     isStopped = true;
   };
+}
+
+export function exists<T>(val: T | null | undefined): val is T {
+  return val !== null && val !== undefined;
+}
+export function customId(...args: (string | number)[]): string {
+  return args.join("!");
 }

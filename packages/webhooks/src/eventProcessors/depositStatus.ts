@@ -1,14 +1,13 @@
 import assert from "assert";
+import * as ss from "superstruct";
+import { Logger } from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
 import { WebhookRequestRepository } from "../database/webhookRequestRepository";
-import {
-  JSONValue,
-  IEventProcessor,
-  NotificationPayload,
-  WebhookRequest,
-} from "../types";
+import { customId } from "../utils";
 
-import * as ss from "superstruct";
+import { IEventProcessor, NotificationPayload } from "../types";
+import { WebhookClientRepository } from "../database/webhookClientRepository";
 
 export const DepositStatusEvent = ss.object({
   originChainId: ss.number(),
@@ -25,73 +24,115 @@ export const DepositStatusFilter = ss.object({
 export type DepositStatusFilter = ss.Infer<typeof DepositStatusFilter>;
 
 export type Dependencies = {
-  webhookRequests: WebhookRequestRepository;
   notify: (params: NotificationPayload) => void;
   postgres: DataSource;
+  logger: Logger;
 };
 export class DepositStatusProcessor implements IEventProcessor {
   private webhookRequests: WebhookRequestRepository;
+  private webhookClientsRepository: WebhookClientRepository;
   private notify: (params: NotificationPayload) => void;
-  private postgres: DataSource;
+  private logger: Logger;
 
-  constructor(deps: Dependencies) {
-    this.webhookRequests = deps.webhookRequests;
+  constructor(
+    deps: Dependencies,
+    private type: string = "DepositStatus",
+  ) {
+    this.webhookRequests = new WebhookRequestRepository(deps.postgres);
+    this.webhookClientsRepository = new WebhookClientRepository(deps.postgres);
     this.notify = deps.notify;
-    this.postgres = deps.postgres;
+    this.logger = deps.logger;
   }
   private async _write(event: DepositStatusEvent): Promise<void> {
-    const filter = [event.originChainId, event.depositTxHash].join("!");
-    const hooks = await this.webhookRequests.filterWebhooks(filter);
+    const filter = customId(
+      this.type,
+      event.originChainId,
+      event.depositTxHash,
+    );
+    const webhookRequests =
+      await this.webhookRequests.findWebhookRequestsByFilter(filter);
+    const uniqueClientIds = [
+      ...new Set(webhookRequests.map((hook) => hook.clientId)),
+    ];
+    const clients = await Promise.all(
+      uniqueClientIds.map((id) =>
+        this.webhookClientsRepository.getWebhookClientById(id),
+      ),
+    );
+    const clientsMap = clients
+      .filter((client) => client !== undefined)
+      .reduce(
+        (acc, client) => {
+          acc[client.id] = client;
+          return acc;
+        },
+        {} as Record<number, entities.WebhookClient>,
+      );
+
     //TODO: unregister any hooks where event has reached terminal state
-    await Promise.all(
-      hooks.map((hook) => {
+    webhookRequests.forEach((hook) => {
+      const client = clientsMap[hook.clientId];
+      if (client) {
         this.notify({
           url: hook.url,
-          data: event,
+          data: { ...event, webhookRequestId: hook.id },
+          apiKey: client.apiKey,
         });
-      }),
-    );
+      } else {
+        this.logger.error({
+          at: "DepositStatusProcessor::_write",
+          message: `Client not found for webhook request ${hook.id}`,
+          webhookRequest: hook,
+        });
+      }
+    });
   }
+
   write(e: unknown) {
     this._write(ss.create(e, DepositStatusEvent)).catch((err) =>
       console.error(err),
     );
   }
+
   private async _register(
+    id: string,
     url: string,
     params: DepositStatusFilter,
+    clientId: number,
   ): Promise<string> {
-    const id = [url, params.originChainId, params.depositTxHash].join("!");
-    const filter = [params.originChainId, params.depositTxHash].join("!");
+    const filter = customId(
+      this.type,
+      params.originChainId,
+      params.depositTxHash,
+    );
+    const existingFilters =
+      await this.webhookRequests.findWebhookRequestsByFilterAndClient(
+        filter,
+        clientId,
+      );
     assert(
-      !(await this.webhookRequests.hasWebhook(id)),
-      "This webhook already exists",
+      existingFilters.length === 0,
+      "Webhook already exists for this filter",
     );
     await this.webhookRequests.register({
       id,
       filter,
       url,
+      clientId,
     });
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
-    const relayHashInfo = await relayHashInfoRepository.findOne({
-      where: params,
-    });
-    if (relayHashInfo)
-      this._write({
-        depositId: relayHashInfo.depositId,
-        status: relayHashInfo.status,
-        ...params,
-      });
     return id;
   }
-  async register(url: string, params: unknown) {
-    return this._register(url, ss.create(params, DepositStatusFilter));
+  async register(id: string, url: string, params: unknown, clientId: number) {
+    return this._register(
+      id,
+      url,
+      ss.create(params, DepositStatusFilter),
+      clientId,
+    );
   }
   async unregister(id: string): Promise<void> {
     assert(
-      await this.webhookRequests.hasWebhook(id),
+      await this.webhookRequests.hasWebhookRequest(id),
       "This webhook does not exist",
     );
     await this.webhookRequests.unregister(id);

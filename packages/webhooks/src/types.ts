@@ -1,14 +1,13 @@
 import * as ss from "superstruct";
 
-export interface WebhookRequest {
-  id: string;
-  url: string;
-  filter: string;
-}
-
 export interface IEventProcessor {
   write(event: JSONValue): void;
-  register(url: string, params: JSONValue): Promise<string>;
+  register(
+    id: string,
+    url: string,
+    params: JSONValue,
+    clientId: number,
+  ): Promise<string>;
   unregister(id: string): Promise<void>;
 }
 
@@ -23,6 +22,7 @@ export type JSONValue =
 export type NotificationPayload = {
   url: string;
   data: JSONValue;
+  apiKey: string;
 };
 
 export const RegistrationParams = ss.object({

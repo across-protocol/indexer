@@ -19,3 +19,6 @@ export * from "./BundleEvent";
 export * from "./BundleBlockRange";
 export * from "./RootBundleExecutedJoinTable";
 export * from "./RelayHashInfo";
+
+export * from "./WebhookRequest";
+export * from "./WebhookClient";

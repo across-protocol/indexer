@@ -1,11 +1,14 @@
 import { utils } from "@across-protocol/sdk";
+import winston from "winston";
+
 import {
   DataSource,
   entities,
   utils as dbUtils,
   SaveQueryResultType,
 } from "@repo/indexer-database";
-import winston from "winston";
+import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
+
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import { StoreEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 
@@ -22,6 +25,7 @@ export class SpokePoolProcessor {
     private readonly postgres: DataSource,
     private readonly logger: winston.Logger,
     private readonly chainId: number,
+    private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
   public async process(events: StoreEventsResult) {
@@ -37,9 +41,19 @@ export class SpokePoolProcessor {
       SpokePoolEvents.V3FundsDeposited,
       [...newDeposits, ...updatedDeposits],
     );
-    // TODO: for new deposits, notify status change to unfilled
-    // here...
 
+    // Notify webhook of new deposits
+    newDeposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.id,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.transactionHash,
+          status: RelayStatus.Unfilled,
+        },
+      });
+    });
     const newSlowFillRequests = dbUtils.filterSaveQueryResults(
       events.slowFillRequests,
       SaveQueryResultType.Inserted,
@@ -52,8 +66,19 @@ export class SpokePoolProcessor {
       SpokePoolEvents.RequestedV3SlowFill,
       [...newSlowFillRequests, ...updatedSlowFillRequests],
     );
-    // TODO: for new slow fill requests, notify status change to slow fill requested
-    // here...
+
+    // Notify webhook of new slow fill requests
+    newSlowFillRequests.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.id,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.transactionHash,
+          status: RelayStatus.SlowFillRequested,
+        },
+      });
+    });
 
     const newFills = dbUtils.filterSaveQueryResults(
       events.fills,
@@ -67,16 +92,48 @@ export class SpokePoolProcessor {
       ...newFills,
       ...updatedFills,
     ]);
-    // TODO: for new fills, notify status change to filled
-    // here...
+
+    // Notify webhook of new fills
+    newFills.forEach((fill) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: fill.depositId,
+          originChainId: fill.originChainId,
+          depositTxHash: fill.transactionHash,
+          status: RelayStatus.Filled,
+        },
+      });
+    });
 
     const expiredDeposits = await this.updateExpiredRelays();
-    // TODO: for expired deposits, notify status change to expired
-    // here...
+    // Notify webhook of expired deposits
+    expiredDeposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.depositTxHash,
+          status: RelayStatus.Expired,
+        },
+      });
+    });
 
     const refundedDeposits = await this.updateRefundedDepositsStatus();
-    // TODO: for refunded deposits, notify status change to refunded
-    // here...
+
+    // Notify webhook of refunded deposits
+    refundedDeposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.depositTxHash,
+          status: RelayStatus.Refunded,
+        },
+      });
+    });
   }
 
   /**

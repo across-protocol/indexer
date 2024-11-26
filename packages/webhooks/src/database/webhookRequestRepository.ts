@@ -1,48 +1,65 @@
-import { AsyncStore } from "../store";
-import { WebhookRequest } from "../types";
+import { entities, DataSource } from "@repo/indexer-database";
+import assert from "assert";
+import { exists } from "../utils";
 
 export class WebhookRequestRepository {
-  constructor(private store: AsyncStore<WebhookRequest>) {}
+  private repository;
 
-  public async register(webhook: WebhookRequest): Promise<void> {
-    if (await this.store.has(webhook.id)) {
+  constructor(private dataSource: DataSource) {
+    this.repository = this.dataSource.getRepository(entities.WebhookRequest);
+  }
+
+  public async register(
+    webhook: Omit<entities.WebhookRequest, "createdAt">,
+  ): Promise<void> {
+    const existingWebhook = await this.repository.findOne({
+      where: { id: webhook.id },
+    });
+    if (existingWebhook) {
       throw new Error(`Webhook with id ${webhook.id} already exists.`);
     }
-    await this.store.set(webhook.id, webhook);
+    await this.repository.insert(webhook);
   }
 
   public async unregister(webhookId: string): Promise<void> {
-    if (!(await this.store.has(webhookId))) {
+    const existingWebhook = await this.repository.findOne({
+      where: { id: webhookId },
+    });
+    if (!existingWebhook) {
       throw new Error(`Webhook with id ${webhookId} does not exist.`);
     }
-    await this.store.delete(webhookId);
+    await this.repository.delete({ id: webhookId });
   }
 
-  public async getWebhook(
+  public async getWebhookRequest(
     webhookId: string,
-  ): Promise<WebhookRequest | undefined> {
-    return this.store.get(webhookId);
+  ): Promise<entities.WebhookRequest> {
+    const result = await this.repository.findOne({ where: { id: webhookId } });
+    assert(result, "Webhook request not found");
+    return result;
   }
 
-  public async listWebhooks(): Promise<WebhookRequest[]> {
-    const webhooks: WebhookRequest[] = [];
-    for await (const webhook of this.store.values()) {
-      webhooks.push(webhook);
-    }
-    return webhooks;
+  public async listWebhookRequests(): Promise<entities.WebhookRequest[]> {
+    return this.repository.find();
   }
 
-  public async filterWebhooks(filter: string): Promise<WebhookRequest[]> {
-    const webhooks: WebhookRequest[] = [];
-    for await (const webhook of this.store.values()) {
-      if (webhook.filter === filter) {
-        webhooks.push(webhook);
-      }
-    }
-    return webhooks;
+  public async findWebhookRequestsByFilter(
+    filter: string,
+  ): Promise<entities.WebhookRequest[]> {
+    return this.repository.find({ where: { filter } });
   }
 
-  public async hasWebhook(webhookId: string): Promise<boolean> {
-    return this.store.has(webhookId);
+  public async findWebhookRequestsByFilterAndClient(
+    filter: string,
+    clientId: number,
+  ): Promise<entities.WebhookRequest[]> {
+    return this.repository.find({ where: { filter, clientId } });
+  }
+
+  public async hasWebhookRequest(webhookId: string): Promise<boolean> {
+    const result = await this.repository.findOne({
+      where: { id: webhookId },
+    });
+    return exists(result);
   }
 }
