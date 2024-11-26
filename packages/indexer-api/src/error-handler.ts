@@ -31,7 +31,7 @@ const errorHandler = (
     });
   } else if (err instanceof StructError) {
     res.status(StatusCodes.BAD_REQUEST).json({
-      error: "InputValidationError",
+      error: "ValidationError",
       message: err.message,
     });
   } else if (err instanceof Error) {
