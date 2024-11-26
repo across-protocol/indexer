@@ -19,7 +19,7 @@ async function initializeRedis(
   return new Promise<Redis>((resolve, reject) => {
     redis.on("ready", () => {
       logger.debug({
-        at: "IndexerAPI",
+        at: "IndexerAPI#initializeRedis",
         message: "Redis connection established",
         config,
       });
@@ -28,7 +28,7 @@ async function initializeRedis(
 
     redis.on("error", (err) => {
       logger.error({
-        at: "IndexerAPI",
+        at: "IndexerAPI#initializeRedis",
         message: "Redis connection failed",
         notificationPath: "across-indexer-error",
         error: err,
