@@ -21,6 +21,7 @@ export class BaseNotifier {
         message: `Error calling webhook`,
         notificationPath: "across-indexer-error",
         error,
+        payload,
       });
     });
   };
