@@ -24,7 +24,7 @@ export function WebhookRouter(deps: Dependencies): express.Router {
   router.use(express.json());
   router.use(bearerToken());
 
-  router.get("/", (_req, res) => {
+  router.get("/webhook", (_req, res) => {
     res.status(200).send("Webhook service is running");
   });
 
