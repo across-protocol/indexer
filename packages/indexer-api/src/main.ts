@@ -87,10 +87,12 @@ export async function Main(
   const postgres = await connectToDatabase(postgresConfig, logger);
   const redisConfig = Indexer.parseRedisConfig(env);
   const redis = await initializeRedis(redisConfig, logger);
-  const webhooks = Webhooks.WebhookFactory(
+  const webhooks = await Webhooks.WebhookFactory(
     {
       enabledWebhooks: [Webhooks.WebhookTypes.DepositStatus],
       enabledWebhookRequestWorkers: false,
+      // indexer will register clients
+      clients: [],
     },
     { postgres, logger, redis },
   );

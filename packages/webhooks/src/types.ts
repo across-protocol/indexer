@@ -37,3 +37,13 @@ export const UnregisterParams = ss.object({
   id: ss.string(),
 });
 export type UnregisterParams = ss.Infer<typeof UnregisterParams>;
+
+export const PartialWebhookClient = ss.type({
+  name: ss.string(),
+  apiKey: ss.string(),
+  domains: ss.array(ss.string()),
+});
+export type PartialWebhookClient = ss.Infer<typeof PartialWebhookClient>;
+
+export const PartialWebhookClients = ss.array(PartialWebhookClient);
+export type PartialWebhookClients = ss.Infer<typeof PartialWebhookClients>;
