@@ -24,22 +24,27 @@ export function WebhookRouter(deps: Dependencies): express.Router {
   router.use(express.json());
   router.use(bearerToken());
 
+  router.get("/webhook", (req: express.Request, res: express.Response) => {
+    res.status(200).send("Webhooks running");
+  });
   router.post(
     "/webhook",
-    async (
+    (
       req: express.Request,
       res: express.Response,
       next: express.NextFunction,
     ) => {
       try {
-        const parsedBody = RegistrationParams.create(req.body);
         const token = req.token;
         if (!token) {
           throw new Error("API Key required");
         }
+        const parsedBody = RegistrationParams.create(req.body);
         const id = uuidv4();
-        await deps.eventProcessorManager.registerWebhook(id, parsedBody, token);
-        res.status(201).send(id);
+        deps.eventProcessorManager
+          .registerWebhook(id, parsedBody, token)
+          .then((id) => res.status(201).send(id))
+          .catch((error) => next(error));
       } catch (error) {
         next(error);
       }
@@ -48,18 +53,17 @@ export function WebhookRouter(deps: Dependencies): express.Router {
 
   router.delete(
     "/webhook/:id",
-    async (
+    (
       req: express.Request & { token?: string },
       res: express.Response,
       next: express.NextFunction,
     ) => {
       try {
         const parsedBody = UnregisterParams.create(req.body);
-        await deps.eventProcessorManager.unregisterWebhook(
-          parsedBody,
-          req.token,
-        );
-        res.status(204).send();
+        deps.eventProcessorManager
+          .unregisterWebhook(parsedBody, req.token)
+          .then(() => res.status(204).send())
+          .catch((error) => next(error));
       } catch (error) {
         next(error);
       }
