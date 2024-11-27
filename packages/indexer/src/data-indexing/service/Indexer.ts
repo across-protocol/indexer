@@ -119,7 +119,10 @@ export class Indexer {
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
 
-    if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
+    if (
+      lastBlockFinalisedStored !== null &&
+      lastBlockFinalisedStored >= lastFinalisedBlockOnChain
+    ) {
       return {
         latestBlockNumber,
         blockRange: undefined,
