@@ -2,6 +2,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import type { Request, Response, NextFunction, Express, Router } from "express";
 import express from "express";
+import errorHandler from "./error-handler";
 
 export class HttpError extends Error {
   status?: number;
@@ -31,33 +32,14 @@ export function ExpressApp(routers: RouterConfigs): Express {
   });
 
   app.use(function (_: Request, __: Response, next: NextFunction) {
-    const error = new HttpError("Not Found");
+    const error = new HttpError("Route does not exist.");
     error["status"] = 404;
     next(error);
   });
 
-  app.use(function (
-    err: HttpError | Error,
-    req: Request,
-    res: Response,
-    // this needs to be included even if unused, since 4 param call triggers error handler
-    _: NextFunction,
-  ) {
-    const request = {
-      method: req.method,
-      path: req.path,
-      body: req.body,
-    };
-    let status = 500;
-    if (isHttpError(err)) {
-      status = err.status ?? status;
-    }
-    res.status(status).json({
-      message: err.message,
-      request,
-      stack: err.stack,
-    });
-  });
+  // Register an error handler as the last part of the
+  // express pipeline
+  app.use(errorHandler);
 
   return app;
 }

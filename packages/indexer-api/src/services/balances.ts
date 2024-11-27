@@ -1,4 +1,4 @@
-import assert from "assert";
+import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
 import {

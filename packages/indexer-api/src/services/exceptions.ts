@@ -1,18 +1,17 @@
-import { HttpError } from "../express-app";
-import { HttpStatus } from "../model/httpStatus";
+import { IndexerHTTPError, StatusCodes } from "@repo/error-handling";
 
-export class DepositNotFoundException extends HttpError {
+export class DepositNotFoundException extends IndexerHTTPError {
   constructor() {
-    super("Deposit not found");
-    this.name = "DepositNotFoundException";
-    this.status = HttpStatus.NOT_FOUND;
+    super(
+      StatusCodes.NOT_FOUND,
+      DepositNotFoundException.name,
+      "Deposit not found given the provided constraints",
+    );
   }
 }
 
-export class IndexParamOutOfRangeException extends HttpError {
+export class IndexParamOutOfRangeException extends IndexerHTTPError {
   constructor(message: string) {
-    super(message);
-    this.name = "IndexParamOutOfRangeException";
-    this.status = HttpStatus.BAD_REQUEST;
+    super(StatusCodes.BAD_REQUEST, IndexParamOutOfRangeException.name, message);
   }
 }

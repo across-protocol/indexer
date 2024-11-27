@@ -1,8 +1,9 @@
-import assert from "assert";
 import { Logger } from "winston";
 import { Redis } from "ioredis";
 
 import { DataSource } from "@repo/indexer-database";
+import { assert } from "@repo/error-handling";
+
 import { EventProcessorManager } from "./eventProcessorManager";
 import { WebhookNotifier } from "./notifier";
 import { DepositStatusProcessor } from "./eventProcessors";

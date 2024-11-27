@@ -22,6 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/webhooks": "workspace:*",
     "@repo/indexer-database": "workspace:*",

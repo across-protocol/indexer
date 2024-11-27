@@ -1,4 +1,4 @@
-import assert from "assert";
+import { assert } from "@repo/error-handling";
 import { ExpressApp } from "./express-app";
 import { createDataSource, DatabaseConfig } from "@repo/indexer-database";
 import * as routers from "./routers";
