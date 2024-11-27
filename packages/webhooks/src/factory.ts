@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import { Redis } from "ioredis";
 
-import { DataSource } from "@repo/indexer-database";
+import { DataSource, entities } from "@repo/indexer-database";
 import { assert } from "@repo/error-handling";
 
 import { EventProcessorManager } from "./eventProcessorManager";
@@ -10,6 +10,8 @@ import { DepositStatusProcessor } from "./eventProcessors";
 import { WebhookRouter } from "./router";
 import { WebhooksQueuesService } from "./adapter/messaging/WebhooksQueuesService";
 import { WebhookRequestWorker } from "./adapter/messaging/WebhookRequestWorker";
+import { WebhookClientRepository } from "./database/webhookClientRepository";
+import { PartialWebhookClients } from "./types";
 
 export enum WebhookTypes {
   DepositStatus = "DepositStatus",
@@ -18,6 +20,7 @@ export enum WebhookTypes {
 export type Config = {
   enabledWebhooks: WebhookTypes[];
   enabledWebhookRequestWorkers: boolean;
+  clients: PartialWebhookClients;
 };
 type Dependencies = {
   postgres: DataSource;
@@ -25,7 +28,7 @@ type Dependencies = {
   logger: Logger;
 };
 
-export function WebhookFactory(config: Config, deps: Dependencies) {
+export async function WebhookFactory(config: Config, deps: Dependencies) {
   const { logger, postgres, redis } = deps;
   const notifier = new WebhookNotifier({ logger });
   assert(
@@ -33,10 +36,22 @@ export function WebhookFactory(config: Config, deps: Dependencies) {
     "No webhooks enabled, specify one in config",
   );
   const webhooksQueuesService = new WebhooksQueuesService(redis);
+  const clientRepository = new WebhookClientRepository(postgres);
   const eventProcessorManager = new EventProcessorManager({
     postgres,
     logger,
     webhooksQueuesService,
+    clientRepository,
+  });
+  const clientRegistrations = await Promise.all(
+    config.clients.map((client) => {
+      return clientRepository.upsertClient(client);
+    }),
+  );
+  logger.info({
+    message: "Registered webhook api clients",
+    at: "Webhooks package factory",
+    clientRegistrations,
   });
   config.enabledWebhooks.forEach((name) => {
     switch (name) {

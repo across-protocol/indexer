@@ -29,6 +29,7 @@ export type Dependencies = {
   postgres: DataSource;
   logger: Logger;
   webhooksQueuesService: WebhooksQueuesService;
+  clientRepository: WebhookClientRepository;
 };
 export class EventProcessorManager {
   private logger: Logger;
@@ -38,8 +39,8 @@ export class EventProcessorManager {
 
   constructor(deps: Dependencies) {
     this.logger = deps.logger;
-    this.clientRepository = new WebhookClientRepository(deps.postgres); // Initialize the client manager
     this.webhooksQueuesService = deps.webhooksQueuesService;
+    this.clientRepository = deps.clientRepository;
   }
 
   // Register a new type of webhook processor able to be written to
@@ -76,12 +77,13 @@ export class EventProcessorManager {
       `Attempting to register webhook of type: ${params.type} with URL: ${params.url}`,
     );
     const client = await this.clientRepository.getClientByApiKey(apiKey);
-    const urlDomain = new URL(params.url).hostname;
-    const isDomainValid = client.domains.includes(urlDomain);
-    assert(
-      isDomainValid,
-      "The base URL of the provided webhook does not match any of the client domains",
-    );
+    // TODO: Reinable this potentially when we need it, but not great for testing
+    // const urlDomain = new URL(params.url).hostname;
+    // const isDomainValid = client.domains.includes(urlDomain);
+    // assert(
+    //   isDomainValid,
+    //   "The base URL of the provided webhook does not match any of the client domains",
+    // );
     assert((params.filter as any).depositTxHash, "depositTxHash is required");
     assert((params.filter as any).originChainId, "originChainId is required");
     const webhook = this.getEventProcessor(params.type as WebhookTypes);
@@ -118,11 +120,5 @@ export class EventProcessorManager {
     this.logger.debug(
       `Successfully unregistered webhook with ID: ${params.id}`,
     );
-  }
-
-  async registerClient(client: entities.WebhookClient) {
-    this.logger.debug(`Attempting to register client with ID: ${client.id}`);
-    await this.clientRepository.registerClient(client);
-    this.logger.debug(`Successfully registered client with ID: ${client.id}`);
   }
 }

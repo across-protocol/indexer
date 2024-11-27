@@ -56,13 +56,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
   // Call write to kick off webhook calls
-  const { write } = WebhookFactory(
-    {
-      enabledWebhooks: [WebhookTypes.DepositStatus],
-      enabledWebhookRequestWorkers: true,
-    },
-    { postgres, logger, redis },
-  );
+  const { write } = await WebhookFactory(config.webhookConfig, {
+    postgres,
+    logger,
+    redis,
+  });
   // Retry providers factory
   const retryProvidersFactory = new RetryProvidersFactory(
     redisCache,

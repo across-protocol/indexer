@@ -1,4 +1,5 @@
-import { NotificationPayload } from "./types";
+import { NotificationPayload, PartialWebhookClients } from "./types";
+import * as ss from "superstruct";
 export async function post(params: NotificationPayload): Promise<void> {
   const { url, data, apiKey } = params;
   const response = await fetch(url, {
@@ -41,4 +42,11 @@ export function exists<T>(val: T | null | undefined): val is T {
 }
 export function customId(...args: (string | number)[]): string {
   return args.join("!");
+}
+
+export function parseWebhookClientsFromString(
+  envStr: string,
+): PartialWebhookClients {
+  const clients = JSON.parse(envStr);
+  return ss.create(clients, PartialWebhookClients);
 }
