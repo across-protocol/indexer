@@ -75,7 +75,7 @@ export const getChainCacheFollowDistance = (chainId: number) => {
 };
 
 const MAX_BLOCK_LOOK_BACK = {
-  [CHAIN_IDs.MAINNET]: 7500,
+  [CHAIN_IDs.MAINNET]: 5000,
   [CHAIN_IDs.OPTIMISM]: 10000,
   [CHAIN_IDs.POLYGON]: 10000,
   [CHAIN_IDs.BOBA]: 4990,
