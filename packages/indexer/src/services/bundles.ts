@@ -82,7 +82,7 @@ function logResultOfAssignment(
   unassociatedRecordsCount: number,
   persistedRecordsCount: number,
 ): void {
-  if (unassociatedRecordsCount > 0) {
+  if (persistedRecordsCount > 0) {
     logger.debug({
       at: `Indexer#BundleEventsProcessor#assignToBundle`,
       message: "Found and associated events with bundles",
@@ -294,7 +294,11 @@ async function assignBundleRangesToProposal(
     }),
   );
   const insertResults = await dbRepository.associateBlockRangeWithBundle(
-    rangeSegments.filter((segment) => segment !== undefined).flat(),
+    rangeSegments
+      .filter(
+        (segment): segment is BlockRangeInsertType[] => segment !== undefined,
+      )
+      .flat(),
   );
   logResultOfAssignment(
     logger,
