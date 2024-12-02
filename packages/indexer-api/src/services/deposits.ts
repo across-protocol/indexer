@@ -128,8 +128,9 @@ export class DepositsService {
       const result = {
         status: relay?.status,
         originChainId: relay?.originChainId,
+        depositId: relay?.depositId,
         depositTxHash: relay?.depositTxHash,
-        fillTxHash: relay?.fillTxHash,
+        fillTx: relay?.fillTxHash,
         destinationChainId: relay?.destinationChainId,
         depositRefundTxHash: relay?.depositRefundTxHash,
         pagination: {
