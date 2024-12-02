@@ -110,7 +110,7 @@ export function getMaxBlockLookBack(chainId: number) {
 
 // Average block time in seconds by chain
 export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
-  [CHAIN_IDs.ALEPH_ZERO]: 0.25,
+  [CHAIN_IDs.ALEPH_ZERO]: 2,
   [CHAIN_IDs.ARBITRUM]: 0.25,
   [CHAIN_IDs.BASE]: 2,
   [CHAIN_IDs.BLAST]: 2,
