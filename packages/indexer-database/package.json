@@ -24,7 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/sdk": "^3.2.2",
+    "@across-protocol/sdk": "^3.3.23",
     "pg": "^8.4.0",
     "reflect-metadata": "^0.1.13",
     "superstruct": "2.0.3-1",
