@@ -23,7 +23,9 @@
   "dependencies": {
     "@across-protocol/constants": "^3.1.20",
     "@across-protocol/contracts": "^3.0.16",
-    "@across-protocol/sdk": "^3.2.2",
+    "@across-protocol/sdk": "^3.3.23",
+    "@repo/error-handling": "workspace:*",
+    "@repo/webhooks": "workspace:*",
     "@types/express": "^4.17.21",
     "@types/lodash": "^4.17.7",
     "bullmq": "^5.12.12",
@@ -34,8 +36,6 @@
     "lodash": "^4.17.21",
     "redis": "^4.7.0",
     "superstruct": "^2.0.3-1",
-    "@repo/webhooks": "workspace:*",
-    "@repo/error-handling": "workspace:*",
     "winston": "^3.13.1"
   },
   "exports": {
