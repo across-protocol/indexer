@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  Index,
   OneToOne,
   PrimaryGeneratedColumn,
   Unique,
@@ -24,6 +25,8 @@ export enum RelayStatus {
 
 @Entity()
 @Unique("UK_relayHashInfo_relayHash", ["relayHash"])
+@Index("IX_rhi_originChainId_depositId", ["originChainId", "depositId"])
+@Index("IX_rhi_depositTxHash", ["depositTxHash"])
 export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;
