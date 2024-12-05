@@ -147,7 +147,11 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       // we need to make sure we filter out all unecessary events for the block range requested
       proposedRootBundleEvents: proposedRootBundleEvents.map((p) => ({
         ...p,
-        chainIds: configStoreClient.getChainIdIndicesForBlock(p.blockNumber),
+        // Ensure both bundleEvaluationBlockNumbers and chainIds are the same length as
+        // a chain might be included in the config store list but not in a bundle yet.
+        chainIds: configStoreClient
+          .getChainIdIndicesForBlock(p.blockNumber)
+          .slice(0, p.bundleEvaluationBlockNumbers.length),
       })),
       rootBundleCanceledEvents,
       rootBundleDisputedEvents,
