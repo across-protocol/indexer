@@ -33,6 +33,7 @@ export type FetchEventsResult = {
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
   executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
   tokensBridgedEvents: across.interfaces.TokensBridged[];
+  blockTimes: Record<number, number>;
 };
 
 export type StoreEventsResult = {
@@ -114,6 +115,27 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
     await this.spokePoolProcessor.process(storedEvents);
   }
+  private async getBlockTime(blockNumber: number): Promise<number> {
+    const block = await this.provider.getBlock(blockNumber);
+    if (!block) {
+      throw new Error(`Block with number ${blockNumber} not found`);
+    }
+    return block.timestamp;
+  }
+
+  private async getBlockTimesByRange(
+    blockRange: BlockRange,
+  ): Promise<Record<number, number>> {
+    const blockTimes: Record<number, number> = {};
+    for (
+      let blockNumber = blockRange.from;
+      blockNumber <= blockRange.to;
+      blockNumber++
+    ) {
+      blockTimes[blockNumber] = await this.getBlockTime(blockNumber);
+    }
+    return blockTimes;
+  }
 
   private async fetchEventsByRange(
     blockRange: BlockRange,
@@ -147,6 +169,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const executedRelayerRefundRootEvents =
       spokePoolClient.getRelayerRefundExecutions();
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
+    const blockTimes = await this.getBlockTimesByRange(blockRange);
 
     return {
       v3FundsDepositedEvents,
@@ -156,6 +179,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      blockTimes,
     };
   }
 
@@ -172,11 +196,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      blockTimes,
     } = params;
     const savedV3FundsDepositedEvents =
       await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
         v3FundsDepositedEvents,
         lastFinalisedBlock,
+        blockTimes,
       );
     const savedV3RequestedSlowFills =
       await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(

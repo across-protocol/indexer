@@ -38,6 +38,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveV3FundsDepositedEvents(
     v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[],
     lastFinalisedBlock: number,
+    blockTimes: Record<number, number>,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       return {
@@ -46,6 +47,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
         finalised: event.blockNumber <= lastFinalisedBlock,
+        blockTimestamp: blockTimes[event.blockNumber],
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
