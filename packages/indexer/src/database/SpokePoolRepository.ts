@@ -61,7 +61,23 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
       ),
     );
-    return savedEvents.flat();
+    const result = savedEvents.flat();
+
+    // Log the time difference for each deposit event for profiling in datadog
+    const now = Date.now();
+    formattedEvents.forEach((event) => {
+      if (event.blockTimestamp === undefined) return;
+      const timeDifference = now - event.blockTimestamp * 1000;
+      this.logger.info({
+        message: "V3FundsDepositedEvent profile",
+        depositId: event.depositId,
+        chainId: event.originChainId,
+        timeDifference,
+        now,
+        blockTimestamp: event.blockTimestamp,
+      });
+    });
+    return result;
   }
 
   public async formatAndSaveFilledV3RelayEvents(
