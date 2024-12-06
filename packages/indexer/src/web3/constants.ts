@@ -80,7 +80,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.POLYGON]: 10000,
   [CHAIN_IDs.BOBA]: 4990,
   [CHAIN_IDs.ZK_SYNC]: 10000,
-  [CHAIN_IDs.REDSTONE]: 500,
+  [CHAIN_IDs.REDSTONE]: 500, // TODO: Update when Quicknode is enable as a provider
   [CHAIN_IDs.LISK]: 10000,
   [CHAIN_IDs.BASE]: 10000,
   [CHAIN_IDs.MODE]: 10000,
