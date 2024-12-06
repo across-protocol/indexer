@@ -15,3 +15,13 @@ export class IndexParamOutOfRangeException extends IndexerHTTPError {
     super(StatusCodes.BAD_REQUEST, IndexParamOutOfRangeException.name, message);
   }
 }
+
+export class IncorrectQueryParamsException extends IndexerHTTPError {
+  constructor() {
+    super(
+      StatusCodes.BAD_REQUEST,
+      IncorrectQueryParamsException.name,
+      "Incorrect query params provided",
+    );
+  }
+}
