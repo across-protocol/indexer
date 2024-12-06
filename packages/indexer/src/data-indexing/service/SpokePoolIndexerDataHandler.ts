@@ -123,16 +123,15 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     return block.timestamp;
   }
 
-  private async getBlockTimesByRange(
-    blockRange: BlockRange,
+  private async getBlockTimes(
+    blockNumbers: number[],
   ): Promise<Record<number, number>> {
     const blockTimes: Record<number, number> = {};
-    for (
-      let blockNumber = blockRange.from;
-      blockNumber <= blockRange.to;
-      blockNumber++
-    ) {
-      blockTimes[blockNumber] = await this.getBlockTime(blockNumber);
+    for (const blockNumber of blockNumbers) {
+      // ensure we dont query more than we need to
+      if (blockTimes[blockNumber] === undefined) {
+        blockTimes[blockNumber] = await this.getBlockTime(blockNumber);
+      }
     }
     return blockTimes;
   }
@@ -169,7 +168,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const executedRelayerRefundRootEvents =
       spokePoolClient.getRelayerRefundExecutions();
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
-    const blockTimes = await this.getBlockTimesByRange(blockRange);
+    // It may be the case we add more events in the future, but right now we just
+    // care about deposit event block ranges, we can have dupe block numbers here,
+    // but getBlockTimes will make sure we dont query more than we need to.
+    const v3FundsDepositedBlockNumbers = v3FundsDepositedEvents.map(
+      (deposit) => deposit.blockNumber,
+    );
+    const blockTimes = await this.getBlockTimes(v3FundsDepositedBlockNumbers);
 
     return {
       v3FundsDepositedEvents,
