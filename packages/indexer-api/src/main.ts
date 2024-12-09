@@ -98,7 +98,7 @@ export async function Main(
   );
 
   const allRouters: Record<string, Router> = {
-    deposits: routers.deposits.getRouter(postgres),
+    deposits: routers.deposits.getRouter(postgres, redis),
     balances: routers.balances.getRouter(redis),
     statsPage: routers.statsPage.getRouter(postgres),
     webhook: webhooks.router,
