@@ -75,7 +75,7 @@ export class BlockchainEventRepository {
       this.logger.debug({
         at: "BlockchainEventRepository#saveAndHandleFinalisation",
         message: `Found entity ${entity} where ${JSON.stringify(where)}`,
-        entity,
+        dbEntity,
         data,
         where,
       });
@@ -83,7 +83,7 @@ export class BlockchainEventRepository {
       this.logger.debug({
         at: "BlockchainEventRepository#saveAndHandleFinalisation",
         message: `Inserted entity ${entity} where ${JSON.stringify(where)}`,
-        entity,
+        dbEntity,
         data,
         where,
       });
