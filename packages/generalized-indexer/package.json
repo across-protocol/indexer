@@ -1,0 +1,47 @@
+{
+  "name": "@repo/generalized-indexer",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "build:check": "tsc --noEmit",
+    "watch": "tsc -b --watch",
+    "fix": "pnpm format && pnpm lint",
+    "format": "prettier --write src",
+    "format:check": "prettier src --check",
+    "lint": "eslint --fix",
+    "lint:check": "eslint",
+    "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
+    "test": "mocha",
+    "coverage": "nyc mocha",
+    "test:watch": "mocha --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/lodash": "^4.17.7",
+    "lodash": "^4.17.21",
+    "superstruct": "2.0.3-1"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/chai": "^4.3.17",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^16.11.10",
+    "chai": "^4.5.0",
+    "eslint": "^8.57.0",
+    "mocha": "^10.7.0",
+    "nyc": "^17.0.0",
+    "prettier": "^3.3.3",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
