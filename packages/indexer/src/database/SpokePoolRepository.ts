@@ -40,6 +40,12 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
+      // delete fields that are not needed for the database table
+      delete event.speedUpSignature;
+      delete event.updatedRecipient;
+      delete event.updatedOutputAmount;
+      delete event.updatedMessage;
+
       return {
         ...event,
         relayHash: across.utils.getRelayHashFromEvent(event),
