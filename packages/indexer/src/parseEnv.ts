@@ -7,6 +7,7 @@ import {
   WebhookTypes,
   parseWebhookClientsFromString,
 } from "@repo/webhooks";
+import { CoingeckoSymbol } from "./utils/coingeckoClient";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -19,7 +20,9 @@ export type Config = {
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
+  coingeckoSymbols: CoingeckoSymbol[];
 };
+
 export type RedisConfig = {
   host: string;
   port: number;
@@ -30,11 +33,12 @@ export type ProviderConfig = [providerUrl: string, chainId: number];
 export type Env = Record<string, string | undefined>;
 
 export function parseRedisConfig(env: Env): RedisConfig {
-  assert(env.REDIS_HOST, "requires REDIS_HOST");
-  assert(env.REDIS_PORT, "requires REDIS_PORT");
-  const port = parseNumber(env.REDIS_PORT);
+  const { REDIS_HOST, REDIS_PORT } = env;
+  assert(REDIS_HOST, "requires REDIS_HOST");
+  assert(REDIS_PORT, "requires REDIS_PORT");
+  const port = parseNumber(REDIS_PORT);
   return {
-    host: env.REDIS_HOST,
+    host: REDIS_HOST,
     port,
     // @dev: this retry config is needed for bullmq workers
     maxRetriesPerRequest: null,
@@ -197,6 +201,9 @@ export function envToConfig(env: Env): Config {
     enabledWebhookRequestWorkers: true,
     clients: parseWebhookClientsFromString(env.WEBHOOK_CLIENTS ?? "[]"),
   };
+  const coingeckoSymbols = parseArray(env.COINGECKO_SYMBOLS).map((symbol) =>
+    CoingeckoSymbol.create(symbol),
+  );
   return {
     redisConfig,
     postgresConfig,
@@ -208,5 +215,6 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     webhookConfig,
     maxBlockRangeSize,
+    coingeckoSymbols,
   };
 }
