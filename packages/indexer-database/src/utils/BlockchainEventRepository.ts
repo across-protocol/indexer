@@ -72,21 +72,7 @@ export class BlockchainEventRepository {
     const repository = this.postgres.getRepository(entity);
 
     if (!dbEntity) {
-      this.logger.debug({
-        at: "BlockchainEventRepository#saveAndHandleFinalisation",
-        message: `Found entity ${entity} where ${JSON.stringify(where)}`,
-        dbEntity,
-        data,
-        where,
-      });
       await repository.insert(data);
-      this.logger.debug({
-        at: "BlockchainEventRepository#saveAndHandleFinalisation",
-        message: `Inserted entity ${entity} where ${JSON.stringify(where)}`,
-        dbEntity,
-        data,
-        where,
-      });
       return {
         data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Inserted,

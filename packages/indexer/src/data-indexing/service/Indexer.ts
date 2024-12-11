@@ -69,8 +69,6 @@ export class Indexer {
         }
         blockRangeProcessedSuccessfully = true;
       } catch (error) {
-        // TODO: remove this after testing
-        console.error(error);
         this.logger.error({
           at: "Indexer#start",
           message: "Error processing block range",
