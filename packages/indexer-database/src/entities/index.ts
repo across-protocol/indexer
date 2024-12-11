@@ -22,3 +22,4 @@ export * from "./RelayHashInfo";
 
 export * from "./WebhookRequest";
 export * from "./WebhookClient";
+export * from "./HistoricPrice";
