@@ -74,7 +74,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     formattedEvents.forEach((event) => {
       if (event.blockTimestamp === undefined) return;
       const timeDifference = now - event.blockTimestamp * 1000;
-      this.logger.info({
+      this.logger.debug({
         at: "SpokePoolRepository#formatAndSaveV3FundsDepositedEvents",
         message: "V3FundsDepositedEvent profile",
         depositId: event.depositId,
