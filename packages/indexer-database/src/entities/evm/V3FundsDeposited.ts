@@ -89,4 +89,7 @@ export class V3FundsDeposited {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true })
+  blockTimestamp?: number;
 }
