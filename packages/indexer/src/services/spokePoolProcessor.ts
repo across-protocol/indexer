@@ -177,16 +177,18 @@ export class SpokePoolProcessor {
         }),
       };
     });
-    const chunkedData = utils.chunk(data, this.queryBatchSize);
-    const upsertResult = await Promise.all(
-      chunkedData.map((chunk) =>
-        relayHashInfoRepository.upsert(chunk, ["relayHash"]),
-      ),
-    );
+
+    const upsertResults = [];
+    for (const item of data) {
+      upsertResults.push(
+        await relayHashInfoRepository.upsert(item, ["relayHash"]),
+      );
+    }
+
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
-      updatedRelayHashInfoRows: upsertResult.reduce(
+      updatedRelayHashInfoRows: upsertResults.reduce(
         (acc, res) => acc + res.generatedMaps.length,
         0,
       ),
