@@ -91,5 +91,5 @@ export class V3FundsDeposited {
   createdAt: Date;
 
   @Column({ nullable: true })
-  blockTimestamp?: number;
+  blockTimestamp?: Date;
 }
