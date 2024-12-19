@@ -27,7 +27,12 @@ export class CoingeckoPriceProcessor extends BaseIndexer {
 
   protected async indexerLogic(): Promise<void> {
     const now = Date.now();
-    const dbFormattedDate = DateTime.fromMillis(now).toFormat("yyyy-LL-dd");
+    // we are always checking if we have the price for previous day, not the current day, so we go back
+    // to right before midnight of last day.
+    const previousDay = DateTime.fromMillis(now)
+      .minus({ days: 1 })
+      .set({ hour: 23, minute: 59, second: 0, millisecond: 0 });
+    const dbFormattedDate = previousDay.toJSDate();
     const quoteCurrency = this.config.quoteCurrency ?? "usd";
     const historicPriceRepository = this.deps.postgres.getRepository(
       entities.HistoricPrice,

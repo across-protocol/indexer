@@ -24,8 +24,8 @@ export class HistoricPrice {
   quoteCurrency: string;
 
   // yyyy-LL-dd
-  @Column()
-  date: string;
+  @Column({ type: "date" })
+  date: Date;
 
   @Column({ type: "decimal" })
   price: string;
