@@ -46,14 +46,14 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete event.updatedRecipient;
       delete event.updatedOutputAmount;
       delete event.updatedMessage;
-
+      const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
         ...event,
         relayHash: across.utils.getRelayHashFromEvent(event),
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
         finalised: event.blockNumber <= lastFinalisedBlock,
-        blockTimestamp: blockTimes[event.blockNumber],
+        blockTimestamp,
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
@@ -70,10 +70,10 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const result = savedEvents.flat();
 
     // Log the time difference for each deposit event for profiling in datadog
-    const now = Date.now();
+    const now = new Date();
     formattedEvents.forEach((event) => {
       if (event.blockTimestamp === undefined) return;
-      const timeDifference = now - event.blockTimestamp * 1000;
+      const timeDifference = now.getTime() - event.blockTimestamp.getTime();
       this.logger.debug({
         at: "SpokePoolRepository#formatAndSaveV3FundsDepositedEvents",
         message: "V3FundsDepositedEvent profile",
