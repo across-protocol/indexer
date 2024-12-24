@@ -90,4 +90,7 @@ export class FilledV3Relay {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true })
+  blockTimestamp?: Date;
 }
