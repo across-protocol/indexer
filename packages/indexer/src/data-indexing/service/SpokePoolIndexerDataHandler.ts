@@ -126,14 +126,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private async getBlockTimes(
     blockNumbers: number[],
   ): Promise<Record<number, number>> {
-    const blockTimes: Record<number, number> = {};
-    for (const blockNumber of blockNumbers) {
-      // ensure we dont query more than we need to
-      if (blockTimes[blockNumber] === undefined) {
-        blockTimes[blockNumber] = await this.getBlockTime(blockNumber);
-      }
-    }
-    return blockTimes;
+    const timestamps = await Promise.all(
+      blockNumbers.map((blockNumber) => this.getBlockTime(blockNumber)),
+    );
+
+    const blockTimestamps = blockNumbers.reduce(
+      (acc, blockNumber, index) => {
+        if (timestamps[index] === undefined) {
+          throw new Error(`Block time for block ${blockNumber} not found`);
+        }
+        acc[blockNumber] = timestamps[index];
+        return acc;
+      },
+      {} as Record<number, number>,
+    );
+    return blockTimestamps;
   }
 
   private async fetchEventsByRange(
@@ -168,13 +175,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const executedRelayerRefundRootEvents =
       spokePoolClient.getRelayerRefundExecutions();
     const tokensBridgedEvents = spokePoolClient.getTokensBridged();
-    // It may be the case we add more events in the future, but right now we just
-    // care about deposit event block ranges, we can have dupe block numbers here,
-    // but getBlockTimes will make sure we dont query more than we need to.
-    const v3FundsDepositedBlockNumbers = v3FundsDepositedEvents.map(
-      (deposit) => deposit.blockNumber,
-    );
-    const blockTimes = await this.getBlockTimes(v3FundsDepositedBlockNumbers);
+    // getBlockTimes function will make sure we dont query more than we need to.
+    const blockNumbers = [
+      ...v3FundsDepositedEvents.map((deposit) => deposit.blockNumber),
+      ...filledV3RelayEvents.map((fill) => fill.blockNumber),
+    ];
+    const blockTimes = await this.getBlockTimes(blockNumbers);
 
     return {
       v3FundsDepositedEvents,
@@ -218,6 +224,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
         filledV3RelayEvents,
         lastFinalisedBlock,
+        blockTimes,
       );
     const savedExecutedRelayerRefundRootEvents =
       await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
