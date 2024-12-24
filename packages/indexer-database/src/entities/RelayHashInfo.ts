@@ -102,6 +102,9 @@ export class RelayHashInfo {
   @CreateDateColumn()
   createdAt: Date;
 
+  @Column()
+  bridgeFeeUsd: string;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }
