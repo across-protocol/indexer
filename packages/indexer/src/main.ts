@@ -17,9 +17,9 @@ import {
 import { BundleRepository } from "./database/BundleRepository";
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
+import { PriceWorker } from "./messaging/priceWorker";
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
-import { CoingeckoPriceProcessor } from "./services";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -56,10 +56,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const redis = await initializeRedis(redisConfig, logger);
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
-  const priceProcessor = new CoingeckoPriceProcessor(
-    { symbols: config.coingeckoSymbols },
-    { logger, postgres },
-  );
   // Call write to kick off webhook calls
   const { write } = await WebhookFactory(config.webhookConfig, {
     postgres,
@@ -121,6 +117,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     retryProvidersFactory,
   );
+  const priceWorker = new PriceWorker(redis, postgres, logger);
 
   let exitRequested = false;
   process.on("SIGINT", () => {
@@ -130,9 +127,9 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
       });
       integratorIdWorker.close();
+      priceWorker.close();
       acrossIndexerManager.stopGracefully();
       bundleServicesManager.stop();
-      priceProcessor.stop();
     } else {
       integratorIdWorker.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
@@ -152,8 +149,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     await Promise.allSettled([
       bundleServicesManager.start(),
       acrossIndexerManager.start(),
-      // run prices call to check every minute or so. it will only cache once a day
-      priceProcessor.start(60),
     ]);
 
   logger.info({

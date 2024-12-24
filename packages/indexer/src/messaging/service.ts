@@ -3,6 +3,7 @@ import { Queue, JobsOptions, BulkJobOptions } from "bullmq";
 
 export enum IndexerQueues {
   IntegratorId = "IntegratorId",
+  PriceQuery = "PriceQuery",
 }
 
 export class IndexerQueuesService {

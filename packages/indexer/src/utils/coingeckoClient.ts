@@ -1,24 +1,31 @@
 import * as s from "superstruct";
 import { DateTime } from "luxon";
 
+// tken from scraper and adapted from https://github.com/across-protocol/constants/blob/master/src/tokens.ts
 export const CoingeckoSymbol = s.enums([
-  "ethereum",
-  "matic-network",
-  "wrapped-bitcoin",
-  "usd-coin",
-  "uma",
-  "badger-dao",
-  "weth",
-  "boba-network",
-  "dai",
-  "balancer",
-  "tether",
   "across-protocol",
-  "havven",
-  "pooltogether",
+  "aleph-zero",
+  "arbitrum",
+  "badger-dao",
+  "balancer",
+  "boba-network",
   "bridged-usd-coin-base",
+  "dai",
+  "ethereum",
+  "gho",
+  "havven",
+  "lisk",
+  "matic-network",
   "optimism",
+  "pooltogether",
+  "tether",
+  "uma",
+  "usd-coin",
   "usd-coin-ethereum-bridged",
+  "usdb",
+  "weth",
+  "wmatic",
+  "wrapped-bitcoin",
 ]);
 export type CoingeckoSymbol = s.Infer<typeof CoingeckoSymbol>;
 export const CGHistoricPriceBase = s.object({
@@ -31,7 +38,18 @@ export const CGHistoricPriceBase = s.object({
     }),
   ),
 });
+export const isCoingeckoSymbol = (symbol: string) =>
+  s.is(symbol, CoingeckoSymbol);
+
 export type CGHistoricPriceBase = s.Infer<typeof CGHistoricPriceBase>;
+
+// Convert now to a consistent price timestamp yesterday for lookup purposes
+export function yesterday(now: Date) {
+  return DateTime.fromJSDate(now)
+    .minus({ days: 1 })
+    .set({ hour: 23, minute: 59, second: 0, millisecond: 0 })
+    .toJSDate();
+}
 
 export class CoingeckoClient {
   constructor(private baseUrl: string = "https://api.coingecko.com/api/v3") {}
