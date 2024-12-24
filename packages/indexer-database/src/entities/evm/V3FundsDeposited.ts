@@ -90,6 +90,7 @@ export class V3FundsDeposited {
   @CreateDateColumn()
   createdAt: Date;
 
+  // this has been converted from block time seconds
   @Column({ nullable: true })
   blockTimestamp?: Date;
 }
