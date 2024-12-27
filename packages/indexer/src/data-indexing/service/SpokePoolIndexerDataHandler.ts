@@ -126,11 +126,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private async getBlockTimes(
     blockNumbers: number[],
   ): Promise<Record<number, number>> {
+    const uniqueBlockNumbers = [...new Set(blockNumbers)];
     const timestamps = await Promise.all(
-      blockNumbers.map((blockNumber) => this.getBlockTime(blockNumber)),
+      uniqueBlockNumbers.map((blockNumber) => this.getBlockTime(blockNumber)),
     );
 
-    const blockTimestamps = blockNumbers.reduce(
+    const blockTimestamps = uniqueBlockNumbers.reduce(
       (acc, blockNumber, index) => {
         if (timestamps[index] === undefined) {
           throw new Error(`Block time for block ${blockNumber} not found`);
