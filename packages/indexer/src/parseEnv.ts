@@ -7,7 +7,6 @@ import {
   WebhookTypes,
   parseWebhookClientsFromString,
 } from "@repo/webhooks";
-import { CoingeckoSymbol } from "./utils/coingeckoClient";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -20,7 +19,6 @@ export type Config = {
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
-  coingeckoSymbols: CoingeckoSymbol[];
 };
 
 export type RedisConfig = {
@@ -201,9 +199,6 @@ export function envToConfig(env: Env): Config {
     enabledWebhookRequestWorkers: true,
     clients: parseWebhookClientsFromString(env.WEBHOOK_CLIENTS ?? "[]"),
   };
-  const coingeckoSymbols = parseArray(env.COINGECKO_SYMBOLS).map((symbol) =>
-    CoingeckoSymbol.create(symbol),
-  );
   return {
     redisConfig,
     postgresConfig,
@@ -215,6 +210,5 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     webhookConfig,
     maxBlockRangeSize,
-    coingeckoSymbols,
   };
 }
