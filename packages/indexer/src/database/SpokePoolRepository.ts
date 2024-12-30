@@ -90,8 +90,10 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveFilledV3RelayEvents(
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
     lastFinalisedBlock: number,
+    blockTimes: Record<number, number>,
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
+      const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
         ...Object.keys(event).reduce(
           (acc, key) => {
@@ -110,6 +112,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         updatedMessage: event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
         finalised: event.blockNumber <= lastFinalisedBlock,
+        blockTimestamp,
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
