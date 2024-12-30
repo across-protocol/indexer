@@ -1,3 +1,7 @@
+networks:
+  test-network:
+    external: true
+
 services:
   # PostgreSQL Service
   postgres:
@@ -9,10 +13,13 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
       PG_DATA: /var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all"]
     volumes:
       - indexer-pgdata:/var/lib/postgresql/data
     ports:
       - 5432:5432
+    networks:
+      - test-network
 
   # Redis Service
   redis:
