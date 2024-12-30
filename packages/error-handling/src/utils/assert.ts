@@ -13,7 +13,7 @@ export function assert(
   message: string,
 ): asserts value is NonNullable<unknown> {
   try {
-    return assertModule.ok(value !== null && value !== undefined, message);
+    return assertModule.ok(value, message);
   } catch (e: unknown) {
     throw new AssertError(message);
   }

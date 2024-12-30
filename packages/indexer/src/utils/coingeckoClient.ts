@@ -1,33 +1,6 @@
 import * as s from "superstruct";
 import { DateTime } from "luxon";
 
-// tken from scraper and adapted from https://github.com/across-protocol/constants/blob/master/src/tokens.ts
-export const CoingeckoSymbol = s.enums([
-  "across-protocol",
-  "aleph-zero",
-  "arbitrum",
-  "badger-dao",
-  "balancer",
-  "boba-network",
-  "bridged-usd-coin-base",
-  "dai",
-  "ethereum",
-  "gho",
-  "havven",
-  "lisk",
-  "matic-network",
-  "optimism",
-  "pooltogether",
-  "tether",
-  "uma",
-  "usd-coin",
-  "usd-coin-ethereum-bridged",
-  "usdb",
-  "weth",
-  "wmatic",
-  "wrapped-bitcoin",
-]);
-export type CoingeckoSymbol = s.Infer<typeof CoingeckoSymbol>;
 export const CGHistoricPriceBase = s.object({
   id: s.string(),
   symbol: s.string(),
@@ -38,8 +11,6 @@ export const CGHistoricPriceBase = s.object({
     }),
   ),
 });
-export const isCoingeckoSymbol = (symbol: string) =>
-  s.is(symbol, CoingeckoSymbol);
 
 export type CGHistoricPriceBase = s.Infer<typeof CGHistoricPriceBase>;
 
@@ -57,7 +28,7 @@ export class CoingeckoClient {
   // rounds timestamp to the current day
   public async getHistoricDailyPrice(
     timestamp: number,
-    symbol: CoingeckoSymbol,
+    symbol: string,
   ): Promise<CGHistoricPriceBase> {
     const cgFormattedDate =
       DateTime.fromMillis(timestamp).toFormat("dd-LL-yyyy");
