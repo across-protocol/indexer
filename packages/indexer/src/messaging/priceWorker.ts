@@ -3,6 +3,7 @@ import winston from "winston";
 import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
+import { ethers } from "ethers";
 import {
   getIntegratorId,
   yesterday,
@@ -10,6 +11,7 @@ import {
   findTokenByAddress,
 } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { assert } from "@repo/error-handling";
 
 export type PriceMessage = {
   depositId: number;
@@ -27,8 +29,11 @@ export type PriceMessage = {
  * - Logging errors and information at various stages of the process.
  */
 export class PriceWorker {
-  public worker: Worker;
+  private worker: Worker;
   private coingeckoClient: CoingeckoClient;
+  private relayHashInfoRepository;
+  private depositRepository;
+  private historicPriceRepository;
 
   constructor(
     private redis: Redis,
@@ -36,7 +41,54 @@ export class PriceWorker {
     private logger: winston.Logger,
   ) {
     this.coingeckoClient = new CoingeckoClient();
+    this.relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+    this.depositRepository = this.postgres.getRepository(
+      entities.V3FundsDeposited,
+    );
+    this.historicPriceRepository = this.postgres.getRepository(
+      entities.HistoricPrice,
+    );
     this.setWorker();
+  }
+  private async getPrice(
+    address: string,
+    chainId: number,
+    time: Date,
+    quoteCurrency = "usd",
+  ): Promise<number> {
+    const priceTime = yesterday(time);
+    const tokenInfo = findTokenByAddress(address, chainId);
+    const baseCurrency = tokenInfo.coingeckoId;
+
+    const cachedPrice = await this.historicPriceRepository.findOne({
+      where: {
+        date: priceTime,
+        baseCurrency,
+        quoteCurrency,
+      },
+    });
+    // we have this price at this time in the db
+    if (cachedPrice) return Number(cachedPrice.price);
+
+    const fetchedPrice = await this.coingeckoClient.getHistoricDailyPrice(
+      priceTime.getTime(),
+      baseCurrency,
+    );
+    const price = fetchedPrice.market_data?.current_price[quoteCurrency];
+    assert(
+      price,
+      `Unable to fetch price for ${quoteCurrency} in ${baseCurrency} at ${priceTime}`,
+    );
+    await this.historicPriceRepository.insert({
+      date: priceTime,
+      baseCurrency,
+      quoteCurrency,
+      price: price.toString(),
+    });
+
+    return Number(price);
   }
 
   public setWorker() {
@@ -57,117 +109,98 @@ export class PriceWorker {
       { connection: this.redis, concurrency: 10 },
     );
   }
+  // price is assumed to be a float, amount is assumed in wei and decimals is the conversion for that amount
+  // this outputs the difference between input and output normalized to the price which is typically usd
+  private calculateBridgeFee(
+    inputToken: { amount: string; price: number; decimals: number },
+    outputToken: { amount: string; price: number; decimals: number },
+  ): bigint {
+    const inputAmountBigInt = BigInt(inputToken.amount);
+    const outputAmountBigInt = BigInt(outputToken.amount);
+
+    const inputPriceBigInt = BigInt(
+      Math.round(inputToken.price * Math.pow(10, inputToken.decimals)),
+    );
+    const outputPriceBigInt = BigInt(
+      Math.round(outputToken.price * Math.pow(10, outputToken.decimals)),
+    );
+
+    const normalizedInputAmount =
+      (inputAmountBigInt * inputPriceBigInt) /
+      BigInt(Math.pow(10, inputToken.decimals));
+    const normalizedOutputAmount =
+      (outputAmountBigInt * outputPriceBigInt) /
+      BigInt(Math.pow(10, outputToken.decimals));
+
+    return normalizedInputAmount - normalizedOutputAmount;
+  }
   private async run(params: PriceMessage) {
     const { depositId, originChainId } = params;
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
-    const depositRepository = this.postgres.getRepository(
-      entities.V3FundsDeposited,
-    );
-    const historicPriceRepository = this.postgres.getRepository(
-      entities.HistoricPrice,
-    );
 
-    const relayHashInfo = await relayHashInfoRepository.findOne({
+    const relayHashInfo = await this.relayHashInfoRepository.findOne({
       where: { depositId, originChainId },
     });
-    const deposit = await depositRepository.findOne({
+    const deposit = await this.depositRepository.findOne({
       where: { depositId, originChainId },
     });
 
+    // This is catastrophic, we dont want worker retrying if we cannot find this data
     if (!relayHashInfo || !deposit) {
       this.logger.error({
         at: "PriceWorker",
-        message: "Relay hash info not found",
+        message:
+          "Failed to retrieve relay hash information or deposit record from the database.",
         ...params,
       });
       return;
     }
 
+    // if blockTimestamp doesnt exist, maybe we keep retrying till it does
     const blockTime = relayHashInfo?.depositEvent?.blockTimestamp;
     if (!blockTime) {
+      const errorMessage = "Deposit block time not found for relay hash info.";
       this.logger.error({
         at: "PriceWorker",
-        message: "Deposit block time not found for relay hash info",
+        message: errorMessage,
         ...params,
       });
-      return;
+      throw new Error(errorMessage);
     }
-    const priceTime = yesterday(blockTime);
-    const quoteCurrency = "usd";
-    const baseTokenInfo = findTokenByAddress(
-      relayHashInfo.fillEvent.outputToken,
-      relayHashInfo.destinationChainId,
+    const inputTokenAddress = relayHashInfo.fillEvent.inputToken;
+    const outputTokenAddress = relayHashInfo.fillEvent.outputToken;
+    const destinationChainId = relayHashInfo.destinationChainId;
+    const inputTokenInfo = findTokenByAddress(inputTokenAddress, originChainId);
+    const outputTokenInfo = findTokenByAddress(
+      outputTokenAddress,
+      destinationChainId,
     );
-    const baseCurrency = baseTokenInfo?.coingeckoId;
-    let price: undefined | number;
 
-    if (!baseCurrency) {
-      this.logger.error({
-        at: "PriceWorker",
-        message: "Unable to find base currency to quote",
-        ...params,
-        outputToken: relayHashInfo.fillEvent.outputToken,
-        destinationChainId: relayHashInfo.destinationChainId,
-      });
-      return;
-    }
-    const existingPrice = await historicPriceRepository.findOne({
-      where: {
-        date: priceTime,
-        baseCurrency,
-        quoteCurrency,
-      },
-    });
-    // fetch price if one hasnt been saved
-    if (!existingPrice) {
-      try {
-        const historicPriceData =
-          await this.coingeckoClient.getHistoricDailyPrice(
-            priceTime.getTime(),
-            baseCurrency,
-          );
-        price = historicPriceData.market_data?.current_price[quoteCurrency];
-        // wasnt able to get a price
-        if (price === undefined) {
-          this.logger.error(
-            `Unable to find ${quoteCurrency} for ${baseCurrency} at time ${priceTime}`,
-          );
-          return;
-        }
-        await historicPriceRepository.insert({
-          date: priceTime,
-          baseCurrency,
-          quoteCurrency,
-          price: price.toString(),
-        });
-        this.logger.info({
-          at: "PriceWorker",
-          ...params,
-          message: `Fetched and inserted historic price for ${baseCurrency} on ${priceTime}`,
-        });
-      } catch (error) {
-        this.logger.error({
-          at: "PriceWorker",
-          ...params,
-          message: `Failed to fetch or insert historic price for ${baseCurrency} on ${priceTime}`,
-          error: (error as Error).message,
-        });
-      }
-    } else {
-      price = Number(existingPrice.price);
-    }
+    const inputTokenPrice = await this.getPrice(
+      inputTokenAddress,
+      originChainId,
+      blockTime,
+    );
+    const outputTokenPrice = await this.getPrice(
+      outputTokenAddress,
+      destinationChainId,
+      blockTime,
+    );
 
-    if (price === undefined) {
-      this.logger.error({
-        at: "PriceWorker",
-        ...params,
-        message: "Failed to get a valid price from cache or coingecko",
-      });
-      return;
-    }
-    // TODO: Compute bridge fee
+    const inputToken = {
+      amount: relayHashInfo.fillEvent.inputAmount,
+      price: inputTokenPrice,
+      decimals: inputTokenInfo.decimals,
+    };
+
+    const outputToken = {
+      amount: relayHashInfo.fillEvent.outputAmount,
+      price: outputTokenPrice,
+      decimals: outputTokenInfo.decimals,
+    };
+
+    const bridgeFee = this.calculateBridgeFee(inputToken, outputToken);
+    relayHashInfo.bridgeFeeUsd = bridgeFee.toString();
+    await this.relayHashInfoRepository.save(relayHashInfo);
   }
   public async close() {
     return this.worker.close();

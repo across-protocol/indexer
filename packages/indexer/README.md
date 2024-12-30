@@ -51,8 +51,4 @@ ENABLE_HUBPOOL_INDEXER=true
 ENABLE_BUNDLE_EVENTS_PROCESSOR=true
 ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE=true
 ENABLE_BUNDLE_BUILDER=true
-
-# use symbols defined in /home/dev/src/risklabs/indexer/packages/indexer/src/utils/coingeckoClient.ts
-# separate them by comma, no spaces
-COINGECKO_SYMBOLS=ethereum,optimism,across-protocol
 ```

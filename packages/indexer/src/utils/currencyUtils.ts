@@ -1,5 +1,4 @@
 import * as constants from "@across-protocol/constants";
-import { isCoingeckoSymbol, CoingeckoSymbol } from "./coingeckoClient";
 
 export type TokenInfo = {
   name: string;
@@ -14,7 +13,7 @@ export type Token = {
   decimals: number;
   address: string;
   chainId: number;
-  coingeckoId: CoingeckoSymbol;
+  coingeckoId: string;
 };
 // mapping the token constants to something easier to search
 export const tokenSymbolsMap = [
@@ -23,7 +22,6 @@ export const tokenSymbolsMap = [
 // map to just a flat list
 export const tokensList = tokenSymbolsMap.reduce((result, token) => {
   Object.entries(token.addresses).forEach(([chainId, address]) => {
-    if (!isCoingeckoSymbol(token.coingeckoId)) return result;
     result.push({
       name: token.name,
       symbol: token.symbol,
@@ -37,13 +35,16 @@ export const tokensList = tokenSymbolsMap.reduce((result, token) => {
 }, [] as Token[]);
 
 // given an address and chain id, return the token data
-export function findTokenByAddress(
-  address: string,
-  chainId: number,
-): Token | undefined {
-  return tokensList.find(
+export function findTokenByAddress(address: string, chainId: number): Token {
+  const result = tokensList.find(
     (token) =>
       token.address.toLowerCase() === address.toLowerCase() &&
       token.chainId === chainId,
   );
+  if (!result) {
+    throw new Error(
+      `Token info not found for address: ${address} on chainId: ${chainId}`,
+    );
+  }
+  return result;
 }
