@@ -9,6 +9,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 86400,
   [CHAIN_IDs.BLAST]: 86400,
   [CHAIN_IDs.BOBA]: 86400,
+  [CHAIN_IDs.INK]: 86400,
   [CHAIN_IDs.LINEA]: 57600,
   [CHAIN_IDs.LISK]: 86400,
   [CHAIN_IDs.MAINNET]: 14400,
@@ -41,6 +42,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 120,
   [CHAIN_IDs.BLAST]: 120,
   [CHAIN_IDs.BOBA]: 0,
+  [CHAIN_IDs.INK]: 120,
   [CHAIN_IDs.LISK]: 120,
   [CHAIN_IDs.LINEA]: 100, // Linea has a soft-finality of 1 block. This value is padded - but at 3s/block the padding is 5 minutes
   [CHAIN_IDs.MAINNET]: 128,
@@ -79,6 +81,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.OPTIMISM]: 10000,
   [CHAIN_IDs.POLYGON]: 10000,
   [CHAIN_IDs.BOBA]: 4990,
+  [CHAIN_IDs.INK]: 10000,
   [CHAIN_IDs.ZK_SYNC]: 10000,
   [CHAIN_IDs.REDSTONE]: 500, // TODO: Update when Quicknode is enable as a provider
   [CHAIN_IDs.LISK]: 10000,
@@ -115,6 +118,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 2,
   [CHAIN_IDs.BLAST]: 2,
   [CHAIN_IDs.BOBA]: 2,
+  [CHAIN_IDs.INK]: 1,
   [CHAIN_IDs.LINEA]: 3,
   [CHAIN_IDs.LISK]: 2,
   [CHAIN_IDs.MAINNET]: 12,
