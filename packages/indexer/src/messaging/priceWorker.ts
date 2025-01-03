@@ -4,12 +4,8 @@ import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
 import { ethers } from "ethers";
-import {
-  getIntegratorId,
-  yesterday,
-  CoingeckoClient,
-  findTokenByAddress,
-} from "../utils";
+import { yesterday, findTokenByAddress } from "../utils";
+import { CoingeckoClient } from "../utils/coingeckoClient";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { assert } from "@repo/error-handling";
 
@@ -60,7 +56,7 @@ export class PriceWorker {
   ): Promise<number> {
     const priceTime = yesterday(time);
     const tokenInfo = findTokenByAddress(address, chainId);
-    const baseCurrency = tokenInfo.coingeckoId;
+    const baseCurrency = tokenInfo.symbol;
 
     const cachedPrice = await this.historicPriceRepository.findOne({
       where: {
@@ -74,12 +70,13 @@ export class PriceWorker {
 
     const fetchedPrice = await this.coingeckoClient.getHistoricDailyPrice(
       priceTime.getTime(),
-      baseCurrency,
+      // use the coingecko id to fetch basecurrency price in usd
+      tokenInfo.coingeckoId,
     );
     const price = fetchedPrice.market_data?.current_price[quoteCurrency];
     assert(
       price,
-      `Unable to fetch price for ${quoteCurrency} in ${baseCurrency} at ${priceTime}`,
+      `Unable to fetch price for ${quoteCurrency} in ${baseCurrency}(${tokenInfo.coingeckoId}) at ${priceTime}`,
     );
     await this.historicPriceRepository.insert({
       date: priceTime,
@@ -111,28 +108,42 @@ export class PriceWorker {
   }
   // price is assumed to be a float, amount is assumed in wei and decimals is the conversion for that amount
   // this outputs the difference between input and output normalized to the price which is typically usd
-  private calculateBridgeFee(
+  private static calculateBridgeFee(
     inputToken: { amount: string; price: number; decimals: number },
     outputToken: { amount: string; price: number; decimals: number },
-  ): bigint {
+  ): string {
+    // Convert input token amount from string to BigInt for precise arithmetic operations
     const inputAmountBigInt = BigInt(inputToken.amount);
+    // Convert output token amount from string to BigInt for precise arithmetic operations
     const outputAmountBigInt = BigInt(outputToken.amount);
 
+    // Convert input token price to BigInt by scaling it according to its decimals
+    // This involves rounding the price to the nearest integer after multiplying by 10^decimals
     const inputPriceBigInt = BigInt(
-      Math.round(inputToken.price * Math.pow(10, inputToken.decimals)),
+      Math.round(inputToken.price * Math.pow(10, 18)),
     );
+    // Convert output token price to BigInt by scaling it according to its decimals
+    // This involves rounding the price to the nearest integer after multiplying by 10^decimals
     const outputPriceBigInt = BigInt(
-      Math.round(outputToken.price * Math.pow(10, outputToken.decimals)),
+      Math.round(outputToken.price * Math.pow(10, 18)),
     );
 
+    // Normalize the input amount by multiplying it with its price and dividing by 10^decimals
+    // This converts the amount to a common scale based on its price
     const normalizedInputAmount =
       (inputAmountBigInt * inputPriceBigInt) /
       BigInt(Math.pow(10, inputToken.decimals));
+    // Normalize the output amount by multiplying it with its price and dividing by 10^decimals
+    // This converts the amount to a common scale based on its price
     const normalizedOutputAmount =
       (outputAmountBigInt * outputPriceBigInt) /
       BigInt(Math.pow(10, outputToken.decimals));
 
-    return normalizedInputAmount - normalizedOutputAmount;
+    // Calculate the bridge fee by subtracting the normalized output amount from the normalized input amount
+    // This gives the difference in value between the input and output tokens
+    return ethers.utils.formatEther(
+      normalizedInputAmount - normalizedOutputAmount,
+    );
   }
   private async run(params: PriceMessage) {
     const { depositId, originChainId } = params;
@@ -198,8 +209,10 @@ export class PriceWorker {
       decimals: outputTokenInfo.decimals,
     };
 
-    const bridgeFee = this.calculateBridgeFee(inputToken, outputToken);
+    const bridgeFee = PriceWorker.calculateBridgeFee(inputToken, outputToken);
     relayHashInfo.bridgeFeeUsd = bridgeFee.toString();
+    relayHashInfo.inputPriceUsd = inputTokenPrice;
+    relayHashInfo.outputPriceUsd = inputTokenPrice;
     await this.relayHashInfoRepository.save(relayHashInfo);
   }
   public async close() {
