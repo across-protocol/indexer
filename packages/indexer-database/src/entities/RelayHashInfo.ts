@@ -13,6 +13,7 @@ import {
 import { V3FundsDeposited } from "./evm/V3FundsDeposited";
 import { FilledV3Relay } from "./evm/FilledV3Relay";
 import { RequestedV3SlowFill } from "./evm/RequestedV3SlowFill";
+import { HistoricPrice } from "./HistoricPrice";
 
 export enum RelayStatus {
   Unfilled = "unfilled",
@@ -90,6 +91,13 @@ export class RelayHashInfo {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true })
+  bridgeFeeUsd: string;
+  @Column({ nullable: true })
+  inputPriceUsd: number;
+  @Column({ nullable: true })
+  outputPriceUsd: number;
 
   @UpdateDateColumn()
   updatedAt: Date;

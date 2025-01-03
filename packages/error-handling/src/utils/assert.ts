@@ -8,7 +8,10 @@ import { AssertError } from "../errors/AssertError";
  * @returns An assertion of `value`.
  * @throws {@link AssertError} if assert's validity fails
  */
-export function assert(value: unknown, message: string): asserts value {
+export function assert(
+  value: unknown,
+  message: string,
+): asserts value is NonNullable<unknown> {
   try {
     return assertModule.ok(value, message);
   } catch (e: unknown) {
