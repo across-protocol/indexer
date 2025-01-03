@@ -22,6 +22,7 @@ export function yesterday(now: Date) {
     .toJSDate();
 }
 
+// coingecko api calls
 export class CoingeckoClient {
   constructor(private baseUrl: string = "https://api.coingecko.com/api/v3") {}
 
