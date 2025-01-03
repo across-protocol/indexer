@@ -9,18 +9,22 @@ import {
   utils as indexerDatabaseUtils,
   SaveQueryResult,
 } from "@repo/indexer-database";
-import { SaveQueryResultType } from "@repo/indexer-database";
+import { SaveQueryResultType, Repository } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
-import { getIntegratorId } from "../../utils/spokePoolUtils";
+import {
+  getIntegratorId,
+  getSwapBeforeBridgeEvents,
+} from "../../utils/spokePoolUtils";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { PriceMessage } from "../../messaging/priceWorker";
+import { SwapMessage } from "../../messaging/swapWorker";
 import { FillWithBlock } from "@across-protocol/sdk/dist/cjs/interfaces/SpokePool";
 
 export type FetchEventsResult = {
@@ -49,6 +53,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
   private hubPoolClient: across.clients.HubPoolClient;
+  private depositHashesSeen: Set<string> = new Set<string>();
 
   constructor(
     private logger: Logger,
@@ -61,6 +66,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private spokePoolClientRepository: SpokePoolRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
+    private swapBeforeBridgeRepository: Repository<entities.SwapBeforeBridgeEvent>,
   ) {
     this.isInitialized = false;
   }
@@ -114,7 +120,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.deposits,
       SaveQueryResultType.Inserted,
     );
-    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+
+    await this.updateNewDeposits(newInsertedDeposits);
     await this.spokePoolProcessor.process(storedEvents);
     this.profileStoreEvents(storedEvents);
     // publish new relays to workers to fill in prices
@@ -318,10 +325,31 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
-  private async updateNewDepositsWithIntegratorId(
-    deposits: entities.V3FundsDeposited[],
-  ) {
+  private async updateNewDeposits(deposits: entities.V3FundsDeposited[]) {
     await across.utils.forEachAsync(deposits, async (deposit) => {
+      if (!this.depositHashesSeen.has(deposit.transactionHash)) {
+        this.depositHashesSeen.add(deposit.transactionHash);
+        const swapEvents = await getSwapBeforeBridgeEvents(
+          this.provider,
+          deposit.transactionHash,
+          deposit.originChainId,
+        );
+        for (const swapEvent of swapEvents) {
+          await this.swapBeforeBridgeRepository.insert(swapEvent);
+        }
+        // run the swap worker to connect deposits to swaps and get prices
+        if (swapEvents.length > 0) {
+          // We send transaction hash to process all deposits and swaps in this transaction, its just easier to link everything up
+          await this.indexerQueuesService.publishMessage(
+            IndexerQueues.SwapMessage,
+            IndexerQueues.SwapMessage,
+            {
+              transactionHash: deposit.transactionHash,
+              originChainId: deposit.originChainId,
+            },
+          );
+        }
+      }
       const integratorId = await getIntegratorId(
         this.provider,
         deposit.quoteTimestamp,

@@ -36,6 +36,7 @@ export class RelayHashInfo {
   relayHash: string;
 
   @Column()
+  // This is the on chain deposit id
   depositId: number;
 
   @Column()
@@ -48,6 +49,7 @@ export class RelayHashInfo {
   depositTxHash: string;
 
   @Column({ nullable: true })
+  // This is the entity id for the deposit event in database
   depositEventId: number;
 
   @OneToOne(() => V3FundsDeposited, { nullable: true })
@@ -98,6 +100,16 @@ export class RelayHashInfo {
   inputPriceUsd: string;
   @Column({ nullable: true, type: "decimal" })
   outputPriceUsd: string;
+
+  // swap varas
+  @Column({ nullable: true, type: "decimal" })
+  swapFeeInputAmount: string;
+  @Column({ nullable: true, type: "decimal" })
+  swapFeeUsdAmount: string;
+  @Column({ nullable: true })
+  swapInputTokenName: string;
+  @Column({ nullable: true })
+  swapOutputTokenName: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

@@ -1,9 +1,9 @@
 import "reflect-metadata";
-import { DataSource, LessThan, Not, In } from "typeorm";
+import { DataSource, LessThan, Not, In, Repository } from "typeorm";
 import * as entities from "./entities";
 import { DatabaseConfig } from "./model";
 
-export { DataSource, LessThan, Not, In };
+export { DataSource, LessThan, Not, In, Repository };
 
 export const createDataSource = (config: DatabaseConfig): DataSource => {
   return new DataSource({
@@ -41,6 +41,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.WebhookClient,
       // Historic Price
       entities.HistoricPrice,
+      entities.SwapBeforeBridgeEvent,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

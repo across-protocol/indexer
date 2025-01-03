@@ -1,6 +1,6 @@
 import { Logger } from "winston";
 
-import { DataSource } from "@repo/indexer-database";
+import { DataSource, entities, Repository } from "@repo/indexer-database";
 import { eventProcessorManager } from "@repo/webhooks";
 
 import { Config } from "../../parseEnv";
@@ -38,6 +38,7 @@ export class AcrossIndexerManager {
     private retryProvidersFactory: RetryProvidersFactory,
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
+    private swapBeforeBridgeRepository: Repository<entities.SwapBeforeBridgeEvent>,
     private redisCache: RedisCache,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
@@ -105,6 +106,7 @@ export class AcrossIndexerManager {
             this.webhookWriteFn,
           ),
           this.indexerQueuesService,
+          this.swapBeforeBridgeRepository,
         );
         const spokePoolIndexer = new Indexer(
           {
