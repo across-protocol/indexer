@@ -148,22 +148,29 @@ export class PriceWorker {
   private async run(params: PriceMessage) {
     const { depositId, originChainId } = params;
 
-    const relayHashInfo = await this.relayHashInfoRepository.findOne({
+    const relayHashInfoArray = await this.relayHashInfoRepository.find({
       where: { depositId, originChainId },
     });
     const deposit = await this.depositRepository.findOne({
       where: { depositId, originChainId },
     });
+    // if we have multiple relays for same deposit, find hte one which matches the deposit hash
+    // the others would be invalid fills
+    const relayHashInfo = relayHashInfoArray.find(
+      (info) => info.depositTxHash === (deposit && deposit.transactionHash),
+    );
 
-    // This is catastrophic, we dont want worker retrying if we cannot find this data
+    const errorMessage =
+      "Failed to retrieve relay hash information or deposit record from the database.";
+
+    // we will keep retrying until found or we know there was a reorg
     if (!relayHashInfo || !deposit) {
       this.logger.error({
         at: "PriceWorker",
-        message:
-          "Failed to retrieve relay hash information or deposit record from the database.",
+        message: errorMessage,
         ...params,
       });
-      return;
+      throw new Error(errorMessage);
     }
 
     // if blockTimestamp doesnt exist, maybe we keep retrying till it does
@@ -210,10 +217,24 @@ export class PriceWorker {
     };
 
     const bridgeFee = PriceWorker.calculateBridgeFee(inputToken, outputToken);
-    relayHashInfo.bridgeFeeUsd = bridgeFee.toString();
-    relayHashInfo.inputPriceUsd = inputTokenPrice;
-    relayHashInfo.outputPriceUsd = inputTokenPrice;
-    await this.relayHashInfoRepository.save(relayHashInfo);
+    const updatedFields: Partial<typeof relayHashInfo> = {};
+
+    if (relayHashInfo.bridgeFeeUsd !== bridgeFee.toString()) {
+      updatedFields.bridgeFeeUsd = bridgeFee.toString();
+    }
+    if (relayHashInfo.inputPriceUsd !== inputTokenPrice) {
+      updatedFields.inputPriceUsd = inputTokenPrice;
+    }
+    if (relayHashInfo.outputPriceUsd !== outputTokenPrice) {
+      updatedFields.outputPriceUsd = outputTokenPrice;
+    }
+
+    if (Object.keys(updatedFields).length > 0) {
+      await this.relayHashInfoRepository.update(
+        { depositId, originChainId },
+        updatedFields,
+      );
+    }
   }
   public async close() {
     return this.worker.close();
