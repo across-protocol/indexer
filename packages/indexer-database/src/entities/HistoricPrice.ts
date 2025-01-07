@@ -27,7 +27,7 @@ export class HistoricPrice {
   @Column({ type: "date" })
   date: Date;
 
-  @Column({ type: "decimal" })
+  @Column({ type: "float" })
   price: string;
 
   @CreateDateColumn()

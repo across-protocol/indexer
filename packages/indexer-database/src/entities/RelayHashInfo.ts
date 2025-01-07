@@ -103,12 +103,12 @@ export class RelayHashInfo {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: "float" })
   bridgeFeeUsd: string;
-  @Column({ nullable: true })
-  inputPriceUsd: number;
-  @Column({ nullable: true })
-  outputPriceUsd: number;
+  @Column({ nullable: true, type: "float" })
+  inputPriceUsd: string;
+  @Column({ nullable: true, type: "float" })
+  outputPriceUsd: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

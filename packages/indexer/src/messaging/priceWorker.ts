@@ -1,18 +1,28 @@
 import Redis from "ioredis";
+import { DateTime } from "luxon";
 import winston from "winston";
 import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
 import { ethers } from "ethers";
-import { yesterday, findTokenByAddress } from "../utils";
-import { CoingeckoClient } from "../utils/coingeckoClient";
+import { findTokenByAddress } from "../utils";
+// import { CoingeckoClient } from "../utils/coingeckoClient";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { assert } from "@repo/error-handling";
+import * as across from "@across-protocol/sdk";
 
 export type PriceMessage = {
   depositId: number;
   originChainId: number;
 };
+
+// Convert now to a consistent price timestamp yesterday for lookup purposes
+export function yesterday(now: Date) {
+  return DateTime.fromJSDate(now)
+    .minus({ days: 1 })
+    .set({ hour: 23, minute: 59, second: 0, millisecond: 0 })
+    .toJSDate();
+}
 
 /**
  * This worker listens to the `PriceQuery` queue and processes each job by:
@@ -26,7 +36,7 @@ export type PriceMessage = {
  */
 export class PriceWorker {
   private worker: Worker;
-  private coingeckoClient: CoingeckoClient;
+  private coingeckoClient: across.coingecko.Coingecko;
   private relayHashInfoRepository;
   private depositRepository;
   private historicPriceRepository;
@@ -36,7 +46,7 @@ export class PriceWorker {
     private postgres: DataSource,
     private logger: winston.Logger,
   ) {
-    this.coingeckoClient = new CoingeckoClient();
+    this.coingeckoClient = across.coingecko.Coingecko.get(logger);
     this.relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
@@ -66,14 +76,18 @@ export class PriceWorker {
       },
     });
     // we have this price at this time in the db
-    if (cachedPrice) return Number(cachedPrice.price);
+    if (cachedPrice) {
+      return Number(cachedPrice.price);
+    }
 
-    const fetchedPrice = await this.coingeckoClient.getHistoricDailyPrice(
-      priceTime.getTime(),
-      // use the coingecko id to fetch basecurrency price in usd
-      tokenInfo.coingeckoId,
+    const cgFormattedDate =
+      DateTime.fromJSDate(priceTime).toFormat("dd-LL-yyyy");
+    const price = await this.coingeckoClient.getContractHistoricDayPrice(
+      address,
+      cgFormattedDate,
+      quoteCurrency,
+      chainId,
     );
-    const price = fetchedPrice.market_data?.current_price[quoteCurrency];
     assert(
       price,
       `Unable to fetch price for ${quoteCurrency} in ${baseCurrency}(${tokenInfo.coingeckoId}) at ${priceTime}`,
@@ -160,6 +174,19 @@ export class PriceWorker {
       (info) => info.depositTxHash === (deposit && deposit.transactionHash),
     );
 
+    if (
+      relayHashInfo?.bridgeFeeUsd &&
+      relayHashInfo?.inputPriceUsd &&
+      relayHashInfo?.outputPriceUsd
+    ) {
+      const errorMessage = "Skipping already processed relay hash";
+      this.logger.error({
+        at: "PriceWorker",
+        message: errorMessage,
+        ...params,
+      });
+      return;
+    }
     const errorMessage =
       "Failed to retrieve relay hash information or deposit record from the database.";
 
@@ -222,11 +249,11 @@ export class PriceWorker {
     if (relayHashInfo.bridgeFeeUsd !== bridgeFee.toString()) {
       updatedFields.bridgeFeeUsd = bridgeFee.toString();
     }
-    if (relayHashInfo.inputPriceUsd !== inputTokenPrice) {
-      updatedFields.inputPriceUsd = inputTokenPrice;
+    if (Number(relayHashInfo.inputPriceUsd) !== inputTokenPrice) {
+      updatedFields.inputPriceUsd = inputTokenPrice.toString();
     }
-    if (relayHashInfo.outputPriceUsd !== outputTokenPrice) {
-      updatedFields.outputPriceUsd = outputTokenPrice;
+    if (Number(relayHashInfo.outputPriceUsd) !== outputTokenPrice) {
+      updatedFields.outputPriceUsd = outputTokenPrice.toString();
     }
 
     if (Object.keys(updatedFields).length > 0) {
