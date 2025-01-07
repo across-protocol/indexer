@@ -114,7 +114,56 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
     await this.spokePoolProcessor.process(storedEvents);
+    this.profileStoreEvents(storedEvents);
   }
+
+  /**
+   * Log the time that it took to store the events from the moment they were emitted onchain
+   * @param events
+   */
+  private profileStoreEvents(events: StoreEventsResult) {
+    const insertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      events.deposits,
+      SaveQueryResultType.Inserted,
+    );
+
+    // Log the time difference for each deposit event for profiling in datadog
+    insertedDeposits.forEach((event) => {
+      if (event.blockTimestamp === undefined) return;
+      const timeDifference =
+        event.createdAt.getTime() - event.blockTimestamp.getTime();
+      this.logger.debug({
+        at: "SpokePoolIndexerDataHandler#profileStoreEvents",
+        message: "V3FundsDeposited event profile",
+        depositId: event.depositId,
+        originChainId: event.originChainId,
+        timeDifference,
+        createdAt: event.createdAt,
+        blockTimestamp: event.blockTimestamp,
+      });
+    });
+
+    const insertedFills = indexerDatabaseUtils.filterSaveQueryResults(
+      events.fills,
+      SaveQueryResultType.Inserted,
+    );
+    insertedFills.forEach((event) => {
+      if (event.blockTimestamp === undefined) return;
+      const timeDifference =
+        event.createdAt.getTime() - event.blockTimestamp.getTime();
+      this.logger.debug({
+        at: "SpokePoolIndexerDataHandler#profileStoreEvents",
+        message: "FilledV3Relay event profile",
+        depositId: event.depositId,
+        originChainId: event.originChainId,
+        destinationChainId: event.destinationChainId,
+        timeDifference,
+        createdAt: event.createdAt,
+        blockTimestamp: event.blockTimestamp,
+      });
+    });
+  }
+
   private async getBlockTime(blockNumber: number): Promise<number> {
     const block = await this.provider.getBlock(blockNumber);
     if (!block) {
