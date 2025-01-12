@@ -1,7 +1,10 @@
 import * as across from "@across-protocol/sdk";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
 import Redis from "ioredis";
 import winston from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
+
 import { BaseIndexer } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
@@ -191,12 +194,37 @@ export class BundleIncludedEventsService extends BaseIndexer {
         const blockTime = getBlockTime(chainId);
         const endBlockTimeBuffer = 60 * 15;
         const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
+        const endBlockWithBuffer = endBlock + blockBuffer;
+        const deployedBlockNumber = getDeployedBlockNumber(
+          "SpokePool",
+          chainId,
+        );
+        this.logger.debug({
+          at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
+          message: `Instantiate SpokePool client for chain ${chainId}`,
+          deployedBlockNumber,
+          startBlock,
+          endBlockWithBuffer,
+        });
+        // A chain can be included in the bundle even if the SpokePool is not deployed yet
+        // In this case, the SpokePool client will not be instantiated and updated
+        if (deployedBlockNumber > endBlock) {
+          this.logger.debug({
+            at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
+            message: `SpokePool client not instantiated as it is not deployed yet for chain ${chainId}`,
+            deployedBlockNumber,
+            startBlock,
+            endBlockWithBuffer,
+          });
+          return acc;
+        }
+
         return {
           ...acc,
           [chainId]: spokePoolClientFactory.get(
             chainId,
             startBlock,
-            endBlock + blockBuffer,
+            endBlockWithBuffer,
             {
               hubPoolClient: this.hubPoolClient,
             },
