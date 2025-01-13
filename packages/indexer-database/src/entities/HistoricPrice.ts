@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 
 @Entity()
-@Unique("UK_historic_price_baseCurrency_quoteCurrency_date", [
+@Unique("UK_hp_baseCurrency_quoteCurrency_date", [
   "baseCurrency",
   "quoteCurrency",
   "date",
