@@ -178,7 +178,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       finalTime: finalPerfTime - startPerfTime,
     });
     // publish new relays to workers to fill in prices
-    await this.publishNewRelays(events.filledV3RelayEvents);
+    await this.publishNewRelays(storedEvents.fills);
   }
 
   /**
@@ -439,13 +439,19 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private async publishNewRelays(relays: FillWithBlock[]) {
-    const messages: PriceMessage[] = relays.map((relay) => {
-      return {
-        depositId: relay.depositId,
-        originChainId: relay.originChainId,
-      };
-    });
+  private async publishNewRelays(
+    fills: SaveQueryResult<entities.FilledV3Relay>[],
+  ) {
+    const messages: PriceMessage[] = fills
+      .map((fill) => ({
+        relayHash: fill.data?.relayHash,
+        originChainId: fill.data?.originChainId,
+      }))
+      .filter(
+        (x): x is PriceMessage =>
+          x.relayHash !== undefined && x.originChainId !== undefined,
+      );
+
     await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.PriceQuery,
       IndexerQueues.PriceQuery, // Use queue name as job name

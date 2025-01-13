@@ -48,6 +48,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.WebhookClient,
       // Indexer
       entities.IndexerProgressInfo,
+      // Historic Price
+      entities.HistoricPrice,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
