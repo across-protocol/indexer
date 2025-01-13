@@ -156,7 +156,10 @@ export class DepositsService {
     }
 
     const result = {
-      status: relay.status,
+      status:
+        relay.status === entities.RelayStatus.Unfilled
+          ? "pending"
+          : relay.status,
       originChainId: relay.originChainId,
       depositId: relay.depositId,
       depositTxHash: relay.depositTxHash,
