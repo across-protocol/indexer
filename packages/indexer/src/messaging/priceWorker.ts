@@ -10,11 +10,14 @@ import { findTokenByAddress } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { assert } from "@repo/error-handling";
 import * as across from "@across-protocol/sdk";
+import * as ss from "superstruct";
 
-export type PriceMessage = {
-  depositId: number;
-  originChainId: number;
-};
+export const PriceMessage = ss.object({
+  relayHash: ss.string(),
+  originChainId: ss.number(),
+});
+
+export type PriceMessage = ss.Infer<typeof PriceMessage>;
 
 // Convert now to a consistent price timestamp yesterday for lookup purposes
 export function yesterday(now: Date) {
@@ -105,14 +108,17 @@ export class PriceWorker {
   public setWorker() {
     this.worker = new Worker(
       IndexerQueues.PriceQuery,
-      async (job: Job<PriceMessage>) => {
+      async (job: Job<unknown>) => {
+        // validate data type
+        if (!ss.is(job.data, PriceMessage)) return;
         try {
           await this.run(job.data);
         } catch (error) {
           this.logger.error({
             at: "PriceWorker",
-            message: `Error getting price for deposit ${job.data.depositId} on chain ${job.data.originChainId}`,
+            message: `Error getting price for fill ${job.data.relayHash}`,
             error,
+            job,
           });
           throw error;
         }
@@ -160,24 +166,45 @@ export class PriceWorker {
     );
   }
   private async run(params: PriceMessage) {
-    const { depositId, originChainId } = params;
+    const { relayHash, originChainId } = params;
 
-    const relayHashInfoArray = await this.relayHashInfoRepository.find({
-      where: { depositId, originChainId },
+    const relayHashInfo = await this.relayHashInfoRepository.findOne({
+      where: { relayHash, originChainId },
+      relations: {
+        depositEvent: true,
+        fillEvent: true,
+      },
     });
+
+    if (!relayHashInfo) {
+      const errorMessage = `Relay hash info not found by relay hash ${relayHash}`;
+      this.logger.error({
+        at: "PriceWorker",
+        message: errorMessage,
+        ...params,
+      });
+      throw new Error(errorMessage);
+    }
+
+    const { depositId } = relayHashInfo;
     const deposit = await this.depositRepository.findOne({
       where: { depositId, originChainId },
     });
-    // if we have multiple relays for same deposit, find hte one which matches the deposit hash
-    // the others would be invalid fills
-    const relayHashInfo = relayHashInfoArray.find(
-      (info) => info.depositTxHash === (deposit && deposit.transactionHash),
-    );
+
+    if (!deposit) {
+      const errorMessage = `Unable to find deposit ${depositId} on chain ${originChainId}`;
+      this.logger.error({
+        at: "PriceWorker",
+        message: errorMessage,
+        ...params,
+      });
+      throw new Error(errorMessage);
+    }
 
     if (
-      relayHashInfo?.bridgeFeeUsd &&
-      relayHashInfo?.inputPriceUsd &&
-      relayHashInfo?.outputPriceUsd
+      relayHashInfo.bridgeFeeUsd &&
+      relayHashInfo.inputPriceUsd &&
+      relayHashInfo.outputPriceUsd
     ) {
       const errorMessage = "Skipping already processed relay hash";
       this.logger.error({
@@ -190,18 +217,8 @@ export class PriceWorker {
     const errorMessage =
       "Failed to retrieve relay hash information or deposit record from the database.";
 
-    // we will keep retrying until found or we know there was a reorg
-    if (!relayHashInfo || !deposit) {
-      this.logger.error({
-        at: "PriceWorker",
-        message: errorMessage,
-        ...params,
-      });
-      throw new Error(errorMessage);
-    }
-
     // if blockTimestamp doesnt exist, maybe we keep retrying till it does
-    const blockTime = relayHashInfo?.depositEvent?.blockTimestamp;
+    const blockTime = relayHashInfo.depositEvent.blockTimestamp;
     if (!blockTime) {
       const errorMessage = "Deposit block time not found for relay hash info.";
       this.logger.error({
@@ -261,6 +278,12 @@ export class PriceWorker {
         { depositId, originChainId },
         updatedFields,
       );
+      this.logger.info({
+        at: "PriceWorker#updateRelayHashInfo",
+        message: "Updated relay hash info with new fields",
+        params,
+        updatedFields,
+      });
     }
   }
   public async close() {
