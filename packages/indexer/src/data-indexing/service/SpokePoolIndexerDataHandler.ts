@@ -86,12 +86,19 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       this.isInitialized = true;
     }
 
+    //FIXME: Remove performance timing
+    const startPerfTime = performance.now();
+
     const events = await this.fetchEventsByRange(blockRange);
     const requestedSpeedUpV3EventsCount = Object.values(
       events.requestedSpeedUpV3Events,
     ).reduce((acc, speedUps) => {
       return acc + Object.values(speedUps).length;
     }, 0);
+
+    //FIXME: Remove performance timing
+    const timeToFetchEvents = performance.now();
+
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Found events for ${this.getDataIdentifier()}`,
@@ -112,9 +119,38 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.deposits,
       SaveQueryResultType.Inserted,
     );
+
+    //FIXME: Remove performance timing
+    const timeToStoreEvents = performance.now();
+
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+
+    //FIXME: Remove performance timing
+    const timeToUpdateDepositIds = performance.now();
+
     await this.spokePoolProcessor.process(storedEvents);
+
+    //FIXME: Remove performance timing
+    const timeToProcessDeposits = performance.now();
+
     this.profileStoreEvents(storedEvents);
+
+    //FIXME: Remove performance timing
+    const finalPerfTime = performance.now();
+
+    this.logger.debug({
+      at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
+      message:
+        "System Time Log for SpokePoolIndexerDataHandler#processBlockRange",
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+      timeToFetchEvents: timeToFetchEvents - startPerfTime,
+      timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToStoreEvents,
+      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
+      timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
+      finalTime: finalPerfTime - startPerfTime,
+    });
   }
 
   /**
