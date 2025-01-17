@@ -87,7 +87,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     }
 
     //FIXME: Remove performance timing
-    const timeToFetchEvents = performance.now();
+    const startPerfTime = performance.now();
 
     const events = await this.fetchEventsByRange(blockRange);
     const requestedSpeedUpV3EventsCount = Object.values(
@@ -97,7 +97,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     }, 0);
 
     //FIXME: Remove performance timing
-    const timeToStoreEvents = performance.now();
+    const timeToFetchEvents = performance.now();
 
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
@@ -121,34 +121,35 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
 
     //FIXME: Remove performance timing
-    const timeToUpdateDeposits = performance.now();
+    const timeToStoreEvents = performance.now();
 
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
 
     //FIXME: Remove performance timing
-    const timeToProcessDeposits = performance.now();
+    const timeToUpdateDepositIds = performance.now();
 
     await this.spokePoolProcessor.process(storedEvents);
 
     //FIXME: Remove performance timing
-    const timeToProcessAnciliaryEvents = performance.now();
+    const timeToProcessDeposits = performance.now();
 
     this.profileStoreEvents(storedEvents);
 
     //FIXME: Remove performance timing
-    const finalTime = performance.now();
+    const finalPerfTime = performance.now();
 
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message:
         "System Time Log for SpokePoolIndexerDataHandler#processBlockRange",
-      timeToFetchEvents: timeToFetchEvents - timeToStoreEvents,
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+      timeToFetchEvents: timeToFetchEvents - startPerfTime,
       timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
-      timeToUpdateDeposits: timeToUpdateDeposits - timeToStoreEvents,
-      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDeposits,
-      timeToProcessAnciliaryEvents:
-        timeToProcessAnciliaryEvents - timeToProcessDeposits,
-      finalTime: finalTime - timeToFetchEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToStoreEvents,
+      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
+      timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
+      finalTime: finalPerfTime - startPerfTime,
     });
   }
 
