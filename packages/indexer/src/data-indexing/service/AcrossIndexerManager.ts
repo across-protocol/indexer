@@ -111,6 +111,7 @@ export class AcrossIndexerManager {
             loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
             finalisedBlockBufferDistance:
               getFinalisedBlockBufferDistance(chainId),
+            maxBlockRangeSize: this.config.maxBlockRangeSize,
           },
           spokePoolIndexerDataHandler,
           this.retryProvidersFactory.getProviderForChainId(chainId),

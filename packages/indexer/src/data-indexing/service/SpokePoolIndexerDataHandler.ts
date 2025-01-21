@@ -242,12 +242,39 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       },
     );
 
+    const initialTime = performance.now();
+
     await configStoreClient.update();
     await hubPoolClient.update([
       "SetPoolRebalanceRoute",
       "CrossChainContractsSet",
     ]);
-    await spokePoolClient.update();
+
+    const timeToUpdateProtocolClients = performance.now();
+    // We aim to avoid the unneeded update events
+    // Specifically, we avoid the EnabledDepositRoute event because this
+    // requires a lookback to the deployment block of the SpokePool contract.
+    await spokePoolClient.update([
+      "V3FundsDeposited",
+      "FilledV3Relay",
+      "RequestedV3SlowFill",
+      "RequestedSpeedUpV3Deposit",
+      "RelayedRootBundle",
+      "ExecutedRelayerRefundRoot",
+      "TokensBridged",
+    ]);
+    const timeToUpdateSpokePoolClient = performance.now();
+
+    this.logger.debug({
+      at: "SpokePoolIndexerDataHandler#fetchEventsByRange",
+      message: "Time to update protocol clients",
+      timeToUpdateProtocolClients: timeToUpdateProtocolClients - initialTime,
+      timeToUpdateSpokePoolClient:
+        timeToUpdateSpokePoolClient - timeToUpdateProtocolClients,
+      totalTime: timeToUpdateSpokePoolClient - initialTime,
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+    });
 
     const v3FundsDepositedEvents = spokePoolClient.getDeposits({
       fromBlock: blockRange.from,
@@ -295,41 +322,44 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       tokensBridgedEvents,
       blockTimes,
     } = params;
-    const savedV3FundsDepositedEvents =
-      await spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+    const [
+      savedV3FundsDepositedEvents,
+      savedV3RequestedSlowFills,
+      savedFilledV3RelayEvents,
+      savedExecutedRelayerRefundRootEvents,
+    ] = await Promise.all([
+      spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
         v3FundsDepositedEvents,
         lastFinalisedBlock,
         blockTimes,
-      );
-    const savedV3RequestedSlowFills =
-      await spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+      ),
+      spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
         requestedV3SlowFillEvents,
         lastFinalisedBlock,
-      );
-    const savedFilledV3RelayEvents =
-      await spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+      ),
+      spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
         filledV3RelayEvents,
         lastFinalisedBlock,
         blockTimes,
-      );
-    const savedExecutedRelayerRefundRootEvents =
-      await spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+      ),
+      spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
         executedRelayerRefundRootEvents,
         lastFinalisedBlock,
-      );
-    await spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
-      requestedSpeedUpV3Events,
-      lastFinalisedBlock,
-    );
-    await spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
-      relayedRootBundleEvents,
-      this.chainId,
-      lastFinalisedBlock,
-    );
-    await spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
-      tokensBridgedEvents,
-      lastFinalisedBlock,
-    );
+      ),
+      spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
+        requestedSpeedUpV3Events,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+        relayedRootBundleEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+        tokensBridgedEvents,
+        lastFinalisedBlock,
+      ),
+    ]);
     return {
       deposits: savedV3FundsDepositedEvents,
       fills: savedFilledV3RelayEvents,
