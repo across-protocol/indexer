@@ -262,6 +262,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       "RelayedRootBundle",
       "ExecutedRelayerRefundRoot",
       "TokensBridged",
+      // TODO: Uncomment these once we complete the upcoming migration
+      // "FundsDeposited",
+      // "RequestedSpeedUpDeposit",
+      // "RequestedSlowFill",
+      // "FilledRelay",
     ]);
     const timeToUpdateSpokePoolClient = performance.now();
 
