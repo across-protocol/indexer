@@ -33,6 +33,6 @@ export class BundleEvent {
   @Column()
   relayHash: string;
 
-  @Column({ nullable: true })
+  @Column({ type: "decimal", nullable: true })
   repaymentChainId: number;
 }
