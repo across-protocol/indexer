@@ -6,11 +6,18 @@ import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { RedisCache } from "../../redis/redisCache";
 
+const DEFAULT_MAX_BLOCK_RANGE_SIZE = 50_000;
+
 export type ConstructorConfig = {
   /** Time to wait before going to the next block ranges. */
   loopWaitTimeSeconds: number;
   /** Distance from the latest block to consider onchain data finalised. */
   finalisedBlockBufferDistance: number;
+  /**
+   * Maximum block range size to process in a single call. This is mainly for debugging purposes.
+   * If not set, the max block range size is set to {@link DEFAULT_MAX_BLOCK_RANGE_SIZE}.
+   */
+  maxBlockRangeSize?: number;
 };
 
 type BlockRangeResult = {
@@ -130,7 +137,11 @@ export class Indexer {
     const fromBlock = lastBlockFinalisedStored
       ? lastBlockFinalisedStored + 1
       : this.dataHandler.getStartIndexingBlockNumber();
-    const toBlock = Math.min(fromBlock + 50_000, latestBlockNumber);
+    const toBlock = Math.min(
+      fromBlock +
+        (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
+      latestBlockNumber,
+    );
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
     const lastFinalisedBlockInBlockRange = Math.min(
       blockRange.to,

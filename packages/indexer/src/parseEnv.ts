@@ -18,6 +18,7 @@ export type Config = {
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
+  maxBlockRangeSize?: number;
 };
 export type RedisConfig = {
   host: string;
@@ -179,6 +180,9 @@ export function envToConfig(env: Env): Config {
   const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
     ? env.ENABLE_BUNDLE_BUILDER === "true"
     : true;
+  const maxBlockRangeSize = env.MAX_BLOCK_RANGE_SIZE
+    ? parseInt(env.MAX_BLOCK_RANGE_SIZE)
+    : undefined;
   spokePoolChainsEnabled.forEach((chainId) => {
     const providerConfigs = allProviderConfigs.filter(
       (provider) => provider[1] == chainId,
@@ -203,5 +207,6 @@ export function envToConfig(env: Env): Config {
     enableBundleIncludedEventsService,
     enableBundleBuilder,
     webhookConfig,
+    maxBlockRangeSize,
   };
 }

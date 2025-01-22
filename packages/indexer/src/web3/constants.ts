@@ -80,9 +80,8 @@ export const getChainCacheFollowDistance = (chainId: number) => {
 
 // Default is 10K, add only needed overrides
 const MAX_BLOCK_LOOK_BACK = {
-  [CHAIN_IDs.MAINNET]: 5000,
   [CHAIN_IDs.BOBA]: 4990,
-  [CHAIN_IDs.REDSTONE]: 500, // TODO: Update when Quicknode is enable as a provider
+  [CHAIN_IDs.REDSTONE]: 9000,
   [CHAIN_IDs.LINEA]: 5000,
   [CHAIN_IDs.SCROLL]: 3000,
 };
