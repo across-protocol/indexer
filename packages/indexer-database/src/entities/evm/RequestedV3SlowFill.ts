@@ -15,7 +15,7 @@ export class RequestedV3SlowFill {
   @Column()
   relayHash: string;
 
-  @Column()
+  @Column({ type: "decimal" })
   depositId: number;
 
   @Column()

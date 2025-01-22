@@ -66,10 +66,8 @@ export class BlockchainEventRepository {
       },
       {} as Record<keyof Entity, any>,
     );
-    const dbEntity = await this.postgres
-      .getRepository(entity)
-      .findOne({ where });
     const repository = this.postgres.getRepository(entity);
+    const dbEntity = await repository.findOne({ where });
 
     if (!dbEntity) {
       await repository.insert(data);
