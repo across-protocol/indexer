@@ -16,7 +16,7 @@ export class FilledV3Relay {
   @Column()
   relayHash: string;
 
-  @Column()
+  @Column({ type: "decimal" })
   depositId: number;
 
   @Column()
