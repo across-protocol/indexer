@@ -47,7 +47,7 @@ export class SpokePoolProcessor {
       this.webhookWriteFn?.({
         type: WebhookTypes.DepositStatus,
         event: {
-          depositId: deposit.id,
+          depositId: deposit.depositId,
           originChainId: deposit.originChainId,
           depositTxHash: deposit.transactionHash,
           status: RelayStatus.Unfilled,
@@ -72,7 +72,7 @@ export class SpokePoolProcessor {
       this.webhookWriteFn?.({
         type: WebhookTypes.DepositStatus,
         event: {
-          depositId: deposit.id,
+          depositId: deposit.depositId,
           originChainId: deposit.originChainId,
           depositTxHash: deposit.transactionHash,
           status: RelayStatus.SlowFillRequested,
