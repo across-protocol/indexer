@@ -271,17 +271,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     ]);
     const timeToUpdateSpokePoolClient = performance.now();
 
-    this.logger.debug({
-      at: "SpokePoolIndexerDataHandler#fetchEventsByRange",
-      message: "Time to update protocol clients",
-      timeToUpdateProtocolClients: timeToUpdateProtocolClients - initialTime,
-      timeToUpdateSpokePoolClient:
-        timeToUpdateSpokePoolClient - timeToUpdateProtocolClients,
-      totalTime: timeToUpdateSpokePoolClient - initialTime,
-      spokeChainId: this.chainId,
-      blockRange: blockRange,
-    });
-
     const v3FundsDepositedEvents = spokePoolClient.getDeposits({
       fromBlock: blockRange.from,
       toBlock: blockRange.to,
@@ -299,7 +288,22 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       ...v3FundsDepositedEvents.map((deposit) => deposit.blockNumber),
       ...filledV3RelayEvents.map((fill) => fill.blockNumber),
     ];
+
+    const startTimeToGetBlockTimes = performance.now();
     const blockTimes = await this.getBlockTimes(blockNumbers);
+    const endTimeToGetBlockTimes = performance.now();
+
+    this.logger.debug({
+      at: "SpokePoolIndexerDataHandler#fetchEventsByRange",
+      message: "Time to update protocol clients",
+      timeToUpdateProtocolClients: timeToUpdateProtocolClients - initialTime,
+      timeToUpdateSpokePoolClient:
+        timeToUpdateSpokePoolClient - timeToUpdateProtocolClients,
+      timeToGetBlockTimes: endTimeToGetBlockTimes - startTimeToGetBlockTimes,
+      totalTime: endTimeToGetBlockTimes - initialTime,
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+    });
 
     return {
       v3FundsDepositedEvents,
