@@ -239,6 +239,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange.to,
       {
         hubPoolClient: this.hubPoolClient,
+        disableQuoteBlockLookup: true,
       },
     );
 

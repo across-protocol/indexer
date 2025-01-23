@@ -132,6 +132,7 @@ export class SpokePoolClientFactory extends ContractClientFactory<
     fromBlock?: number,
     toBlock?: number,
     overrides?: {
+      disableQuoteBlockLookup?: boolean;
       hubPoolClient: clients.HubPoolClient;
     },
   ): clients.SpokePoolClient {
@@ -151,6 +152,7 @@ export class SpokePoolClientFactory extends ContractClientFactory<
       hubPoolClient,
       fromBlock,
       toBlock,
+      disableQuoteBlockLookup: overrides?.disableQuoteBlockLookup,
     });
   }
 }
