@@ -70,7 +70,7 @@ export class FilledV3Relay {
   @Column()
   relayer: string;
 
-  @Column()
+  @Column({ type: "decimal" })
   repaymentChainId: number;
 
   @Column()

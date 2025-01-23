@@ -622,7 +622,7 @@ export class BundleRepository extends utils.BaseRepository {
             bundleId,
             relayHash: across.utils.getRelayHashFromEvent(event),
             type: eventsType,
-            repaymentChainId: Number(chainId),
+            repaymentChainId: chainId,
           };
         }),
       ),

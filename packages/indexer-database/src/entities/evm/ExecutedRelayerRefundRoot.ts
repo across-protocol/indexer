@@ -37,6 +37,9 @@ export class ExecutedRelayerRefundRoot {
   @Column({ type: "jsonb" })
   refundAddresses: string[];
 
+  @Column({ nullable: true })
+  deferredRefunds: boolean;
+
   @Column()
   caller: string;
 
