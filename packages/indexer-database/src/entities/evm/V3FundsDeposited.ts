@@ -7,9 +7,10 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_v3FundsDeposited_depositId_originChainId", [
-  "depositId",
-  "originChainId",
+@Unique("UK_v3FundsDeposited_relayHash_block_logIdx", [
+  "relayHash",
+  "blockNumber",
+  "logIndex",
 ])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()

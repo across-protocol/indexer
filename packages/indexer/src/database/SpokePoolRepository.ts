@@ -62,8 +62,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
           entities.V3FundsDeposited,
           eventsChunk,
-          ["depositId", "originChainId"],
-          ["relayHash", "transactionHash"],
+          ["relayHash", "blockNumber", "logIndex"],
+          [],
         ),
       ),
     );
