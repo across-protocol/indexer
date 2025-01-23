@@ -20,7 +20,7 @@ export class RequestedSpeedUpV3Deposit {
   @Column()
   originChainId: number;
 
-  @Column()
+  @Column({ type: "decimal" })
   depositId: number;
 
   @Column()
