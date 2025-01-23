@@ -24,7 +24,10 @@ export enum RelayStatus {
 }
 
 @Entity()
-@Unique("UK_relayHashInfo_relayHash", ["relayHash"])
+@Unique("UK_relayHashInfo_relayHash_depositEvent", [
+  "relayHash",
+  "depositEventId",
+])
 @Index("IX_rhi_originChainId_depositId", ["originChainId", "depositId"])
 @Index("IX_rhi_depositTxHash", ["depositTxHash"])
 @Index("IX_rhi_origin_deadline_status", [

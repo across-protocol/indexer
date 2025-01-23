@@ -207,11 +207,25 @@ export class SpokePoolProcessor {
 
     const upsertResults = [];
     for (const item of data) {
-      upsertResults.push(
-        await relayHashInfoRepository.upsert(item, ["relayHash"]),
-      );
+      // In case of colliding deposits, match the fill only with the first deposit event we stored in the database
+      const existingRow = await relayHashInfoRepository.findOne({
+        where: { relayHash: item.relayHash },
+        order: { depositEventId: "ASC" },
+      });
+      if (!existingRow) {
+        const insertedRow = await relayHashInfoRepository.insert(item);
+        upsertResults.push(insertedRow);
+      } else {
+        const updatedRow = await relayHashInfoRepository.update(
+          {
+            relayHash: item.relayHash,
+            depositEventId: existingRow.depositEventId,
+          },
+          item,
+        );
+        upsertResults.push(updatedRow);
+      }
     }
-
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
