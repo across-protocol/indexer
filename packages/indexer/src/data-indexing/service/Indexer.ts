@@ -82,7 +82,7 @@ export class Indexer {
           notificationPath: "across-indexer-error",
           blockRangeResult,
           dataIdentifier: this.dataHandler.getDataIdentifier(),
-          error,
+          error: JSON.stringify(error),
         });
         blockRangeProcessedSuccessfully = false;
       } finally {
