@@ -8,6 +8,7 @@ import {
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { providers, Contract } from "ethers";
+import { SpokePoolClient } from "./clients";
 
 export const CONFIG_STORE_VERSION = 4;
 export const ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK = 19277710;
@@ -71,7 +72,7 @@ export function getSpokeClient(
     SpokePoolFactory.abi,
     provider,
   );
-  return new across.clients.SpokePoolClient(
+  return new SpokePoolClient(
     logger,
     spokePoolContract,
     hubPoolClient,
