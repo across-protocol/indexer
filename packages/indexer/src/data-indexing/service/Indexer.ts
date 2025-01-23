@@ -2,6 +2,8 @@ import * as across from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import { Logger } from "winston";
 
+import { entities, DataSource } from "@repo/indexer-database";
+
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { RedisCache } from "../../redis/redisCache";
@@ -41,6 +43,7 @@ export class Indexer {
     private rpcProvider: ethers.providers.JsonRpcProvider,
     private redisCache: RedisCache,
     private logger: Logger,
+    private dataSource: DataSource,
   ) {
     this.stopRequested = false;
   }
@@ -69,10 +72,16 @@ export class Indexer {
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
           );
+          // TODO: remove Redis storage in favor of Postgres
           await this.redisCache.set(
             this.getLastFinalisedBlockCacheKey(),
             blockRangeResult.lastFinalisedBlock,
           );
+          // When the block range is processed successfully and the indexer is ready to start
+          // processing the next block range, save the progress in the database. The most important
+          // information to save is the last finalised block, as this is the block that will be used
+          // as the starting point for the next block range.
+          await this.saveProgressInDatabase(blockRangeResult);
         }
         blockRangeProcessedSuccessfully = true;
       } catch (error) {
@@ -109,6 +118,18 @@ export class Indexer {
       message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
     });
     this.stopRequested = true;
+  }
+
+  private async saveProgressInDatabase(blockRangeResult: BlockRangeResult) {
+    return this.dataSource.getRepository(entities.IndexerProgressInfo).upsert(
+      {
+        id: this.dataHandler.getDataIdentifier(),
+        lastFinalisedBlock: blockRangeResult.lastFinalisedBlock,
+        latestBlockNumber: blockRangeResult.latestBlockNumber,
+        isBackfilling: blockRangeResult.isBackfilling,
+      },
+      { conflictPaths: ["id"], skipUpdateIfNoValuesChanged: true },
+    );
   }
 
   /**
