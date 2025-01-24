@@ -46,6 +46,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete event.updatedRecipient;
       delete event.updatedOutputAmount;
       delete event.updatedMessage;
+      delete (event as { quoteBlockNumber?: number }).quoteBlockNumber;
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
         ...event,

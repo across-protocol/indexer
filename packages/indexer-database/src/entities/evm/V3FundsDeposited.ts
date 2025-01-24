@@ -66,9 +66,6 @@ export class V3FundsDeposited {
   @Column()
   quoteTimestamp: Date;
 
-  @Column()
-  quoteBlockNumber: number;
-
   @Column({ nullable: true })
   integratorId?: string;
 

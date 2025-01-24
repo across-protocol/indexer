@@ -8,6 +8,7 @@ import {
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { providers, Contract } from "ethers";
+import { SpokePoolClient } from "./clients";
 
 export const CONFIG_STORE_VERSION = 4;
 export const ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK = 19277710;
@@ -20,6 +21,7 @@ export type GetSpokeClientParams = {
   toBlock?: number;
   chainId: number;
   hubPoolClient: across.clients.HubPoolClient;
+  disableQuoteBlockLookup?: boolean;
 };
 
 function getAddress(contractName: string, chainId: number): string {
@@ -49,6 +51,8 @@ export function getSpokeClient(
   const toBlock = params.toBlock;
   const fromBlock = params.fromBlock ?? deployedBlockNumber;
 
+  const disableQuoteBlockLookup = params.disableQuoteBlockLookup ?? false;
+
   const eventSearchConfig = {
     fromBlock,
     toBlock,
@@ -68,13 +72,14 @@ export function getSpokeClient(
     SpokePoolFactory.abi,
     provider,
   );
-  return new across.clients.SpokePoolClient(
+  return new SpokePoolClient(
     logger,
     spokePoolContract,
     hubPoolClient,
     chainId,
     deployedBlockNumber,
     eventSearchConfig,
+    disableQuoteBlockLookup,
   );
 }
 
