@@ -5,9 +5,6 @@ export class RelayHashInfo1737752107825 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE INDEX "IX_rhi_relayHash" ON "relay_hash_info" ("relayHash") `,
-    );
-    await queryRunner.query(
       `CREATE INDEX "IX_rhi_origin_deadline_status" ON "relay_hash_info" ("originChainId", "fillDeadline", "status") `,
     );
   }
@@ -16,6 +13,5 @@ export class RelayHashInfo1737752107825 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX "public"."IX_rhi_origin_deadline_status"`,
     );
-    await queryRunner.query(`DROP INDEX "public"."IX_rhi_relayHash"`);
   }
 }
