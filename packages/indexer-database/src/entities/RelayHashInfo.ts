@@ -32,7 +32,6 @@ export enum RelayStatus {
   "fillDeadline",
   "status",
 ])
-@Index("IX_rhi_relayHash", ["relayHash"])
 export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;
