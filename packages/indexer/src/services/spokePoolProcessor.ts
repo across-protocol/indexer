@@ -149,6 +149,7 @@ export class SpokePoolProcessor {
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#process",
       message: "System Time Log for SpokePoolProcessor#process",
+      spokeChainId: this.chainId,
       timeToAssignSpokeEvents:
         timeToAssignSpokeEventsEnd - timeToAssignSpokeEventsStart,
       timeToAssignSpokeEventsToRelayHashInfo:
