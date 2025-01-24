@@ -39,6 +39,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // Webhooks
       entities.WebhookRequest,
       entities.WebhookClient,
+      // Indexer
+      entities.IndexerProgressInfo,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
