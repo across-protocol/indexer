@@ -37,10 +37,13 @@ export class SpokePoolProcessor {
       events.deposits,
       SaveQueryResultType.Updated,
     );
+
+    const timeToAssignSpokeEventsStart = performance.now();
     await this.assignSpokeEventsToRelayHashInfo(
       SpokePoolEvents.V3FundsDeposited,
       [...newDeposits, ...updatedDeposits],
     );
+    const timeToAssignSpokeEventsEnd = performance.now();
 
     // Notify webhook of new deposits
     newDeposits.forEach((deposit) => {
@@ -62,10 +65,13 @@ export class SpokePoolProcessor {
       events.slowFillRequests,
       SaveQueryResultType.Updated,
     );
+
+    const timeToAssignSpokeEventsToRelayHashInfoStart = performance.now();
     await this.assignSpokeEventsToRelayHashInfo(
       SpokePoolEvents.RequestedV3SlowFill,
       [...newSlowFillRequests, ...updatedSlowFillRequests],
     );
+    const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Notify webhook of new slow fill requests
     newSlowFillRequests.forEach((deposit) => {
@@ -106,7 +112,10 @@ export class SpokePoolProcessor {
       });
     });
 
+    const timeToUpdateExpiredRelaysStart = performance.now();
     const expiredDeposits = await this.updateExpiredRelays();
+    const timeToUpdateExpiredRelaysEnd = performance.now();
+
     // Notify webhook of expired deposits
     expiredDeposits.forEach((deposit) => {
       this.webhookWriteFn?.({
@@ -120,7 +129,9 @@ export class SpokePoolProcessor {
       });
     });
 
+    const timeToUpdateRefundedDepositsStart = performance.now();
     const refundedDeposits = await this.updateRefundedDepositsStatus();
+    const timeToUpdateRefundedDepositsEnd = performance.now();
 
     // Notify webhook of refunded deposits
     refundedDeposits.forEach((deposit) => {
@@ -133,6 +144,21 @@ export class SpokePoolProcessor {
           status: RelayStatus.Refunded,
         },
       });
+    });
+
+    this.logger.debug({
+      at: "Indexer#SpokePoolProcessor#process",
+      message: "System Time Log for SpokePoolProcessor#process",
+      timeToAssignSpokeEvents:
+        timeToAssignSpokeEventsEnd - timeToAssignSpokeEventsStart,
+      timeToAssignSpokeEventsToRelayHashInfo:
+        timeToAssignSpokeEventsToRelayHashInfoEnd -
+        timeToAssignSpokeEventsToRelayHashInfoStart,
+      timeToUpdateExpiredRelays:
+        timeToUpdateExpiredRelaysEnd - timeToUpdateExpiredRelaysStart,
+      timeToUpdateRefundedDeposits:
+        timeToUpdateRefundedDepositsEnd - timeToUpdateRefundedDepositsStart,
+      totalTime: timeToUpdateRefundedDepositsEnd - timeToAssignSpokeEventsStart,
     });
   }
 
