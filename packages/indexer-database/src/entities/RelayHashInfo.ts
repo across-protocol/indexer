@@ -27,6 +27,11 @@ export enum RelayStatus {
 @Unique("UK_relayHashInfo_relayHash", ["relayHash"])
 @Index("IX_rhi_originChainId_depositId", ["originChainId", "depositId"])
 @Index("IX_rhi_depositTxHash", ["depositTxHash"])
+@Index("IX_rhi_origin_deadline_status", [
+  "originChainId",
+  "fillDeadline",
+  "status",
+])
 export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;
