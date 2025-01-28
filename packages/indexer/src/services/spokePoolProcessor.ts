@@ -22,7 +22,7 @@ type relayHashInfoInsertData = {
   fillTxHash?: string | undefined;
   depositTxHash?: string | undefined;
   relayHash: string;
-  depositId: number;
+  depositId: string;
   originChainId: number;
   destinationChainId: number;
   fillDeadline: Date;

@@ -38,7 +38,7 @@ export class RelayHashInfo {
   relayHash: string;
 
   @Column({ type: "decimal" })
-  depositId: number;
+  depositId: string;
 
   @Column()
   originChainId: number;

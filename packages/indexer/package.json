@@ -23,7 +23,7 @@
   "dependencies": {
     "@across-protocol/constants": "^3.1.28",
     "@across-protocol/contracts": "^3.0.23",
-    "@across-protocol/sdk": "^3.3.23",
+    "@across-protocol/sdk": "^3.4.15",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",
     "@types/express": "^4.17.21",
