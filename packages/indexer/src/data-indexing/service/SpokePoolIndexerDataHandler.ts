@@ -240,6 +240,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       {
         hubPoolClient: this.hubPoolClient,
         disableQuoteBlockLookup: true,
+        maxBlockLookback: 200,
       },
     );
 
