@@ -1,4 +1,3 @@
-import { utils } from "@across-protocol/sdk";
 import winston from "winston";
 
 import {
@@ -18,9 +17,21 @@ enum SpokePoolEvents {
   RequestedV3SlowFill = "RequestedV3SlowFill",
 }
 
-export class SpokePoolProcessor {
-  private queryBatchSize = 100;
+type relayHashInfoInsertData = {
+  status?: entities.RelayStatus | undefined;
+  fillTxHash?: string | undefined;
+  depositTxHash?: string | undefined;
+  relayHash: string;
+  depositId: number;
+  originChainId: number;
+  destinationChainId: number;
+  fillDeadline: Date;
+  depositEventId?: number;
+  fillEventId?: number;
+  slowFillRequestEventId?: number;
+};
 
+export class SpokePoolProcessor {
   constructor(
     private readonly postgres: DataSource,
     private readonly logger: winston.Logger,
@@ -181,9 +192,9 @@ export class SpokePoolProcessor {
     const eventTypeToField = {
       [SpokePoolEvents.V3FundsDeposited]: "depositEventId",
       [SpokePoolEvents.FilledV3Relay]: "fillEventId",
-      [SpokePoolEvents.RequestedV3SlowFill]: "requestSlowFillEventId",
+      [SpokePoolEvents.RequestedV3SlowFill]: "slowFillRequestEventId",
     };
-    const data = events.map((event) => {
+    const data: relayHashInfoInsertData[] = events.map((event) => {
       const eventField = eventTypeToField[eventType];
       return {
         relayHash: event.relayHash,
@@ -205,34 +216,56 @@ export class SpokePoolProcessor {
       };
     });
 
-    const upsertResults = [];
+    const insertResults = [];
+    const updateResults = [];
     for (const item of data) {
-      // In case of colliding deposits, match the fill only with the first deposit event we stored in the database
-      const existingRow = await relayHashInfoRepository.findOne({
-        where: { relayHash: item.relayHash },
-        order: { depositEventId: "ASC" },
-      });
+      // Either create a new row or update an existing one based on the provided data.
+      // Each deposit event is stored as a unique row in the RelayHashInfo table, even in case of collisions.
+      // If a fill is found, it is matched with the first instance of the deposit we stored in the database.
+      const queryBuilder = relayHashInfoRepository
+        .createQueryBuilder()
+        .where(`"relayHash" = :itemRelayHash`, {
+          itemRelayHash: item.relayHash,
+        });
+
+      if (eventType === SpokePoolEvents.V3FundsDeposited) {
+        // Deposits will create a new row if:
+        // 1. No existing row matches the given relayHash.
+        // 2. A matching relayHash exists, but its depositEventId differs.
+        // 3. A matching relayHash exists without an associated depositEventId.
+        queryBuilder.andWhere(
+          `"depositEventId" IS NULL OR "depositEventId" = :itemEventId`,
+          { itemEventId: item.depositEventId },
+        );
+      }
+
+      const existingRow = await queryBuilder
+        .orderBy(`"depositEventId"`, "ASC") // Get only the first inserted deposit if it exists
+        .getOne();
+
       if (!existingRow) {
         const insertedRow = await relayHashInfoRepository.insert(item);
-        upsertResults.push(insertedRow);
+        insertResults.push(insertedRow);
       } else {
         const updatedRow = await relayHashInfoRepository.update(
           {
+            id: existingRow.id,
             relayHash: item.relayHash,
-            depositEventId: existingRow.depositEventId,
           },
           item,
         );
-        upsertResults.push(updatedRow);
+        updateResults.push(updatedRow);
       }
     }
+
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
-      updatedRelayHashInfoRows: upsertResults.reduce(
+      insertedRows: insertResults.reduce(
         (acc, res) => acc + res.generatedMaps.length,
         0,
       ),
+      updatedRows: updateResults.reduce((acc, res) => acc + res.affected!, 0),
     });
   }
 
