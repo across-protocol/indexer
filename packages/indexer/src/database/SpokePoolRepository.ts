@@ -143,7 +143,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveRequestedSpeedUpV3Events(
     requestedSpeedUpV3Events: {
       [depositorAddress: string]: {
-        [depositId: number]: across.interfaces.SpeedUpWithBlock[];
+        [depositId: string]: across.interfaces.SpeedUpWithBlock[];
       };
     },
     lastFinalisedBlock: number,
