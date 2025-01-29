@@ -317,6 +317,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       totalTime: endTimeToGetBlockTimes - initialTime,
       spokeChainId: this.chainId,
       blockRange: blockRange,
+      isBackfilling,
+      dynamicMaxBlockLookback: maxBlockLookback,
     });
 
     return {
