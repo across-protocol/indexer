@@ -20,6 +20,7 @@ import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
+import { getMaxBlockLookBack } from "../../web3/constants";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -73,12 +74,14 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   public async processBlockRange(
     blockRange: BlockRange,
     lastFinalisedBlock: number,
+    isBackfilling: boolean = false,
   ) {
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,
       blockRange,
       lastFinalisedBlock,
+      isBackfilling,
     });
 
     if (!this.isInitialized) {
@@ -89,7 +92,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     //FIXME: Remove performance timing
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange(blockRange);
+    const events = await this.fetchEventsByRange(blockRange, isBackfilling);
     const requestedSpeedUpV3EventsCount = Object.values(
       events.requestedSpeedUpV3Events,
     ).reduce((acc, speedUps) => {
@@ -231,8 +234,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
   private async fetchEventsByRange(
     blockRange: BlockRange,
+    isBackfilling: boolean,
   ): Promise<FetchEventsResult> {
     const { configStoreClient, hubPoolClient } = this;
+
+    // If we are in a backfilling state then we should grab the largest
+    // lookback available to us. Otherwise, for this specific indexer we
+    // only need exactly what we're looking for, plus some padding to be
+    // sure
+    const maxBlockLookback = isBackfilling
+      ? getMaxBlockLookBack(this.chainId)
+      : Math.min(
+          getMaxBlockLookBack(this.chainId),
+          (blockRange.to - blockRange.from) * 2,
+        );
+
     const spokePoolClient = this.spokePoolFactory.get(
       this.chainId,
       blockRange.from,
@@ -240,7 +256,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       {
         hubPoolClient: this.hubPoolClient,
         disableQuoteBlockLookup: true,
-        maxBlockLookback: 200,
+        maxBlockLookback,
       },
     );
 
@@ -304,6 +320,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       totalTime: endTimeToGetBlockTimes - initialTime,
       spokeChainId: this.chainId,
       blockRange: blockRange,
+      isBackfilling,
+      dynamicMaxBlockLookback: maxBlockLookback,
     });
 
     return {

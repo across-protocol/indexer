@@ -21,5 +21,6 @@ export interface IndexerDataHandler {
   processBlockRange: (
     blockRange: BlockRange,
     lastFinalisedBlock: number,
+    isBackfilling?: boolean,
   ) => Promise<void>;
 }

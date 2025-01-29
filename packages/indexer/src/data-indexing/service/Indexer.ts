@@ -71,6 +71,7 @@ export class Indexer {
           await this.dataHandler.processBlockRange(
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
+            blockRangeResult.isBackfilling,
           );
           // TODO: remove Redis storage in favor of Postgres
           await this.redisCache.set(
@@ -168,7 +169,13 @@ export class Indexer {
       blockRange.to,
       lastFinalisedBlockOnChain,
     );
-    const isBackfilling = latestBlockNumber - blockRange.to > 100_000;
+
+    // If we specifically set the max block range then do not consider this
+    // run to be a backfilling run
+    const isBackfilling =
+      !this.config.maxBlockRangeSize &&
+      latestBlockNumber - blockRange.to > 100_000;
+
     return {
       latestBlockNumber,
       blockRange,
