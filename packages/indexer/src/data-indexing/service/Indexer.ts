@@ -71,6 +71,7 @@ export class Indexer {
           await this.dataHandler.processBlockRange(
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
+            blockRangeResult.isBackfilling,
           );
           // TODO: remove Redis storage in favor of Postgres
           await this.redisCache.set(
