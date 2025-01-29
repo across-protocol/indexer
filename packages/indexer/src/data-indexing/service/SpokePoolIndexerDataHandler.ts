@@ -244,7 +244,10 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     // sure
     const maxBlockLookback = isBackfilling
       ? getMaxBlockLookBack(this.chainId)
-      : (blockRange.to - blockRange.from) * 2;
+      : Math.min(
+          getMaxBlockLookBack(this.chainId),
+          (blockRange.to - blockRange.from) * 2,
+        );
 
     const spokePoolClient = this.spokePoolFactory.get(
       this.chainId,
