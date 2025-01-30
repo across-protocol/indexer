@@ -21,7 +21,7 @@ export class RequestedSpeedUpV3Deposit {
   originChainId: number;
 
   @Column({ type: "decimal" })
-  depositId: number;
+  depositId: string;
 
   @Column()
   depositor: string;

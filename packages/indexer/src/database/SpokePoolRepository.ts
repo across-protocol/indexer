@@ -25,6 +25,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       | across.interfaces.SlowFillRequestWithBlock,
   ) {
     return {
+      depositId: event.depositId.toString(),
       inputAmount: event.inputAmount.toString(),
       outputAmount: event.outputAmount.toString(),
       fillDeadline: new Date(event.fillDeadline * 1000),
@@ -143,7 +144,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveRequestedSpeedUpV3Events(
     requestedSpeedUpV3Events: {
       [depositorAddress: string]: {
-        [depositId: number]: across.interfaces.SpeedUpWithBlock[];
+        [depositId: string]: across.interfaces.SpeedUpWithBlock[];
       };
     },
     lastFinalisedBlock: number,
@@ -154,6 +155,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           events.map((event) => {
             return {
               ...event,
+              depositId: event.depositId.toString(),
               updatedOutputAmount: event.updatedOutputAmount.toString(),
               finalised: event.blockNumber <= lastFinalisedBlock,
             };

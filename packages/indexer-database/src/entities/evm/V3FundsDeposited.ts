@@ -20,7 +20,7 @@ export class V3FundsDeposited {
   relayHash: string;
 
   @Column({ type: "decimal" })
-  depositId: number;
+  depositId: string;
 
   @Column()
   originChainId: number;
