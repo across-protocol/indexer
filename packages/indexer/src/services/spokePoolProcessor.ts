@@ -159,7 +159,7 @@ export class SpokePoolProcessor {
 
   /**
    * Updates relayHashInfo table to include recently stored events
-   * @param events An object of already stored deposits, fills and slow fill requests
+   * @param events An object with stored deposits, fills and slow fill requests
    * @returns A void promise
    */
   private async assignSpokeEventsToRelayHashInfo(events: {
