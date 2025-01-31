@@ -4,6 +4,8 @@ import {
   DataSource,
   entities,
   utils as dbUtils,
+  InsertResult,
+  UpdateResult,
   SaveQueryResultType,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
@@ -16,20 +18,6 @@ enum SpokePoolEvents {
   FilledV3Relay = "FilledV3Relay",
   RequestedV3SlowFill = "RequestedV3SlowFill",
 }
-
-type relayHashInfoInsertData = {
-  status?: entities.RelayStatus | undefined;
-  fillTxHash?: string | undefined;
-  depositTxHash?: string | undefined;
-  relayHash: string;
-  depositId: string;
-  originChainId: number;
-  destinationChainId: number;
-  fillDeadline: Date;
-  depositEventId?: number;
-  fillEventId?: number;
-  slowFillRequestEventId?: number;
-};
 
 export class SpokePoolProcessor {
   constructor(
@@ -49,13 +37,44 @@ export class SpokePoolProcessor {
       SaveQueryResultType.Updated,
     );
 
-    const timeToAssignSpokeEventsStart = performance.now();
-    await this.assignSpokeEventsToRelayHashInfo(
-      SpokePoolEvents.V3FundsDeposited,
-      [...newDeposits, ...updatedDeposits],
+    const newFills = dbUtils.filterSaveQueryResults(
+      events.fills,
+      SaveQueryResultType.Inserted,
     );
-    const timeToAssignSpokeEventsEnd = performance.now();
+    const updatedFills = dbUtils.filterSaveQueryResults(
+      events.fills,
+      SaveQueryResultType.Updated,
+    );
 
+    const newSlowFillRequests = dbUtils.filterSaveQueryResults(
+      events.slowFillRequests,
+      SaveQueryResultType.Inserted,
+    );
+    const updatedSlowFillRequests = dbUtils.filterSaveQueryResults(
+      events.slowFillRequests,
+      SaveQueryResultType.Updated,
+    );
+
+    // Assign events to relay hash info
+    const timeToAssignSpokeEventsToRelayHashInfoStart = performance.now();
+    await this.assignSpokeEventsToRelayHashInfo({
+      deposits: [...newDeposits, ...updatedDeposits],
+      fills: [...newFills, ...updatedFills],
+      slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
+    });
+    const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
+
+    // Update expired deposits
+    const timeToUpdateExpiredRelaysStart = performance.now();
+    const expiredDeposits = await this.updateExpiredRelays();
+    const timeToUpdateExpiredRelaysEnd = performance.now();
+
+    // Update refunded deposits
+    const timeToUpdateRefundedDepositsStart = performance.now();
+    const refundedDeposits = await this.updateRefundedDepositsStatus();
+    const timeToUpdateRefundedDepositsEnd = performance.now();
+
+    // Send webhook notifications
     // Notify webhook of new deposits
     newDeposits.forEach((deposit) => {
       this.webhookWriteFn?.({
@@ -68,21 +87,6 @@ export class SpokePoolProcessor {
         },
       });
     });
-    const newSlowFillRequests = dbUtils.filterSaveQueryResults(
-      events.slowFillRequests,
-      SaveQueryResultType.Inserted,
-    );
-    const updatedSlowFillRequests = dbUtils.filterSaveQueryResults(
-      events.slowFillRequests,
-      SaveQueryResultType.Updated,
-    );
-
-    const timeToAssignSpokeEventsToRelayHashInfoStart = performance.now();
-    await this.assignSpokeEventsToRelayHashInfo(
-      SpokePoolEvents.RequestedV3SlowFill,
-      [...newSlowFillRequests, ...updatedSlowFillRequests],
-    );
-    const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Notify webhook of new slow fill requests
     newSlowFillRequests.forEach((deposit) => {
@@ -97,19 +101,6 @@ export class SpokePoolProcessor {
       });
     });
 
-    const newFills = dbUtils.filterSaveQueryResults(
-      events.fills,
-      SaveQueryResultType.Inserted,
-    );
-    const updatedFills = dbUtils.filterSaveQueryResults(
-      events.fills,
-      SaveQueryResultType.Updated,
-    );
-    await this.assignSpokeEventsToRelayHashInfo(SpokePoolEvents.FilledV3Relay, [
-      ...newFills,
-      ...updatedFills,
-    ]);
-
     // Notify webhook of new fills
     newFills.forEach((fill) => {
       this.webhookWriteFn?.({
@@ -123,10 +114,6 @@ export class SpokePoolProcessor {
       });
     });
 
-    const timeToUpdateExpiredRelaysStart = performance.now();
-    const expiredDeposits = await this.updateExpiredRelays();
-    const timeToUpdateExpiredRelaysEnd = performance.now();
-
     // Notify webhook of expired deposits
     expiredDeposits.forEach((deposit) => {
       this.webhookWriteFn?.({
@@ -139,10 +126,6 @@ export class SpokePoolProcessor {
         },
       });
     });
-
-    const timeToUpdateRefundedDepositsStart = performance.now();
-    const refundedDeposits = await this.updateRefundedDepositsStatus();
-    const timeToUpdateRefundedDepositsEnd = performance.now();
 
     // Notify webhook of refunded deposits
     refundedDeposits.forEach((deposit) => {
@@ -161,8 +144,6 @@ export class SpokePoolProcessor {
       at: "Indexer#SpokePoolProcessor#process",
       message: "System Time Log for SpokePoolProcessor#process",
       spokeChainId: this.chainId,
-      timeToAssignSpokeEvents:
-        timeToAssignSpokeEventsEnd - timeToAssignSpokeEventsStart,
       timeToAssignSpokeEventsToRelayHashInfo:
         timeToAssignSpokeEventsToRelayHashInfoEnd -
         timeToAssignSpokeEventsToRelayHashInfoStart,
@@ -170,94 +151,288 @@ export class SpokePoolProcessor {
         timeToUpdateExpiredRelaysEnd - timeToUpdateExpiredRelaysStart,
       timeToUpdateRefundedDeposits:
         timeToUpdateRefundedDepositsEnd - timeToUpdateRefundedDepositsStart,
-      totalTime: timeToUpdateRefundedDepositsEnd - timeToAssignSpokeEventsStart,
+      totalTime:
+        timeToUpdateRefundedDepositsEnd -
+        timeToAssignSpokeEventsToRelayHashInfoStart,
     });
   }
 
   /**
    * Updates relayHashInfo table to include recently stored events
-   * @param events An array of already stored deposits, fills or slow fill requests
+   * @param events An object of already stored deposits, fills and slow fill requests
    * @returns A void promise
    */
-  private async assignSpokeEventsToRelayHashInfo(
-    eventType: SpokePoolEvents,
-    events:
-      | entities.V3FundsDeposited[]
-      | entities.FilledV3Relay[]
-      | entities.RequestedV3SlowFill[],
+  private async assignSpokeEventsToRelayHashInfo(events: {
+    deposits: entities.V3FundsDeposited[];
+    fills: entities.FilledV3Relay[];
+    slowFillRequests: entities.RequestedV3SlowFill[];
+  }): Promise<void> {
+    await Promise.all([
+      this.assignDepositEventsToRelayHashInfo(events.deposits),
+      this.assignFillEventsToRelayHashInfo(events.fills),
+      this.assignSlowFillRequestedEventsToRelayHashInfo(
+        events.slowFillRequests,
+      ),
+    ]);
+  }
+
+  /**
+   * Updates relayHashInfo table to include recently stored deposits
+   * @param events An array of already stored deposits
+   * @returns A void promise
+   */
+  private async assignDepositEventsToRelayHashInfo(
+    events: entities.V3FundsDeposited[],
   ): Promise<void> {
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
-    const eventTypeToField = {
-      [SpokePoolEvents.V3FundsDeposited]: "depositEventId",
-      [SpokePoolEvents.FilledV3Relay]: "fillEventId",
-      [SpokePoolEvents.RequestedV3SlowFill]: "slowFillRequestEventId",
-    };
-    const data: relayHashInfoInsertData[] = events.map((event) => {
-      const eventField = eventTypeToField[eventType];
-      return {
-        relayHash: event.relayHash,
-        depositId: event.depositId,
-        originChainId: event.originChainId,
-        destinationChainId: event.destinationChainId,
-        fillDeadline: event.fillDeadline,
-        [eventField]: event.id,
-        ...(eventType === SpokePoolEvents.V3FundsDeposited && {
+    const insertResults: InsertResult[] = [];
+    const updateResults: UpdateResult[] = [];
+    await Promise.all(
+      events.map(async (event) => {
+        // Format from event to relayHashInfo row
+        const item = {
+          relayHash: event.relayHash,
+          depositId: event.depositId,
+          originChainId: event.originChainId,
+          destinationChainId: event.destinationChainId,
+          fillDeadline: event.fillDeadline,
+          depositEventId: event.id,
           depositTxHash: event.transactionHash,
-        }),
-        ...(eventType === SpokePoolEvents.FilledV3Relay && {
-          status: RelayStatus.Filled,
+        };
+
+        // Start a transaction
+        const queryRunner = this.postgres.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        const relayHashInfoRepository = queryRunner.manager.getRepository(
+          entities.RelayHashInfo,
+        );
+        try {
+          // Convert relayHash into a 32-bit integer for database lock usage
+          const lockKey = this.relayHashToInt32(item.relayHash);
+          // Acquire a lock to prevent concurrent modifications on the same relayHash.
+          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
+            item.originChainId,
+            lockKey,
+          ]);
+
+          // Retrieve an existing entry that either:
+          // - Matches the relayHash and has no associated depositEventId.
+          // - Matches both relayHash and depositEventId.
+          const existingRow = await relayHashInfoRepository
+            .createQueryBuilder()
+            .where('"relayHash" = :itemRelayHash', {
+              itemRelayHash: item.relayHash,
+            })
+            .andWhere(
+              '"depositEventId" IS NULL OR "depositEventId" = :itemEventId',
+              { itemEventId: item.depositEventId },
+            )
+            .getOne();
+
+          // Insert a new record if no matching entry is found.
+          if (!existingRow) {
+            const insertedRow = await relayHashInfoRepository.insert(item);
+            insertResults.push(insertedRow);
+          } else {
+            // Update the existing row if a match is found.
+            const updatedRow = await relayHashInfoRepository.update(
+              { id: existingRow.id, relayHash: item.relayHash },
+              item,
+            );
+            updateResults.push(updatedRow);
+          }
+          await queryRunner.commitTransaction();
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw error;
+        } finally {
+          // Release transaction resources; locks acquired will be automatically released.
+          await queryRunner.release();
+        }
+      }),
+    );
+
+    this.logRelayHashInfoAssignmentResult(
+      SpokePoolEvents.V3FundsDeposited,
+      insertResults,
+      updateResults,
+    );
+  }
+
+  /**
+   * Updates relayHashInfo table to include recently stored fills
+   * @param events An array of already stored fills
+   * @returns A void promise
+   */
+  private async assignFillEventsToRelayHashInfo(
+    events: entities.FilledV3Relay[],
+  ): Promise<void> {
+    const insertResults: InsertResult[] = [];
+    const updateResults: UpdateResult[] = [];
+    await Promise.all(
+      events.map(async (event) => {
+        // Format from event to relayHashInfo row
+        const item = {
+          relayHash: event.relayHash,
+          depositId: event.depositId,
+          originChainId: event.originChainId,
+          destinationChainId: event.destinationChainId,
+          fillDeadline: event.fillDeadline,
+          fillEventId: event.id,
+          status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
-        }),
-        ...(eventType === SpokePoolEvents.RequestedV3SlowFill && {
-          status: RelayStatus.SlowFillRequested,
-        }),
-      };
-    });
+        };
 
-    const insertResults = [];
-    const updateResults = [];
-    for (const item of data) {
-      // Either create a new row or update an existing one based on the provided data.
-      // Each deposit event is stored as a unique row in the RelayHashInfo table, even in case of collisions.
-      // If a fill is found, it is matched with the first instance of the deposit we stored in the database.
-      const queryBuilder = relayHashInfoRepository
-        .createQueryBuilder()
-        .where(`"relayHash" = :itemRelayHash`, {
-          itemRelayHash: item.relayHash,
-        });
-
-      if (eventType === SpokePoolEvents.V3FundsDeposited) {
-        // Deposits will create a new row if:
-        // 1. No existing row matches the given relayHash.
-        // 2. A matching relayHash exists, but its depositEventId differs.
-        // 3. A matching relayHash exists without an associated depositEventId.
-        queryBuilder.andWhere(
-          `"depositEventId" IS NULL OR "depositEventId" = :itemEventId`,
-          { itemEventId: item.depositEventId },
+        // Start a transaction
+        const queryRunner = this.postgres.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        const relayHashInfoRepository = queryRunner.manager.getRepository(
+          entities.RelayHashInfo,
         );
-      }
 
-      const existingRow = await queryBuilder
-        .orderBy(`"depositEventId"`, "ASC") // Get only the first inserted deposit if it exists
-        .getOne();
+        try {
+          // Convert relayHash into a 32-bit integer for database lock usage
+          const lockKey = this.relayHashToInt32(item.relayHash);
+          // Acquire a lock to prevent concurrent modifications on the same relayHash.
+          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
+            item.originChainId,
+            lockKey,
+          ]);
 
-      if (!existingRow) {
-        const insertedRow = await relayHashInfoRepository.insert(item);
-        insertResults.push(insertedRow);
-      } else {
-        const updatedRow = await relayHashInfoRepository.update(
-          {
-            id: existingRow.id,
-            relayHash: item.relayHash,
-          },
-          item,
+          // Retrieve an existing entry based on the relayHash.
+          // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
+          const existingRow = await relayHashInfoRepository
+            .createQueryBuilder()
+            .where(`"relayHash" = :itemRelayHash`, {
+              itemRelayHash: item.relayHash,
+            })
+            .orderBy('"depositEventId"', "ASC")
+            .getOne();
+
+          // Insert a new record if no matching entry is found.
+          if (!existingRow) {
+            const insertedRow = await relayHashInfoRepository.insert(item);
+            insertResults.push(insertedRow);
+          } else {
+            // Update the existing row if a match is found.
+            const updatedRow = await relayHashInfoRepository.update(
+              { id: existingRow.id, relayHash: item.relayHash },
+              item,
+            );
+            updateResults.push(updatedRow);
+          }
+          await queryRunner.commitTransaction();
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw error;
+        } finally {
+          // Release transaction resources; locks acquired will be automatically released.
+          await queryRunner.release();
+        }
+      }),
+    );
+
+    this.logRelayHashInfoAssignmentResult(
+      SpokePoolEvents.FilledV3Relay,
+      insertResults,
+      updateResults,
+    );
+  }
+
+  /**
+   * Updates relayHashInfo table to include recently requested slow fill events
+   * @param events An array of already stored requested slow fills
+   * @returns A void promise
+   */
+  private async assignSlowFillRequestedEventsToRelayHashInfo(
+    events: entities.RequestedV3SlowFill[],
+  ): Promise<void> {
+    const insertResults: InsertResult[] = [];
+    const updateResults: UpdateResult[] = [];
+    await Promise.all(
+      events.map(async (event) => {
+        // Format from event to relayHashInfo row
+        const item = {
+          relayHash: event.relayHash,
+          depositId: event.depositId,
+          originChainId: event.originChainId,
+          destinationChainId: event.destinationChainId,
+          fillDeadline: event.fillDeadline,
+          slowFillRequestEventId: event.id,
+        };
+
+        // Start a transaction
+        const queryRunner = this.postgres.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        const relayHashInfoRepository = queryRunner.manager.getRepository(
+          entities.RelayHashInfo,
         );
-        updateResults.push(updatedRow);
-      }
-    }
 
+        try {
+          // Convert relayHash into a 32-bit integer for database lock usage
+          const lockKey = this.relayHashToInt32(item.relayHash);
+          // Acquire a lock to prevent concurrent modifications on the same relayHash.
+          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
+            item.originChainId,
+            lockKey,
+          ]);
+
+          // Retrieve an existing entry based on the relayHash.
+          // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
+          const existingRow = await relayHashInfoRepository
+            .createQueryBuilder()
+            .where(`"relayHash" = :itemRelayHash`, {
+              itemRelayHash: item.relayHash,
+            })
+            .orderBy('"depositEventId"', "ASC")
+            .getOne();
+
+          // Insert a new record if no matching entry is found.
+          if (!existingRow) {
+            const insertedRow = await relayHashInfoRepository.insert({
+              ...item,
+              status: RelayStatus.SlowFillRequested,
+            });
+            insertResults.push(insertedRow);
+          } else {
+            // Update the existing row if a match is found.
+            const updatedRow = await relayHashInfoRepository.update(
+              { id: existingRow.id, relayHash: item.relayHash },
+              {
+                ...item,
+                // Update status to SlowFillRequested only if it is not already marked as Filled.
+                ...(existingRow.status !== RelayStatus.Filled && {
+                  status: RelayStatus.SlowFillRequested,
+                }),
+              },
+            );
+            updateResults.push(updatedRow);
+          }
+          await queryRunner.commitTransaction();
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw error;
+        } finally {
+          // Release transaction resources; locks acquired will be automatically released.
+          await queryRunner.release();
+        }
+      }),
+    );
+
+    this.logRelayHashInfoAssignmentResult(
+      SpokePoolEvents.RequestedV3SlowFill,
+      insertResults,
+      updateResults,
+    );
+  }
+
+  private logRelayHashInfoAssignmentResult(
+    eventType: SpokePoolEvents,
+    insertResults: InsertResult[],
+    updateResults: UpdateResult[],
+  ) {
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
@@ -397,5 +572,32 @@ export class SpokePoolProcessor {
       });
     }
     return updatedRows;
+  }
+
+  /**
+   * Generates a 32bit integer based on an input string
+   */
+  private relayHashToInt32(relayHash: string): number {
+    let hash = 0;
+    let chr;
+
+    // If the input string is empty, return 0
+    if (relayHash.length === 0) return hash;
+
+    // Loop through each character in the string
+    for (let i = 0; i < relayHash.length; i++) {
+      // Get the Unicode value of the character
+      chr = relayHash.charCodeAt(i);
+
+      // Perform bitwise operations to generate a hash
+      // This shifts the hash left by 5 bits, subtracts itself, and adds the character code
+      hash = (hash << 5) - hash + chr;
+
+      // Convert the result into a 32-bit integer by forcing it into the signed integer range
+      hash |= 0;
+    }
+
+    // Return the final computed 32-bit integer hash
+    return hash;
   }
 }
