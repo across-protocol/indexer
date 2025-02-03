@@ -23,6 +23,7 @@ import {
   getFinalisedBlockBufferDistance,
   getLoopWaitTimeSeconds,
 } from "./constants";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;
@@ -38,6 +39,7 @@ export class AcrossIndexerManager {
     private retryProvidersFactory: RetryProvidersFactory,
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
+    private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private redisCache: RedisCache,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
@@ -99,6 +101,7 @@ export class AcrossIndexerManager {
           this.hubPoolClientFactory,
           this.spokePoolClientFactory,
           this.spokePoolRepository,
+          this.swapBeforeBridgeRepository,
           new SpokePoolProcessor(
             this.postgres,
             this.logger,

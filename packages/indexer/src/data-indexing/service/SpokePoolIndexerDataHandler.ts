@@ -17,11 +17,13 @@ import { IndexerDataHandler } from "./IndexerDataHandler";
 import * as utils from "../../utils";
 import { getIntegratorId } from "../../utils/spokePoolUtils";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
+import { EventDecoder } from "../../web3/EventDecoder";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -45,6 +47,11 @@ export type StoreEventsResult = {
   executedRefundRoots: SaveQueryResult<entities.ExecutedRelayerRefundRoot>[];
 };
 
+export type DepositSwapPair = {
+  deposit: entities.V3FundsDeposited;
+  swapBeforeBridge: entities.SwapBeforeBridge;
+};
+
 export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -59,6 +66,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private hubPoolFactory: utils.HubPoolClientFactory,
     private spokePoolFactory: utils.SpokePoolClientFactory,
     private spokePoolClientRepository: SpokePoolRepository,
+    private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
   ) {
@@ -148,11 +156,15 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const timeToDeleteDeposits = performance.now();
 
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+    const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
+      newInsertedDeposits,
+      lastFinalisedBlock,
+    );
 
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();
 
-    await this.spokePoolProcessor.process(storedEvents, deletedDeposits);
+    await this.spokePoolProcessor.process(storedEvents, deletedDeposits, depositSwapPairs);
 
     //FIXME: Remove performance timing
     const timeToProcessDeposits = performance.now();
@@ -179,6 +191,95 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
+  }
+
+  /**
+   * Function that matches the new deposit events with swap events
+   * 1. for all new deposits transactions, fetch the transaction receipt
+   * 2. for each tx receipt, get SwapBeforeBridge events
+   * 3. insert the swap events into the database
+   * 4. group the deposit events and swap events by the transaction hash
+   */
+  private async matchDepositEventsWithSwapEvents(
+    deposits: entities.V3FundsDeposited[],
+    lastFinalisedBlock: number,
+  ) {
+    // avoid fetching the same transaction receipt multiple times
+    const uniqueDepositTxHashes = [
+      ...new Set(deposits.map((deposit) => deposit.transactionHash)),
+    ];
+    const transactionReceipts = await Promise.all([
+      ...uniqueDepositTxHashes.map((txHash) =>
+        this.provider.getTransactionReceipt(txHash),
+      ),
+    ]);
+    const swapBeforeBridgeEvents = transactionReceipts
+      .map((transactionReceipt) =>
+        EventDecoder.decodeSwapBeforeBridgeEvents(transactionReceipt),
+      )
+      .flat();
+    /**
+     * this calls `saveAndHandleFinalisation()` from the `BlockchainEventRepository`. Not sure if this is the best way to do it
+     * because if the event is already in the database, it will not be returned (result: 'nothing').
+     */
+    const saveResult =
+      await this.swapBeforeBridgeRepository.formatAndSaveSwapBeforeBridgeEvents(
+        swapBeforeBridgeEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      );
+    const insertedSwapBeforeBridgeEvents =
+      indexerDatabaseUtils.filterSaveQueryResults(
+        saveResult,
+        SaveQueryResultType.Inserted,
+      );
+    const depositsAndSwapsByTxHash = insertedSwapBeforeBridgeEvents.reduce(
+      (acc, swapBeforeBridge) => {
+        acc[swapBeforeBridge.transactionHash] = {
+          deposits: deposits.filter(
+            (d) => d.transactionHash === swapBeforeBridge.transactionHash,
+          ),
+          swapBeforeBridges: insertedSwapBeforeBridgeEvents.filter(
+            (s) => s.transactionHash === swapBeforeBridge.transactionHash,
+          ),
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          deposits: entities.V3FundsDeposited[];
+          swapBeforeBridges: entities.SwapBeforeBridge[];
+        }
+      >,
+    );
+
+    // match the deposit with the swap before
+    const depositSwapMap = Object.values(depositsAndSwapsByTxHash)
+      .map((depositAndSwap) => {
+        const { deposits, swapBeforeBridges } = depositAndSwap;
+        const sortedDeposits = deposits.sort((a, b) => a.logIndex - b.logIndex);
+        const sortedSwapBeforeBridges = swapBeforeBridges.sort(
+          (a, b) => a.logIndex - b.logIndex,
+        );
+        const matchedPairs: DepositSwapPair[] = [];
+        const usedSwaps = new Set<number>(); // Track used swaps by their log index
+
+        sortedDeposits.forEach((deposit) => {
+          const matchingSwap = sortedSwapBeforeBridges.find(
+            (swap) =>
+              swap.logIndex < deposit.logIndex && !usedSwaps.has(swap.logIndex),
+          );
+          if (matchingSwap) {
+            matchedPairs.push({ deposit, swapBeforeBridge: matchingSwap });
+            usedSwaps.add(matchingSwap.logIndex); // Mark this swap as used
+          }
+        });
+
+        return matchedPairs;
+      })
+      .flat();
+    return depositSwapMap;
   }
 
   /**
