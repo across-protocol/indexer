@@ -13,8 +13,7 @@ import * as across from "@across-protocol/sdk";
 import * as ss from "superstruct";
 
 export const PriceMessage = ss.object({
-  relayHash: ss.string(),
-  originChainId: ss.number(),
+  fillEventId: ss.number(),
 });
 
 export type PriceMessage = ss.Infer<typeof PriceMessage>;
@@ -29,7 +28,6 @@ export function yesterday(now: Date) {
 
 /**
  * This worker listens to the `PriceQuery` queue and processes each job by:
- * - Retrieving the deposit and relay hash information from the database using the deposit ID and origin chain ID.
  * - Verifying the existence of the relay hash info and deposit records.
  * - Determining the block time from the relay hash info and calculating the price time as the previous day's timestamp.
  * - Identifying the base currency using the output token and destination chain ID.
@@ -41,7 +39,6 @@ export class PriceWorker {
   private worker: Worker;
   private coingeckoClient: across.coingecko.Coingecko;
   private relayHashInfoRepository;
-  private depositRepository;
   private historicPriceRepository;
 
   constructor(
@@ -52,9 +49,6 @@ export class PriceWorker {
     this.coingeckoClient = across.coingecko.Coingecko.get(logger);
     this.relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
-    );
-    this.depositRepository = this.postgres.getRepository(
-      entities.V3FundsDeposited,
     );
     this.historicPriceRepository = this.postgres.getRepository(
       entities.HistoricPrice,
@@ -116,7 +110,7 @@ export class PriceWorker {
         } catch (error) {
           this.logger.error({
             at: "PriceWorker",
-            message: `Error getting price for fill ${job.data.relayHash}`,
+            message: `Error getting price for fill on fill event id ${job.data.fillEventId}`,
             error,
             job,
           });
@@ -166,39 +160,34 @@ export class PriceWorker {
     );
   }
   private async run(params: PriceMessage) {
-    const { relayHash, originChainId } = params;
+    const { fillEventId } = params;
 
     const relayHashInfo = await this.relayHashInfoRepository.findOne({
-      where: { relayHash, originChainId },
+      where: { fillEventId },
       relations: {
-        depositEvent: true,
         fillEvent: true,
       },
     });
 
     if (!relayHashInfo) {
-      const errorMessage = `Relay hash info not found by relay hash ${relayHash}`;
+      const errorMessage = `Relay hash info not found by id ${fillEventId}`;
       this.logger.error({
         at: "PriceWorker",
         message: errorMessage,
         ...params,
       });
-      throw new Error(errorMessage);
+      // this should end the request if the entity cant be found by id. it will never be there
+      return;
     }
 
-    const { depositId } = relayHashInfo;
-    const deposit = await this.depositRepository.findOne({
-      where: { depositId, originChainId },
-    });
-
-    if (!deposit) {
-      const errorMessage = `Unable to find deposit ${depositId} on chain ${originChainId}`;
+    if (!relayHashInfo.fillEvent) {
+      const errorMessage = "Fill event not found for relay hash info.";
       this.logger.error({
         at: "PriceWorker",
         message: errorMessage,
         ...params,
       });
-      throw new Error(errorMessage);
+      return;
     }
 
     if (
@@ -214,13 +203,12 @@ export class PriceWorker {
       });
       return;
     }
-    const errorMessage =
-      "Failed to retrieve relay hash information or deposit record from the database.";
 
+    // we are getting our price timestamp off fill event time rather than deposit, this should be pretty close to deposit, and we only look up previous 24 hour price anywyay
     // if blockTimestamp doesnt exist, maybe we keep retrying till it does
-    const blockTime = relayHashInfo.depositEvent.blockTimestamp;
+    const blockTime = relayHashInfo.fillEvent.blockTimestamp;
     if (!blockTime) {
-      const errorMessage = "Deposit block time not found for relay hash info.";
+      const errorMessage = "Block time not found for relay hash info.";
       this.logger.error({
         at: "PriceWorker",
         message: errorMessage,
@@ -231,7 +219,10 @@ export class PriceWorker {
     const inputTokenAddress = relayHashInfo.fillEvent.inputToken;
     const outputTokenAddress = relayHashInfo.fillEvent.outputToken;
     const destinationChainId = relayHashInfo.destinationChainId;
-    const inputTokenInfo = findTokenByAddress(inputTokenAddress, originChainId);
+    const inputTokenInfo = findTokenByAddress(
+      inputTokenAddress,
+      relayHashInfo.originChainId,
+    );
     const outputTokenInfo = findTokenByAddress(
       outputTokenAddress,
       destinationChainId,
@@ -239,7 +230,7 @@ export class PriceWorker {
 
     const inputTokenPrice = await this.getPrice(
       inputTokenAddress,
-      originChainId,
+      relayHashInfo.originChainId,
       blockTime,
     );
     const outputTokenPrice = await this.getPrice(
@@ -274,10 +265,7 @@ export class PriceWorker {
     }
 
     if (Object.keys(updatedFields).length > 0) {
-      await this.relayHashInfoRepository.update(
-        { depositId, originChainId },
-        updatedFields,
-      );
+      await this.relayHashInfoRepository.update({ fillEventId }, updatedFields);
       this.logger.info({
         at: "PriceWorker#updateRelayHashInfo",
         message: "Updated relay hash info with new fields",

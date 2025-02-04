@@ -22,7 +22,6 @@ import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
-import { FillWithBlock } from "@across-protocol/sdk/dist/cjs/interfaces/SpokePool";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -443,14 +442,10 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     fills: SaveQueryResult<entities.FilledV3Relay>[],
   ) {
     const messages: PriceMessage[] = fills
+      .filter((x) => x.data != undefined)
       .map((fill) => ({
-        relayHash: fill.data?.relayHash,
-        originChainId: fill.data?.originChainId,
-      }))
-      .filter(
-        (x): x is PriceMessage =>
-          x.relayHash !== undefined && x.originChainId !== undefined,
-      );
+        fillEventId: fill.data?.id!,
+      }));
 
     await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.PriceQuery,
