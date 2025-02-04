@@ -2,8 +2,84 @@ import Events from 'events';
 import assert from 'assert';
 import { IKeyManager } from './sorted-kv';
 
+// cursor should point to the next value
+// export class Cursor extends Events {
+
+//   private table: IKeyManager;
+//   private cursor?: string;
+//   private bound:'start' | 'end' = 'start';
+
+//   constructor(table: IKeyManager, cursor?: string) {
+//     super();
+//     this.table = table;
+//     this.cursor = cursor;
+
+//     // Listen to 'set' and 'delete' events from the table
+//     this.table.on('change', (key?: string) => {
+//       this.handleTableChange(key);
+//     });
+//   }
+
+//   private async handleTableChange(next?: string): Promise<void> {
+//     console.log('cursor table change',next)
+//     const cursor = await this.get()
+//     // next is undefined when table is cleared
+//     if(next === undefined){
+//       this.cursor = undefined
+//       this.bound = 'start'
+//       this.emit('change', this.cursor);
+//       return;
+//     }
+//     if(cursor === undefined){
+//       // cursor is at end, so any value would pull us back
+//       if(this.bound === 'end'){
+//         this.cursor = next;
+//         this.emit('change', this.cursor);
+//       }
+//       return;
+//     };
+//     // change happened before our spot
+//     if (next < cursor) {
+//       // we need to go back to the key before this change
+//       this.cursor = await this.table.closestKeyPrev(next);
+//       this.emit('change', this.cursor);
+//     }
+//   }
+
+//   public async increment(): Promise<string | undefined> {
+//     const prevKey = await this.get();
+//     // this returns undefined if there are no values in table
+//     if(prevKey === undefined) return;
+//     const nextKey = await this.table.nextKey(prevKey);
+//     // no next key, we set cursor to undefined but switch bound to end 
+//     if(nextKey === undefined){
+//       this.bound = 'end'
+//     }
+//     this.cursor = nextKey;
+//     return this.cursor
+//   }
+//   // if this.cursor is undefined, it means we are at start
+//   // if we still return undefined, table is empty
+//   public async get():Promise<string | undefined> { 
+//     if(this.cursor === undefined){
+//       if(this.bound === 'start'){
+//         this.cursor = await this.table.firstKey()
+//       }
+//     }
+//     console.log('bound',this.bound, this.cursor)
+//     return this.cursor
+//   }
+//   public set(newCursor: string | undefined): void {
+//     this.cursor = newCursor;
+//   }
+// }
+// this cursor points to data we have already processed, rather than
+// the next point we need to process
 export class Cursor extends Events {
+
   private table: IKeyManager;
+  // cursor represents our currently processed point
+  // if undefined, we have not started it ie at beginning
   private cursor?: string;
 
   constructor(table: IKeyManager, cursor?: string) {
@@ -13,41 +89,39 @@ export class Cursor extends Events {
 
     // Listen to 'set' and 'delete' events from the table
     this.table.on('change', (key?: string) => {
-      this.change(key);
+      this.handleTableChange(key);
     });
   }
 
-  private async change(next?: string): Promise<void> {
-    // cursor is at start
-    if(this.cursor=== undefined) return;
-    // change happened at start
-    if(next === undefined){
+  private async handleTableChange(key?: string): Promise<void> {
+    // cursor is undefined, which means we are already at beginning
+    if(this.cursor === undefined) return;
+    // if key undefined, that means table is empty
+    if(key === undefined){
       this.cursor = undefined
       this.emit('change', this.cursor);
       return;
     }
-    // change happened before our spot
-    if (next < this.cursor) {
-      // we need to go back to the key before this change
-      this.cursor = await this.table.prevKey(next);
-      this.emit('change', this.cursor);
+    // if key is less than or equal to cursor, this means we need to go back
+    // since we assume we have processed up to cursor
+    if (key <= this.cursor) {
+      this.cursor = await this.table.prevKey(key);
     }
+    this.emit('change', this.cursor);
   }
 
-  public async next(): Promise<string | undefined> {
-    this.cursor = await this.peek();
-    return this.cursor;
+  public async increment(): Promise<string | undefined> {
+    this.cursor = await this.get()
+    return this.get() 
+  }
+  public async get():Promise<string | undefined> { 
+    // cursor is not set, return first element in table
+    if(this.cursor === undefined) return this.table.firstKey();
+    // otherwise return the element after the cursor
+    return this.table.nextKey(this.cursor);
   }
 
-  public async peek(override: string | undefined = this.cursor): Promise<string | undefined> {
-    if (override === undefined) {
-      return this.table.keyAtIndex(0);
-    } else {
-      return this.table.nextKey(override);
-    }
-  }
-
-  public setCursor(newCursor: string | undefined): void {
+  public set(newCursor: string | undefined): void {
     this.cursor = newCursor;
   }
 }

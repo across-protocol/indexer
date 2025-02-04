@@ -14,40 +14,40 @@ describe('Cursor', function() {
     it('should initialize with the first key', async function() {
         await store.set('key1', 'value1');
         await store.set('key2', 'value2');
-        const firstKey = await cursor.peek();
+        const firstKey = await cursor.get();
         expect(firstKey).to.equal('key1');
     });
 
     it('should move to the next key', async function() {
         await store.set('key1', 'value1');
         await store.set('key2', 'value2');
-        await cursor.next();
-        const nextKey = await cursor.next();
-        expect(nextKey).to.equal('key2');
+        expect(await cursor.get()).to.equal('key1');
+        expect(await cursor.increment()).to.equal('key2');
     });
 
     it('should return undefined if there is no next key', async function() {
         await store.set('key1', 'value1');
-        await cursor.next();
-        const nextKey = await cursor.next();
-        expect(nextKey).to.be.undefined;
+        const nextKey = await cursor.get();
+        expect(nextKey).to.equal('key1')
+        expect(await cursor.increment()).to.equal(undefined)
     });
 
-    it('should emit rewind event when a lower key is set', async function() {
+    it('should emit change event when a lower key is set', async function() {
         let rewindEventTriggered = false;
-        cursor.on('change', (prev, next) => {
+        cursor.on('change', (key) => {
             rewindEventTriggered = true;
-            expect(prev).to.equal('key2');
-            expect(next).to.equal('key1');
+            expect(key).to.equal('key1');
         });
 
         await store.set('key2', 'value2');
-        await cursor.next();
+        const n1 = await cursor.get();
+        expect(n1).to.equal('key2')
+        const n2 = await cursor.increment();
+        expect(n2).to.equal(undefined)
         await store.set('key1', 'value1'); // Setting a lower key
-
         expect(rewindEventTriggered).to.be.true;
-        const peek = await cursor.peek();
-        expect(peek).to.equal(undefined)
+        const peek = await cursor.get();
+        expect(peek).to.equal('key1')
     });
 
     it('should not emit rewind event if cursor does not change', async function() {
@@ -57,7 +57,7 @@ describe('Cursor', function() {
         });
 
         await store.set('key1', 'value1');
-        await cursor.next();
+        await cursor.increment();
         await store.set('key1', 'value1'); // Setting the same key again
 
         expect(rewindEventTriggered).to.be.false;

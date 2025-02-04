@@ -45,23 +45,32 @@ export class Sequencer extends AsyncSortedKVStore<[number,string]> {
   }
 
   private async handleRewind(tableIndex: number, prev: string): Promise<void> {
+    // this is called whenever a cursor gets data behind it
+    // we have the cursor table index and the changed key
     const prevIndex = await this.getSequenceByKey(tableIndex,prev)
+    console.log('rewinding',{tableIndex,prev,prevIndex})
+
     if(prevIndex === undefined) return;
     const validKeys = await this.sequenceKeyState.get(intToKey(prevIndex))
     assert(validKeys,`Previous key state not found at index ${prevIndex}`)
     validKeys.forEach((key,i)=>{
-      this.getCursor(i).setCursor(key)
+      this.getCursor(i).set(key)
     })
   }
 
   public async tick(): Promise<void> {
     const keys: Array<string | undefined> = await Promise.all(
-      this.cursors.map((cursor) => cursor.peek())
+      this.cursors.map((cursor) => cursor.get())
     );
     if (keys.some((key) => key === undefined)) return;
 
+    console.log(keys)
     const validKeys = keys as Array<string>;
-    const indexToIncrement = await this.callback(validKeys);
+    const keyIndex = await this.callback(validKeys);
+    const nextKey = validKeys[keyIndex]
+    const cursorToIncrement = this.cursors[keyIndex]
+    assert(cursorToIncrement !== undefined,'Returned invalid key index from comparator')
+    assert(nextKey !== undefined,'Invalid index into key array')
 
     // Update each sequenceByKeyMaps with the current key and the current sequence
     await Promise.all(
@@ -72,13 +81,9 @@ export class Sequencer extends AsyncSortedKVStore<[number,string]> {
       })
     );
     await this.sequenceKeyState.set(intToKey(this.sequenceIndex),validKeys)
-
-    if (this.cursors[indexToIncrement]) {
-      const currentKey = await this.cursors[indexToIncrement].peek()
-      assert(currentKey !== undefined,'Unable to find key for next sequence')
-      await this.cursors[indexToIncrement].next();
-      await this.set(intToKey(this.sequenceIndex), [indexToIncrement,currentKey]);
-      this.sequenceIndex++;
-    }
+    await this.set(intToKey(this.sequenceIndex), [keyIndex,nextKey]);
+    const result = await cursorToIncrement.increment()
+    this.sequenceIndex++;
+    // console.log('seq tick',{keyIndex,nextKey,result,sequenceIndex:this.sequenceIndex})
   }
 }

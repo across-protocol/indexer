@@ -5,9 +5,12 @@ import Events from 'events';
 export interface IKeyManager extends Events {
     has(key: string): Promise<boolean>;
     clear(): Promise<void>;
+    firstKey():Promise<string | undefined>;
+    lastKey():Promise<string | undefined>;
     prevKey(someKey: string): Promise<string | undefined>;
     nextKey(someKey: string): Promise<string | undefined>;
     keyAtIndex(index?: number): Promise<string | undefined>;
+    closestKeyPrev(someKey: string): Promise<string | undefined>;
     readonly size: number;
 }
 
@@ -37,8 +40,8 @@ export class AsyncSortedKVStore<T> extends Events implements IAsyncSortedKVStore
           this.map.set(key, value);
           const index = _.sortedIndex(this.keys, key);
           this.keys.splice(index, 0, key);
-          this.emit('change', key);
         }
+        this.emit('change', key);
     }
 
     async get(key: string): Promise<T | undefined> {
@@ -64,7 +67,7 @@ export class AsyncSortedKVStore<T> extends Events implements IAsyncSortedKVStore
     async clear(): Promise<void> {
         this.map.clear();
         this.keys = [];
-        this.emit('clear');
+        this.emit('change');
     }
 
     async prevKey(someKey: string): Promise<string | undefined> {
@@ -87,6 +90,20 @@ export class AsyncSortedKVStore<T> extends Events implements IAsyncSortedKVStore
             return this.keys[index];
         }
         return undefined;
+    }
+    async closestKeyPrev(someKey: string): Promise<string | undefined> {
+        if(await this.has(someKey)) return someKey
+        return this.prevKey(someKey)
+    }
+    async closestKeyNext(someKey: string): Promise<string | undefined> {
+        if(await this.has(someKey)) return someKey
+        return this.nextKey(someKey)
+    }
+    async firstKey(): Promise<string | undefined> {
+        return this.keys.length > 0 ? this.keys[0] : undefined;
+    }
+    async lastKey(): Promise<string | undefined> {
+        return this.keys.length > 0 ? this.keys[this.keys.length - 1] : undefined;
     }
 
     get size(): number {
