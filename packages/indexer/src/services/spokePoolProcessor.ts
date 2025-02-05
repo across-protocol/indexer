@@ -32,10 +32,6 @@ export class SpokePoolProcessor {
       events.deposits,
       SaveQueryResultType.Inserted,
     );
-    const updatedDeposits = dbUtils.filterSaveQueryResults(
-      events.deposits,
-      SaveQueryResultType.Updated,
-    );
 
     const newFills = dbUtils.filterSaveQueryResults(
       events.fills,
@@ -58,7 +54,7 @@ export class SpokePoolProcessor {
     // Assign events to relay hash info
     const timeToAssignSpokeEventsToRelayHashInfoStart = performance.now();
     await this.assignSpokeEventsToRelayHashInfo({
-      deposits: [...newDeposits, ...updatedDeposits],
+      deposits: newDeposits,
       fills: [...newFills, ...updatedFills],
       slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
     });
