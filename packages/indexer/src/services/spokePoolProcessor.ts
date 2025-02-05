@@ -439,27 +439,23 @@ export class SpokePoolProcessor {
     deletedDeposits: entities.V3FundsDeposited[],
   ) {
     for (const deposit of deletedDeposits) {
-      // Start a transaction
-      const queryRunner = this.postgres.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-      const relayHashInfoRepository = queryRunner.manager.getRepository(
-        entities.RelayHashInfo,
-      );
+      await this.postgres.transaction(async (transactionalEntityManager) => {
+        const relayHashInfoRepository =
+          transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-      this.logger.debug({
-        at: "spokePoolProcessor#processDeletedDeposits",
-        message: `Processing deleted deposit event with id ${deposit.id}`,
-      });
+        this.logger.debug({
+          at: "spokePoolProcessor#processDeletedDeposits",
+          message: `Processing deleted deposit event with id ${deposit.id}`,
+        });
 
-      try {
         // Convert relayHash into a 32-bit integer for database lock usage
         const lockKey = this.relayHashToInt32(deposit.relayHash);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
-        await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
-          deposit.originChainId,
-          lockKey,
-        ]);
+        // The lock is automatically released when the transaction commits or rolls back.
+        await transactionalEntityManager.query(
+          `SELECT pg_advisory_xact_lock($2, $1)`,
+          [deposit.originChainId, lockKey],
+        );
 
         const relatedRelayRow = await relayHashInfoRepository.findOne({
           where: { depositEventId: deposit.id },
@@ -531,14 +527,7 @@ export class SpokePoolProcessor {
             }
           }
         }
-        await queryRunner.commitTransaction();
-      } catch (error) {
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
-        // Release transaction resources; locks acquired will be automatically released.
-        await queryRunner.release();
-      }
+      });
     }
   }
 
