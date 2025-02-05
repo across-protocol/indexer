@@ -159,6 +159,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     this.profileStoreEvents(storedEvents);
 
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents.fills);
+
     //FIXME: Remove performance timing
     const finalPerfTime = performance.now();
 
@@ -176,8 +179,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
-    // publish new relays to workers to fill in prices
-    await this.publishNewRelays(storedEvents.fills);
   }
 
   /**

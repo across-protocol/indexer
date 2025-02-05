@@ -20,10 +20,10 @@ export type PriceMessage = ss.Infer<typeof PriceMessage>;
 
 // Convert now to a consistent price timestamp yesterday for lookup purposes
 export function yesterday(now: Date) {
-  return DateTime.fromJSDate(now)
-    .minus({ days: 1 })
-    .set({ hour: 23, minute: 59, second: 0, millisecond: 0 })
-    .toJSDate();
+  // theres a slight wrinkle when using coingecko, if the time falls within 12-3AM we must subtract 2 days, rather than 1
+  const utcHour = DateTime.fromJSDate(now).toUTC().hour;
+  const daysToSubtract = utcHour >= 0 && utcHour < 3 ? 2 : 1;
+  return DateTime.fromJSDate(now).minus({ days: daysToSubtract }).toJSDate();
 }
 
 /**
