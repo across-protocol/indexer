@@ -200,20 +200,18 @@ export class SpokePoolProcessor {
         };
 
         // Start a transaction
-        const queryRunner = this.postgres.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        const relayHashInfoRepository = queryRunner.manager.getRepository(
-          entities.RelayHashInfo,
-        );
-        try {
+        await this.postgres.transaction(async (transactionalEntityManager) => {
+          const relayHashInfoRepository =
+            transactionalEntityManager.getRepository(entities.RelayHashInfo);
+
           // Convert relayHash into a 32-bit integer for database lock usage
           const lockKey = this.relayHashToInt32(item.relayHash);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
-          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
-            item.originChainId,
-            lockKey,
-          ]);
+          // The lock is automatically released when the transaction commits or rolls back.
+          await transactionalEntityManager.query(
+            `SELECT pg_advisory_xact_lock($2, $1)`,
+            [item.originChainId, lockKey],
+          );
 
           // Retrieve an existing entry that either:
           // - Matches the relayHash and has no associated depositEventId.
@@ -241,14 +239,7 @@ export class SpokePoolProcessor {
             );
             updateResults.push(updatedRow);
           }
-          await queryRunner.commitTransaction();
-        } catch (error) {
-          await queryRunner.rollbackTransaction();
-          throw error;
-        } finally {
-          // Release transaction resources; locks acquired will be automatically released.
-          await queryRunner.release();
-        }
+        });
       }),
     );
 
@@ -284,21 +275,19 @@ export class SpokePoolProcessor {
         };
 
         // Start a transaction
-        const queryRunner = this.postgres.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        const relayHashInfoRepository = queryRunner.manager.getRepository(
-          entities.RelayHashInfo,
-        );
 
-        try {
+        await this.postgres.transaction(async (transactionalEntityManager) => {
+          const relayHashInfoRepository =
+            transactionalEntityManager.getRepository(entities.RelayHashInfo);
+
           // Convert relayHash into a 32-bit integer for database lock usage
           const lockKey = this.relayHashToInt32(item.relayHash);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
-          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
-            item.originChainId,
-            lockKey,
-          ]);
+          // The lock is automatically released when the transaction commits or rolls back.
+          await transactionalEntityManager.query(
+            `SELECT pg_advisory_xact_lock($2, $1)`,
+            [item.originChainId, lockKey],
+          );
 
           // Retrieve an existing entry based on the relayHash.
           // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
@@ -322,14 +311,7 @@ export class SpokePoolProcessor {
             );
             updateResults.push(updatedRow);
           }
-          await queryRunner.commitTransaction();
-        } catch (error) {
-          await queryRunner.rollbackTransaction();
-          throw error;
-        } finally {
-          // Release transaction resources; locks acquired will be automatically released.
-          await queryRunner.release();
-        }
+        });
       }),
     );
 
@@ -363,21 +345,18 @@ export class SpokePoolProcessor {
         };
 
         // Start a transaction
-        const queryRunner = this.postgres.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-        const relayHashInfoRepository = queryRunner.manager.getRepository(
-          entities.RelayHashInfo,
-        );
+        await this.postgres.transaction(async (transactionalEntityManager) => {
+          const relayHashInfoRepository =
+            transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-        try {
           // Convert relayHash into a 32-bit integer for database lock usage
           const lockKey = this.relayHashToInt32(item.relayHash);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
-          await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
-            item.originChainId,
-            lockKey,
-          ]);
+          // The lock is automatically released when the transaction commits or rolls back.
+          await transactionalEntityManager.query(
+            `SELECT pg_advisory_xact_lock($2, $1)`,
+            [item.originChainId, lockKey],
+          );
 
           // Retrieve an existing entry based on the relayHash.
           // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
@@ -410,14 +389,7 @@ export class SpokePoolProcessor {
             );
             updateResults.push(updatedRow);
           }
-          await queryRunner.commitTransaction();
-        } catch (error) {
-          await queryRunner.rollbackTransaction();
-          throw error;
-        } finally {
-          // Release transaction resources; locks acquired will be automatically released.
-          await queryRunner.release();
-        }
+        });
       }),
     );
 
