@@ -253,4 +253,18 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     );
     return savedEvents.flat();
   }
+
+  public async deleteUnfinalisedDepositEvents(
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const chainIdColumn = "originChainId";
+    const deletedDeposits = await this.deleteUnfinalisedEvents(
+      chainId,
+      chainIdColumn,
+      lastFinalisedBlock,
+      entities.V3FundsDeposited,
+    );
+    return deletedDeposits;
+  }
 }

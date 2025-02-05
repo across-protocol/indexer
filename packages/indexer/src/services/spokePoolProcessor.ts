@@ -7,6 +7,7 @@ import {
   InsertResult,
   UpdateResult,
   SaveQueryResultType,
+  Not,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
 
@@ -27,7 +28,13 @@ export class SpokePoolProcessor {
     private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
-  public async process(events: StoreEventsResult) {
+  public async process(
+    events: StoreEventsResult,
+    deletedDeposits: entities.V3FundsDeposited[],
+  ) {
+    // Update relay hash info records related to deleted deposits
+    await this.processDeletedDeposits(deletedDeposits);
+
     const newDeposits = dbUtils.filterSaveQueryResults(
       events.deposits,
       SaveQueryResultType.Inserted,
@@ -410,6 +417,129 @@ export class SpokePoolProcessor {
       ),
       updatedRows: updateResults.reduce((acc, res) => acc + res.affected!, 0),
     });
+  }
+
+  /**
+   * Updates or deletes relay rows related to deleted deposit events.
+   *
+   * This function iterates over a list of deleted deposit events and ensures that its
+   * corresponding rows in RelayHashInfo are properly updated or deleted.
+   * - If a relay row has no other associated events (`fillEventId`, `slowFillRequestEventId`, `depositRefundTxHash`),
+   *   it is deleted.
+   * - If a relay row has other associated events and there are no other rows matching the `relayHash`, only the
+   *   reference to the deleted deposit is removed.
+   * - If other relay rows match the relayHash, the deposit information is transferred to the row with other
+   *   events, and deletes the extra row.
+   * Operations are wrapped in a transaction and use a lock to avoid race conditions with processes that might
+   * be updating rows for the same relayHash.
+   * @param deletedDeposits - List of deleted deposit events.
+   * @returns A void promise
+   */
+  private async processDeletedDeposits(
+    deletedDeposits: entities.V3FundsDeposited[],
+  ) {
+    for (const deposit of deletedDeposits) {
+      // Start a transaction
+      const queryRunner = this.postgres.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      const relayHashInfoRepository = queryRunner.manager.getRepository(
+        entities.RelayHashInfo,
+      );
+
+      this.logger.debug({
+        at: "spokePoolProcessor#processDeletedDeposits",
+        message: `Processing deleted deposit event with id ${deposit.id}`,
+      });
+
+      try {
+        // Convert relayHash into a 32-bit integer for database lock usage
+        const lockKey = this.relayHashToInt32(deposit.relayHash);
+        // Acquire a lock to prevent concurrent modifications on the same relayHash.
+        await queryRunner.query(`SELECT pg_advisory_xact_lock($2, $1)`, [
+          deposit.originChainId,
+          lockKey,
+        ]);
+
+        const relatedRelayRow = await relayHashInfoRepository.findOne({
+          where: { depositEventId: deposit.id },
+        });
+
+        if (relatedRelayRow) {
+          const { fillEventId, slowFillRequestEventId, depositRefundTxHash } =
+            relatedRelayRow;
+
+          if (!fillEventId && !slowFillRequestEventId && !depositRefundTxHash) {
+            // There are no other related events then it's safe to delete the row
+            await relayHashInfoRepository.delete({ id: relatedRelayRow.id });
+            this.logger.debug({
+              at: "spokePoolProcessor#processDeletedDeposits",
+              message: `Deleted relay row with id ${relatedRelayRow.id}. No related events.`,
+            });
+          } else {
+            // There are other related events with the relay row
+            // Check if there are other rows with matching relayHash
+            const relayHashRecords = await relayHashInfoRepository.find({
+              where: {
+                id: Not(relatedRelayRow.id),
+                relayHash: deposit.relayHash,
+              },
+              order: { depositEventId: "ASC" },
+            });
+
+            if (relayHashRecords.length === 0) {
+              // There are no other rows for this relayHash
+              // Only delete the reference to the deleted event in the existing row
+              await relayHashInfoRepository.update(
+                { id: relatedRelayRow.id },
+                { depositEventId: undefined, depositTxHash: undefined },
+              );
+              this.logger.debug({
+                at: "spokePoolProcessor#processDeletedDeposits",
+                message: `Updated relay row with id ${relatedRelayRow.id} to remove reference to deleted deposit event ${deposit.id}.`,
+              });
+            } else {
+              // There are other rows matching this relayHash
+              // Get the one with the lowest depositEventId
+              const nextMatchingRow = relayHashRecords[0]!;
+
+              // We don't expect this row to have any associated events as those
+              // were already associated with the row we got from the first query
+              if (
+                nextMatchingRow.fillEventId ||
+                nextMatchingRow.slowFillRequestEventId ||
+                nextMatchingRow.depositRefundTxHash
+              ) {
+                throw new Error(
+                  `Unexpected event associations found in next matching row with id: ${nextMatchingRow.id}`,
+                );
+              }
+
+              // Delete the row with matching relayHash and transfer its data to the row we are updating.
+              await relayHashInfoRepository.delete({ id: nextMatchingRow.id });
+              await relayHashInfoRepository.update(
+                { id: relatedRelayRow.id },
+                {
+                  depositEventId: nextMatchingRow.depositEventId,
+                  depositTxHash: nextMatchingRow.depositTxHash,
+                },
+              );
+              this.logger.debug({
+                at: "spokePoolProcessor#processDeletedDeposits",
+                message: `Merged data from relay row with id ${nextMatchingRow.id} into ${relatedRelayRow.id} and deleted the former.`,
+              });
+            }
+          }
+        }
+        await queryRunner.commitTransaction();
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        // Release transaction resources; locks acquired will be automatically released.
+        await queryRunner.release();
+      }
+    }
   }
 
   /**
