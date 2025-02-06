@@ -7,7 +7,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.REDSTONE]: 60,
   [CHAIN_IDs.BASE]: 60,
   [CHAIN_IDs.BLAST]: 60,
-  [CHAIN_IDs.CHER]: 60,
+  [CHAIN_IDs.DOCTOR_WHO]: 60,
   [CHAIN_IDs.INK]: 60,
   [CHAIN_IDs.MODE]: 120,
   [CHAIN_IDs.POLYGON]: 128,
@@ -17,6 +17,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.ARBITRUM]: 240,
   [CHAIN_IDs.LINEA]: 40,
   [CHAIN_IDs.SCROLL]: 40,
+  [CHAIN_IDs.SONEIUM]: 60,
   [CHAIN_IDs.WORLD_CHAIN]: 60,
   [CHAIN_IDs.ZORA]: 60,
   // BOBA is disabled
@@ -41,7 +42,7 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.REDSTONE]: 4,
   [CHAIN_IDs.BASE]: 4,
   [CHAIN_IDs.BLAST]: 4,
-  [CHAIN_IDs.CHER]: 4,
+  [CHAIN_IDs.DOCTOR_WHO]: 4,
   [CHAIN_IDs.INK]: 4,
   [CHAIN_IDs.MODE]: 3,
   [CHAIN_IDs.POLYGON]: 3,
@@ -51,6 +52,7 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.ARBITRUM]: 2,
   [CHAIN_IDs.LINEA]: 6,
   [CHAIN_IDs.SCROLL]: 6,
+  [CHAIN_IDs.SONEIUM]: 4,
   [CHAIN_IDs.WORLD_CHAIN]: 4,
   [CHAIN_IDs.ZORA]: 4,
   // BOBA is disabled
