@@ -15,6 +15,12 @@ import {
   "logIndex",
 ])
 @Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
+@Index("IX_v3FundsDeposited_finalised", ["finalised"])
+@Index("IX_deposits_block_chain_logIndex", [
+  "blockNumber",
+  "originChainId",
+  "logIndex",
+])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
