@@ -16,7 +16,6 @@ export enum BundleEventType {
 }
 
 @Entity()
-@Unique("UK_bundleEvent_eventType_relayHash", ["type", "relayHash"])
 export class BundleEvent {
   @PrimaryGeneratedColumn()
   id: number;
@@ -34,5 +33,14 @@ export class BundleEvent {
   relayHash: string;
 
   @Column({ type: "decimal", nullable: true })
-  repaymentChainId: number;
+  repaymentChainId: string;
+
+  @Column({ nullable: true })
+  eventChainId: number;
+
+  @Column({ nullable: true })
+  eventBlockNumber: number;
+
+  @Column({ nullable: true })
+  eventLogIndex: number;
 }
