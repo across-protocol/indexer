@@ -5,9 +5,7 @@ import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
 import { ethers } from "ethers";
-import { findTokenByAddress } from "../utils";
-// import { CoingeckoClient } from "../utils/coingeckoClient";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { findTokenByAddress, yesterday } from "../utils";
 import { assert } from "@repo/error-handling";
 import * as across from "@across-protocol/sdk";
 import * as ss from "superstruct";
@@ -21,14 +19,6 @@ export type PriceMessage = ss.Infer<typeof PriceMessage>;
 export type PriceWorkerConfig = {
   coingeckoApiKey?: string;
 };
-
-// Convert now to a consistent price timestamp yesterday for lookup purposes
-export function yesterday(now: Date) {
-  // theres a slight wrinkle when using coingecko, if the time falls within 12-3AM we must subtract 2 days, rather than 1
-  const utcHour = DateTime.fromJSDate(now).toUTC().hour;
-  const daysToSubtract = utcHour >= 0 && utcHour < 3 ? 2 : 1;
-  return DateTime.fromJSDate(now).minus({ days: daysToSubtract }).toJSDate();
-}
 
 /**
  * This worker listens to the `PriceQuery` queue and processes each job by:
@@ -100,12 +90,16 @@ export class PriceWorker {
       price,
       `Unable to fetch price for ${quoteCurrency} in ${baseCurrency}(${tokenInfo.coingeckoId}) at ${priceTime}`,
     );
-    await this.historicPriceRepository.insert({
-      date: priceTime,
-      baseCurrency,
-      quoteCurrency,
-      price: price.toString(),
-    });
+    // upsert to prevent conflicts with swap worker inserts
+    await this.historicPriceRepository.upsert(
+      {
+        date: priceTime,
+        baseCurrency,
+        quoteCurrency,
+        price: price.toString(),
+      },
+      ["date", "baseCurrency", "quoteCurrency"],
+    );
 
     return Number(price);
   }
