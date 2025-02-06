@@ -28,7 +28,7 @@ export type FetchEventsResult = {
   requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[];
   requestedSpeedUpV3Events: {
     [depositorAddress: string]: {
-      [depositId: number]: across.interfaces.SpeedUpWithBlock[];
+      [depositId: string]: across.interfaces.SpeedUpWithBlock[];
     };
   };
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
