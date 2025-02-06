@@ -109,4 +109,43 @@ export class BlockchainEventRepository {
       result: SaveQueryResultType.Nothing,
     };
   }
+
+  protected async deleteUnfinalisedEvents<Entity extends ObjectLiteral>(
+    chainId: number,
+    chainIdColumnIdentifier: string,
+    lastFinalisedBlock: number,
+    entity: EntityTarget<Entity>,
+  ): Promise<Entity[]> {
+    const entityMetadata = this.postgres.getMetadata(entity);
+    const columns = entityMetadata.columns.map((column) => column.propertyName);
+    const hasChainIdTargetColumn = columns.includes(chainIdColumnIdentifier);
+    const hasDeletedAtColumn = columns.includes("deletedAt");
+
+    if (
+      entityMetadata.schema !== "evm" ||
+      !hasChainIdTargetColumn ||
+      !hasDeletedAtColumn
+    ) {
+      this.logger.error({
+        at: "BlockchainEventRepository#deleteUnfinalisedEvents",
+        message: `Cannot delete events of ${entityMetadata.name} entity`,
+        schema: entityMetadata.schema,
+        hasChainIdTargetColumn,
+        hasDeletedAtColumn,
+      });
+      throw new Error(`Cannot delete events of ${entityMetadata.name} entity`);
+    }
+
+    const repository = this.postgres.getRepository(entity);
+    const deletedRows = await repository
+      .createQueryBuilder()
+      .softDelete()
+      .where(`${chainIdColumnIdentifier} = :chainId`, { chainId })
+      .andWhere("blockNumber < :lastFinalisedBlock", { lastFinalisedBlock })
+      .andWhere("finalised IS FALSE")
+      .andWhere("deletedAt IS NULL")
+      .returning("*")
+      .execute();
+    return deletedRows.raw;
+  }
 }

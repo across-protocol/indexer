@@ -8,8 +8,8 @@ import {
   entities,
   utils as indexerDatabaseUtils,
   SaveQueryResult,
+  SaveQueryResultType,
 } from "@repo/indexer-database";
-import { SaveQueryResultType } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -62,6 +62,18 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private indexerQueuesService: IndexerQueuesService,
   ) {
     this.isInitialized = false;
+  }
+
+  private initialize() {
+    this.configStoreClient = this.configStoreFactory.get(this.hubPoolChainId);
+    this.hubPoolClient = this.hubPoolFactory.get(
+      this.hubPoolChainId,
+      undefined,
+      undefined,
+      {
+        configStoreClient: this.configStoreClient,
+      },
+    );
   }
 
   public getDataIdentifier() {
@@ -126,12 +138,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     //FIXME: Remove performance timing
     const timeToStoreEvents = performance.now();
 
+    // Delete unfinalised deposits
+    const deletedDeposits =
+      await this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      );
+    const timeToDeleteDeposits = performance.now();
+
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
 
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();
 
-    await this.spokePoolProcessor.process(storedEvents);
+    await this.spokePoolProcessor.process(storedEvents, deletedDeposits);
 
     //FIXME: Remove performance timing
     const timeToProcessDeposits = performance.now();
@@ -149,7 +169,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange: blockRange,
       timeToFetchEvents: timeToFetchEvents - startPerfTime,
       timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
-      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToStoreEvents,
+      timeToDeleteDeposits: timeToDeleteDeposits - timeToStoreEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToDeleteDeposits,
       timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
@@ -224,7 +245,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         if (timestamps[index] === undefined) {
           throw new Error(`Block time for block ${blockNumber} not found`);
         }
-        acc[blockNumber] = timestamps[index];
+        acc[blockNumber] = timestamps[index]!;
         return acc;
       },
       {} as Record<number, number>,
@@ -395,18 +416,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       slowFillRequests: savedV3RequestedSlowFills,
       executedRefundRoots: savedExecutedRelayerRefundRootEvents,
     };
-  }
-
-  private initialize() {
-    this.configStoreClient = this.configStoreFactory.get(this.hubPoolChainId);
-    this.hubPoolClient = this.hubPoolFactory.get(
-      this.hubPoolChainId,
-      undefined,
-      undefined,
-      {
-        configStoreClient: this.configStoreClient,
-      },
-    );
   }
 
   private async updateNewDepositsWithIntegratorId(

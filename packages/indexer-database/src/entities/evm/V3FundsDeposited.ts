@@ -1,7 +1,9 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
@@ -12,6 +14,7 @@ import {
   "blockNumber",
   "logIndex",
 ])
+@Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
@@ -90,4 +93,7 @@ export class V3FundsDeposited {
 
   @Column({ nullable: true })
   blockTimestamp?: Date;
+
+  @DeleteDateColumn({ nullable: true })
+  deletedAt?: Date;
 }
