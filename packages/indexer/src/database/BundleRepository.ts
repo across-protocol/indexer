@@ -8,6 +8,7 @@ import {
   Not,
   In,
 } from "@repo/indexer-database";
+import { getInternalHash } from "../utils/spokePoolUtils";
 
 export type BlockRangeInsertType = {
   bundleId: number;
@@ -621,7 +622,11 @@ export class BundleRepository extends utils.BaseRepository {
         fillsData.fills.map((event) => {
           return {
             bundleId,
-            relayHash: across.utils.getRelayHashFromEvent(event),
+            relayHash: getInternalHash(
+              event,
+              event.messageHash,
+              event.destinationChainId,
+            ),
             eventChainId: event.destinationChainId,
             eventBlockNumber: event.blockNumber,
             eventLogIndex: event.logIndex,

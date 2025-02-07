@@ -24,8 +24,8 @@ export enum RelayStatus {
 }
 
 @Entity()
-@Unique("UK_relayHashInfo_relayHash_depositEvent", [
-  "relayHash",
+@Unique("UK_relayHashInfo_internalHash_depositEvent", [
+  "internalHash",
   "depositEventId",
 ])
 @Index("IX_rhi_originChainId_depositId", ["originChainId", "depositId"])
@@ -39,8 +39,11 @@ export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   relayHash: string;
+
+  @Column({ nullable: true })
+  internalHash: string;
 
   @Column({ type: "decimal" })
   depositId: string;

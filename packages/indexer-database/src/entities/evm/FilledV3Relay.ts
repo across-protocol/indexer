@@ -8,13 +8,16 @@ import {
 import { interfaces } from "@across-protocol/sdk";
 
 @Entity({ schema: "evm" })
-@Unique("UK_filledV3Relay_relayHash", ["relayHash"])
+@Unique("UK_filledV3Relay_internalHash", ["internalHash"])
 export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  relayHash: string;
+  @Column({ nullable: true })
+  relayHash?: string;
+
+  @Column({ nullable: true })
+  internalHash?: string;
 
   @Column({ type: "decimal" })
   depositId: string;
