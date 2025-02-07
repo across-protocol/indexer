@@ -450,7 +450,7 @@ export class SpokePoolProcessor {
         });
 
         // Convert relayHash into a 32-bit integer for database lock usage
-        const lockKey = this.relayHashToInt32(deposit.relayHash);
+        const lockKey = this.relayHashToInt32(deposit.internalHash!);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
@@ -475,11 +475,11 @@ export class SpokePoolProcessor {
             });
           } else {
             // There are other related events with the relay row
-            // Check if there are other rows with matching relayHash
+            // Check if there are other rows with matching internalHash
             const relayHashRecords = await relayHashInfoRepository.find({
               where: {
                 id: Not(relatedRelayRow.id),
-                relayHash: deposit.relayHash,
+                internalHash: deposit.internalHash,
               },
               order: { depositEventId: "ASC" },
             });
@@ -588,7 +588,7 @@ export class SpokePoolProcessor {
     const refundEvents = (await bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
-      .innerJoin(entities.RelayHashInfo, "rhi", "be.relayHash = rhi.relayHash")
+      .innerJoin(entities.RelayHashInfo, "rhi", "be.relayHash = rhi.internalHash")
       .innerJoinAndMapOne(
         "be.deposit",
         entities.V3FundsDeposited,
@@ -648,7 +648,7 @@ export class SpokePoolProcessor {
         );
 
         // Convert relayHash into a 32-bit integer for database lock usage
-        const lockKey = this.relayHashToInt32(refundEvent.deposit.relayHash);
+        const lockKey = this.relayHashToInt32(refundEvent.deposit.internalHash!);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
@@ -658,7 +658,7 @@ export class SpokePoolProcessor {
 
         const rowToUpdate = await relayHashInfoRepo.findOne({
           where: {
-            relayHash: refundEvent.relayHash,
+            internalHash: refundEvent.relayHash,
             depositEvent: {
               originChainId: refundEvent.deposit.originChainId,
               blockNumber: refundEvent.deposit.blockNumber,
