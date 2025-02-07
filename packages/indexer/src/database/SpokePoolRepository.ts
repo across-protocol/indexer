@@ -86,6 +86,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
+      const messageHash = event.messageHash;
+      delete (event as { messageHash?: string }).messageHash;
       return {
         ...Object.keys(event).reduce(
           (acc, key) => {
@@ -98,10 +100,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
         internalHash: utils.getInternalHash(
           event,
-          event.messageHash,
+          messageHash,
           event.destinationChainId,
         ),
         ...this.formatRelayData(event),
+        message: messageHash,
         updatedRecipient: event.relayExecutionInfo.updatedRecipient,
         updatedOutputAmount:
           event.relayExecutionInfo.updatedOutputAmount.toString(),
@@ -117,7 +120,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
           entities.FilledV3Relay,
           eventsChunk,
-          ["relayHash"],
+          ["internalHash"],
           ["transactionHash"],
         ),
       ),
@@ -147,8 +150,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
           entities.RequestedV3SlowFill,
           eventsChunk,
-          ["depositId", "originChainId"],
-          ["relayHash", "transactionHash"],
+          ["internalHash"],
+          ["transactionHash"],
         ),
       ),
     );
