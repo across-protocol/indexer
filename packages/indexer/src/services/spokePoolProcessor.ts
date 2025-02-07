@@ -584,10 +584,16 @@ export class SpokePoolProcessor {
     const bundleEventsRepository = this.postgres.getRepository(
       entities.BundleEvent,
     );
-    const refundEvents = await bundleEventsRepository
+    const refundEvents = (await bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
       .innerJoin(entities.RelayHashInfo, "rhi", "be.relayHash = rhi.relayHash")
+      .innerJoinAndMapOne(
+        "be.deposit",
+        entities.V3FundsDeposited,
+        "dep",
+        "rhi.depositEventId = dep.id AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
+      )
       .where("be.type = :expiredDeposit", {
         expiredDeposit: entities.BundleEventType.ExpiredDeposit,
       })
@@ -597,9 +603,11 @@ export class SpokePoolProcessor {
       .andWhere("rhi.originChainId = :chainId", { chainId: this.chainId })
       .orderBy("be.bundleId", "DESC")
       .limit(100)
-      .getMany();
+      .getMany()) as (entities.BundleEvent & {
+      deposit: entities.V3FundsDeposited;
+    })[];
 
-    let updatedRows = [];
+    const updatedRows: entities.RelayHashInfo[] = [];
     for (const refundEvent of refundEvents) {
       // Get the relayerRefundRoot that included this refund
       const relayerRefundRoot = refundEvent.bundle.relayerRefundRoot;
@@ -633,24 +641,47 @@ export class SpokePoolProcessor {
       if (!executedRelayerRefundRootEvent) continue;
 
       // If we found the execution of the relayer refund root, we can update the relay status
-      const relayHashInfoRepo = this.postgres.getRepository(
-        entities.RelayHashInfo,
-      );
-      await relayHashInfoRepo
-        .createQueryBuilder()
-        .update()
-        .set({
-          status: entities.RelayStatus.Refunded,
-          depositRefundTxHash: executedRelayerRefundRootEvent.transactionHash,
-        })
-        .where("relayHash = :relayHash", {
-          relayHash: refundEvent.relayHash,
-        })
-        .execute();
-      const updatedRow = await relayHashInfoRepo.findOne({
-        where: { relayHash: refundEvent.relayHash },
+      await this.postgres.transaction(async (transactionalEntityManager) => {
+        const relayHashInfoRepo = transactionalEntityManager.getRepository(
+          entities.RelayHashInfo,
+        );
+
+        // Convert relayHash into a 32-bit integer for database lock usage
+        const lockKey = this.relayHashToInt32(refundEvent.deposit.relayHash);
+        // Acquire a lock to prevent concurrent modifications on the same relayHash.
+        // The lock is automatically released when the transaction commits or rolls back.
+        await transactionalEntityManager.query(
+          `SELECT pg_advisory_xact_lock($2, $1)`,
+          [refundEvent.deposit.originChainId, lockKey],
+        );
+
+        const rowToUpdate = await relayHashInfoRepo.findOne({
+          where: {
+            relayHash: refundEvent.relayHash,
+            depositEvent: {
+              originChainId: refundEvent.deposit.originChainId,
+              blockNumber: refundEvent.deposit.blockNumber,
+              logIndex: refundEvent.deposit.logIndex,
+            },
+          },
+        });
+        if (rowToUpdate) {
+          const updatedRow = await relayHashInfoRepo
+            .createQueryBuilder()
+            .update()
+            .set({
+              status: entities.RelayStatus.Refunded,
+              depositRefundTxHash:
+                executedRelayerRefundRootEvent.transactionHash,
+            })
+            .where("id = :rowToUpdateId", {
+              rowToUpdateId: rowToUpdate.id,
+            })
+            .returning("*")
+            .execute();
+          updatedRows.push(updatedRow.raw);
+        }
       });
-      updatedRow && updatedRows.push(updatedRow);
     }
     if (updatedRows.length > 0) {
       this.logger.debug({
