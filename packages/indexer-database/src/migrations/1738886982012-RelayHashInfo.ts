@@ -14,7 +14,7 @@ export class RelayHashInfo1738886982012 implements MigrationInterface {
       `ALTER TABLE "relay_hash_info" ADD CONSTRAINT "UK_relayHashInfo_internalHash_depositEvent" UNIQUE ("internalHash", "depositEventId")`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "UK_relayHashInfo_internalHash_depositEvent"`,
+      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "UK_relayHashInfo_relayHash_depositEvent"`,
     );
     await queryRunner.query(
       `ALTER TABLE "relay_hash_info" ALTER COLUMN "relayHash" DROP NOT NULL`,
