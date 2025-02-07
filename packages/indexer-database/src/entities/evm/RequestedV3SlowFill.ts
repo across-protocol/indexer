@@ -7,13 +7,16 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_requestedV3SlowFill_relayHash", ["relayHash"])
+@Unique("UK_requestedV3SlowFill_internalHash", ["internalHash"])
 export class RequestedV3SlowFill {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  relayHash: string;
+  @Column({ nullable: true })
+  relayHash?: string;
+
+  @Column({ nullable: true })
+  internalHash?: string;
 
   @Column({ type: "decimal" })
   depositId: string;

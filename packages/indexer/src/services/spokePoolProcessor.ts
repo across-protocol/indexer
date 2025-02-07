@@ -194,6 +194,7 @@ export class SpokePoolProcessor {
         // Format from event to relayHashInfo row
         const item = {
           relayHash: event.relayHash,
+          internalHash: event.internalHash,
           depositId: event.depositId,
           originChainId: event.originChainId,
           destinationChainId: event.destinationChainId,
@@ -208,7 +209,7 @@ export class SpokePoolProcessor {
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
           // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.relayHash);
+          const lockKey = this.relayHashToInt32(item.internalHash as string);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -221,8 +222,8 @@ export class SpokePoolProcessor {
           // - Matches both relayHash and depositEventId.
           const existingRow = await relayHashInfoRepository
             .createQueryBuilder()
-            .where('"relayHash" = :itemRelayHash', {
-              itemRelayHash: item.relayHash,
+            .where('"internalHash" = :itemInternalHash', {
+              itemInternalHash: item.internalHash,
             })
             .andWhere(
               '"depositEventId" IS NULL OR "depositEventId" = :itemEventId',
@@ -237,7 +238,7 @@ export class SpokePoolProcessor {
           } else {
             // Update the existing row if a match is found.
             const updatedRow = await relayHashInfoRepository.update(
-              { id: existingRow.id, relayHash: item.relayHash },
+              { id: existingRow.id, internalHash: item.internalHash },
               item,
             );
             updateResults.push(updatedRow);
@@ -267,7 +268,7 @@ export class SpokePoolProcessor {
       events.map(async (event) => {
         // Format from event to relayHashInfo row
         const item = {
-          relayHash: event.relayHash,
+          internalHash: event.internalHash,
           depositId: event.depositId,
           originChainId: event.originChainId,
           destinationChainId: event.destinationChainId,
@@ -284,7 +285,7 @@ export class SpokePoolProcessor {
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
           // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.relayHash);
+          const lockKey = this.relayHashToInt32(item.internalHash as string);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -296,8 +297,8 @@ export class SpokePoolProcessor {
           // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
           const existingRow = await relayHashInfoRepository
             .createQueryBuilder()
-            .where(`"relayHash" = :itemRelayHash`, {
-              itemRelayHash: item.relayHash,
+            .where(`"internalHash" = :itemInternalHash`, {
+              itemInternalHash: item.internalHash,
             })
             .orderBy('"depositEventId"', "ASC")
             .getOne();
@@ -309,7 +310,7 @@ export class SpokePoolProcessor {
           } else {
             // Update the existing row if a match is found.
             const updatedRow = await relayHashInfoRepository.update(
-              { id: existingRow.id, relayHash: item.relayHash },
+              { id: existingRow.id, internalHash: item.internalHash },
               item,
             );
             updateResults.push(updatedRow);
@@ -339,7 +340,7 @@ export class SpokePoolProcessor {
       events.map(async (event) => {
         // Format from event to relayHashInfo row
         const item = {
-          relayHash: event.relayHash,
+          internalHash: event.internalHash,
           depositId: event.depositId,
           originChainId: event.originChainId,
           destinationChainId: event.destinationChainId,
@@ -353,7 +354,7 @@ export class SpokePoolProcessor {
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
           // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.relayHash);
+          const lockKey = this.relayHashToInt32(item.internalHash as string);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -365,8 +366,8 @@ export class SpokePoolProcessor {
           // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
           const existingRow = await relayHashInfoRepository
             .createQueryBuilder()
-            .where(`"relayHash" = :itemRelayHash`, {
-              itemRelayHash: item.relayHash,
+            .where(`"internalHash" = :itemInternalHash`, {
+              itemInternalHash: item.internalHash,
             })
             .orderBy('"depositEventId"', "ASC")
             .getOne();
@@ -381,7 +382,7 @@ export class SpokePoolProcessor {
           } else {
             // Update the existing row if a match is found.
             const updatedRow = await relayHashInfoRepository.update(
-              { id: existingRow.id, relayHash: item.relayHash },
+              { id: existingRow.id, internalHash: item.internalHash },
               {
                 ...item,
                 // Update status to SlowFillRequested only if it is not already marked as Filled.

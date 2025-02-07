@@ -1,4 +1,5 @@
 import { interfaces, providers } from "@across-protocol/sdk";
+import { utils as ethersUtils } from "ethers";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
@@ -36,4 +37,47 @@ export async function getIntegratorId(
       ?.substring(0, INTEGRATOR_ID_LENGTH);
   }
   return integratorId;
+}
+
+export function getInternalHash(
+  relayData: Omit<interfaces.RelayData, "message">,
+  messageHash: string,
+  destinationChainId: number,
+): string {
+  const _relayData = {
+    originChainId: relayData.originChainId,
+    depositId: relayData.depositId,
+    inputAmount: relayData.inputAmount,
+    outputAmount: relayData.outputAmount,
+    messageHash: messageHash,
+    fillDeadline: relayData.fillDeadline,
+    exclusivityDeadline: relayData.exclusivityDeadline,
+    depositor: ethersUtils.hexZeroPad(relayData.depositor, 32),
+    recipient: ethersUtils.hexZeroPad(relayData.recipient, 32),
+    inputToken: ethersUtils.hexZeroPad(relayData.inputToken, 32),
+    outputToken: ethersUtils.hexZeroPad(relayData.outputToken, 32),
+    exclusiveRelayer: ethersUtils.hexZeroPad(relayData.exclusiveRelayer, 32),
+  };
+  return ethersUtils.keccak256(
+    ethersUtils.defaultAbiCoder.encode(
+      [
+        "tuple(" +
+          "bytes32 depositor," +
+          "bytes32 recipient," +
+          "bytes32 exclusiveRelayer," +
+          "bytes32 inputToken," +
+          "bytes32 outputToken," +
+          "uint256 inputAmount," +
+          "uint256 outputAmount," +
+          "uint256 originChainId," +
+          "uint256 depositId," +
+          "uint32 fillDeadline," +
+          "uint32 exclusivityDeadline," +
+          "bytes messageHash" +
+          ")",
+        "uint256 destinationChainId",
+      ],
+      [_relayData, destinationChainId],
+    ),
+  );
 }
