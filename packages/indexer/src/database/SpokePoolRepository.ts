@@ -110,7 +110,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.relayExecutionInfo.updatedOutputAmount.toString(),
         updatedMessage:
           event.relayExecutionInfo.updatedMessageHash ||
-          event.relayExecutionInfo.updatedMessageHash,
+          event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
