@@ -588,7 +588,11 @@ export class SpokePoolProcessor {
     const refundEvents = (await bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
-      .innerJoin(entities.RelayHashInfo, "rhi", "be.relayHash = rhi.internalHash")
+      .innerJoin(
+        entities.RelayHashInfo,
+        "rhi",
+        "be.relayHash = rhi.internalHash",
+      )
       .innerJoinAndMapOne(
         "be.deposit",
         entities.V3FundsDeposited,
@@ -648,7 +652,9 @@ export class SpokePoolProcessor {
         );
 
         // Convert relayHash into a 32-bit integer for database lock usage
-        const lockKey = this.relayHashToInt32(refundEvent.deposit.internalHash!);
+        const lockKey = this.relayHashToInt32(
+          refundEvent.deposit.internalHash!,
+        );
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
