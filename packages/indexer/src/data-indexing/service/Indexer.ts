@@ -93,6 +93,7 @@ export class Indexer {
           blockRangeResult,
           dataIdentifier: this.dataHandler.getDataIdentifier(),
           error: JSON.stringify(error),
+          errorObject: error,
         });
         blockRangeProcessedSuccessfully = false;
       } finally {
