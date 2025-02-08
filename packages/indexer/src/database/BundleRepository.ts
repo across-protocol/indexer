@@ -593,7 +593,11 @@ export class BundleRepository extends utils.BaseRepository {
         events.map((event) => {
           return {
             bundleId,
-            relayHash: across.utils.getRelayHashFromEvent(event),
+            relayHash: getInternalHash(
+              event,
+              event.messageHash,
+              event.destinationChainId,
+            ),
             // eventChainId must match the chain the event was emmitted on
             // For deposits and expired deposits use originChainId
             // For slowFills and unexecutableSlowFills use destinationChainId
