@@ -686,7 +686,7 @@ export class SpokePoolProcessor {
             })
             .returning("*")
             .execute();
-          updatedRows.push(updatedRow.raw);
+          updatedRows.push(updatedRow.raw[0]);
         }
       });
     }
