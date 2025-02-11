@@ -67,8 +67,8 @@ export class V3FundsDeposited {
   @Column({ nullable: true })
   messageHash?: string;
 
-  @Column({ nullable: true })
-  internalHash?: string;
+  @Column()
+  internalHash: string;
 
   @Column()
   exclusiveRelayer: string;
