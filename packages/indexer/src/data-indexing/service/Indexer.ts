@@ -57,7 +57,7 @@ export class Indexer {
         // if the previous block range was processed successfully or if this is the first loop iteration,
         // get the next block range to process
         if (blockRangeProcessedSuccessfully || !blockRangeResult) {
-          blockRangeResult = await this.getBlockRange();
+          blockRangeResult = await this.loadProgressFromDatabase();
         }
 
         if (!blockRangeResult?.blockRange) {
@@ -72,11 +72,6 @@ export class Indexer {
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
             blockRangeResult.isBackfilling,
-          );
-          // TODO: remove Redis storage in favor of Postgres
-          await this.redisCache.set(
-            this.getLastFinalisedBlockCacheKey(),
-            blockRangeResult.lastFinalisedBlock,
           );
           // When the block range is processed successfully and the indexer is ready to start
           // processing the next block range, save the progress in the database. The most important
@@ -133,6 +128,31 @@ export class Indexer {
     );
   }
 
+  private async loadProgressFromDatabase(): Promise<BlockRangeResult> {
+    const indexerProgressInfo = await this.dataSource
+      .getRepository(entities.IndexerProgressInfo)
+      .findOne({
+        where: {
+          id: this.dataHandler.getDataIdentifier(),
+        },
+      });
+    if (across.utils.isDefined(indexerProgressInfo)) {
+      const fromBlock = indexerProgressInfo.lastFinalisedBlock;
+      const toBlock = Math.min(
+        fromBlock +
+          (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
+        indexerProgressInfo.latestBlockNumber,
+      );
+      return {
+        latestBlockNumber: indexerProgressInfo.latestBlockNumber,
+        blockRange: { from: fromBlock, to: toBlock },
+        lastFinalisedBlock: indexerProgressInfo.lastFinalisedBlock,
+        isBackfilling: indexerProgressInfo.isBackfilling,
+      };
+    }
+    return this.getBlockRange();
+  }
+
   /**
    * Gets the next block range to process.
    * `from` block is the last finalised block stored in redis + 1 or the start block number for the data handler.
@@ -141,24 +161,10 @@ export class Indexer {
    *  i.e no new blocks have been mined, then the block range is `undefined`.
    */
   private async getBlockRange(): Promise<BlockRangeResult> {
-    const lastBlockFinalisedStored = await this.redisCache.get<number>(
-      this.getLastFinalisedBlockCacheKey(),
-    );
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
-
-    if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
-      return {
-        latestBlockNumber,
-        blockRange: undefined,
-        lastFinalisedBlock: lastFinalisedBlockOnChain,
-        isBackfilling: false,
-      };
-    }
-    const fromBlock = lastBlockFinalisedStored
-      ? lastBlockFinalisedStored + 1
-      : this.dataHandler.getStartIndexingBlockNumber();
+    const fromBlock = this.dataHandler.getStartIndexingBlockNumber();
     const toBlock = Math.min(
       fromBlock +
         (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
@@ -182,9 +188,5 @@ export class Indexer {
       lastFinalisedBlock: lastFinalisedBlockInBlockRange,
       isBackfilling,
     };
-  }
-
-  private getLastFinalisedBlockCacheKey() {
-    return `indexer:lastBlockFinalised:${this.dataHandler.getDataIdentifier()}`;
   }
 }
