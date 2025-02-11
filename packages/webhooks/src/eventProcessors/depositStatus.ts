@@ -13,9 +13,7 @@ import { WebhookClientRepository } from "../database/webhookClientRepository";
 export const DepositStatusEvent = ss.object({
   originChainId: ss.number(),
   depositTxHash: ss.string(),
-  // TODO: Set depositId as `string` only.
-  // This is temporary until all tables are updated to use `decimal` as the standard type.
-  depositId: ss.union([ss.string(), ss.number()]),
+  depositId: ss.string(),
   status: ss.string(),
 });
 export type DepositStatusEvent = ss.Infer<typeof DepositStatusEvent>;
