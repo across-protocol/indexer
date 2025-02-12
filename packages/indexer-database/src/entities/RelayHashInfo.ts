@@ -55,11 +55,11 @@ export class RelayHashInfo {
   @Column()
   destinationChainId: number;
 
-  @Column({ nullable: true })
-  depositTxHash: string;
+  @Column({ type: "varchar", nullable: true })
+  depositTxHash: string | null;
 
   @Column({ nullable: true })
-  depositEventId: number;
+  depositEventId: number | null;
 
   @OneToOne(() => V3FundsDeposited, { nullable: true })
   @JoinColumn({
@@ -105,8 +105,10 @@ export class RelayHashInfo {
 
   @Column({ nullable: true, type: "decimal" })
   bridgeFeeUsd: string;
+
   @Column({ nullable: true, type: "decimal" })
   inputPriceUsd: string;
+
   @Column({ nullable: true, type: "decimal" })
   outputPriceUsd: string;
 

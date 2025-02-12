@@ -444,9 +444,16 @@ export class SpokePoolProcessor {
         const relayHashInfoRepository =
           transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-        this.logger.debug({
+        this.logger.warn({
           at: "spokePoolProcessor#processDeletedDeposits",
           message: `Processing deleted deposit event with id ${deposit.id}`,
+          deletedDepositDetails: {
+            originChainId: deposit.originChainId,
+            txHash: deposit.transactionHash,
+            blockNumber: deposit.blockNumber,
+            txIndex: deposit.transactionIndex,
+            logIndex: deposit.logIndex,
+          },
         });
 
         // Convert relayHash into a 32-bit integer for database lock usage
@@ -469,7 +476,7 @@ export class SpokePoolProcessor {
           if (!fillEventId && !slowFillRequestEventId && !depositRefundTxHash) {
             // There are no other related events then it's safe to delete the row
             await relayHashInfoRepository.delete({ id: relatedRelayRow.id });
-            this.logger.debug({
+            this.logger.warn({
               at: "spokePoolProcessor#processDeletedDeposits",
               message: `Deleted relay row with id ${relatedRelayRow.id}. No related events.`,
             });
@@ -489,9 +496,9 @@ export class SpokePoolProcessor {
               // Only delete the reference to the deleted event in the existing row
               await relayHashInfoRepository.update(
                 { id: relatedRelayRow.id },
-                { depositEventId: undefined, depositTxHash: undefined },
+                { depositEventId: null, depositTxHash: null },
               );
-              this.logger.debug({
+              this.logger.warn({
                 at: "spokePoolProcessor#processDeletedDeposits",
                 message: `Updated relay row with id ${relatedRelayRow.id} to remove reference to deleted deposit event ${deposit.id}.`,
               });
@@ -521,7 +528,7 @@ export class SpokePoolProcessor {
                   depositTxHash: nextMatchingRow.depositTxHash,
                 },
               );
-              this.logger.debug({
+              this.logger.warn({
                 at: "spokePoolProcessor#processDeletedDeposits",
                 message: `Merged data from relay row with id ${nextMatchingRow.id} into ${relatedRelayRow.id} and deleted the former.`,
               });
