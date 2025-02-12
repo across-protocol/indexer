@@ -43,7 +43,7 @@ export class RelayHashInfo {
   @Column({ nullable: true })
   relayHash: string;
 
-  @Column({ nullable: true })
+  @Column()
   internalHash: string;
 
   @Column({ type: "decimal" })
