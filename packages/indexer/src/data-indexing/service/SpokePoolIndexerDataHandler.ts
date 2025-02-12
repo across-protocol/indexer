@@ -21,6 +21,7 @@ import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
+import { PriceMessage } from "../../messaging/priceWorker";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -157,6 +158,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const timeToProcessDeposits = performance.now();
 
     this.profileStoreEvents(storedEvents);
+
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents.fills);
 
     //FIXME: Remove performance timing
     const finalPerfTime = performance.now();
@@ -435,6 +439,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
+  private async publishNewRelays(
+    fills: SaveQueryResult<entities.FilledV3Relay>[],
+  ) {
+    const messages: PriceMessage[] = fills
+      .filter((x) => x.data != undefined)
+      .map((fill) => ({
+        fillEventId: fill.data?.id!,
+      }));
+
+    await this.indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.PriceQuery,
+      IndexerQueues.PriceQuery, // Use queue name as job name
+      messages,
+    );
+  }
   private async publishIntegratorIdMessages(
     deposits: entities.V3FundsDeposited[],
   ) {

@@ -20,6 +20,7 @@ export type Config = {
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
 };
+
 export type RedisConfig = {
   host: string;
   port: number;
@@ -30,11 +31,12 @@ export type ProviderConfig = [providerUrl: string, chainId: number];
 export type Env = Record<string, string | undefined>;
 
 export function parseRedisConfig(env: Env): RedisConfig {
-  assert(env.REDIS_HOST, "requires REDIS_HOST");
-  assert(env.REDIS_PORT, "requires REDIS_PORT");
-  const port = parseNumber(env.REDIS_PORT);
+  const { REDIS_HOST, REDIS_PORT } = env;
+  assert(REDIS_HOST, "requires REDIS_HOST");
+  assert(REDIS_PORT, "requires REDIS_PORT");
+  const port = parseNumber(REDIS_PORT);
   return {
-    host: env.REDIS_HOST,
+    host: REDIS_HOST,
     port,
     // @dev: this retry config is needed for bullmq workers
     maxRetriesPerRequest: null,
