@@ -160,7 +160,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     this.profileStoreEvents(storedEvents);
 
     // publish new relays to workers to fill in prices
-    await this.publishNewRelays(storedEvents.fills);
+    await this.publishNewRelays(storedEvents);
 
     //FIXME: Remove performance timing
     const finalPerfTime = performance.now();
@@ -439,14 +439,15 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private async publishNewRelays(
-    fills: SaveQueryResult<entities.FilledV3Relay>[],
-  ) {
-    const messages: PriceMessage[] = fills
-      .filter((x) => x.data != undefined)
-      .map((fill) => ({
-        fillEventId: fill.data?.id!,
-      }));
+  private async publishNewRelays(storedEvents: StoreEventsResult) {
+    // fetch prices only for new fills
+    const fills = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.fills,
+      SaveQueryResultType.Inserted,
+    );
+    const messages: PriceMessage[] = fills.map((fill) => ({
+      fillEventId: fill.id,
+    }));
 
     await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.PriceQuery,
