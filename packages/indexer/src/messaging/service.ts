@@ -22,6 +22,7 @@ export class IndexerQueuesService {
           defaultJobOptions: {
             attempts: Number.MAX_SAFE_INTEGER,
             removeOnComplete: true,
+            backoff: { type: "fixed", delay: 10 * 1000 },
           },
         })),
     );

@@ -60,9 +60,12 @@ export class PriceWorker {
     chainId: number,
     time: Date,
     quoteCurrency = "usd",
-  ): Promise<number> {
+  ): Promise<number | undefined> {
     const priceTime = yesterday(time);
     const tokenInfo = findTokenByAddress(address, chainId);
+    if (!tokenInfo) {
+      return undefined;
+    }
     const baseCurrency = tokenInfo.symbol;
 
     const cachedPrice = await this.historicPriceRepository.findOne({
@@ -223,22 +226,32 @@ export class PriceWorker {
       inputTokenAddress,
       relayHashInfo.originChainId,
     );
+    if (!inputTokenInfo) {
+      return;
+    }
     const outputTokenInfo = findTokenByAddress(
       outputTokenAddress,
       destinationChainId,
     );
-
+    if (!outputTokenInfo) {
+      return;
+    }
     const inputTokenPrice = await this.getPrice(
       inputTokenAddress,
       relayHashInfo.originChainId,
       blockTime,
     );
+    if (!inputTokenPrice) {
+      return;
+    }
     const outputTokenPrice = await this.getPrice(
       outputTokenAddress,
       destinationChainId,
       blockTime,
     );
-
+    if (!outputTokenPrice) {
+      return;
+    }
     const inputToken = {
       amount: relayHashInfo.fillEvent.inputAmount,
       price: inputTokenPrice,

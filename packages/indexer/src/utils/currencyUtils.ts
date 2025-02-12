@@ -35,16 +35,12 @@ export const tokensList = tokenSymbolsMap.reduce((result, token) => {
 }, [] as Token[]);
 
 // given an address and chain id, return the token data
-export function findTokenByAddress(address: string, chainId: number): Token {
+export function findTokenByAddress(address: string, chainId: number) {
   const result = tokensList.find(
     (token) =>
       token.address.toLowerCase() === address.toLowerCase() &&
       token.chainId === chainId,
   );
-  if (!result) {
-    throw new Error(
-      `Token info not found for address: ${address} on chainId: ${chainId}`,
-    );
-  }
+
   return result;
 }
