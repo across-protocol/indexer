@@ -199,7 +199,7 @@ export class PriceWorker {
       relayHashInfo.outputPriceUsd
     ) {
       const errorMessage = "Skipping already processed relay hash";
-      this.logger.error({
+      this.logger.warn({
         at: "PriceWorker",
         message: errorMessage,
         ...params,
@@ -279,7 +279,7 @@ export class PriceWorker {
 
     if (Object.keys(updatedFields).length > 0) {
       await this.relayHashInfoRepository.update({ fillEventId }, updatedFields);
-      this.logger.info({
+      this.logger.debug({
         at: "PriceWorker#updateRelayHashInfo",
         message: "Updated relay hash info with new fields",
         params,
