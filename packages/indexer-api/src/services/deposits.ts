@@ -145,7 +145,9 @@ export class DepositsService {
       });
     }
 
-    const matchingRelays = await queryBuilder.getMany();
+    const matchingRelays = await queryBuilder
+      .orderBy("rhi.depositEventId", "ASC")
+      .getMany();
     const numberMatchingRelays = matchingRelays.length;
     if (numberMatchingRelays === 0) throw new DepositNotFoundException();
     const relay = matchingRelays[params.index];
@@ -197,8 +199,6 @@ export class DepositsService {
         return day;
       case entities.RelayStatus.SlowFillRequested:
         return minute * 5;
-      case entities.RelayStatus.SlowFilled:
-        return day;
       default:
         return 0;
     }
@@ -210,19 +210,18 @@ export class DepositsService {
       entities.RelayStatus.Filled,
       entities.RelayStatus.Refunded,
       entities.RelayStatus.SlowFillRequested,
-      entities.RelayStatus.SlowFilled,
     ].includes(status);
   }
 
   private getDepositStatusCacheKey(params: DepositParams) {
     if (params.depositId && params.originChainId) {
-      return `depositStatus-${params.depositId}-${params.originChainId}`;
+      return `depositStatus-${params.depositId}-${params.originChainId}-${params.index}`;
     }
     if (params.depositTxHash) {
       return `depositStatus-${params.depositTxHash}-${params.index}`;
     }
     if (params.relayDataHash) {
-      return `depositStatus-${params.relayDataHash}`;
+      return `depositStatus-${params.relayDataHash}-${params.index}`;
     }
 
     // in theory this should never happen because we have already checked
