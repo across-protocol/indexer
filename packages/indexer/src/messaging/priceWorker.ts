@@ -18,6 +18,10 @@ export const PriceMessage = ss.object({
 
 export type PriceMessage = ss.Infer<typeof PriceMessage>;
 
+export type PriceWorkerConfig = {
+  coingeckoApiKey?: string;
+};
+
 // Convert now to a consistent price timestamp yesterday for lookup purposes
 export function yesterday(now: Date) {
   // theres a slight wrinkle when using coingecko, if the time falls within 12-3AM we must subtract 2 days, rather than 1
@@ -45,8 +49,12 @@ export class PriceWorker {
     private redis: Redis,
     private postgres: DataSource,
     private logger: winston.Logger,
+    private config: PriceWorkerConfig,
   ) {
-    this.coingeckoClient = across.coingecko.Coingecko.get(logger);
+    this.coingeckoClient = across.coingecko.Coingecko.get(
+      logger,
+      config.coingeckoApiKey,
+    );
     this.relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );

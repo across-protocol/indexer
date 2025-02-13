@@ -117,7 +117,9 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     retryProvidersFactory,
   );
-  const priceWorker = new PriceWorker(redis, postgres, logger);
+  const priceWorker = new PriceWorker(redis, postgres, logger, {
+    coingeckoApiKey: config.coingeckoApiKey,
+  });
 
   let exitRequested = false;
   process.on("SIGINT", () => {

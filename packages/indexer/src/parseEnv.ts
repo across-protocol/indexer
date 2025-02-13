@@ -19,6 +19,7 @@ export type Config = {
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
+  coingeckoApiKey?: string;
 };
 
 export type RedisConfig = {
@@ -199,6 +200,8 @@ export function envToConfig(env: Env): Config {
     enabledWebhookRequestWorkers: true,
     clients: parseWebhookClientsFromString(env.WEBHOOK_CLIENTS ?? "[]"),
   };
+  const coingeckoApiKey = env.COINGECKO_API_KEY;
+
   return {
     redisConfig,
     postgresConfig,
@@ -210,5 +213,6 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     webhookConfig,
     maxBlockRangeSize,
+    coingeckoApiKey,
   };
 }
