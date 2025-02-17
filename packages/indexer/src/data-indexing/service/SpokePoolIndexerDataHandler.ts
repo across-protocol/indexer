@@ -164,7 +164,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();
 
-    await this.spokePoolProcessor.process(storedEvents, deletedDeposits, depositSwapPairs);
+    await this.spokePoolProcessor.process(
+      storedEvents,
+      deletedDeposits,
+      depositSwapPairs,
+    );
 
     //FIXME: Remove performance timing
     const timeToProcessDeposits = performance.now();
