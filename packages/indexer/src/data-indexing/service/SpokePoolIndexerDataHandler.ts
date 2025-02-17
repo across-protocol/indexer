@@ -317,8 +317,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       toBlock: blockRange.to,
     });
     const filledV3RelayEvents = spokePoolClient.getFills();
-    const requestedV3SlowFillEvents =
-      spokePoolClient.getSlowFillRequestsForOriginChain(this.chainId);
+    const requestedV3SlowFillEvents = spokePoolClient.getSlowFillRequests();
     const requestedSpeedUpV3Events = spokePoolClient.getSpeedUps();
     const relayedRootBundleEvents = spokePoolClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
