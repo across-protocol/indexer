@@ -135,14 +135,17 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
+      const messageHash = event.messageHash;
+      delete (event as { messageHash?: string }).messageHash;
       return {
         ...event,
         internalHash: utils.getInternalHash(
           event,
-          event.messageHash,
+          messageHash,
           event.destinationChainId,
         ),
         ...this.formatRelayData(event),
+        message: messageHash,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
