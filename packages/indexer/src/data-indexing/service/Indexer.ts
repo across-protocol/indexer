@@ -41,7 +41,6 @@ export class Indexer {
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
     private rpcProvider: ethers.providers.JsonRpcProvider,
-    private redisCache: RedisCache,
     private logger: Logger,
     private dataSource: DataSource,
   ) {
