@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
-import * as abi from "./abi";
 import { SwapBeforeBridgeEvent } from "./model/events";
+import { SwapAndBridgeBase__factory } from "@across-protocol/contracts";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -11,7 +11,7 @@ export class EventDecoder {
     const events: SwapBeforeBridgeEvent[] = this.decodeTransactionReceiptLogs(
       receipt,
       swapBeforeBridgeEventTopic,
-      abi.SwapAndBridgeAbi,
+      SwapAndBridgeBase__factory.abi,
     );
 
     return events;

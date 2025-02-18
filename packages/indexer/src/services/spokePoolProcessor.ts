@@ -69,6 +69,7 @@ export class SpokePoolProcessor {
       fills: [...newFills, ...updatedFills],
       slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
     });
+    await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Update expired deposits
@@ -146,8 +147,6 @@ export class SpokePoolProcessor {
         },
       });
     });
-
-    await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
 
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#process",
@@ -749,14 +748,14 @@ export class SpokePoolProcessor {
       entities.RelayHashInfo,
     );
     await Promise.all(
-      depositSwapPairs.map(async (depositSwapPair) => {
-        await relayHashInfoRepository.update(
+      depositSwapPairs.map((depositSwapPair) =>
+        relayHashInfoRepository.update(
           { depositEventId: depositSwapPair.deposit.id },
           {
             swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
           },
-        );
-      }),
+        ),
+      ),
     );
   }
 }

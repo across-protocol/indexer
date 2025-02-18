@@ -210,7 +210,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   ) {
     // avoid fetching the same transaction receipt multiple times
     const uniqueDepositTxHashes = [
-      ...new Set(deposits.map((deposit) => deposit.transactionHash)),
+      ...new Set(
+        deposits.map((deposit) => deposit.transactionHash.toLowerCase()),
+      ),
     ];
     const transactionReceipts = await Promise.all([
       ...uniqueDepositTxHashes.map((txHash) =>
@@ -241,10 +243,14 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       (acc, swapBeforeBridge) => {
         acc[swapBeforeBridge.transactionHash] = {
           deposits: deposits.filter(
-            (d) => d.transactionHash === swapBeforeBridge.transactionHash,
+            (d) =>
+              d.transactionHash.toLowerCase() ===
+              swapBeforeBridge.transactionHash.toLowerCase(),
           ),
           swapBeforeBridges: insertedSwapBeforeBridgeEvents.filter(
-            (s) => s.transactionHash === swapBeforeBridge.transactionHash,
+            (s) =>
+              s.transactionHash.toLowerCase() ===
+              swapBeforeBridge.transactionHash.toLowerCase(),
           ),
         };
         return acc;
@@ -283,6 +289,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         return matchedPairs;
       })
       .flat();
+    console.log("depositSwapMap", depositSwapMap);
     return depositSwapMap;
   }
 
