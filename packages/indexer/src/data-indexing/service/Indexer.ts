@@ -143,6 +143,21 @@ export class Indexer {
           (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
         indexerProgressInfo.latestBlockNumber,
       );
+
+      // If the last finalized block is the same as the latest block number,
+      // then we are at the latest block and there are no new blocks to process.
+      if (
+        indexerProgressInfo.lastFinalisedBlock ===
+        indexerProgressInfo.latestBlockNumber
+      ) {
+        return {
+          latestBlockNumber: indexerProgressInfo.latestBlockNumber,
+          blockRange: undefined,
+          lastFinalisedBlock: indexerProgressInfo.lastFinalisedBlock,
+          isBackfilling: false,
+        };
+      }
+
       return {
         latestBlockNumber: indexerProgressInfo.latestBlockNumber,
         blockRange: { from: fromBlock, to: toBlock },
