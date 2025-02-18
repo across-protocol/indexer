@@ -137,7 +137,7 @@ export class Indexer {
         },
       });
     if (across.utils.isDefined(indexerProgressInfo)) {
-      const fromBlock = indexerProgressInfo.lastFinalisedBlock;
+      const fromBlock = indexerProgressInfo.lastFinalisedBlock + 1;
       const toBlock = Math.min(
         fromBlock +
           (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
