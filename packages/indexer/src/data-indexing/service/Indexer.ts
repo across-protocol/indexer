@@ -56,7 +56,7 @@ export class Indexer {
         // if the previous block range was processed successfully or if this is the first loop iteration,
         // get the next block range to process
         if (blockRangeProcessedSuccessfully || !blockRangeResult) {
-          blockRangeResult = await this.loadProgressFromDatabase();
+          blockRangeResult = await this.getBlockRange();
         }
 
         if (!blockRangeResult?.blockRange) {
@@ -127,7 +127,9 @@ export class Indexer {
     );
   }
 
-  private async loadProgressFromDatabase(): Promise<BlockRangeResult> {
+  private async loadProgressFromDatabase(
+    latestBlockNumber: number,
+  ): Promise<BlockRangeResult | undefined> {
     const indexerProgressInfo = await this.dataSource
       .getRepository(entities.IndexerProgressInfo)
       .findOne({
@@ -145,10 +147,7 @@ export class Indexer {
 
       // If the last finalized block is the same as the latest block number,
       // then we are at the latest block and there are no new blocks to process.
-      if (
-        indexerProgressInfo.lastFinalisedBlock ===
-        indexerProgressInfo.latestBlockNumber
-      ) {
+      if (latestBlockNumber === indexerProgressInfo.latestBlockNumber) {
         return {
           latestBlockNumber: indexerProgressInfo.latestBlockNumber,
           blockRange: undefined,
@@ -164,7 +163,6 @@ export class Indexer {
         isBackfilling: indexerProgressInfo.isBackfilling,
       };
     }
-    return this.getBlockRange();
   }
 
   /**
@@ -176,6 +174,13 @@ export class Indexer {
    */
   private async getBlockRange(): Promise<BlockRangeResult> {
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
+
+    const databaseProgress =
+      await this.loadProgressFromDatabase(latestBlockNumber);
+    if (databaseProgress) {
+      return databaseProgress;
+    }
+
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
     const fromBlock = this.dataHandler.getStartIndexingBlockNumber();
