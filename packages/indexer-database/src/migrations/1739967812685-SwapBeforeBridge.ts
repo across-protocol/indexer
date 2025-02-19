@@ -25,16 +25,16 @@ export class SwapBeforeBridge1739967812685 implements MigrationInterface {
       CONSTRAINT "PK_4d800cfe04c9c412fb76e62e21f" PRIMARY KEY ("id"))
   `);
     await queryRunner.query(
-      `CREATE INDEX "IX_swapBeforeBridge_deletedAt" ON "evm"."swap_before_bridge" ("deletedAt") `
+      `CREATE INDEX "IX_swapBeforeBridge_deletedAt" ON "evm"."swap_before_bridge" ("deletedAt") `,
     );
     await queryRunner.query(
-      `CREATE INDEX "IX_swapBeforeBridge_finalised" ON "evm"."swap_before_bridge" ("finalised") `
+      `CREATE INDEX "IX_swapBeforeBridge_finalised" ON "evm"."swap_before_bridge" ("finalised") `,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD "swapBeforeBridgeEventId" integer`
+      `ALTER TABLE "relay_hash_info" ADD "swapBeforeBridgeEventId" integer`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD CONSTRAINT "UQ_0e578ee118b0d02c181f4a39c71" UNIQUE ("swapBeforeBridgeEventId")`
+      `ALTER TABLE "relay_hash_info" ADD CONSTRAINT "UQ_0e578ee118b0d02c181f4a39c71" UNIQUE ("swapBeforeBridgeEventId")`,
     );
     await queryRunner.query(`
       ALTER TABLE "relay_hash_info" 
@@ -45,18 +45,18 @@ export class SwapBeforeBridge1739967812685 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "FK_relayHashInfo_swapBeforeBridgeEventId"`
+      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "FK_relayHashInfo_swapBeforeBridgeEventId"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "UQ_0e578ee118b0d02c181f4a39c71"`
+      `ALTER TABLE "relay_hash_info" DROP CONSTRAINT "UQ_0e578ee118b0d02c181f4a39c71"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP COLUMN "swapBeforeBridgeEventId"`
+      `ALTER TABLE "relay_hash_info" DROP COLUMN "swapBeforeBridgeEventId"`,
     );
     await queryRunner.query(`DROP INDEX "evm"."IX_swapBeforeBridge_finalised"`);
     await queryRunner.query(`DROP INDEX "evm"."IX_swapBeforeBridge_deletedAt"`);
     await queryRunner.query(
-      `DROP INDEX "evm"."IX_swapBeforeBridge_blockNumber"`
+      `DROP INDEX "evm"."IX_swapBeforeBridge_blockNumber"`,
     );
     await queryRunner.query(`DROP TABLE "evm"."swap_before_bridge"`);
   }
