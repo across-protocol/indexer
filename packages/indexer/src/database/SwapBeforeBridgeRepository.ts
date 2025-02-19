@@ -40,7 +40,7 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
         this.saveAndHandleFinalisationBatch<entities.SwapBeforeBridge>(
           entities.SwapBeforeBridge,
           eventsChunk,
-          ["chainId", "blockHash", "logIndex"],
+          ["blockNumber", "chainId", "logIndex"],
           [],
         ),
       ),

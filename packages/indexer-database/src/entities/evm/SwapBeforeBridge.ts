@@ -9,14 +9,13 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_swapBeforeBridge_chainId_blockHash_logIndex", [
+@Unique("UK_swapBeforeBridge_blockNumber_chainId_logIndex", [
+  "blockNumber",
   "chainId",
-  "blockHash",
   "logIndex",
 ])
 @Index("IX_swapBeforeBridge_finalised", ["finalised"])
 @Index("IX_swapBeforeBridge_deletedAt", ["deletedAt"])
-@Index("IX_swapBeforeBridge_blockNumber", ["blockNumber"])
 export class SwapBeforeBridge {
   @PrimaryGeneratedColumn()
   id: number;
