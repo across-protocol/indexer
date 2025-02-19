@@ -48,4 +48,18 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
     const result = savedEvents.flat();
     return result;
   }
+
+  public async deleteUnfinalisedSwapEvents(
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const chainIdColumn = "chainId";
+    const deletedSwapEvents = await this.deleteUnfinalisedEvents(
+      chainId,
+      chainIdColumn,
+      lastFinalisedBlock,
+      entities.SwapBeforeBridge,
+    );
+    return deletedSwapEvents;
+  }
 }

@@ -110,6 +110,11 @@ export class BlockchainEventRepository {
     };
   }
 
+  /**
+   * @warning Migrating this implementation from soft delete to hard delete might have deeper implications. The raw events
+   * should be deleted after their references are removed from the `relay_hash_info` table, otherwise DELETE queries will fail
+   * because of foreign key constraints.
+   */
   protected async deleteUnfinalisedEvents<Entity extends ObjectLiteral>(
     chainId: number,
     chainIdColumnIdentifier: string,

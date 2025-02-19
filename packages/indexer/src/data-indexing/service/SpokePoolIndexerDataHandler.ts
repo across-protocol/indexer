@@ -143,23 +143,27 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.deposits,
       SaveQueryResultType.Inserted,
     );
-
-    //FIXME: Remove performance timing
-    const timeToStoreEvents = performance.now();
-
-    // Delete unfinalised deposits
-    const deletedDeposits =
-      await this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
-        this.chainId,
-        lastFinalisedBlock,
-      );
-    const timeToDeleteDeposits = performance.now();
-
-    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
       newInsertedDeposits,
       lastFinalisedBlock,
     );
+
+    //FIXME: Remove performance timing
+    const timeToStoreEvents = performance.now();
+
+    // Delete unfinalised events
+    const [deletedDeposits, _] = await Promise.all([
+      this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      this.swapBeforeBridgeRepository.deleteUnfinalisedSwapEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+    ]);
+    const timeToDeleteDeposits = performance.now();
+    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
 
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();

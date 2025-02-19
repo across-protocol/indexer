@@ -1,7 +1,9 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
@@ -12,6 +14,9 @@ import {
   "blockHash",
   "logIndex",
 ])
+@Index("IX_swapBeforeBridge_finalised", ["finalised"])
+@Index("IX_swapBeforeBridge_deletedAt", ["deletedAt"])
+@Index("IX_swapBeforeBridge_blockNumber", ["blockNumber"])
 export class SwapBeforeBridge {
   @PrimaryGeneratedColumn()
   id: number;
@@ -57,4 +62,7 @@ export class SwapBeforeBridge {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @DeleteDateColumn({ nullable: true })
+  deletedAt?: Date;
 }
