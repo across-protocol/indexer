@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class RelayHashInfo1738544424919 implements MigrationInterface {
-  name = "RelayHashInfo1738544424919";
+export class RelayHashInfo1739967812686 implements MigrationInterface {
+  name = "RelayHashInfo1739967812686";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
