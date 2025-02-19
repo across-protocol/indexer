@@ -197,14 +197,7 @@ async function assignExecutionsToBundle(
             logIndex,
           );
         if (!proposedBundle) {
-          logger.error({
-            at: "Indexer#BundleEventsProcessor#assignExecutionsToBundle",
-            message: "Unable to find a proposed bundle for the given execution",
-            executionId: id,
-          });
-          throw new Error(
-            `Unable to find a proposed bundle for the given execution ${id}`,
-          );
+          return undefined;
         }
         return {
           bundleId: proposedBundle.bundle.id,
@@ -214,9 +207,14 @@ async function assignExecutionsToBundle(
     ),
   );
 
+  const validMappingOfExecutionsToBundles = mappingOfExecutionsToBundles.filter(
+    (mapping): mapping is { bundleId: number; executionId: number } =>
+      mapping !== undefined,
+  );
+
   const insertResults =
     await dbRepository.associateRootBundleExecutedEventsToBundle(
-      mappingOfExecutionsToBundles,
+      validMappingOfExecutionsToBundles,
     );
 
   logResultOfAssignment(
