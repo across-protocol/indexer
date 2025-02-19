@@ -12,6 +12,7 @@ export * from "./evm/RequestedSpeedUpV3Deposit";
 export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
+export * from "./evm/SwapBeforeBridge";
 
 // Others
 export * from "./Bundle";
