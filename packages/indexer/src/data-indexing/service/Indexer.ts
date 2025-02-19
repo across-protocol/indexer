@@ -145,8 +145,7 @@ export class Indexer {
         indexerProgressInfo.latestBlockNumber,
       );
 
-      // If the last finalized block is the same as the latest block number,
-      // then we are at the latest block and there are no new blocks to process.
+      // If the latest block number is the same as the stored one there are no new blocks to process.
       if (latestBlockNumber === indexerProgressInfo.latestBlockNumber) {
         return {
           latestBlockNumber: indexerProgressInfo.latestBlockNumber,
