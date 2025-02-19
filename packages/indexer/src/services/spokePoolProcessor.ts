@@ -12,7 +12,10 @@ import {
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
-import { StoreEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import {
+  DepositSwapPair,
+  StoreEventsResult,
+} from "../data-indexing/service/SpokePoolIndexerDataHandler";
 
 enum SpokePoolEvents {
   V3FundsDeposited = "V3FundsDeposited",
@@ -31,6 +34,7 @@ export class SpokePoolProcessor {
   public async process(
     events: StoreEventsResult,
     deletedDeposits: entities.V3FundsDeposited[],
+    depositSwapPairs: DepositSwapPair[],
   ) {
     // Update relay hash info records related to deleted deposits
     await this.processDeletedDeposits(deletedDeposits);
@@ -65,6 +69,7 @@ export class SpokePoolProcessor {
       fills: [...newFills, ...updatedFills],
       slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
     });
+    await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Update expired deposits
@@ -731,5 +736,26 @@ export class SpokePoolProcessor {
 
     // Return the final computed 32-bit integer hash
     return hash;
+  }
+
+  /**
+   * Assigns the swap event to the relay hash info
+   */
+  private async assignSwapEventToRelayHashInfo(
+    depositSwapPairs: DepositSwapPair[],
+  ) {
+    const relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+    await Promise.all(
+      depositSwapPairs.map((depositSwapPair) =>
+        relayHashInfoRepository.update(
+          { depositEventId: depositSwapPair.deposit.id },
+          {
+            swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
+          },
+        ),
+      ),
+    );
   }
 }

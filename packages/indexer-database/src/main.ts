@@ -36,6 +36,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RequestedV3SlowFill,
       entities.TokensBridged,
       entities.V3FundsDeposited,
+      entities.SwapBeforeBridge,
       // Bundle
       entities.Bundle,
       entities.BundleBlockRange,
