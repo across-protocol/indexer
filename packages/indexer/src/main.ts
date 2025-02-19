@@ -20,7 +20,6 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
-import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -95,7 +94,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     new HubPoolRepository(postgres, logger),
     new SpokePoolRepository(postgres, logger),
-    new SwapBeforeBridgeRepository(postgres, logger),
     redisCache,
     indexerQueuesService,
     write,
