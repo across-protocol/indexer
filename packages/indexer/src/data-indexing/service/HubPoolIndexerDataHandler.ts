@@ -1,5 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
+import { entities } from "@repo/indexer-database";
 
 import * as utils from "../../utils";
 import {
@@ -9,6 +10,7 @@ import {
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
+import { BundleProcessor } from "../../services";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -33,6 +35,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
     private hubPoolRepository: HubPoolRepository,
+    private bundleProcessor: BundleProcessor,
   ) {
     this.isInitialized = false;
   }
@@ -87,7 +90,16 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-    await this.storeEvents(events, lastFinalisedBlock);
+    const savedEvents = await this.storeEvents(events, lastFinalisedBlock);
+
+    // process events that are finalized
+    await this.bundleProcessor.process({
+      canceledEvents: savedEvents.canceledEvents.filter((e) => e.finalised),
+      disputedEvents: savedEvents.disputedEvents.filter((e) => e.finalised),
+      executedEvents: savedEvents.executedEvents.filter((e) => e.finalised),
+      proposedEvents: savedEvents.proposedEvents.filter((e) => e.finalised),
+    });
+
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Finished processing block range ${this.getDataIdentifier()}`,
@@ -164,7 +176,15 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  async storeEvents(events: FetchEventsResult, lastFinalisedBlock: number) {
+  async storeEvents(
+    events: FetchEventsResult,
+    lastFinalisedBlock: number,
+  ): Promise<{
+    proposedEvents: entities.ProposedRootBundle[];
+    disputedEvents: entities.RootBundleDisputed[];
+    canceledEvents: entities.RootBundleCanceled[];
+    executedEvents: entities.RootBundleExecuted[];
+  }> {
     const { hubPoolRepository } = this;
     const {
       proposedRootBundleEvents,
@@ -173,25 +193,37 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       rootBundleExecutedEvents,
       setPoolRebalanceRouteEvents,
     } = events;
-    await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
-      proposedRootBundleEvents,
-      lastFinalisedBlock,
-    );
-    await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
-      rootBundleCanceledEvents,
-      lastFinalisedBlock,
-    );
-    await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
-      rootBundleDisputedEvents,
-      lastFinalisedBlock,
-    );
-    await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
-      rootBundleExecutedEvents,
-      lastFinalisedBlock,
-    );
+    const savedProposedRootBundleEvents =
+      await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
+        proposedRootBundleEvents,
+        lastFinalisedBlock,
+      );
+    const savedRootBundleCanceledEvents =
+      await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
+        rootBundleCanceledEvents,
+        lastFinalisedBlock,
+      );
+    const savedRootBundleDisputedEvents =
+      await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
+        rootBundleDisputedEvents,
+        lastFinalisedBlock,
+      );
+    const savedRootBundleExecutedEvents =
+      await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
+        rootBundleExecutedEvents,
+        lastFinalisedBlock,
+      );
+
     await hubPoolRepository.formatAndSaveSetPoolRebalanceRouteEvents(
       setPoolRebalanceRouteEvents,
       lastFinalisedBlock,
     );
+
+    return {
+      proposedEvents: savedProposedRootBundleEvents,
+      disputedEvents: savedRootBundleDisputedEvents,
+      canceledEvents: savedRootBundleCanceledEvents,
+      executedEvents: savedRootBundleExecutedEvents,
+    };
   }
 }

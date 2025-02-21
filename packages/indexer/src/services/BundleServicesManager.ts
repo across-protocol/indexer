@@ -1,7 +1,6 @@
 import { Logger } from "winston";
 import { Config } from "../parseEnv";
 import { BundleBuilderService } from "./BundleBuilderService";
-import { BundleEventsProcessor } from "./bundles";
 import { Redis } from "ioredis";
 import { DataSource } from "@repo/indexer-database";
 import {
@@ -12,9 +11,9 @@ import {
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { BundleRepository } from "../database/BundleRepository";
 import { BundleIncludedEventsService } from "./BundleIncludedEventsService";
+import { BundleProcessor } from "./bundles";
 
 export class BundleServicesManager {
-  private bundleEventsProcessor?: BundleEventsProcessor;
   private bundleBuilderService?: BundleBuilderService;
   private bundleIncludedEventsService?: BundleIncludedEventsService;
 
@@ -31,14 +30,12 @@ export class BundleServicesManager {
   ) {}
   public start() {
     return Promise.all([
-      this.startBundleEventsProcessor(),
       this.startBundleBuilderService(),
       this.startBundleIncludedEventsService(),
     ]);
   }
 
   public stop() {
-    this.bundleEventsProcessor?.stop();
     this.bundleBuilderService?.stop();
     this.bundleIncludedEventsService?.stop();
   }
@@ -61,23 +58,6 @@ export class BundleServicesManager {
       bundleRepository: this.bundleRepository,
     });
     return this.bundleIncludedEventsService.start(10);
-  }
-
-  private startBundleEventsProcessor() {
-    if (!this.config.enableBundleEventsProcessor) {
-      this.logger.warn({
-        at: "Indexer#BundleServicesManager#startBundleEventsProcessor",
-        message: "Bundle events processor is disabled",
-      });
-      return;
-    }
-    this.bundleEventsProcessor = new BundleEventsProcessor({
-      logger: this.logger,
-      redis: this.redis,
-      postgres: this.postgres,
-      bundleRepository: this.bundleRepository,
-    });
-    return this.bundleEventsProcessor.start(10);
   }
 
   private startBundleBuilderService() {
