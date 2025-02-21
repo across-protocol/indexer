@@ -60,7 +60,7 @@ function parseNumber(value: string): number {
   return s.create(value, stringToInt);
 }
 
-function parsePostgresConfig(
+export function parsePostgresConfig(
   env: Record<string, string | undefined>,
 ): DatabaseConfig {
   assert(env.DATABASE_HOST, "requires DATABASE_HOST");
