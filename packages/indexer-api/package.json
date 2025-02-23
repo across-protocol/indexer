@@ -28,7 +28,7 @@
     "@repo/indexer-database": "workspace:*",
     "@types/express": "^4.17.21",
     "@types/supertest": "^6.0.2",
-    "body-parser": "^1.20.2",
+    "body-parser": "^2.0.2",
     "cors": "^2.8.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
