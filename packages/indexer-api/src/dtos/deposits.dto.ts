@@ -27,7 +27,7 @@ export const DepositsParams = s.object({
 export type DepositsParams = s.Infer<typeof DepositsParams>;
 
 export const DepositParams = s.object({
-  depositId: s.optional(stringToInt),
+  depositId: s.optional(s.string()),
   originChainId: s.optional(stringToInt),
   depositTxHash: s.optional(s.string()),
   relayDataHash: s.optional(s.string()),
