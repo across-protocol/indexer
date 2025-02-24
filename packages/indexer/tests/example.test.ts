@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { parsePostgresConfig } from "../parseEnv";
+import { parsePostgresConfig } from "../src/parseEnv";
 import {
   createDataSource,
   Repository,
@@ -30,7 +30,6 @@ describe("example", () => {
   it("should create an entry in the database", async () => {
     await depositsFixture.insertDeposits([]);
     const depositRows = await repository.find();
-    console.log(depositRows);
     expect(depositRows.length).to.be.equal(1);
   });
 });
