@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { PriceWorker } from "../messaging/priceWorker";
+import { PriceWorker } from "../src/messaging/priceWorker";
 
 describe("PriceWorker", function () {
   describe("calculateBridgeFee", function () {
