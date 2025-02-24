@@ -24,12 +24,8 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install
-      - name: Build
-        run: pnpm build
-      - name: Test
-        run: pnpm test
+      - name: Run tests using docker
+        run: pnpm test:e2e:docker
   build:
     name: Build
     timeout-minutes: 15
