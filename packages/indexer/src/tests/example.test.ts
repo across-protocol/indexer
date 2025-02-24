@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { parsePostgresConfig } from "../src/parseEnv";
+import { parsePostgresConfig } from "../parseEnv";
 import {
   createDataSource,
   Repository,
