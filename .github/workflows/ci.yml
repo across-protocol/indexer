@@ -26,6 +26,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install
+      - name: Build
+        run: pnpm build
       - name: Run tests using docker
         run: pnpm test:e2e:docker
   build:
