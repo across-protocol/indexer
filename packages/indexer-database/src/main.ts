@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import {
   DataSource,
+  Repository,
   InsertResult,
   UpdateResult,
   In,
@@ -10,7 +11,15 @@ import {
 import * as entities from "./entities";
 import { DatabaseConfig } from "./model";
 
-export { DataSource, InsertResult, UpdateResult, In, LessThan, Not };
+export {
+  DataSource,
+  Repository,
+  InsertResult,
+  UpdateResult,
+  In,
+  LessThan,
+  Not,
+};
 
 export const createDataSource = (config: DatabaseConfig): DataSource => {
   return new DataSource({
