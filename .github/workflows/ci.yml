@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
       - name: Run tests using docker
         run: pnpm test:e2e:docker
   build:
