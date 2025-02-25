@@ -104,20 +104,22 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .createQueryBuilder(entities.RootBundleExecuted, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(
-            ["finalised"],
-            ["chainId", "leafId", "groupIndex", "transactionHash"],
-          )
-          .execute(),
-      ),
-    );
+    const chunkesOfEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    for (const eventsChunk of chunkesOfEvents) {
+      await Promise.all(
+        eventsChunk.map((event) => {
+          this.postgres
+            .createQueryBuilder(entities.RootBundleExecuted, "b")
+            .insert()
+            .values(event)
+            .orUpdate(
+              ["finalised"],
+              ["chainId", "leafId", "groupIndex", "transactionHash"],
+            )
+            .execute();
+        }),
+      );
+    }
   }
 
   public async formatAndSaveSetPoolRebalanceRouteEvents(
