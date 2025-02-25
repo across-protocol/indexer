@@ -41,7 +41,6 @@ export class Indexer {
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
     private rpcProvider: ethers.providers.JsonRpcProvider,
-    private redisCache: RedisCache,
     private logger: Logger,
     private dataSource: DataSource,
   ) {
@@ -72,11 +71,6 @@ export class Indexer {
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
             blockRangeResult.isBackfilling,
-          );
-          // TODO: remove Redis storage in favor of Postgres
-          await this.redisCache.set(
-            this.getLastFinalisedBlockCacheKey(),
-            blockRangeResult.lastFinalisedBlock,
           );
           // When the block range is processed successfully and the indexer is ready to start
           // processing the next block range, save the progress in the database. The most important
@@ -142,14 +136,18 @@ export class Indexer {
    *  i.e no new blocks have been mined, then the block range is `undefined`.
    */
   private async getBlockRange(): Promise<BlockRangeResult> {
-    const lastBlockFinalisedStored = await this.redisCache.get<number>(
-      this.getLastFinalisedBlockCacheKey(),
-    );
+    const databaseProgress = await this.dataSource
+      .getRepository(entities.IndexerProgressInfo)
+      .findOne({
+        where: {
+          id: this.dataHandler.getDataIdentifier(),
+        },
+      });
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
 
-    if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
+    if (databaseProgress?.latestBlockNumber === latestBlockNumber) {
       return {
         latestBlockNumber,
         blockRange: undefined,
@@ -157,8 +155,9 @@ export class Indexer {
         isBackfilling: false,
       };
     }
-    const fromBlock = lastBlockFinalisedStored
-      ? lastBlockFinalisedStored + 1
+
+    const fromBlock = databaseProgress?.lastFinalisedBlock
+      ? databaseProgress.lastFinalisedBlock + 1
       : this.dataHandler.getStartIndexingBlockNumber();
     const toBlock = Math.min(
       fromBlock +
@@ -183,9 +182,5 @@ export class Indexer {
       lastFinalisedBlock: lastFinalisedBlockInBlockRange,
       isBackfilling,
     };
-  }
-
-  private getLastFinalisedBlockCacheKey() {
-    return `indexer:lastBlockFinalised:${this.dataHandler.getDataIdentifier()}`;
   }
 }

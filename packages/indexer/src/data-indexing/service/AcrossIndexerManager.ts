@@ -81,7 +81,6 @@ export class AcrossIndexerManager {
       },
       hubPoolIndexerDataHandler,
       this.retryProvidersFactory.getProviderForChainId(this.config.hubChainId),
-      this.redisCache,
       this.logger,
       this.postgres,
     );
@@ -119,7 +118,6 @@ export class AcrossIndexerManager {
           },
           spokePoolIndexerDataHandler,
           this.retryProvidersFactory.getProviderForChainId(chainId),
-          this.redisCache,
           this.logger,
           this.postgres,
         );
