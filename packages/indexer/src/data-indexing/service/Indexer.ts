@@ -127,43 +127,6 @@ export class Indexer {
     );
   }
 
-  private async loadProgressFromDatabase(
-    latestBlockNumber: number,
-  ): Promise<BlockRangeResult | undefined> {
-    const indexerProgressInfo = await this.dataSource
-      .getRepository(entities.IndexerProgressInfo)
-      .findOne({
-        where: {
-          id: this.dataHandler.getDataIdentifier(),
-        },
-      });
-    if (across.utils.isDefined(indexerProgressInfo)) {
-      const fromBlock = indexerProgressInfo.lastFinalisedBlock + 1;
-      const toBlock = Math.min(
-        fromBlock +
-          (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
-        indexerProgressInfo.latestBlockNumber,
-      );
-
-      // If the latest block number is the same as the stored one there are no new blocks to process.
-      if (latestBlockNumber === indexerProgressInfo.latestBlockNumber) {
-        return {
-          latestBlockNumber: indexerProgressInfo.latestBlockNumber,
-          blockRange: undefined,
-          lastFinalisedBlock: indexerProgressInfo.lastFinalisedBlock,
-          isBackfilling: false,
-        };
-      }
-
-      return {
-        latestBlockNumber: indexerProgressInfo.latestBlockNumber,
-        blockRange: { from: fromBlock, to: toBlock },
-        lastFinalisedBlock: indexerProgressInfo.lastFinalisedBlock,
-        isBackfilling: indexerProgressInfo.isBackfilling,
-      };
-    }
-  }
-
   /**
    * Gets the next block range to process.
    * `from` block is the last finalised block stored in redis + 1 or the start block number for the data handler.
@@ -172,17 +135,29 @@ export class Indexer {
    *  i.e no new blocks have been mined, then the block range is `undefined`.
    */
   private async getBlockRange(): Promise<BlockRangeResult> {
+    const databaseProgress = await this.dataSource
+      .getRepository(entities.IndexerProgressInfo)
+      .findOne({
+        where: {
+          id: this.dataHandler.getDataIdentifier(),
+        },
+      });
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
-
-    const databaseProgress =
-      await this.loadProgressFromDatabase(latestBlockNumber);
-    if (databaseProgress) {
-      return databaseProgress;
-    }
-
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
-    const fromBlock = this.dataHandler.getStartIndexingBlockNumber();
+
+    if (databaseProgress?.latestBlockNumber === latestBlockNumber) {
+      return {
+        latestBlockNumber,
+        blockRange: undefined,
+        lastFinalisedBlock: lastFinalisedBlockOnChain,
+        isBackfilling: false,
+      };
+    }
+
+    const fromBlock = databaseProgress?.lastFinalisedBlock
+      ? databaseProgress.lastFinalisedBlock + 1
+      : this.dataHandler.getStartIndexingBlockNumber();
     const toBlock = Math.min(
       fromBlock +
         (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
