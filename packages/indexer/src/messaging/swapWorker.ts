@@ -222,7 +222,7 @@ export class SwapWorker {
       ) * acrossInputTokenPrice.price;
     const swapFeeUsd = swapTokenAmountUsd - acrossInputAmountUsd;
     await this.relayHashInfoRepository.update(
-      // this is deposit entity id, unique to database
+      // this is swapBeforeBridge entity id, unique to database
       { swapBeforeBridgeEventId: swapEventId },
       {
         swapTokenPriceUsd: swapTokenPrice.price.toString(),
