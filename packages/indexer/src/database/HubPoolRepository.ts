@@ -27,16 +27,18 @@ export class HubPoolRepository extends utils.BaseRepository {
     });
 
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const chunkedResults = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.postgres
-          .createQueryBuilder(entities.ProposedRootBundle, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(["finalised"], ["transactionHash"])
-          .execute(),
+          .getRepository(entities.ProposedRootBundle)
+          .save(eventsChunk, {
+            chunk: this.chunkSize,
+            reload: true,
+          }),
       ),
     );
+
+    return chunkedResults.flat();
   }
 
   public async formatAndSaveRootBundleDisputedEvents(
@@ -51,16 +53,18 @@ export class HubPoolRepository extends utils.BaseRepository {
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const chunkedResults = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.postgres
-          .createQueryBuilder(entities.RootBundleDisputed, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(["finalised"], ["transactionHash"])
-          .execute(),
+          .getRepository(entities.RootBundleDisputed)
+          .save(eventsChunk, {
+            chunk: this.chunkSize,
+            reload: true,
+          }),
       ),
     );
+
+    return chunkedResults.flat();
   }
 
   public async formatAndSaveRootBundleCanceledEvents(
@@ -77,16 +81,18 @@ export class HubPoolRepository extends utils.BaseRepository {
     });
 
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const chunkedResults = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.postgres
-          .createQueryBuilder(entities.RootBundleCanceled, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(["finalised"], ["transactionHash"])
-          .execute(),
+          .getRepository(entities.RootBundleCanceled)
+          .save(eventsChunk, {
+            chunk: this.chunkSize,
+            reload: true,
+          }),
       ),
     );
+
+    return chunkedResults.flat();
   }
 
   public async formatAndSaveRootBundleExecutedEvents(
@@ -105,19 +111,18 @@ export class HubPoolRepository extends utils.BaseRepository {
       };
     });
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const chunkedResults = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.postgres
-          .createQueryBuilder(entities.RootBundleExecuted, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(
-            ["finalised"],
-            ["chainId", "leafId", "groupIndex", "transactionHash"],
-          )
-          .execute(),
+          .getRepository(entities.RootBundleExecuted)
+          .save(eventsChunk, {
+            chunk: this.chunkSize,
+            reload: true,
+          }),
       ),
     );
+
+    return chunkedResults.flat();
   }
 
   public async formatAndSaveSetPoolRebalanceRouteEvents(
@@ -137,19 +142,17 @@ export class HubPoolRepository extends utils.BaseRepository {
     });
 
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    await Promise.all(
+    const chunkedResults = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.postgres
-          .createQueryBuilder(entities.SetPoolRebalanceRoute, "b")
-          .insert()
-          .values(eventsChunk)
-          .orUpdate(
-            ["finalised"],
-            ["transactionHash", "transactionIndex", "logIndex"],
-          )
-          .execute(),
+          .getRepository(entities.SetPoolRebalanceRoute)
+          .save(eventsChunk, {
+            chunk: this.chunkSize,
+            reload: true,
+          }),
       ),
     );
+    return chunkedResults.flat();
   }
 
   /**
