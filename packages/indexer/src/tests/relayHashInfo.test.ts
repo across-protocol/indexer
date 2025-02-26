@@ -1,17 +1,23 @@
 import { expect } from "chai";
-import { parsePostgresConfig } from "../parseEnv";
 import {
   createDataSource,
+  DataSource,
   Repository,
   entities,
   fixtures,
 } from "@repo/indexer-database";
+import { parsePostgresConfig } from "../parseEnv";
+import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../services/spokePoolProcessor";
 
-describe("Test relay hash info aggregation and relay status updates", () => {
+describe("RelayHashInfo Tests", () => {
   // Set up
+  // DataSource
+  let dataSource: DataSource;
+
   // Repositories
   let relayHashInfoRepository: Repository<entities.RelayHashInfo>;
+  let spokePoolRepository: SpokePoolRepository;
 
   // Fixtures
   let depositsFixture: fixtures.FundsDepositedFixture;
@@ -30,10 +36,11 @@ describe("Test relay hash info aggregation and relay status updates", () => {
   before(async () => {
     // Connect to database
     const databaseConfig = parsePostgresConfig(process.env);
-    const dataSource = await createDataSource(databaseConfig).initialize();
+    dataSource = await createDataSource(databaseConfig).initialize();
 
     // Instantiate repositories
     relayHashInfoRepository = dataSource.getRepository(entities.RelayHashInfo);
+    spokePoolRepository = new SpokePoolRepository(dataSource);
 
     // Instantiate fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
@@ -414,6 +421,185 @@ describe("Test relay hash info aggregation and relay status updates", () => {
       expect(duplicatedRelay.depositEventId).to.equal(duplicatedDeposit.id);
       expect(duplicatedRelay.fillEventId).to.be.null;
       expect(duplicatedRelay.status).to.equal(entities.RelayStatus.Unfilled);
+    });
+  });
+
+  describe("Test deleted deposits handling", () => {
+    it("should delete RelayHashInfo row when deposit is not finalized and no other events exist", async () => {
+      // Create deposit
+      const [unfinalizedDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0xdef", internalHash: "0xdef", finalised: false },
+      ]);
+
+      // Process deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [unfinalizedDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Verify initial relayHashInfo state
+      const initialRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0xdef" },
+      });
+      expect(initialRelayHashInfo).to.not.be.null;
+
+      // Soft delete unfinalized deposit
+      const deletedDeposits =
+        await spokePoolRepository.deleteUnfinalisedDepositEvents(
+          1, // chainId
+          unfinalizedDeposit.blockNumber + 1, // lastFinalisedBlock older than deposit block number
+        );
+
+      // Process deleted deposit
+      await spokePoolProcessor.processDeletedDeposits(deletedDeposits);
+
+      // Verify final relayHashInfo state. Existing row for internalHash should be deleted
+      const finalRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0xdef" },
+      });
+      expect(finalRelayHashInfo).to.be.null;
+    });
+
+    it("should remove deposit reference but keep relayHashInfo row when a deposit is not finalised but a fill exists", async () => {
+      // Create deposit
+      const [unfinalizedDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0x1ab", internalHash: "0x1ab", finalised: false },
+      ]);
+
+      // Process deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [unfinalizedDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Create fill
+      const [fill] = await fillsFixture.insertFills([
+        { internalHash: "0x1ab" },
+      ]);
+
+      // Process fill to update relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [],
+        fills: [fill],
+        slowFillRequests: [],
+      });
+
+      // Check initial relayHashInfo state
+      const initialRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0x1ab" },
+      });
+      expect(initialRelayHashInfo).to.not.be.null;
+      expect(initialRelayHashInfo!.depositEventId).to.equal(
+        unfinalizedDeposit.id,
+      );
+      expect(initialRelayHashInfo!.fillEventId).to.equal(fill.id);
+      expect(initialRelayHashInfo!.status).to.equal(
+        entities.RelayStatus.Filled,
+      );
+
+      // Soft delete unfinalized deposit
+      const deletedDeposits =
+        await spokePoolRepository.deleteUnfinalisedDepositEvents(
+          1, // chainId
+          unfinalizedDeposit.blockNumber + 1, // lastFinalisedBlock older than deposit block number
+        );
+
+      // Process deleted deposit
+      await spokePoolProcessor.processDeletedDeposits(deletedDeposits);
+
+      // Verify final relayHashInfo state. Existing row for internalHash should have its depositEventId removed
+      const finalRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0x1ab" },
+      });
+      expect(finalRelayHashInfo).to.not.be.null;
+      expect(finalRelayHashInfo!.depositEventId).to.be.null;
+      expect(finalRelayHashInfo!.fillEventId).to.equal(fill.id);
+      expect(finalRelayHashInfo!.status).to.equal(entities.RelayStatus.Filled);
+    });
+
+    it("should merge relay row data into an existing entry and delete the redundant row when replacing an unfinalized deposit with a new deposit", async () => {
+      // Create original deposit
+      const [originalDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0x2cd", internalHash: "0x2cd", finalised: false },
+      ]);
+
+      // Process original deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [originalDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Check initial relayHashInfo state
+      const initialRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0x2cd" },
+      });
+      expect(initialRelayHashInfo).to.not.be.null;
+
+      // Create fill
+      const [fill] = await fillsFixture.insertFills([
+        { internalHash: "0x2cd" },
+      ]);
+
+      // Process fill to update relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [],
+        fills: [fill],
+        slowFillRequests: [],
+      });
+
+      // Create duplicate deposit
+      const [replacingDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0x2cd", internalHash: "0x2cd", blockNumber: 2 },
+      ]);
+
+      // Process duplicate deposit
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [replacingDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Check RelayHashInfo state after duplicate deposit is processed and before deleting the unfinalized deposit
+      const relayRows = await relayHashInfoRepository.find({
+        where: { internalHash: "0x2cd" },
+        order: { depositEventId: "ASC" },
+      });
+      const unfinalizedDeposit = relayRows[0];
+      const finalizedDeposit = relayRows[1];
+      expect(relayRows).to.not.be.null;
+      expect(relayRows).to.have.lengthOf(2);
+      expect(unfinalizedDeposit!.depositEventId).to.equal(originalDeposit.id);
+      expect(unfinalizedDeposit!.fillEventId).to.equal(fill.id);
+      expect(unfinalizedDeposit!.status).to.equal(entities.RelayStatus.Filled);
+      expect(finalizedDeposit!.depositEventId).to.equal(replacingDeposit.id);
+      expect(finalizedDeposit!.fillEventId).to.be.null;
+      expect(finalizedDeposit!.status).to.equal(entities.RelayStatus.Unfilled);
+
+      // Soft delete unfinalized deposit
+      const deletedDeposits =
+        await spokePoolRepository.deleteUnfinalisedDepositEvents(
+          1, // chainId
+          originalDeposit.blockNumber + 1, // lastFinalisedBlock older than deposit block number
+        );
+
+      // Process deleted deposit
+      await spokePoolProcessor.processDeletedDeposits(deletedDeposits);
+
+      // Check RelayHashInfo state after deleting unfinalized deposit
+      // Replacing deposit data should be merged into original row
+      const relayRowsAfterDeletion = await relayHashInfoRepository.find({
+        where: { internalHash: "0x2cd" },
+        order: { depositEventId: "ASC" },
+      });
+      expect(relayRowsAfterDeletion).to.not.be.null;
+      expect(relayRowsAfterDeletion).to.have.lengthOf(1);
+      const finalRow = relayRowsAfterDeletion[0];
+      expect(finalRow!.depositEventId).to.equal(replacingDeposit.id);
+      expect(finalRow!.fillEventId).to.equal(fill.id);
+      expect(finalRow!.status).to.equal(entities.RelayStatus.Filled);
     });
   });
 });
