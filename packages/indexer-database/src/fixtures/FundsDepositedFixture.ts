@@ -5,10 +5,6 @@ import { DataSource, DeleteResult, InsertResult, Repository } from "typeorm";
 export class FundsDepositedFixture {
   private repository: Repository<V3FundsDeposited>;
   public constructor(private dataSource: DataSource) {
-    this.setRepository();
-  }
-
-  private setRepository() {
     this.repository = this.dataSource.getRepository(V3FundsDeposited);
   }
 
@@ -20,6 +16,7 @@ export class FundsDepositedFixture {
   public mockFundsDeposited(overrides: Partial<V3FundsDeposited>) {
     return {
       relayHash: "0xaaa",
+      internalHash: "0xaaa",
       depositId: getRandomInt().toString(),
       originChainId: 1,
       destinationChainId: 10,
@@ -33,7 +30,6 @@ export class FundsDepositedFixture {
       outputAmount: "9",
       message: "0x",
       messageHash: "0x",
-      internalHash: "0xaaa",
       exclusiveRelayer: "0x",
       exclusivityDeadline: new Date(),
       fillDeadline: new Date(),
@@ -54,15 +50,20 @@ export class FundsDepositedFixture {
    * @param deposits - Array of partial V3FundsDeposited objects to insert
    * @returns Promise containing the result of the insert operation
    */
-  public insertDeposits(
+  public async insertDeposits(
     deposits: Partial<V3FundsDeposited>[],
-  ): Promise<InsertResult> {
+  ): Promise<[V3FundsDeposited, ...V3FundsDeposited[]]> {
     if (deposits.length === 0) {
       deposits.push(this.mockFundsDeposited({}));
     }
-    return this.repository.insert(
-      deposits.map((deposit) => this.mockFundsDeposited(deposit)),
-    );
+    const result = await this.repository
+      .createQueryBuilder()
+      .insert()
+      .values(deposits.map((deposit) => this.mockFundsDeposited(deposit)))
+      .returning("*")
+      .execute();
+
+    return result.generatedMaps as [V3FundsDeposited, ...V3FundsDeposited[]];
   }
 
   /**
