@@ -1,4 +1,12 @@
 import * as constants from "@across-protocol/constants";
+import { DateTime } from "luxon";
+// Convert now to a consistent price timestamp yesterday for lookup purposes
+export function yesterday(now: Date) {
+  // theres a slight wrinkle when using coingecko, if the time falls within 12-3AM we must subtract 2 days, rather than 1
+  const utcHour = DateTime.fromJSDate(now).toUTC().hour;
+  const daysToSubtract = utcHour >= 0 && utcHour < 3 ? 2 : 1;
+  return DateTime.fromJSDate(now).minus({ days: daysToSubtract }).toJSDate();
+}
 
 export type TokenInfo = {
   name: string;

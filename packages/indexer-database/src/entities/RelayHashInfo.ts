@@ -111,6 +111,13 @@ export class RelayHashInfo {
   @Column({ nullable: true })
   depositRefundTxHash: string;
 
+  // swap vars
+  @Column({ nullable: true, type: "decimal" })
+  swapTokenPriceUsd: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  swapFeeUsd: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

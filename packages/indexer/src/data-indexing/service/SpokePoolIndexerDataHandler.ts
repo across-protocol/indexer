@@ -181,6 +181,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     // publish new relays to workers to fill in prices
     await this.publishNewRelays(storedEvents);
+    await this.publishSwaps(depositSwapPairs);
 
     //FIXME: Remove performance timing
     const finalPerfTime = performance.now();
@@ -293,7 +294,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         return matchedPairs;
       })
       .flat();
-    console.log("depositSwapMap", depositSwapMap);
     return depositSwapMap;
   }
 
@@ -567,6 +567,16 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     await this.indexerQueuesService.publishMessagesBulk(
       IndexerQueues.PriceQuery,
       IndexerQueues.PriceQuery, // Use queue name as job name
+      messages,
+    );
+  }
+  private async publishSwaps(swapDepositPairs: DepositSwapPair[]) {
+    const messages = swapDepositPairs.map((pair) => ({
+      swapEventId: pair.swapBeforeBridge.id,
+    }));
+    await this.indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.SwapMessage,
+      IndexerQueues.SwapMessage, // Use queue name as job name
       messages,
     );
   }
