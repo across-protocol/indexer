@@ -448,7 +448,7 @@ export class SpokePoolProcessor {
    * @param deletedDeposits - List of deleted deposit events.
    * @returns A void promise
    */
-  private async processDeletedDeposits(
+  public async processDeletedDeposits(
     deletedDeposits: entities.V3FundsDeposited[],
   ) {
     for (const deposit of deletedDeposits) {
