@@ -30,6 +30,7 @@ describe("RelayHashInfo Tests", () => {
   let fillsFixture: fixtures.FilledRelayFixture;
   let slowFillsFixture: fixtures.RequestedSlowFillFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
+  let bundleFixture: fixtures.BundleFixture;
 
   // Events
   let deposit: entities.V3FundsDeposited;
@@ -53,6 +54,7 @@ describe("RelayHashInfo Tests", () => {
     fillsFixture = new fixtures.FilledRelayFixture(dataSource);
     slowFillsFixture = new fixtures.RequestedSlowFillFixture(dataSource);
     relayHashInfoFixture = new fixtures.RelayHashInfoFixture(dataSource);
+    bundleFixture = new fixtures.BundleFixture(dataSource);
 
     // Store events to use across tests
     [deposit] = await depositsFixture.insertDeposits([
@@ -74,6 +76,8 @@ describe("RelayHashInfo Tests", () => {
   afterEach(async () => {
     // Start each test with an empty relayHashInfo table
     await relayHashInfoFixture.deleteAllRelayHashInfoRows();
+    // also delete bundle events
+    await bundleFixture.cleanUpBundleEvents();
   });
 
   after(async () => {
@@ -284,6 +288,59 @@ describe("RelayHashInfo Tests", () => {
     expect(updatedRelayHashInfo).to.not.be.null;
     expect(updatedRelayHashInfo!.status).to.equal(entities.RelayStatus.Filled);
     expect(updatedRelayHashInfo!.fillEventId).to.equal(fill.id);
+  });
+
+  it("should update relayHashInfo status to refunded and set depositRefundTxHash when a refund is found", async () => {
+    // set up bundle related events
+    const [proposal] = await bundleFixture.insertBundleProposals([]);
+    const bundle = await bundleFixture.insertBundle(proposal.id, {});
+    const [relayedRootBundle] = await bundleFixture.insertRelayedRootBundle([
+      {
+        relayerRefundRoot: proposal.relayerRefundRoot,
+        slowRelayRoot: proposal.slowRelayRoot,
+      },
+    ]);
+    const [executedRelayerRefundRoot] =
+      await bundleFixture.insertExecutedRelayerRefundRoot([
+        {
+          rootBundleId: relayedRootBundle!.rootBundleId,
+        },
+      ]);
+
+    // Process deposit to create initial relayHashInfo row
+    await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+      deposits: [deposit],
+      fills: [],
+      slowFillRequests: [],
+    });
+
+    // Issue a refund for deposit
+    await bundleFixture.insertBundleEvents(bundle.id, [
+      {
+        bundleId: bundle.id,
+        type: entities.BundleEventType.ExpiredDeposit,
+        relayHash: deposit.internalHash,
+        eventChainId: deposit.originChainId,
+        eventBlockNumber: deposit.blockNumber,
+        eventLogIndex: deposit.logIndex,
+      },
+    ]);
+
+    // Process refunds
+    await spokePoolProcessor.updateRefundedDepositsStatus();
+
+    // Verify final relayHashInfo state
+    const updatedRelayHashInfo = await relayHashInfoRepository.findOne({
+      where: { internalHash: deposit.internalHash },
+    });
+    expect(updatedRelayHashInfo).to.not.be.null;
+    expect(updatedRelayHashInfo!.status).to.equal(
+      entities.RelayStatus.Refunded,
+    );
+    expect(updatedRelayHashInfo!.depositEventId).to.equal(deposit.id);
+    expect(updatedRelayHashInfo!.depositRefundTxHash).to.equal(
+      executedRelayerRefundRoot!.transactionHash,
+    );
   });
 
   describe("Test duplicated deposits handling", () => {

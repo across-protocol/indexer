@@ -589,12 +589,11 @@ export class SpokePoolProcessor {
   }
 
   /**
-   * Calls the database to find expired relays and looks for related
-   * refunds in the bundle events table.
+   * Calls the database to find relays with related refunds in the bundle events table.
    * When a matching refund is found, updates the relay status to refunded
    * @returns An array with the updated relays
    */
-  private async updateRefundedDepositsStatus(): Promise<
+  public async updateRefundedDepositsStatus(): Promise<
     entities.RelayHashInfo[]
   > {
     this.logger?.debug({
@@ -607,24 +606,16 @@ export class SpokePoolProcessor {
     const refundEvents = (await bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
-      .innerJoin(
-        entities.RelayHashInfo,
-        "rhi",
-        "be.relayHash = rhi.internalHash",
-      )
       .innerJoinAndMapOne(
         "be.deposit",
         entities.V3FundsDeposited,
         "dep",
-        "rhi.depositEventId = dep.id AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
+        "be.relayHash = dep.internalHash AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
       )
       .where("be.type = :expiredDeposit", {
         expiredDeposit: entities.BundleEventType.ExpiredDeposit,
       })
-      .andWhere("rhi.status = :expired", {
-        expired: entities.RelayStatus.Expired,
-      })
-      .andWhere("rhi.originChainId = :chainId", { chainId: this.chainId })
+      .andWhere("dep.originChainId = :chainId", { chainId: this.chainId })
       .orderBy("be.bundleId", "DESC")
       .limit(100)
       .getMany()) as (entities.BundleEvent & {
@@ -692,6 +683,12 @@ export class SpokePoolProcessor {
           },
         });
         if (rowToUpdate) {
+          if (rowToUpdate.status === entities.RelayStatus.Filled) {
+            this.logger?.warn({
+              at: "SpokePoolProcessor#updateRefundedDepositsStatus",
+              message: `Found a filled relay with id ${rowToUpdate.id} that is being unexpectedly refunded.`,
+            });
+          }
           const updatedRow = await relayHashInfoRepo
             .createQueryBuilder()
             .update()
