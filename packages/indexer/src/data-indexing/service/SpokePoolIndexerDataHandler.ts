@@ -219,11 +219,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         deposits.map((deposit) => deposit.transactionHash.toLowerCase()),
       ),
     ];
-    const transactionReceipts = await Promise.all([
-      ...uniqueDepositTxHashes.map((txHash) =>
-        this.provider.getTransactionReceipt(txHash),
-      ),
-    ]);
+    const transactionReceipts = await Promise.all(
+      uniqueDepositTxHashes.map(async (txHash) => {
+        const receipt = await this.provider.getTransactionReceipt(txHash);
+        if (!receipt) {
+          this.logger.warn({
+            at: "SpokePoolIndexerDataHandler#matchDepositEventsWithSwapEvents",
+            message: `Transaction receipt not found`,
+            txHash,
+            chainId: this.chainId,
+          });
+        }
+        return receipt;
+      }),
+    );
     const swapBeforeBridgeEvents = transactionReceipts
       .map((transactionReceipt) =>
         EventDecoder.decodeSwapBeforeBridgeEvents(transactionReceipt),
