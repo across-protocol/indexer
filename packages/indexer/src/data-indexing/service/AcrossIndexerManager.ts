@@ -3,29 +3,27 @@ import { Logger } from "winston";
 import { DataSource } from "@repo/indexer-database";
 import { eventProcessorManager } from "@repo/webhooks";
 
+import { Config } from "../../parseEnv";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
+import { RedisCache } from "../../redis/redisCache";
+import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { IndexerQueuesService } from "../../messaging/service";
-import { Config } from "../../parseEnv";
-import { RedisCache } from "../../redis/redisCache";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
-import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 
-import { BundleRepository } from "../../database/BundleRepository";
-import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
-import { BundleProcessor } from "../../services";
+import { HubPoolIndexerDataHandler } from "./HubPoolIndexerDataHandler";
+import { SpokePoolIndexerDataHandler } from "./SpokePoolIndexerDataHandler";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "../../utils";
-import { HubPoolIndexerDataHandler } from "./HubPoolIndexerDataHandler";
 import { Indexer } from "./Indexer";
-import { SpokePoolIndexerDataHandler } from "./SpokePoolIndexerDataHandler";
 import {
   getFinalisedBlockBufferDistance,
   getLoopWaitTimeSeconds,
 } from "./constants";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;
@@ -42,7 +40,6 @@ export class AcrossIndexerManager {
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
-    private bundleRepository: BundleRepository,
     private redisCache: RedisCache,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
@@ -74,7 +71,6 @@ export class AcrossIndexerManager {
       this.configStoreClientFactory,
       this.hubPoolClientFactory,
       this.hubPoolRepository,
-      new BundleProcessor(this.logger, this.bundleRepository),
     );
     this.hubPoolIndexer = new Indexer(
       {

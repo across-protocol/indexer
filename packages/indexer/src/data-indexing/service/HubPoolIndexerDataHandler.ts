@@ -1,7 +1,5 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-import { entities, SaveQueryResult } from "@repo/indexer-database";
-
 import * as utils from "../../utils";
 import {
   getDeployedBlockNumber,
@@ -10,7 +8,6 @@ import {
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
-import { BundleProcessor } from "../../services";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -22,13 +19,6 @@ type FetchEventsResult = {
   setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
     l2ChainId: number;
   })[];
-};
-
-export type StoreEventsResult = {
-  proposedEvents: SaveQueryResult<entities.ProposedRootBundle>[];
-  disputedEvents: SaveQueryResult<entities.RootBundleDisputed>[];
-  canceledEvents: SaveQueryResult<entities.RootBundleCanceled>[];
-  executedEvents: SaveQueryResult<entities.RootBundleExecuted>[];
 };
 
 export class HubPoolIndexerDataHandler implements IndexerDataHandler {
@@ -43,7 +33,6 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
     private hubPoolRepository: HubPoolRepository,
-    private bundleProcessor: BundleProcessor,
   ) {
     this.isInitialized = false;
   }
@@ -98,10 +87,9 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-    const savedEvents = await this.storeEvents(events, lastFinalisedBlock);
 
     // process events that are finalized
-    await this.bundleProcessor.process(savedEvents);
+    await this.storeEvents(events, lastFinalisedBlock);
 
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
@@ -179,10 +167,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  async storeEvents(
-    events: FetchEventsResult,
-    lastFinalisedBlock: number,
-  ): Promise<StoreEventsResult> {
+  async storeEvents(events: FetchEventsResult, lastFinalisedBlock: number) {
     const { hubPoolRepository } = this;
     const {
       proposedRootBundleEvents,
@@ -191,37 +176,25 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       rootBundleExecutedEvents,
       setPoolRebalanceRouteEvents,
     } = events;
-    const savedProposedRootBundleEvents =
-      await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
-        proposedRootBundleEvents,
-        lastFinalisedBlock,
-      );
-    const savedRootBundleCanceledEvents =
-      await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
-        rootBundleCanceledEvents,
-        lastFinalisedBlock,
-      );
-    const savedRootBundleDisputedEvents =
-      await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
-        rootBundleDisputedEvents,
-        lastFinalisedBlock,
-      );
-    const savedRootBundleExecutedEvents =
-      await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
-        rootBundleExecutedEvents,
-        lastFinalisedBlock,
-      );
-
+    await hubPoolRepository.formatAndSaveProposedRootBundleEvents(
+      proposedRootBundleEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleCanceledEvents(
+      rootBundleCanceledEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleDisputedEvents(
+      rootBundleDisputedEvents,
+      lastFinalisedBlock,
+    );
+    await hubPoolRepository.formatAndSaveRootBundleExecutedEvents(
+      rootBundleExecutedEvents,
+      lastFinalisedBlock,
+    );
     await hubPoolRepository.formatAndSaveSetPoolRebalanceRouteEvents(
       setPoolRebalanceRouteEvents,
       lastFinalisedBlock,
     );
-
-    return {
-      proposedEvents: savedProposedRootBundleEvents,
-      disputedEvents: savedRootBundleDisputedEvents,
-      canceledEvents: savedRootBundleCanceledEvents,
-      executedEvents: savedRootBundleExecutedEvents,
-    };
   }
 }
