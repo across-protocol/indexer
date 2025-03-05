@@ -1,5 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
+
 import * as utils from "../../utils";
 import {
   getDeployedBlockNumber,
@@ -20,7 +21,6 @@ type FetchEventsResult = {
     l2ChainId: number;
   })[];
 };
-
 export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -87,10 +87,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
       identifier: this.getDataIdentifier(),
     });
-
-    // process events that are finalized
     await this.storeEvents(events, lastFinalisedBlock);
-
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Finished processing block range ${this.getDataIdentifier()}`,
