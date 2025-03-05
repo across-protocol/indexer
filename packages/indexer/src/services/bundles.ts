@@ -12,6 +12,8 @@ import {
   BundleRepository,
 } from "../database/BundleRepository";
 import * as across from "@across-protocol/sdk";
+import { StoreEventsResult } from "../data-indexing/service/HubPoolIndexerDataHandler";
+import { filterSaveQueryResults } from "../../../indexer-database/dist/src/utils";
 
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
@@ -29,14 +31,6 @@ enum BundleEvents {
   BundleExecutedStatus = "BundleExecutedStatus",
 }
 
-// Define the structure for our stored events
-export type StoreBundleEventsResult = {
-  proposedEvents: entities.ProposedRootBundle[];
-  disputedEvents: entities.RootBundleDisputed[];
-  canceledEvents: entities.RootBundleCanceled[];
-  executedEvents: entities.RootBundleExecuted[];
-};
-
 export type BundleConfig = {
   logger: winston.Logger;
   redis: Redis | undefined;
@@ -50,15 +44,31 @@ export class BundleProcessor {
     private readonly bundleRepository: BundleRepository,
   ) {}
 
-  public async process(events: StoreBundleEventsResult): Promise<void> {
+  public async process(events: StoreEventsResult): Promise<void> {
+    const proposedEvents = filterSaveQueryResults(
+      events.proposedEvents,
+      SaveQueryResultType.Inserted,
+    ).filter((event) => event.finalised);
+    const disputedEvents = filterSaveQueryResults(
+      events.disputedEvents,
+      SaveQueryResultType.Inserted,
+    ).filter((event) => event.finalised);
+    const canceledEvents = filterSaveQueryResults(
+      events.canceledEvents,
+      SaveQueryResultType.Inserted,
+    ).filter((event) => event.finalised);
+    const executedEvents = filterSaveQueryResults(
+      events.executedEvents,
+      SaveQueryResultType.Inserted,
+    ).filter((event) => event.finalised);
     try {
       const timeToProcessStart = performance.now();
 
       // Process all bundle events in sequence
-      await this.assignBundleToProposedEvent(events.proposedEvents);
-      await this.assignDisputeEventToBundle(events.disputedEvents);
-      await this.assignCanceledEventToBundle(events.canceledEvents);
-      await this.assignExecutionsToBundle(events.executedEvents);
+      await this.assignBundleToProposedEvent(proposedEvents);
+      await this.assignDisputeEventToBundle(disputedEvents);
+      await this.assignCanceledEventToBundle(canceledEvents);
+      await this.assignExecutionsToBundle(executedEvents);
 
       // Process derived states
       await this.assignBundleRangesToProposal();

@@ -2,11 +2,9 @@ import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
-export class HubPoolRepository extends utils.BaseRepository {
-  private chunkSize = 1000;
-
+export class HubPoolRepository extends utils.BlockchainEventRepository {
   constructor(postgres: DataSource, logger: winston.Logger) {
-    super(postgres, logger, true);
+    super(postgres, logger);
   }
 
   public async formatAndSaveProposedRootBundleEvents(
@@ -25,20 +23,15 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.ProposedRootBundle>(
+        entities.ProposedRootBundle,
+        formattedEvents,
+        ["transactionHash"],
+        [],
+      );
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const chunkedResults = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .getRepository(entities.ProposedRootBundle)
-          .save(eventsChunk, {
-            chunk: this.chunkSize,
-            reload: true,
-          }),
-      ),
-    );
-
-    return chunkedResults.flat();
+    return savedEvents;
   }
 
   public async formatAndSaveRootBundleDisputedEvents(
@@ -52,19 +45,15 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const chunkedResults = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .getRepository(entities.RootBundleDisputed)
-          .save(eventsChunk, {
-            chunk: this.chunkSize,
-            reload: true,
-          }),
-      ),
-    );
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.RootBundleDisputed>(
+        entities.RootBundleDisputed,
+        formattedEvents,
+        ["transactionHash"],
+        [],
+      );
 
-    return chunkedResults.flat();
+    return savedEvents;
   }
 
   public async formatAndSaveRootBundleCanceledEvents(
@@ -79,20 +68,15 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.RootBundleCanceled>(
+        entities.RootBundleCanceled,
+        formattedEvents,
+        ["transactionHash"],
+        [],
+      );
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const chunkedResults = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .getRepository(entities.RootBundleCanceled)
-          .save(eventsChunk, {
-            chunk: this.chunkSize,
-            reload: true,
-          }),
-      ),
-    );
-
-    return chunkedResults.flat();
+    return savedEvents;
   }
 
   public async formatAndSaveRootBundleExecutedEvents(
@@ -110,19 +94,15 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const chunkedResults = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .getRepository(entities.RootBundleExecuted)
-          .save(eventsChunk, {
-            chunk: this.chunkSize,
-            reload: true,
-          }),
-      ),
-    );
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.RootBundleExecuted>(
+        entities.RootBundleExecuted,
+        formattedEvents,
+        ["chainId", "leafId", "groupIndex", "transactionHash"],
+        [],
+      );
 
-    return chunkedResults.flat();
+    return savedEvents;
   }
 
   public async formatAndSaveSetPoolRebalanceRouteEvents(
@@ -140,19 +120,15 @@ export class HubPoolRepository extends utils.BaseRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.SetPoolRebalanceRoute>(
+        entities.SetPoolRebalanceRoute,
+        formattedEvents,
+        ["transactionHash", "transactionIndex", "logIndex"],
+        [],
+      );
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const chunkedResults = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.postgres
-          .getRepository(entities.SetPoolRebalanceRoute)
-          .save(eventsChunk, {
-            chunk: this.chunkSize,
-            reload: true,
-          }),
-      ),
-    );
-    return chunkedResults.flat();
+    return savedEvents;
   }
 
   /**

@@ -1,6 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-import { entities } from "@repo/indexer-database";
+import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 import * as utils from "../../utils";
 import {
@@ -23,6 +23,14 @@ type FetchEventsResult = {
     l2ChainId: number;
   })[];
 };
+
+export type StoreEventsResult = {
+  proposedEvents: SaveQueryResult<entities.ProposedRootBundle>[];
+  disputedEvents: SaveQueryResult<entities.RootBundleDisputed>[];
+  canceledEvents: SaveQueryResult<entities.RootBundleCanceled>[];
+  executedEvents: SaveQueryResult<entities.RootBundleExecuted>[];
+};
+
 export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -93,12 +101,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     const savedEvents = await this.storeEvents(events, lastFinalisedBlock);
 
     // process events that are finalized
-    await this.bundleProcessor.process({
-      canceledEvents: savedEvents.canceledEvents.filter((e) => e.finalised),
-      disputedEvents: savedEvents.disputedEvents.filter((e) => e.finalised),
-      executedEvents: savedEvents.executedEvents.filter((e) => e.finalised),
-      proposedEvents: savedEvents.proposedEvents.filter((e) => e.finalised),
-    });
+    await this.bundleProcessor.process(savedEvents);
 
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
@@ -179,12 +182,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
   async storeEvents(
     events: FetchEventsResult,
     lastFinalisedBlock: number,
-  ): Promise<{
-    proposedEvents: entities.ProposedRootBundle[];
-    disputedEvents: entities.RootBundleDisputed[];
-    canceledEvents: entities.RootBundleCanceled[];
-    executedEvents: entities.RootBundleExecuted[];
-  }> {
+  ): Promise<StoreEventsResult> {
     const { hubPoolRepository } = this;
     const {
       proposedRootBundleEvents,
