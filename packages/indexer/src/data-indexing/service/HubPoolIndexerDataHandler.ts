@@ -9,6 +9,7 @@ import {
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
+import { BundleEventsProcessor } from "../../services";
 
 type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
@@ -33,6 +34,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
     private hubPoolRepository: HubPoolRepository,
+    private bundleProcessor: BundleEventsProcessor,
   ) {
     this.isInitialized = false;
   }
@@ -88,6 +90,7 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
       identifier: this.getDataIdentifier(),
     });
     await this.storeEvents(events, lastFinalisedBlock);
+    await this.bundleProcessor.process();
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Finished processing block range ${this.getDataIdentifier()}`,

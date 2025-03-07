@@ -1,7 +1,6 @@
 import Redis from "ioredis";
 import winston from "winston";
 import { DataSource } from "@repo/indexer-database";
-import { BaseIndexer } from "../generics";
 import {
   BlockRangeInsertType,
   BundleRepository,
@@ -13,57 +12,32 @@ const BLOCKS_PER_BUNDLE = Math.floor(
   BUNDLE_LIVENESS_SECONDS / AVERAGE_SECONDS_PER_BLOCK,
 );
 
-export type BundleConfig = {
-  logger: winston.Logger;
-  redis: Redis | undefined;
-  postgres: DataSource;
-  bundleRepository: BundleRepository;
-};
+export type BundleConfig = {};
 
-/**
- * Error thrown when the processor configuration is malformed
- */
-class ConfigurationMalformedError extends Error {
-  constructor() {
-    super("Processor configuration is malformed");
-    this.name = "ProcessorConfigurationMalformedError";
-  }
-}
+export class BundleEventsProcessor {
+  constructor(
+    private readonly logger: winston.Logger,
+    private readonly bundleRepository: BundleRepository,
+  ) {}
 
-export class BundleEventsProcessor extends BaseIndexer {
-  constructor(private readonly config: BundleConfig) {
-    super(config.logger, "bundle");
-  }
-
-  protected async indexerLogic(): Promise<void> {
+  public async process(): Promise<void> {
     try {
-      this.config.logger.debug({
+      this.logger.debug({
         at: "Indexer#BundleEventsProcessor#indexerLogic",
         message: "Starting bundle events processor",
       });
-      const { logger, bundleRepository } = this.config;
-      await assignBundleToProposedEvent(bundleRepository, logger);
-      await assignDisputeEventToBundle(bundleRepository, logger);
-      await assignCanceledEventToBundle(bundleRepository, logger);
-      await assignBundleRangesToProposal(bundleRepository, logger);
-      await assignExecutionsToBundle(bundleRepository, logger);
-      await assignBundleExecutedStatus(bundleRepository, logger);
-      this.config.logger.debug({
+      await assignBundleToProposedEvent(this.bundleRepository, this.logger);
+      await assignDisputeEventToBundle(this.bundleRepository, this.logger);
+      await assignCanceledEventToBundle(this.bundleRepository, this.logger);
+      await assignBundleRangesToProposal(this.bundleRepository, this.logger);
+      await assignExecutionsToBundle(this.bundleRepository, this.logger);
+      await assignBundleExecutedStatus(this.bundleRepository, this.logger);
+      this.logger.debug({
         at: "Indexer#BundleEventsProcessor#indexerLogic",
         message: "Finished bundle events processor",
       });
     } catch (error) {
       console.log(error);
-    }
-  }
-
-  protected async initialize(): Promise<void> {
-    if (!this.config.postgres) {
-      this.logger.error({
-        at: "Indexer#BundleEventsProcessor#initialize",
-        message: "Postgres connection not provided",
-      });
-      throw new ConfigurationMalformedError();
     }
   }
 }
