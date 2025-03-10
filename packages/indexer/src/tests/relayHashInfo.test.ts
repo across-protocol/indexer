@@ -275,4 +275,149 @@ describe("Test relay hash info aggregation and relay status updates", () => {
     expect(updatedRelayHashInfo!.status).to.equal(entities.RelayStatus.Filled);
     expect(updatedRelayHashInfo!.fillEventId).to.equal(fill.id);
   });
+
+  describe("Test duplicated deposits handling", () => {
+    it("should create a new RelayHashInfo row for a duplicated deposit with the same internalHash", async () => {
+      // Process deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [deposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Verify initial relayHashInfo state
+      const initialRelayHashInfo = await relayHashInfoRepository.findOne({
+        where: { internalHash: "0x123" },
+      });
+      expect(initialRelayHashInfo).to.not.be.null;
+      expect(initialRelayHashInfo!.depositEventId).to.equal(deposit.id);
+
+      // Create duplicate deposit in different block
+      const [duplicatedDeposit] = await depositsFixture.insertDeposits([
+        { internalHash: "0x123", blockNumber: 2 },
+      ]);
+
+      // Process duplicate deposit
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [duplicatedDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Verify final relayHashInfo state
+      const relayRows = await relayHashInfoRepository.find({
+        where: { internalHash: "0x123" },
+        order: { depositEventId: "ASC" },
+      });
+      expect(relayRows!).to.have.lengthOf(2);
+      expect(relayRows[0]!.depositEventId).to.equal(deposit.id);
+      expect(relayRows[1]!.depositEventId).to.equal(duplicatedDeposit.id);
+    });
+
+    it("should create a new RelayHashInfo row for a duplicated deposit even after the original is filled", async () => {
+      // Create original deposit
+      const [originalDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0x456", internalHash: "0x456" },
+      ]);
+
+      // Process deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [originalDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Create fill
+      const [fill] = await fillsFixture.insertFills([
+        { internalHash: "0x456" },
+      ]);
+
+      // Process fill to create filled relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [],
+        fills: [fill],
+        slowFillRequests: [],
+      });
+
+      // Create duplicate deposit in different block
+      const [duplicatedDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0x456", internalHash: "0x456", blockNumber: 2 },
+      ]);
+
+      // Process duplicated deposit
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [duplicatedDeposit!],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Verify final relayHashInfo state
+      const relayRows = await relayHashInfoRepository.find({
+        where: { internalHash: "0x456" },
+        order: { depositEventId: "ASC" },
+      });
+      expect(relayRows!).to.have.lengthOf(2);
+      const originalRelay = relayRows[0]!;
+      const duplicatedRelay = relayRows[1]!;
+      expect(originalRelay.depositEventId).to.equal(originalDeposit.id);
+      expect(originalRelay.fillEventId).to.equal(fill.id);
+      expect(originalRelay.status).to.equal(entities.RelayStatus.Filled);
+      expect(duplicatedRelay.depositEventId).to.equal(duplicatedDeposit!.id);
+      expect(duplicatedRelay.fillEventId).to.be.null;
+      expect(duplicatedRelay.status).to.equal(entities.RelayStatus.Unfilled);
+    });
+
+    it("should create two unfilled RelayHashInfo rows for duplicated deposits and then fill the first one", async () => {
+      // Create original deposit
+      const [originalDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0xabc", internalHash: "0xabc" },
+      ]);
+
+      // Process original deposit to create initial relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [originalDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Create duplicate deposit
+      const [duplicatedDeposit] = await depositsFixture.insertDeposits([
+        { relayHash: "0xabc", internalHash: "0xabc", blockNumber: 2 },
+      ]);
+
+      // Process duplicated deposit
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [duplicatedDeposit],
+        fills: [],
+        slowFillRequests: [],
+      });
+
+      // Create fill
+      const [fill] = await fillsFixture.insertFills([
+        { internalHash: "0xabc" },
+      ]);
+
+      // Process fill to update original relayHashInfo row
+      await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
+        deposits: [],
+        fills: [fill],
+        slowFillRequests: [],
+      });
+
+      // Verify final relayHashInfo state
+      const relayRows = await relayHashInfoRepository.find({
+        where: { internalHash: "0xabc" },
+        order: { depositEventId: "ASC" },
+      });
+      expect(relayRows!).to.have.lengthOf(2);
+      const originalRelay = relayRows[0]!;
+      const duplicatedRelay = relayRows[1]!;
+      expect(originalRelay.depositEventId).to.equal(originalDeposit.id);
+      expect(originalRelay.fillEventId).to.equal(fill.id);
+      expect(originalRelay.status).to.equal(entities.RelayStatus.Filled);
+      expect(duplicatedRelay.depositEventId).to.equal(duplicatedDeposit.id);
+      expect(duplicatedRelay.fillEventId).to.be.null;
+      expect(duplicatedRelay.status).to.equal(entities.RelayStatus.Unfilled);
+    });
+  });
 });
