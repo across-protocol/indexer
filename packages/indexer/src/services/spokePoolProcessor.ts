@@ -27,7 +27,7 @@ export class SpokePoolProcessor {
   constructor(
     private readonly postgres: DataSource,
     private readonly chainId: number,
-    private readonly logger?: winston.Logger,
+    private readonly logger: winston.Logger,
     private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
@@ -148,7 +148,7 @@ export class SpokePoolProcessor {
       });
     });
 
-    this.logger?.debug({
+    this.logger.debug({
       at: "Indexer#SpokePoolProcessor#process",
       message: "System Time Log for SpokePoolProcessor#process",
       spokeChainId: this.chainId,
@@ -414,7 +414,7 @@ export class SpokePoolProcessor {
     insertResults: InsertResult[],
     updateResults: UpdateResult[],
   ) {
-    this.logger?.debug({
+    this.logger.debug({
       at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
       message: `${eventType} events associated with RelayHashInfo`,
       insertedRows: insertResults.reduce(
@@ -449,7 +449,7 @@ export class SpokePoolProcessor {
         const relayHashInfoRepository =
           transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-        this.logger?.warn({
+        this.logger.warn({
           at: "spokePoolProcessor#processDeletedDeposits",
           message: `Processing deleted deposit event with id ${deposit.id}`,
           deletedDepositDetails: {
@@ -481,7 +481,7 @@ export class SpokePoolProcessor {
           if (!fillEventId && !slowFillRequestEventId && !depositRefundTxHash) {
             // There are no other related events then it's safe to delete the row
             await relayHashInfoRepository.delete({ id: relatedRelayRow.id });
-            this.logger?.warn({
+            this.logger.warn({
               at: "spokePoolProcessor#processDeletedDeposits",
               message: `Deleted relay row with id ${relatedRelayRow.id}. No related events.`,
             });
@@ -503,7 +503,7 @@ export class SpokePoolProcessor {
                 { id: relatedRelayRow.id },
                 { depositEventId: null, depositTxHash: null },
               );
-              this.logger?.warn({
+              this.logger.warn({
                 at: "spokePoolProcessor#processDeletedDeposits",
                 message: `Updated relay row with id ${relatedRelayRow.id} to remove reference to deleted deposit event ${deposit.id}.`,
               });
@@ -533,7 +533,7 @@ export class SpokePoolProcessor {
                   depositTxHash: nextMatchingRow.depositTxHash,
                 },
               );
-              this.logger?.warn({
+              this.logger.warn({
                 at: "spokePoolProcessor#processDeletedDeposits",
                 message: `Merged data from relay row with id ${nextMatchingRow.id} into ${relatedRelayRow.id} and deleted the former.`,
               });
@@ -552,7 +552,7 @@ export class SpokePoolProcessor {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
-    this.logger?.debug({
+    this.logger.debug({
       at: "Indexer#SpokePoolProcessor#updateExpiredRelays",
       message: `Updating status for expired relays`,
     });
@@ -572,7 +572,7 @@ export class SpokePoolProcessor {
       .execute();
 
     if ((expiredDeposits.affected ?? 0) > 0) {
-      this.logger?.debug({
+      this.logger.debug({
         at: "Indexer#SpokePoolProcessor#updateExpiredRelays",
         message: `Updated status for ${expiredDeposits.affected} expired relays`,
       });
@@ -590,7 +590,7 @@ export class SpokePoolProcessor {
   private async updateRefundedDepositsStatus(): Promise<
     entities.RelayHashInfo[]
   > {
-    this.logger?.debug({
+    this.logger.debug({
       at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
       message: `Updating status for refunded deposits`,
     });
@@ -703,7 +703,7 @@ export class SpokePoolProcessor {
       });
     }
     if (updatedRows.length > 0) {
-      this.logger?.debug({
+      this.logger.debug({
         at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
         message: `Updated ${updatedRows.length} refunded deposits`,
       });

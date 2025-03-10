@@ -1,11 +1,12 @@
 import { expect } from "chai";
-import { parsePostgresConfig } from "../parseEnv";
+import winston from "winston";
 import {
   createDataSource,
   Repository,
   entities,
   fixtures,
 } from "@repo/indexer-database";
+import { parsePostgresConfig } from "../parseEnv";
 import { SpokePoolProcessor } from "../services/spokePoolProcessor";
 
 describe("Test relay hash info aggregation and relay status updates", () => {
@@ -54,6 +55,9 @@ describe("Test relay hash info aggregation and relay status updates", () => {
     spokePoolProcessor = new SpokePoolProcessor(
       dataSource,
       1, // ChainId - for simplicity we'll use the same processor for all tests
+      winston.createLogger({
+        transports: [new winston.transports.Console()],
+      }),
     );
   });
 
