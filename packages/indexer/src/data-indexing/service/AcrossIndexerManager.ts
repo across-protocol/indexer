@@ -103,8 +103,8 @@ export class AcrossIndexerManager {
           this.swapBeforeBridgeRepository,
           new SpokePoolProcessor(
             this.postgres,
-            this.logger,
             chainId,
+            this.logger,
             this.webhookWriteFn,
           ),
           this.indexerQueuesService,

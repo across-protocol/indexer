@@ -26,8 +26,8 @@ enum SpokePoolEvents {
 export class SpokePoolProcessor {
   constructor(
     private readonly postgres: DataSource,
-    private readonly logger: winston.Logger,
     private readonly chainId: number,
+    private readonly logger: winston.Logger,
     private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
@@ -170,7 +170,7 @@ export class SpokePoolProcessor {
    * @param events An object with stored deposits, fills and slow fill requests
    * @returns A void promise
    */
-  private async assignSpokeEventsToRelayHashInfo(events: {
+  public async assignSpokeEventsToRelayHashInfo(events: {
     deposits: entities.V3FundsDeposited[];
     fills: entities.FilledV3Relay[];
     slowFillRequests: entities.RequestedV3SlowFill[];
@@ -414,15 +414,22 @@ export class SpokePoolProcessor {
     insertResults: InsertResult[],
     updateResults: UpdateResult[],
   ) {
-    this.logger.debug({
-      at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
-      message: `${eventType} events associated with RelayHashInfo`,
-      insertedRows: insertResults.reduce(
-        (acc, res) => acc + res.generatedMaps.length,
-        0,
-      ),
-      updatedRows: updateResults.reduce((acc, res) => acc + res.affected!, 0),
-    });
+    const insertedRows = insertResults.reduce(
+      (acc, res) => acc + res.generatedMaps.length,
+      0,
+    );
+    const updatedRows = updateResults.reduce(
+      (acc, res) => acc + res.affected!,
+      0,
+    );
+    if (insertedRows > 0 || updatedRows > 0) {
+      this.logger.debug({
+        at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
+        message: `${eventType} events associated with RelayHashInfo`,
+        insertedRows,
+        updatedRows,
+      });
+    }
   }
 
   /**
@@ -548,7 +555,7 @@ export class SpokePoolProcessor {
    * Updates the status of expired relays originated from this processor's chain id
    * @returns An array with the updated relays
    */
-  private async updateExpiredRelays(): Promise<entities.RelayHashInfo[]> {
+  public async updateExpiredRelays(): Promise<entities.RelayHashInfo[]> {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
