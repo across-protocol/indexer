@@ -16,7 +16,7 @@ export function filterSaveQueryResults<Entity extends ObjectLiteral>(
 export class BlockchainEventRepository {
   constructor(
     protected postgres: DataSource,
-    protected logger?: winston.Logger,
+    protected logger: winston.Logger,
   ) {}
 
   /**
@@ -131,7 +131,7 @@ export class BlockchainEventRepository {
       !hasChainIdTargetColumn ||
       !hasDeletedAtColumn
     ) {
-      this.logger?.error({
+      this.logger.error({
         at: "BlockchainEventRepository#deleteUnfinalisedEvents",
         message: `Cannot delete events of ${entityMetadata.name} entity`,
         schema: entityMetadata.schema,

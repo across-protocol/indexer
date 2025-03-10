@@ -13,6 +13,11 @@ import { SpokePoolProcessor } from "../services/spokePoolProcessor";
 
 describe("RelayHashInfo Tests", () => {
   // Set up
+  // Tests logger
+  const logger = winston.createLogger({
+    transports: [new winston.transports.Console()],
+  });
+
   // DataSource
   let dataSource: DataSource;
 
@@ -41,7 +46,7 @@ describe("RelayHashInfo Tests", () => {
 
     // Instantiate repositories
     relayHashInfoRepository = dataSource.getRepository(entities.RelayHashInfo);
-    spokePoolRepository = new SpokePoolRepository(dataSource);
+    spokePoolRepository = new SpokePoolRepository(dataSource, logger);
 
     // Instantiate fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
@@ -62,9 +67,7 @@ describe("RelayHashInfo Tests", () => {
     spokePoolProcessor = new SpokePoolProcessor(
       dataSource,
       1, // ChainId - for simplicity we'll use the same processor for all tests
-      winston.createLogger({
-        transports: [new winston.transports.Console()],
-      }),
+      logger,
     );
   });
 
