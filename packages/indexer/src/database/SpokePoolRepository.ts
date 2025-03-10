@@ -6,7 +6,7 @@ import * as utils from "../utils";
 export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
     postgres: DataSource,
-    logger?: winston.Logger,
+    logger: winston.Logger,
     private chunkSize = 100,
   ) {
     super(postgres, logger);
