@@ -18,7 +18,10 @@ export type Config = {
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
+  maxBlockRangeSize?: number;
+  coingeckoApiKey?: string;
 };
+
 export type RedisConfig = {
   host: string;
   port: number;
@@ -29,11 +32,12 @@ export type ProviderConfig = [providerUrl: string, chainId: number];
 export type Env = Record<string, string | undefined>;
 
 export function parseRedisConfig(env: Env): RedisConfig {
-  assert(env.REDIS_HOST, "requires REDIS_HOST");
-  assert(env.REDIS_PORT, "requires REDIS_PORT");
-  const port = parseNumber(env.REDIS_PORT);
+  const { REDIS_HOST, REDIS_PORT } = env;
+  assert(REDIS_HOST, "requires REDIS_HOST");
+  assert(REDIS_PORT, "requires REDIS_PORT");
+  const port = parseNumber(REDIS_PORT);
   return {
-    host: env.REDIS_HOST,
+    host: REDIS_HOST,
     port,
     // @dev: this retry config is needed for bullmq workers
     maxRetriesPerRequest: null,
@@ -56,7 +60,7 @@ function parseNumber(value: string): number {
   return s.create(value, stringToInt);
 }
 
-function parsePostgresConfig(
+export function parsePostgresConfig(
   env: Record<string, string | undefined>,
 ): DatabaseConfig {
   assert(env.DATABASE_HOST, "requires DATABASE_HOST");
@@ -179,6 +183,9 @@ export function envToConfig(env: Env): Config {
   const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
     ? env.ENABLE_BUNDLE_BUILDER === "true"
     : true;
+  const maxBlockRangeSize = env.MAX_BLOCK_RANGE_SIZE
+    ? parseInt(env.MAX_BLOCK_RANGE_SIZE)
+    : undefined;
   spokePoolChainsEnabled.forEach((chainId) => {
     const providerConfigs = allProviderConfigs.filter(
       (provider) => provider[1] == chainId,
@@ -193,6 +200,8 @@ export function envToConfig(env: Env): Config {
     enabledWebhookRequestWorkers: true,
     clients: parseWebhookClientsFromString(env.WEBHOOK_CLIENTS ?? "[]"),
   };
+  const coingeckoApiKey = env.COINGECKO_API_KEY;
+
   return {
     redisConfig,
     postgresConfig,
@@ -203,5 +212,7 @@ export function envToConfig(env: Env): Config {
     enableBundleIncludedEventsService,
     enableBundleBuilder,
     webhookConfig,
+    maxBlockRangeSize,
+    coingeckoApiKey,
   };
 }

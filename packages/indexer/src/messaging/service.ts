@@ -3,6 +3,8 @@ import { Queue, JobsOptions, BulkJobOptions } from "bullmq";
 
 export enum IndexerQueues {
   IntegratorId = "IntegratorId",
+  PriceQuery = "PriceQuery",
+  SwapMessage = "SwapMessage",
 }
 
 export class IndexerQueuesService {
@@ -19,8 +21,9 @@ export class IndexerQueuesService {
         (this.queues[queueName] = new Queue(queueName, {
           connection: this.connection,
           defaultJobOptions: {
-            attempts: Number.MAX_SAFE_INTEGER,
+            attempts: 2,
             removeOnComplete: true,
+            backoff: { type: "fixed", delay: 10 * 1000 },
           },
         })),
     );

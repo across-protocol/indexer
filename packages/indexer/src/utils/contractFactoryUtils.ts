@@ -132,7 +132,9 @@ export class SpokePoolClientFactory extends ContractClientFactory<
     fromBlock?: number,
     toBlock?: number,
     overrides?: {
+      disableQuoteBlockLookup?: boolean;
       hubPoolClient: clients.HubPoolClient;
+      maxBlockLookback?: number;
     },
   ): clients.SpokePoolClient {
     const hubPoolClient =
@@ -143,14 +145,18 @@ export class SpokePoolClientFactory extends ContractClientFactory<
         toBlock,
       );
 
+    const maxBlockLookBack =
+      overrides?.maxBlockLookback ?? getMaxBlockLookBack(chainId);
+
     return getSpokeClient({
       provider: this.retryProviderFactory.getProviderForChainId(chainId),
       logger: this.logger,
-      maxBlockLookBack: getMaxBlockLookBack(chainId),
+      maxBlockLookBack,
       chainId,
       hubPoolClient,
       fromBlock,
       toBlock,
+      disableQuoteBlockLookup: overrides?.disableQuoteBlockLookup,
     });
   }
 }

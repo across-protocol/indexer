@@ -9,7 +9,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 86400,
   [CHAIN_IDs.BLAST]: 86400,
   [CHAIN_IDs.BOBA]: 86400,
-  [CHAIN_IDs.CHER]: 86400,
+  [CHAIN_IDs.DOCTOR_WHO]: 86400,
   [CHAIN_IDs.INK]: 86400,
   [CHAIN_IDs.LINEA]: 57600,
   [CHAIN_IDs.LISK]: 86400,
@@ -19,9 +19,10 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 86400,
   [CHAIN_IDs.REDSTONE]: 86400,
   [CHAIN_IDs.SCROLL]: 57600,
+  [CHAIN_IDs.SONEIUM]: 86400,
+  [CHAIN_IDs.WORLD_CHAIN]: 86400,
   [CHAIN_IDs.ZK_SYNC]: 172800,
   [CHAIN_IDs.ZORA]: 86400,
-  [CHAIN_IDs.WORLD_CHAIN]: 86400,
 };
 
 export function getNoTtlBlockDistance(chainId: number) {
@@ -43,7 +44,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 120,
   [CHAIN_IDs.BLAST]: 120,
   [CHAIN_IDs.BOBA]: 0,
-  [CHAIN_IDs.CHER]: 120,
+  [CHAIN_IDs.DOCTOR_WHO]: 120,
   [CHAIN_IDs.INK]: 120,
   [CHAIN_IDs.LISK]: 120,
   [CHAIN_IDs.LINEA]: 100, // Linea has a soft-finality of 1 block. This value is padded - but at 3s/block the padding is 5 minutes
@@ -53,9 +54,10 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 256,
   [CHAIN_IDs.REDSTONE]: 120,
   [CHAIN_IDs.SCROLL]: 100,
+  [CHAIN_IDs.SONEIUM]: 120,
+  [CHAIN_IDs.WORLD_CHAIN]: 120,
   [CHAIN_IDs.ZK_SYNC]: 512,
   [CHAIN_IDs.ZORA]: 120,
-  [CHAIN_IDs.WORLD_CHAIN]: 120,
 
   // Testnets:
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 0,
@@ -80,10 +82,10 @@ export const getChainCacheFollowDistance = (chainId: number) => {
 
 // Default is 10K, add only needed overrides
 const MAX_BLOCK_LOOK_BACK = {
-  [CHAIN_IDs.MAINNET]: 5000,
   [CHAIN_IDs.BOBA]: 4990,
-  [CHAIN_IDs.REDSTONE]: 500, // TODO: Update when Quicknode is enable as a provider
   [CHAIN_IDs.LINEA]: 5000,
+  [CHAIN_IDs.MAINNET]: 7000,
+  [CHAIN_IDs.REDSTONE]: 9000,
   [CHAIN_IDs.SCROLL]: 3000,
 };
 
@@ -109,7 +111,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.BASE]: 2,
   [CHAIN_IDs.BLAST]: 2,
   [CHAIN_IDs.BOBA]: 2,
-  [CHAIN_IDs.CHER]: 2,
+  [CHAIN_IDs.DOCTOR_WHO]: 2,
   [CHAIN_IDs.INK]: 1,
   [CHAIN_IDs.LINEA]: 3,
   [CHAIN_IDs.LISK]: 2,
@@ -119,6 +121,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 2,
   [CHAIN_IDs.REDSTONE]: 2,
   [CHAIN_IDs.SCROLL]: 3,
+  [CHAIN_IDs.SONEIUM]: 2,
   [CHAIN_IDs.WORLD_CHAIN]: 2,
   [CHAIN_IDs.ZK_SYNC]: 1,
   [CHAIN_IDs.ZORA]: 2,

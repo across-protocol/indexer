@@ -2,15 +2,24 @@ import * as across from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import { Logger } from "winston";
 
+import { entities, DataSource } from "@repo/indexer-database";
+
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { RedisCache } from "../../redis/redisCache";
+
+const DEFAULT_MAX_BLOCK_RANGE_SIZE = 50_000;
 
 export type ConstructorConfig = {
   /** Time to wait before going to the next block ranges. */
   loopWaitTimeSeconds: number;
   /** Distance from the latest block to consider onchain data finalised. */
   finalisedBlockBufferDistance: number;
+  /**
+   * Maximum block range size to process in a single call. This is mainly for debugging purposes.
+   * If not set, the max block range size is set to {@link DEFAULT_MAX_BLOCK_RANGE_SIZE}.
+   */
+  maxBlockRangeSize?: number;
 };
 
 type BlockRangeResult = {
@@ -32,8 +41,8 @@ export class Indexer {
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
     private rpcProvider: ethers.providers.JsonRpcProvider,
-    private redisCache: RedisCache,
     private logger: Logger,
+    private dataSource: DataSource,
   ) {
     this.stopRequested = false;
   }
@@ -61,11 +70,13 @@ export class Indexer {
           await this.dataHandler.processBlockRange(
             blockRangeResult.blockRange,
             blockRangeResult.lastFinalisedBlock,
+            blockRangeResult.isBackfilling,
           );
-          await this.redisCache.set(
-            this.getLastFinalisedBlockCacheKey(),
-            blockRangeResult.lastFinalisedBlock,
-          );
+          // When the block range is processed successfully and the indexer is ready to start
+          // processing the next block range, save the progress in the database. The most important
+          // information to save is the last finalised block, as this is the block that will be used
+          // as the starting point for the next block range.
+          await this.saveProgressInDatabase(blockRangeResult);
         }
         blockRangeProcessedSuccessfully = true;
       } catch (error) {
@@ -76,6 +87,7 @@ export class Indexer {
           blockRangeResult,
           dataIdentifier: this.dataHandler.getDataIdentifier(),
           error,
+          errorJson: JSON.stringify(error),
         });
         blockRangeProcessedSuccessfully = false;
       } finally {
@@ -104,6 +116,18 @@ export class Indexer {
     this.stopRequested = true;
   }
 
+  private async saveProgressInDatabase(blockRangeResult: BlockRangeResult) {
+    return this.dataSource.getRepository(entities.IndexerProgressInfo).upsert(
+      {
+        id: this.dataHandler.getDataIdentifier(),
+        lastFinalisedBlock: blockRangeResult.lastFinalisedBlock,
+        latestBlockNumber: blockRangeResult.latestBlockNumber,
+        isBackfilling: blockRangeResult.isBackfilling,
+      },
+      { conflictPaths: ["id"], skipUpdateIfNoValuesChanged: true },
+    );
+  }
+
   /**
    * Gets the next block range to process.
    * `from` block is the last finalised block stored in redis + 1 or the start block number for the data handler.
@@ -112,14 +136,18 @@ export class Indexer {
    *  i.e no new blocks have been mined, then the block range is `undefined`.
    */
   private async getBlockRange(): Promise<BlockRangeResult> {
-    const lastBlockFinalisedStored = await this.redisCache.get<number>(
-      this.getLastFinalisedBlockCacheKey(),
-    );
+    const databaseProgress = await this.dataSource
+      .getRepository(entities.IndexerProgressInfo)
+      .findOne({
+        where: {
+          id: this.dataHandler.getDataIdentifier(),
+        },
+      });
     const latestBlockNumber = await this.rpcProvider.getBlockNumber();
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
 
-    if (lastBlockFinalisedStored === lastFinalisedBlockOnChain) {
+    if (databaseProgress?.latestBlockNumber === latestBlockNumber) {
       return {
         latestBlockNumber,
         blockRange: undefined,
@@ -127,25 +155,32 @@ export class Indexer {
         isBackfilling: false,
       };
     }
-    const fromBlock = lastBlockFinalisedStored
-      ? lastBlockFinalisedStored + 1
+
+    const fromBlock = databaseProgress?.lastFinalisedBlock
+      ? databaseProgress.lastFinalisedBlock + 1
       : this.dataHandler.getStartIndexingBlockNumber();
-    const toBlock = Math.min(fromBlock + 50_000, latestBlockNumber);
+    const toBlock = Math.min(
+      fromBlock +
+        (this.config.maxBlockRangeSize ?? DEFAULT_MAX_BLOCK_RANGE_SIZE),
+      latestBlockNumber,
+    );
     const blockRange: BlockRange = { from: fromBlock, to: toBlock };
     const lastFinalisedBlockInBlockRange = Math.min(
       blockRange.to,
       lastFinalisedBlockOnChain,
     );
-    const isBackfilling = latestBlockNumber - blockRange.to > 100_000;
+
+    // If we specifically set the max block range then do not consider this
+    // run to be a backfilling run
+    const isBackfilling =
+      !this.config.maxBlockRangeSize &&
+      latestBlockNumber - blockRange.to > 100_000;
+
     return {
       latestBlockNumber,
       blockRange,
       lastFinalisedBlock: lastFinalisedBlockInBlockRange,
       isBackfilling,
     };
-  }
-
-  private getLastFinalisedBlockCacheKey() {
-    return `indexer:lastBlockFinalised:${this.dataHandler.getDataIdentifier()}`;
   }
 }

@@ -1,9 +1,25 @@
 import "reflect-metadata";
-import { DataSource, LessThan, Not, In } from "typeorm";
+import {
+  DataSource,
+  Repository,
+  InsertResult,
+  UpdateResult,
+  In,
+  LessThan,
+  Not,
+} from "typeorm";
 import * as entities from "./entities";
 import { DatabaseConfig } from "./model";
 
-export { DataSource, LessThan, Not, In };
+export {
+  DataSource,
+  Repository,
+  InsertResult,
+  UpdateResult,
+  In,
+  LessThan,
+  Not,
+};
 
 export const createDataSource = (config: DatabaseConfig): DataSource => {
   return new DataSource({
@@ -29,6 +45,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RequestedV3SlowFill,
       entities.TokensBridged,
       entities.V3FundsDeposited,
+      entities.SwapBeforeBridge,
       // Bundle
       entities.Bundle,
       entities.BundleBlockRange,
@@ -39,6 +56,10 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // Webhooks
       entities.WebhookRequest,
       entities.WebhookClient,
+      // Indexer
+      entities.IndexerProgressInfo,
+      // Historic Price
+      entities.HistoricPrice,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

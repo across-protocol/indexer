@@ -1,15 +1,25 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_v3FundsDeposited_depositId_originChainId", [
-  "depositId",
+@Unique("UK_v3FundsDeposited_relayHash_block_logIdx", [
+  "relayHash",
+  "blockNumber",
+  "logIndex",
+])
+@Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
+@Index("IX_v3FundsDeposited_finalised", ["finalised"])
+@Index("IX_deposits_block_chain_logIndex", [
+  "blockNumber",
   "originChainId",
+  "logIndex",
 ])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
@@ -18,8 +28,8 @@ export class V3FundsDeposited {
   @Column()
   relayHash: string;
 
-  @Column()
-  depositId: number;
+  @Column({ type: "decimal" })
+  depositId: string;
 
   @Column()
   originChainId: number;
@@ -54,6 +64,12 @@ export class V3FundsDeposited {
   @Column()
   message: string;
 
+  @Column({ nullable: true })
+  messageHash?: string;
+
+  @Column()
+  internalHash: string;
+
   @Column()
   exclusiveRelayer: string;
 
@@ -65,9 +81,6 @@ export class V3FundsDeposited {
 
   @Column()
   quoteTimestamp: Date;
-
-  @Column()
-  quoteBlockNumber: number;
 
   @Column({ nullable: true })
   integratorId?: string;
@@ -92,4 +105,7 @@ export class V3FundsDeposited {
 
   @Column({ nullable: true })
   blockTimestamp?: Date;
+
+  @DeleteDateColumn({ nullable: true })
+  deletedAt?: Date;
 }
