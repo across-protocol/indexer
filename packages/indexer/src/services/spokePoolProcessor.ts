@@ -414,15 +414,22 @@ export class SpokePoolProcessor {
     insertResults: InsertResult[],
     updateResults: UpdateResult[],
   ) {
-    this.logger.debug({
-      at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
-      message: `${eventType} events associated with RelayHashInfo`,
-      insertedRows: insertResults.reduce(
-        (acc, res) => acc + res.generatedMaps.length,
-        0,
-      ),
-      updatedRows: updateResults.reduce((acc, res) => acc + res.affected!, 0),
-    });
+    const insertedRows = insertResults.reduce(
+      (acc, res) => acc + res.generatedMaps.length,
+      0,
+    );
+    const updatedRows = updateResults.reduce(
+      (acc, res) => acc + res.affected!,
+      0,
+    );
+    if (insertedRows > 0 || updatedRows > 0) {
+      this.logger.debug({
+        at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
+        message: `${eventType} events associated with RelayHashInfo`,
+        insertedRows,
+        updatedRows,
+      });
+    }
   }
 
   /**
