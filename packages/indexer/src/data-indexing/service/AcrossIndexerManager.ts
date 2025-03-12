@@ -24,6 +24,8 @@ import {
   getLoopWaitTimeSeconds,
 } from "./constants";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
+import { BundleEventsProcessor } from "../../services";
+import { BundleRepository } from "../../database/BundleRepository";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;
@@ -40,7 +42,7 @@ export class AcrossIndexerManager {
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
-    private redisCache: RedisCache,
+    private bundleRepository: BundleRepository,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
@@ -71,6 +73,7 @@ export class AcrossIndexerManager {
       this.configStoreClientFactory,
       this.hubPoolClientFactory,
       this.hubPoolRepository,
+      new BundleEventsProcessor(this.logger, this.bundleRepository),
     );
     this.hubPoolIndexer = new Indexer(
       {
@@ -103,8 +106,8 @@ export class AcrossIndexerManager {
           this.swapBeforeBridgeRepository,
           new SpokePoolProcessor(
             this.postgres,
-            this.logger,
             chainId,
+            this.logger,
             this.webhookWriteFn,
           ),
           this.indexerQueuesService,

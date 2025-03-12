@@ -26,8 +26,8 @@ enum SpokePoolEvents {
 export class SpokePoolProcessor {
   constructor(
     private readonly postgres: DataSource,
-    private readonly logger: winston.Logger,
     private readonly chainId: number,
+    private readonly logger: winston.Logger,
     private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
@@ -170,7 +170,7 @@ export class SpokePoolProcessor {
    * @param events An object with stored deposits, fills and slow fill requests
    * @returns A void promise
    */
-  private async assignSpokeEventsToRelayHashInfo(events: {
+  public async assignSpokeEventsToRelayHashInfo(events: {
     deposits: entities.V3FundsDeposited[];
     fills: entities.FilledV3Relay[];
     slowFillRequests: entities.RequestedV3SlowFill[];
@@ -414,15 +414,22 @@ export class SpokePoolProcessor {
     insertResults: InsertResult[],
     updateResults: UpdateResult[],
   ) {
-    this.logger.debug({
-      at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
-      message: `${eventType} events associated with RelayHashInfo`,
-      insertedRows: insertResults.reduce(
-        (acc, res) => acc + res.generatedMaps.length,
-        0,
-      ),
-      updatedRows: updateResults.reduce((acc, res) => acc + res.affected!, 0),
-    });
+    const insertedRows = insertResults.reduce(
+      (acc, res) => acc + res.generatedMaps.length,
+      0,
+    );
+    const updatedRows = updateResults.reduce(
+      (acc, res) => acc + res.affected!,
+      0,
+    );
+    if (insertedRows > 0 || updatedRows > 0) {
+      this.logger.debug({
+        at: "Indexer#SpokePoolProcessor#assignSpokeEventsToRelayHashInfo",
+        message: `${eventType} events associated with RelayHashInfo`,
+        insertedRows,
+        updatedRows,
+      });
+    }
   }
 
   /**
@@ -441,7 +448,7 @@ export class SpokePoolProcessor {
    * @param deletedDeposits - List of deleted deposit events.
    * @returns A void promise
    */
-  private async processDeletedDeposits(
+  public async processDeletedDeposits(
     deletedDeposits: entities.V3FundsDeposited[],
   ) {
     for (const deposit of deletedDeposits) {
@@ -548,7 +555,7 @@ export class SpokePoolProcessor {
    * Updates the status of expired relays originated from this processor's chain id
    * @returns An array with the updated relays
    */
-  private async updateExpiredRelays(): Promise<entities.RelayHashInfo[]> {
+  public async updateExpiredRelays(): Promise<entities.RelayHashInfo[]> {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
@@ -582,12 +589,11 @@ export class SpokePoolProcessor {
   }
 
   /**
-   * Calls the database to find expired relays and looks for related
-   * refunds in the bundle events table.
+   * Calls the database to find relays with related refunds in the bundle events table.
    * When a matching refund is found, updates the relay status to refunded
    * @returns An array with the updated relays
    */
-  private async updateRefundedDepositsStatus(): Promise<
+  public async updateRefundedDepositsStatus(): Promise<
     entities.RelayHashInfo[]
   > {
     this.logger.debug({
@@ -600,24 +606,16 @@ export class SpokePoolProcessor {
     const refundEvents = (await bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
-      .innerJoin(
-        entities.RelayHashInfo,
-        "rhi",
-        "be.relayHash = rhi.internalHash",
-      )
       .innerJoinAndMapOne(
         "be.deposit",
         entities.V3FundsDeposited,
         "dep",
-        "rhi.depositEventId = dep.id AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
+        "be.relayHash = dep.internalHash AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
       )
       .where("be.type = :expiredDeposit", {
         expiredDeposit: entities.BundleEventType.ExpiredDeposit,
       })
-      .andWhere("rhi.status = :expired", {
-        expired: entities.RelayStatus.Expired,
-      })
-      .andWhere("rhi.originChainId = :chainId", { chainId: this.chainId })
+      .andWhere("dep.originChainId = :chainId", { chainId: this.chainId })
       .orderBy("be.bundleId", "DESC")
       .limit(100)
       .getMany()) as (entities.BundleEvent & {
@@ -685,6 +683,12 @@ export class SpokePoolProcessor {
           },
         });
         if (rowToUpdate) {
+          if (rowToUpdate.status === entities.RelayStatus.Filled) {
+            this.logger.warn({
+              at: "SpokePoolProcessor#updateRefundedDepositsStatus",
+              message: `Found a filled relay with id ${rowToUpdate.id} that is being unexpectedly refunded.`,
+            });
+          }
           const updatedRow = await relayHashInfoRepo
             .createQueryBuilder()
             .update()
