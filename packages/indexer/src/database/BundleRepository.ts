@@ -75,6 +75,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("crb.bundle", "b")
       .where("b.cancelationId IS NULL")
+      .andWhere("crb.finalised = true")
       .getMany();
   }
 
@@ -100,6 +101,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("drb.bundle", "b")
       .where("b.disputeId IS NULL")
+      .andWhere("drb.finalised = true")
       .getMany();
   }
 
@@ -128,6 +130,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("prb.bundle", "b")
       .where("b.proposalId IS NULL")
+      .andWhere("prb.finalised = true")
       .getMany();
   }
 
@@ -172,6 +175,7 @@ export class BundleRepository extends utils.BaseRepository {
         "rbe.transactionIndex",
       ])
       .where("be.executionId IS NULL")
+      .andWhere("rbe.finalised = true")
       .orderBy("rbe.blockNumber", "ASC")
       .getMany();
   }
@@ -197,6 +201,7 @@ export class BundleRepository extends utils.BaseRepository {
         where: [
           {
             blockNumber: LessThan(blockNumber),
+            finalised: true,
             bundle: {
               status: Not(
                 In([
@@ -209,6 +214,7 @@ export class BundleRepository extends utils.BaseRepository {
           {
             blockNumber,
             transactionIndex: LessThan(transactionIndex),
+            finalised: true,
             bundle: {
               status: Not(
                 In([
@@ -222,6 +228,7 @@ export class BundleRepository extends utils.BaseRepository {
             blockNumber,
             transactionIndex,
             logIndex: LessThan(logIndex),
+            finalised: true,
             bundle: {
               status: Not(
                 In([

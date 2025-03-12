@@ -97,7 +97,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new HubPoolRepository(postgres, logger),
     new SpokePoolRepository(postgres, logger),
     new SwapBeforeBridgeRepository(postgres, logger),
-    redisCache,
+    new BundleRepository(postgres, logger, true),
     indexerQueuesService,
     write,
   );

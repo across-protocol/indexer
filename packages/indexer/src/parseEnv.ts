@@ -14,7 +14,6 @@ export type Config = {
   hubChainId: number;
   spokePoolChainsEnabled: number[];
   enableHubPoolIndexer: boolean;
-  enableBundleEventsProcessor: boolean;
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
@@ -173,9 +172,6 @@ export function envToConfig(env: Env): Config {
   const enableHubPoolIndexer = env.ENABLE_HUBPOOL_INDEXER
     ? env.ENABLE_HUBPOOL_INDEXER === "true"
     : true;
-  const enableBundleEventsProcessor = env.ENABLE_BUNDLE_EVENTS_PROCESSOR
-    ? env.ENABLE_BUNDLE_EVENTS_PROCESSOR === "true"
-    : true;
   const enableBundleIncludedEventsService =
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
       ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
@@ -208,7 +204,6 @@ export function envToConfig(env: Env): Config {
     hubChainId,
     spokePoolChainsEnabled,
     enableHubPoolIndexer,
-    enableBundleEventsProcessor,
     enableBundleIncludedEventsService,
     enableBundleBuilder,
     webhookConfig,
