@@ -90,6 +90,8 @@ export class Indexer {
           errorJson: JSON.stringify(error),
         });
         blockRangeProcessedSuccessfully = false;
+        // Introduce an additional delay if errors are encountered
+        await across.utils.delay(30);
       } finally {
         if (!blockRangeResult?.isBackfilling) {
           await across.utils.delay(this.config.loopWaitTimeSeconds);
