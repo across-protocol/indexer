@@ -12,6 +12,7 @@ export * from "./evm/RequestedSpeedUpV3Deposit";
 export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
+export * from "./evm/SwapBeforeBridge";
 
 // Others
 export * from "./Bundle";
@@ -22,3 +23,6 @@ export * from "./RelayHashInfo";
 
 export * from "./WebhookRequest";
 export * from "./WebhookClient";
+
+export * from "./IndexerProgressInfo";
+export * from "./HistoricPrice";

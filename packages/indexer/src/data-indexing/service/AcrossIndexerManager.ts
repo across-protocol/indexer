@@ -23,6 +23,9 @@ import {
   getFinalisedBlockBufferDistance,
   getLoopWaitTimeSeconds,
 } from "./constants";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
+import { BundleEventsProcessor } from "../../services";
+import { BundleRepository } from "../../database/BundleRepository";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;
@@ -38,7 +41,8 @@ export class AcrossIndexerManager {
     private retryProvidersFactory: RetryProvidersFactory,
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
-    private redisCache: RedisCache,
+    private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
+    private bundleRepository: BundleRepository,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
@@ -69,6 +73,7 @@ export class AcrossIndexerManager {
       this.configStoreClientFactory,
       this.hubPoolClientFactory,
       this.hubPoolRepository,
+      new BundleEventsProcessor(this.logger, this.bundleRepository),
     );
     this.hubPoolIndexer = new Indexer(
       {
@@ -79,8 +84,8 @@ export class AcrossIndexerManager {
       },
       hubPoolIndexerDataHandler,
       this.retryProvidersFactory.getProviderForChainId(this.config.hubChainId),
-      this.redisCache,
       this.logger,
+      this.postgres,
     );
 
     return this.hubPoolIndexer.start();
@@ -98,10 +103,11 @@ export class AcrossIndexerManager {
           this.hubPoolClientFactory,
           this.spokePoolClientFactory,
           this.spokePoolRepository,
+          this.swapBeforeBridgeRepository,
           new SpokePoolProcessor(
             this.postgres,
-            this.logger,
             chainId,
+            this.logger,
             this.webhookWriteFn,
           ),
           this.indexerQueuesService,
@@ -111,11 +117,12 @@ export class AcrossIndexerManager {
             loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
             finalisedBlockBufferDistance:
               getFinalisedBlockBufferDistance(chainId),
+            maxBlockRangeSize: this.config.maxBlockRangeSize,
           },
           spokePoolIndexerDataHandler,
           this.retryProvidersFactory.getProviderForChainId(chainId),
-          this.redisCache,
           this.logger,
+          this.postgres,
         );
         return spokePoolIndexer;
       },

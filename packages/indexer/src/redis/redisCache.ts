@@ -8,7 +8,7 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
     if (result === null) return result;
     return JSON.parse(result);
   }
-  set<ObjectType, OverrideType>(
+  set<ObjectType, _OverrideType>(
     key: string,
     value: ObjectType,
     ttl?: number,

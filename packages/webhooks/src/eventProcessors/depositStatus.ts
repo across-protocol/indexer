@@ -13,7 +13,7 @@ import { WebhookClientRepository } from "../database/webhookClientRepository";
 export const DepositStatusEvent = ss.object({
   originChainId: ss.number(),
   depositTxHash: ss.string(),
-  depositId: ss.number(),
+  depositId: ss.string(),
   status: ss.string(),
 });
 export type DepositStatusEvent = ss.Infer<typeof DepositStatusEvent>;
@@ -61,7 +61,9 @@ export class DepositStatusProcessor implements IEventProcessor {
       ),
     );
     const clientsMap = clients
-      .filter((client) => client !== undefined)
+      .filter(
+        (client): client is entities.WebhookClient => client !== undefined,
+      )
       .reduce(
         (acc, client) => {
           acc[client.id] = client;
@@ -76,7 +78,14 @@ export class DepositStatusProcessor implements IEventProcessor {
       if (client) {
         this.notify({
           url: hook.url,
-          data: { ...event, webhookRequestId: hook.id },
+          data: {
+            ...event,
+            depositId:
+              typeof event.depositId === "string"
+                ? parseInt(event.depositId)
+                : event.depositId,
+            webhookRequestId: hook.id,
+          },
           apiKey: client.apiKey,
         });
       } else {

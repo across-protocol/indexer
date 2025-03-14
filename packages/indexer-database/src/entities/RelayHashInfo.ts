@@ -13,6 +13,8 @@ import {
 import { V3FundsDeposited } from "./evm/V3FundsDeposited";
 import { FilledV3Relay } from "./evm/FilledV3Relay";
 import { RequestedV3SlowFill } from "./evm/RequestedV3SlowFill";
+import { HistoricPrice } from "./HistoricPrice";
+import { SwapBeforeBridge } from "./evm/SwapBeforeBridge";
 
 export enum RelayStatus {
   Unfilled = "unfilled",
@@ -24,18 +26,29 @@ export enum RelayStatus {
 }
 
 @Entity()
-@Unique("UK_relayHashInfo_relayHash", ["relayHash"])
+@Unique("UK_relayHashInfo_internalHash_depositEvent", [
+  "internalHash",
+  "depositEventId",
+])
 @Index("IX_rhi_originChainId_depositId", ["originChainId", "depositId"])
 @Index("IX_rhi_depositTxHash", ["depositTxHash"])
+@Index("IX_rhi_origin_deadline_status", [
+  "originChainId",
+  "fillDeadline",
+  "status",
+])
 export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   relayHash: string;
 
   @Column()
-  depositId: number;
+  internalHash: string;
+
+  @Column({ type: "decimal" })
+  depositId: string;
 
   @Column()
   originChainId: number;
@@ -43,11 +56,11 @@ export class RelayHashInfo {
   @Column()
   destinationChainId: number;
 
-  @Column({ nullable: true })
-  depositTxHash: string;
+  @Column({ type: "varchar", nullable: true })
+  depositTxHash: string | null;
 
   @Column({ nullable: true })
-  depositEventId: number;
+  depositEventId: number | null;
 
   @OneToOne(() => V3FundsDeposited, { nullable: true })
   @JoinColumn({
@@ -79,6 +92,16 @@ export class RelayHashInfo {
   })
   slowFillRequestEvent: RequestedV3SlowFill;
 
+  @Column({ nullable: true })
+  swapBeforeBridgeEventId: number;
+
+  @OneToOne(() => SwapBeforeBridge, { nullable: true })
+  @JoinColumn({
+    name: "swapBeforeBridgeEventId",
+    foreignKeyConstraintName: "FK_relayHashInfo_swapBeforeBridgeEventId",
+  })
+  swapBeforeBridgeEvent: SwapBeforeBridge;
+
   @Column()
   fillDeadline: Date;
 
@@ -88,8 +111,24 @@ export class RelayHashInfo {
   @Column({ nullable: true })
   depositRefundTxHash: string;
 
+  // swap vars
+  @Column({ nullable: true, type: "decimal" })
+  swapTokenPriceUsd: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  swapFeeUsd: string;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true, type: "decimal" })
+  bridgeFeeUsd: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  inputPriceUsd: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  outputPriceUsd: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

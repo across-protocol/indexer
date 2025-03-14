@@ -1,0 +1,35 @@
+services:
+    # Indexer Service
+  indexer-scraper-e2e:
+    build:
+      context: .
+    container_name: indexer_service_e2e
+    volumes:
+      - .:/usr/src/app
+      - indexer-e2e-node-modules:/usr/src/app/node_modules
+    command: [sh, -c, "pnpm build && pnpm db:indexer-database:migrate:run && pnpm test"]
+    env_file:
+      - .env.test
+    tty: true
+    depends_on:
+      - postgres
+
+  # PostgreSQL Service
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres_e2e
+    env_file:
+      - .env.test
+    environment:
+      TZ: GMT
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - indexer-e2e-pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+volumes:
+  indexer-e2e-node-modules:
+  indexer-e2e-pgdata:

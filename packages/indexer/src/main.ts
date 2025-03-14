@@ -17,8 +17,11 @@ import {
 import { BundleRepository } from "./database/BundleRepository";
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
+import { PriceWorker } from "./messaging/priceWorker";
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
+import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+import { SwapWorker } from "./messaging/swapWorker";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -93,7 +96,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     new HubPoolRepository(postgres, logger),
     new SpokePoolRepository(postgres, logger),
-    redisCache,
+    new SwapBeforeBridgeRepository(postgres, logger),
+    new BundleRepository(postgres, logger, true),
     indexerQueuesService,
     write,
   );
@@ -116,6 +120,19 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     retryProvidersFactory,
   );
+  const priceWorker = new PriceWorker(redis, postgres, logger, {
+    coingeckoApiKey: config.coingeckoApiKey,
+  });
+
+  const swapWorker = new SwapWorker(
+    redis,
+    postgres,
+    retryProvidersFactory,
+    logger,
+    {
+      coingeckoApiKey: config.coingeckoApiKey,
+    },
+  );
 
   let exitRequested = false;
   process.on("SIGINT", () => {
@@ -125,10 +142,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
       });
       integratorIdWorker.close();
+      priceWorker.close();
+      swapWorker.close();
       acrossIndexerManager.stopGracefully();
       bundleServicesManager.stop();
     } else {
       integratorIdWorker.close();
+      swapWorker.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();

@@ -8,6 +8,7 @@ import {
   Not,
   In,
 } from "@repo/indexer-database";
+import { getInternalHash } from "../utils/spokePoolUtils";
 
 export type BlockRangeInsertType = {
   bundleId: number;
@@ -31,6 +32,14 @@ export type PickRangeType<
   T,
   "blockNumber" | "transactionHash" | "logIndex" | "transactionIndex" | "id"
 >;
+
+type BundleEventRow = {
+  bundleId: number;
+  relayHash: string;
+  eventBlockNumber: number;
+  eventLogIndex: number;
+  type: entities.BundleEventType;
+};
 
 /**
  * An abstraction class for interacting with the database for bundle-related operations.
@@ -66,6 +75,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("crb.bundle", "b")
       .where("b.cancelationId IS NULL")
+      .andWhere("crb.finalised = true")
       .getMany();
   }
 
@@ -91,6 +101,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("drb.bundle", "b")
       .where("b.disputeId IS NULL")
+      .andWhere("drb.finalised = true")
       .getMany();
   }
 
@@ -119,6 +130,7 @@ export class BundleRepository extends utils.BaseRepository {
       ])
       .leftJoin("prb.bundle", "b")
       .where("b.proposalId IS NULL")
+      .andWhere("prb.finalised = true")
       .getMany();
   }
 
@@ -163,6 +175,7 @@ export class BundleRepository extends utils.BaseRepository {
         "rbe.transactionIndex",
       ])
       .where("be.executionId IS NULL")
+      .andWhere("rbe.finalised = true")
       .orderBy("rbe.blockNumber", "ASC")
       .getMany();
   }
@@ -188,6 +201,7 @@ export class BundleRepository extends utils.BaseRepository {
         where: [
           {
             blockNumber: LessThan(blockNumber),
+            finalised: true,
             bundle: {
               status: Not(
                 In([
@@ -200,6 +214,7 @@ export class BundleRepository extends utils.BaseRepository {
           {
             blockNumber,
             transactionIndex: LessThan(transactionIndex),
+            finalised: true,
             bundle: {
               status: Not(
                 In([
@@ -213,6 +228,7 @@ export class BundleRepository extends utils.BaseRepository {
             blockNumber,
             transactionIndex,
             logIndex: LessThan(logIndex),
+            finalised: true,
             bundle: {
               status: Not(
                 In([
@@ -492,6 +508,14 @@ export class BundleRepository extends utils.BaseRepository {
     bundleId: number,
   ) {
     const eventsRepo = this.postgres.getRepository(entities.BundleEvent);
+    // Delete any rows related to the bundleId we are processing to avoid storing the same bundle twice
+    const deletedRows = await eventsRepo.delete({ bundleId });
+    if (deletedRows.affected) {
+      this.logger.warn({
+        at: "BundleRepository#storeBundleEvents",
+        message: `Deleted ${deletedRows.affected} bundle events previously associated to bundle with id ${bundleId}`,
+      });
+    }
 
     // Store bundle deposits
     const deposits = this.formatBundleEvents(
@@ -501,11 +525,7 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedDeposits = across.utils.chunk(deposits, this.chunkSize);
     await Promise.all(
-      chunkedDeposits.map((eventsChunk) =>
-        eventsRepo.upsert(eventsChunk, {
-          conflictPaths: { relayHash: true, type: true },
-        }),
-      ),
+      chunkedDeposits.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
     );
 
     // Store bundle refunded deposits
@@ -516,11 +536,7 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedRefunds = across.utils.chunk(expiredDeposits, this.chunkSize);
     await Promise.all(
-      chunkedRefunds.map((eventsChunk) =>
-        eventsRepo.upsert(eventsChunk, {
-          conflictPaths: { relayHash: true, type: true },
-        }),
-      ),
+      chunkedRefunds.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
     );
 
     // Store bundle slow fills
@@ -531,11 +547,7 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedSlowFills = across.utils.chunk(slowFills, this.chunkSize);
     await Promise.all(
-      chunkedSlowFills.map((eventsChunk) =>
-        eventsRepo.upsert(eventsChunk, {
-          conflictPaths: { relayHash: true, type: true },
-        }),
-      ),
+      chunkedSlowFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
     );
 
     // Store bundle unexecutable slow fills
@@ -550,9 +562,7 @@ export class BundleRepository extends utils.BaseRepository {
     );
     await Promise.all(
       chunkedUnexecutableSlowFills.map((eventsChunk) =>
-        eventsRepo.upsert(eventsChunk, {
-          conflictPaths: { relayHash: true, type: true },
-        }),
+        eventsRepo.insert(eventsChunk),
       ),
     );
 
@@ -564,11 +574,7 @@ export class BundleRepository extends utils.BaseRepository {
     );
     const chunkedFills = across.utils.chunk(fills, this.chunkSize);
     await Promise.all(
-      chunkedFills.map((eventsChunk) =>
-        eventsRepo.upsert(eventsChunk, {
-          conflictPaths: { relayHash: true, type: true },
-        }),
-      ),
+      chunkedFills.map((eventsChunk) => eventsRepo.insert(eventsChunk)),
     );
 
     return {
@@ -588,17 +594,28 @@ export class BundleRepository extends utils.BaseRepository {
       | across.interfaces.BundleExcessSlowFills
       | across.interfaces.ExpiredDepositsToRefundV3,
     bundleId: number,
-  ): {
-    bundleId: number;
-    relayHash: string;
-    type: entities.BundleEventType;
-  }[] {
+  ): BundleEventRow[] {
     return Object.values(bundleEvents).flatMap((tokenEvents) =>
       Object.values(tokenEvents).flatMap((events) =>
         events.map((event) => {
           return {
             bundleId,
-            relayHash: across.utils.getRelayHashFromEvent(event),
+            relayHash: getInternalHash(
+              event,
+              event.messageHash,
+              event.destinationChainId,
+            ),
+            // eventChainId must match the chain the event was emmitted on
+            // For deposits and expired deposits use originChainId
+            // For slowFills and unexecutableSlowFills use destinationChainId
+            eventChainId: [
+              entities.BundleEventType.Deposit,
+              entities.BundleEventType.ExpiredDeposit,
+            ].includes(eventsType)
+              ? event.originChainId
+              : event.destinationChainId,
+            eventBlockNumber: event.blockNumber,
+            eventLogIndex: event.logIndex,
             type: eventsType,
           };
         }),
@@ -610,19 +627,22 @@ export class BundleRepository extends utils.BaseRepository {
     eventsType: entities.BundleEventType.Fill,
     bundleEvents: across.interfaces.BundleFillsV3,
     bundleId: number,
-  ): {
-    bundleId: number;
-    relayHash: string;
-    type: entities.BundleEventType.Fill;
-  }[] {
+  ): (BundleEventRow & { repaymentChainId: string })[] {
     return Object.entries(bundleEvents).flatMap(([chainId, tokenEvents]) =>
       Object.values(tokenEvents).flatMap((fillsData) =>
         fillsData.fills.map((event) => {
           return {
             bundleId,
-            relayHash: across.utils.getRelayHashFromEvent(event),
+            relayHash: getInternalHash(
+              event,
+              event.messageHash,
+              event.destinationChainId,
+            ),
+            eventChainId: event.destinationChainId,
+            eventBlockNumber: event.blockNumber,
+            eventLogIndex: event.logIndex,
             type: eventsType,
-            repaymentChainId: Number(chainId),
+            repaymentChainId: chainId,
           };
         }),
       ),
