@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import winston from "winston";
 import { Job, Worker } from "bullmq";
+import { providers } from "@across-protocol/sdk";
 import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
 import { getIntegratorId } from "../utils";
@@ -70,7 +71,7 @@ export class IntegratorIdWorker {
       deposit.originChainId,
     );
     const integratorId = await getIntegratorId(
-      provider,
+      provider as providers.RetryProvider,
       deposit.quoteTimestamp,
       deposit.transactionHash,
     );
