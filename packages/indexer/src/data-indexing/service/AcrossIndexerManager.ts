@@ -83,7 +83,9 @@ export class AcrossIndexerManager {
         ),
       },
       hubPoolIndexerDataHandler,
-      this.retryProvidersFactory.getProviderForChainId(this.config.hubChainId),
+      this.retryProvidersFactory.getProviderForChainId(
+        this.config.hubChainId,
+      ) as across.providers.RetryProvider,
       this.logger,
       this.postgres,
     );
@@ -98,7 +100,9 @@ export class AcrossIndexerManager {
           this.logger,
           chainId,
           this.config.hubChainId,
-          this.retryProvidersFactory.getProviderForChainId(chainId),
+          this.retryProvidersFactory.getProviderForChainId(
+            chainId,
+          ) as across.providers.RetryProvider,
           this.configStoreClientFactory,
           this.hubPoolClientFactory,
           this.spokePoolClientFactory,
@@ -120,7 +124,9 @@ export class AcrossIndexerManager {
             maxBlockRangeSize: this.config.maxBlockRangeSize,
           },
           spokePoolIndexerDataHandler,
-          this.retryProvidersFactory.getProviderForChainId(chainId),
+          this.retryProvidersFactory.getProviderForChainId(
+            chainId,
+          ) as across.providers.RetryProvider,
           this.logger,
           this.postgres,
         );

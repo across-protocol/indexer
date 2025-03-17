@@ -1,5 +1,5 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { clients } from "@across-protocol/sdk";
+import { clients, providers } from "@across-protocol/sdk";
 import { Logger } from "winston";
 import { getMaxBlockLookBack } from "../web3/constants";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
@@ -51,7 +51,9 @@ export class ConfigStoreClientFactory extends ContractClientFactory<clients.Acro
     // FIXME: hardcoded chain id to represent mainnet
     const chainId = CHAIN_IDs.MAINNET;
 
-    const provider = this.retryProviderFactory.getProviderForChainId(chainId);
+    const provider = this.retryProviderFactory.getProviderForChainId(
+      chainId,
+    ) as providers.RetryProvider;
     return getConfigStoreClient({
       provider,
       logger: this.logger,
@@ -98,7 +100,9 @@ export class HubPoolClientFactory extends ContractClientFactory<
         toBlock,
       );
     return getHubPoolClient({
-      provider: this.retryProviderFactory.getProviderForChainId(chainId),
+      provider: this.retryProviderFactory.getProviderForChainId(
+        chainId,
+      ) as providers.RetryProvider,
       logger: this.logger,
       maxBlockLookBack: getMaxBlockLookBack(chainId),
       chainId,
@@ -149,7 +153,9 @@ export class SpokePoolClientFactory extends ContractClientFactory<
       overrides?.maxBlockLookback ?? getMaxBlockLookBack(chainId);
 
     return getSpokeClient({
-      provider: this.retryProviderFactory.getProviderForChainId(chainId),
+      provider: this.retryProviderFactory.getProviderForChainId(
+        chainId,
+      ) as providers.RetryProvider,
       logger: this.logger,
       maxBlockLookBack,
       chainId,

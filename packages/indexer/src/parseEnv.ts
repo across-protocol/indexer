@@ -26,7 +26,20 @@ export type RedisConfig = {
   port: number;
   maxRetriesPerRequest: null;
 };
+
 export type ProviderConfig = [providerUrl: string, chainId: number];
+
+export type RetryProviderConfig = {
+  providerCacheNamespace: string;
+  maxConcurrency: number;
+  pctRpcCallsLogged: number;
+  standardTtlBlockDistance?: number;
+  noTtlBlockDistance: number;
+  providerCacheTtl?: number;
+  nodeQuorumThreshold: number;
+  retries: number;
+  retryDelay: number;
+};
 
 export type Env = Record<string, string | undefined>;
 
@@ -108,7 +121,7 @@ export function parseProvidersUrls() {
   return results;
 }
 
-export function parseRetryProviderEnvs(chainId: number) {
+export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
   const providerCacheNamespace =
     process.env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
   const maxConcurrency = Number(
