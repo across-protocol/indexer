@@ -1,4 +1,5 @@
 import { Logger } from "winston";
+import { PUBLIC_NETWORKS } from "@across-protocol/constants";
 import { providers, utils } from "@across-protocol/sdk";
 
 import {
@@ -40,12 +41,16 @@ export class RetryProvidersFactory {
           retryProviderEnvs,
           providerUrls,
         );
-      } else {
-        // explicitly check for evm
+      } else if (utils.chainIsEvm(chainId)) {
         provider = this.instantiateEvmProvider(
           chainId,
           { ...retryProviderEnvs, standardTtlBlockDistance },
           providerUrls,
+        );
+      } else {
+        const chainFamily = PUBLIC_NETWORKS[chainId]?.family;
+        throw new Error(
+          `Invalid chainId ${chainId}. Chain family ${chainFamily} not supported.`,
         );
       }
 
