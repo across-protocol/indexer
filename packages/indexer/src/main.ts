@@ -4,23 +4,27 @@ import * as across from "@across-protocol/sdk";
 import { WebhookFactory, WebhookTypes } from "@repo/webhooks";
 
 import { connectToDatabase } from "./database/database.provider";
-import * as parseEnv from "./parseEnv";
-import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import { RedisCache } from "./redis/redisCache";
-import { HubPoolRepository } from "./database/HubPoolRepository";
-import { SpokePoolRepository } from "./database/SpokePoolRepository";
+import * as parseEnv from "./parseEnv";
+// Factories
+import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "./utils/contractFactoryUtils";
+// Managers
+import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
+import { BundleServicesManager } from "./services/BundleServicesManager";
+// Repositories
 import { BundleRepository } from "./database/BundleRepository";
+import { HubPoolRepository } from "./database/HubPoolRepository";
+import { SpokePoolRepository } from "./database/SpokePoolRepository";
+import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+// Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
-import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
-import { BundleServicesManager } from "./services/BundleServicesManager";
-import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
 import { SwapWorker } from "./messaging/swapWorker";
 
 async function initializeRedis(
