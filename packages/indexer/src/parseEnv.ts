@@ -1,18 +1,20 @@
 import * as s from "superstruct";
-import { DatabaseConfig } from "@repo/indexer-database";
-import { getNoTtlBlockDistance } from "./web3/constants";
+import { utils } from "@across-protocol/sdk";
 import { assert } from "@repo/error-handling";
+import { DatabaseConfig } from "@repo/indexer-database";
 import {
   Config as WebhooksConfig,
   WebhookTypes,
   parseWebhookClientsFromString,
 } from "@repo/webhooks";
+import { getNoTtlBlockDistance } from "./web3/constants";
 
 export type Config = {
   redisConfig: RedisConfig;
   postgresConfig: DatabaseConfig;
   hubChainId: number;
-  spokePoolChainsEnabled: number[];
+  evmSpokePoolChainsEnabled: number[];
+  svmSpokePoolChainsEnabled: number[];
   enableHubPoolIndexer: boolean;
   enableBundleIncludedEventsService: boolean;
   enableBundleBuilder: boolean;
@@ -181,6 +183,12 @@ export function envToConfig(env: Env): Config {
     allProviderConfigs.length > 0,
     `Requires at least one RPC_PROVIDER_URLS_CHAIN_ID`,
   );
+  const evmSpokePoolChainsEnabled = spokePoolChainsEnabled.filter((chainId) =>
+    utils.chainIsEvm(chainId),
+  );
+  const svmSpokePoolChainsEnabled = spokePoolChainsEnabled.filter((chainId) =>
+    utils.chainIsSvm(chainId),
+  );
   const hubChainId = hubPoolChain;
   const enableHubPoolIndexer = env.ENABLE_HUBPOOL_INDEXER
     ? env.ENABLE_HUBPOOL_INDEXER === "true"
@@ -215,7 +223,8 @@ export function envToConfig(env: Env): Config {
     redisConfig,
     postgresConfig,
     hubChainId,
-    spokePoolChainsEnabled,
+    evmSpokePoolChainsEnabled,
+    svmSpokePoolChainsEnabled,
     enableHubPoolIndexer,
     enableBundleIncludedEventsService,
     enableBundleBuilder,
