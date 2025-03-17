@@ -10,7 +10,6 @@ import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import { getMaxBlockLookBack } from "../../web3/constants";
-import { RedisCache } from "../../redis/redisCache";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
 
 export type FetchEventsResult = {
@@ -22,7 +21,6 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
   constructor(
     private logger: Logger,
     private chainId: number,
-    private redisCache: RedisCache,
     private hubPoolChainId: number,
     private provider: SvmProvider,
   ) {}
