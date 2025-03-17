@@ -53,10 +53,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       message: `Found events for ${this.getDataIdentifier()}`,
       events: {
         depositEvents: events.depositEvents.length,
-<<<<<<< HEAD
         fillEvents: events.fillEvents.length,
-=======
->>>>>>> f8e4816 (feat(svm): svm indexer data handler and solana constants)
       },
       blockRange,
     });
