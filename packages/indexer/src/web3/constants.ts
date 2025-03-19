@@ -53,6 +53,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 256,
   [CHAIN_IDs.REDSTONE]: 120,
   [CHAIN_IDs.SCROLL]: 100,
+  [CHAIN_IDs.SOLANA]: 80,
   [CHAIN_IDs.SONEIUM]: 120,
   [CHAIN_IDs.UNICHAIN]: 120,
   [CHAIN_IDs.WORLD_CHAIN]: 120,
@@ -68,6 +69,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: 0,
   [CHAIN_IDs.POLYGON_AMOY]: 0,
   [CHAIN_IDs.SEPOLIA]: 0,
+  [CHAIN_IDs.SOLANA_DEVNET]: 80,
 };
 
 export const getChainCacheFollowDistance = (chainId: number) => {
@@ -106,6 +108,7 @@ export function getMaxBlockLookBack(chainId: number) {
 
 // Average block time in seconds by chain
 export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
+  // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
   [CHAIN_IDs.ARBITRUM]: 0.25,
   [CHAIN_IDs.BASE]: 2,
@@ -120,11 +123,14 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.POLYGON]: 2,
   [CHAIN_IDs.REDSTONE]: 2,
   [CHAIN_IDs.SCROLL]: 3,
+  [CHAIN_IDs.SOLANA]: 0.4,
   [CHAIN_IDs.SONEIUM]: 2,
   [CHAIN_IDs.UNICHAIN]: 2,
   [CHAIN_IDs.WORLD_CHAIN]: 2,
   [CHAIN_IDs.ZK_SYNC]: 1,
   [CHAIN_IDs.ZORA]: 2,
+  // Testnets:
+  [CHAIN_IDs.SOLANA_DEVNET]: 0.4,
 };
 
 /**

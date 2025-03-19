@@ -5,6 +5,12 @@ import { parseRetryProviderEnvs, parseProvidersUrls } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";
 import { getChainCacheFollowDistance } from "./constants";
 
+// SVM provider helper type.
+// TODO: move to SDK.
+export type SvmProvider = ReturnType<
+  typeof providers.CachedSolanaRpcFactory.prototype.createRpcClient
+>;
+
 export class RetryProvidersFactory {
   private retryProviders: Map<number, providers.RetryProvider> = new Map();
 
