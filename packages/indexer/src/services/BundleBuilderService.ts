@@ -1,4 +1,10 @@
-import { caching, clients, typechain, utils } from "@across-protocol/sdk";
+import {
+  caching,
+  clients,
+  typechain,
+  utils,
+  providers,
+} from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
 import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
@@ -117,9 +123,10 @@ export class BundleBuilderService extends BaseIndexer {
   private async isCloseEnoughToHead(
     lastExecutedBundle: entities.ProposedRootBundle,
   ) {
-    const currentMainnetBlock = await this.config.providerFactory
-      .getProviderForChainId(this.config.hubChainId)
-      .getBlockNumber();
+    const provider = this.config.providerFactory.getProviderForChainId(
+      this.config.hubChainId,
+    ) as providers.RetryProvider;
+    const currentMainnetBlock = await provider.getBlockNumber();
     const lastExecutedMainnetBlock =
       lastExecutedBundle.bundleEvaluationBlockNumbers[0]!;
     const distanceToHead = currentMainnetBlock - lastExecutedMainnetBlock;
