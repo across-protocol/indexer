@@ -39,3 +39,13 @@ export const DepositParams = s.object({
 });
 
 export type DepositParams = s.Infer<typeof DepositParams>;
+
+export const UnfilledDepositsParams = s.object({
+  originChainId: s.optional(stringToInt),
+  destinationChainId: s.optional(stringToInt),
+  startTimestamp: s.optional(stringToInt),
+  endTimestamp: s.optional(stringToInt),
+  minPendingSeconds: s.optional(stringToInt),
+});
+
+export type UnfilledDepositsParams = s.Infer<typeof UnfilledDepositsParams>;
