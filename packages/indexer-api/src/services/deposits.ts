@@ -1,6 +1,10 @@
 import { Redis } from "ioredis";
 import { DataSource, entities } from "@repo/indexer-database";
-import type { DepositParams, DepositsParams } from "../dtos/deposits.dto";
+import type {
+  DepositParams,
+  DepositsParams,
+  UnfilledDepositsParams,
+} from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
   IncorrectQueryParamsException,
@@ -184,7 +188,52 @@ export class DepositsService {
     }
     return result;
   }
+  public async getUnfilledDeposits(
+    params: UnfilledDepositsParams,
+  ): Promise<entities.V3FundsDeposited[]> {
+    const {
+      originChainId,
+      destinationChainId,
+      startTimestamp = Date.now() - 5 * 60 * 1000,
+      endTimestamp = Date.now(),
+    } = params;
 
+    const startDate = new Date(startTimestamp);
+    const endDate = new Date(endTimestamp);
+
+    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const queryBuilder = repo
+      .createQueryBuilder("rhi")
+      .innerJoinAndSelect("rhi.depositEvent", "depositEvent")
+      .select("depositEvent")
+      .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
+      .andWhere("depositEvent.blockTimestamp BETWEEN :startDate AND :endDate", {
+        startDate,
+        endDate,
+      });
+
+    if (originChainId) {
+      queryBuilder.andWhere("depositEvent.originChainId = :originChainId", {
+        originChainId,
+      });
+    }
+
+    if (destinationChainId) {
+      queryBuilder.andWhere(
+        "depositEvent.destinationChainId = :destinationChainId",
+        {
+          destinationChainId,
+        },
+      );
+    }
+
+    // TODO: Update this once better understood
+    // if (minPendingSeconds) {
+    // }
+
+    const results = await queryBuilder.getMany();
+    return results.map((result) => result.depositEvent);
+  }
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
     const minute = 60;
     const hour = 60 * minute;
