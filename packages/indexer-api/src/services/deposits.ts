@@ -188,14 +188,27 @@ export class DepositsService {
     }
     return result;
   }
-  public async getUnfilledDeposits(
-    params: UnfilledDepositsParams,
-  ): Promise<entities.V3FundsDeposited[]> {
+  public async getUnfilledDeposits(params: UnfilledDepositsParams): Promise<
+    Array<{
+      originChainId: number;
+      destinationChainId: number;
+      originBlockNumber: number;
+      originDt: number | undefined;
+      originTxHash: string;
+      inputTokenAddress: string;
+      outputTokenAddress: string;
+      inputAmount: string;
+      exclusiveRelayer: string;
+      numSecondsPending: number | undefined;
+    }>
+  > {
     const {
       originChainId,
       destinationChainId,
       startTimestamp = Date.now() - 5 * 60 * 1000,
       endTimestamp = Date.now(),
+      skip = 0,
+      limit = 50,
     } = params;
 
     const startDate = new Date(startTimestamp);
@@ -205,7 +218,6 @@ export class DepositsService {
     const queryBuilder = repo
       .createQueryBuilder("rhi")
       .innerJoinAndSelect("rhi.depositEvent", "depositEvent")
-      .select("depositEvent")
       .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
       .andWhere("depositEvent.blockTimestamp BETWEEN :startDate AND :endDate", {
         startDate,
@@ -227,12 +239,30 @@ export class DepositsService {
       );
     }
 
-    // TODO: Update this once better understood
-    // if (minPendingSeconds) {
-    // }
+    queryBuilder.orderBy("depositEvent.id", "ASC").skip(skip).limit(limit);
 
     const results = await queryBuilder.getMany();
-    return results.map((result) => result.depositEvent);
+    return results.map((result) => {
+      const depositEvent = result.depositEvent;
+      return {
+        originChainId: depositEvent.originChainId,
+        destinationChainId: depositEvent.destinationChainId,
+        originBlockNumber: depositEvent.blockNumber,
+        originDt: depositEvent.blockTimestamp
+          ? depositEvent.blockTimestamp.getTime()
+          : undefined,
+        originTxHash: depositEvent.transactionHash,
+        inputTokenAddress: depositEvent.inputToken,
+        outputTokenAddress: depositEvent.outputToken,
+        inputAmount: depositEvent.inputAmount,
+        exclusiveRelayer: depositEvent.exclusiveRelayer,
+        numSecondsPending: depositEvent.blockTimestamp
+          ? Math.floor(
+              (Date.now() - depositEvent.blockTimestamp.getTime()) / 1000,
+            )
+          : undefined,
+      };
+    });
   }
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
     const minute = 60;
