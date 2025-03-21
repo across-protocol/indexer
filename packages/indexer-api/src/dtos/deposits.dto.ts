@@ -46,6 +46,8 @@ export const UnfilledDepositsParams = s.object({
   startTimestamp: s.optional(stringToInt),
   endTimestamp: s.optional(stringToInt),
   minPendingSeconds: s.optional(stringToInt),
+  skip: s.optional(stringToInt),
+  limit: s.defaulted(stringToInt, 50),
 });
 
 export type UnfilledDepositsParams = s.Infer<typeof UnfilledDepositsParams>;
