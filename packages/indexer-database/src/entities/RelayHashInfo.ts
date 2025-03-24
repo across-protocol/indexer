@@ -130,6 +130,15 @@ export class RelayHashInfo {
   @Column({ nullable: true, type: "decimal" })
   outputPriceUsd: string;
 
+  @Column({ nullable: true, type: "decimal" })
+  gasFee: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  gasFeeUsd: string;
+
+  @Column({ nullable: true, type: "decimal" })
+  gasTokenPriceUsd: string;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

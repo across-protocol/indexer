@@ -1,4 +1,5 @@
 import winston from "winston";
+import { providers } from "ethers";
 
 import {
   DataSource,
@@ -35,6 +36,7 @@ export class SpokePoolProcessor {
     events: StoreEventsResult,
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
   ) {
     // Update relay hash info records related to deleted deposits
     await this.processDeletedDeposits(deletedDeposits);
@@ -68,6 +70,7 @@ export class SpokePoolProcessor {
       deposits: newDeposits,
       fills: [...newFills, ...updatedFills],
       slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
+      transactionReceipts,
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
@@ -174,10 +177,14 @@ export class SpokePoolProcessor {
     deposits: entities.V3FundsDeposited[];
     fills: entities.FilledV3Relay[];
     slowFillRequests: entities.RequestedV3SlowFill[];
+    transactionReceipts?: Record<string, providers.TransactionReceipt>;
   }): Promise<void> {
     await Promise.all([
       this.assignDepositEventsToRelayHashInfo(events.deposits),
-      this.assignFillEventsToRelayHashInfo(events.fills),
+      this.assignFillEventsToRelayHashInfo(
+        events.fills,
+        events.transactionReceipts,
+      ),
       this.assignSlowFillRequestedEventsToRelayHashInfo(
         events.slowFillRequests,
       ),
@@ -266,13 +273,24 @@ export class SpokePoolProcessor {
    */
   private async assignFillEventsToRelayHashInfo(
     events: entities.FilledV3Relay[],
+    transactionReceipts?: Record<string, providers.TransactionReceipt>,
   ): Promise<void> {
     const insertResults: InsertResult[] = [];
     const updateResults: UpdateResult[] = [];
     await Promise.all(
       events.map(async (event) => {
         // Format from event to relayHashInfo row
-        const item = {
+        const txnReceipt = transactionReceipts?.[event.transactionHash];
+        if (!txnReceipt) {
+          throw new Error(
+            `Transaction receipt not found for fill event ${event.id} and transaction hash ${event.transactionHash}`,
+          );
+        }
+        const gasFee =
+          txnReceipt?.gasUsed && txnReceipt?.effectiveGasPrice
+            ? txnReceipt.gasUsed.mul(txnReceipt.effectiveGasPrice)
+            : undefined;
+        const item: Partial<entities.RelayHashInfo> = {
           internalHash: event.internalHash,
           depositId: event.depositId,
           originChainId: event.originChainId,
@@ -281,6 +299,7 @@ export class SpokePoolProcessor {
           fillEventId: event.id,
           status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
+          gasFee: gasFee?.toString(),
         };
 
         // Start a transaction
