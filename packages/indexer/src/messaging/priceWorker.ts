@@ -355,7 +355,7 @@ export class PriceWorker {
     const response = await this.coingeckoClient.call<CGHistoricPrice>(
       `/coins/${platformId}/history?date=${cgFormattedDate}`,
     );
-    const udsPrice = response.market_data?.current_price?.usd;
+    const usdPrice = response.market_data?.current_price?.usd;
     if (!udsPrice) {
       throw new Error(
         `Coingecko call returned no price for platform id ${platformId} at ${cgFormattedDate}`,
