@@ -281,7 +281,7 @@ export class SpokePoolProcessor {
       events.map(async (event) => {
         // Format from event to relayHashInfo row
         const txnReceipt = transactionReceipts?.[event.transactionHash];
-        if (!txnReceipt) {
+        if (transactionReceipts &&!txnReceipt) {
           throw new Error(
             `Transaction receipt not found for fill event ${event.id} and transaction hash ${event.transactionHash}`,
           );
