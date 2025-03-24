@@ -313,8 +313,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const uniqueTxHashes = [
       ...new Set(events.map((e) => e.transactionHash.toLowerCase())),
     ];
-    const transactionReceipts = await Promise.all(
-      uniqueTxHashes.map(async (txHash) => {
+    const transactionReceipts = await across.utils.mapAsync(
+      uniqueTxHashes,
+      async (txHash) => {
         const receipt = await this.provider.getTransactionReceipt(txHash);
         if (!receipt) {
           this.logger.warn({
@@ -325,7 +326,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
           });
         }
         return receipt;
-      }),
+      },
     );
     const validTransactionReceipts = transactionReceipts.filter(
       (receipt) => !!receipt,
