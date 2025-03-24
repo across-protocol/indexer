@@ -356,12 +356,12 @@ export class PriceWorker {
       `/coins/${platformId}/history?date=${cgFormattedDate}`,
     );
     const usdPrice = response.market_data?.current_price?.usd;
-    if (!udsPrice) {
+    if (!usdPrice) {
       throw new Error(
         `Coingecko call returned no price for platform id ${platformId} at ${cgFormattedDate}`,
       );
     }
-    return udsPrice;
+    return usdPrice;
   }
 
   public async close() {
