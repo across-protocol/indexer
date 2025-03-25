@@ -40,14 +40,14 @@ export const DepositParams = s.object({
 
 export type DepositParams = s.Infer<typeof DepositParams>;
 
-export const UnfilledDepositsParams = s.object({
+export const FilterDepositsParams = s.object({
   originChainId: s.optional(stringToInt),
   destinationChainId: s.optional(stringToInt),
   startTimestamp: s.optional(stringToInt),
   endTimestamp: s.optional(stringToInt),
-  minPendingSeconds: s.optional(stringToInt),
   skip: s.defaulted(stringToInt, 0),
   limit: s.defaulted(stringToInt, 50),
+  minSecondsToFill: s.optional(stringToInt),
 });
 
-export type UnfilledDepositsParams = s.Infer<typeof UnfilledDepositsParams>;
+export type FilterDepositsParams = s.Infer<typeof FilterDepositsParams>;
