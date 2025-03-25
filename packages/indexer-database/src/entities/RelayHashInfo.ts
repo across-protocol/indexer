@@ -131,13 +131,13 @@ export class RelayHashInfo {
   outputPriceUsd: string;
 
   @Column({ nullable: true, type: "decimal" })
-  gasFee: string;
+  fillGasFee: string;
 
   @Column({ nullable: true, type: "decimal" })
-  gasFeeUsd: string;
+  fillGasFeeUsd: string;
 
   @Column({ nullable: true, type: "decimal" })
-  gasTokenPriceUsd: string;
+  fillGasTokenPriceUsd: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

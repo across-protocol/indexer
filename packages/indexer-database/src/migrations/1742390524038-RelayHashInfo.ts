@@ -5,25 +5,25 @@ export class RelayHashInfo1742390524038 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD "gasTokenPriceUsd" numeric`,
+      `ALTER TABLE "relay_hash_info" ADD "fillGasTokenPriceUsd" numeric`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD "gasFee" numeric`,
+      `ALTER TABLE "relay_hash_info" ADD "fillGasFee" numeric`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD "gasFeeUsd" numeric`,
+      `ALTER TABLE "relay_hash_info" ADD "fillGasFeeUsd" numeric`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP COLUMN "gasFee"`,
+      `ALTER TABLE "relay_hash_info" DROP COLUMN "fillGasTokenPriceUsd"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP COLUMN "gasTokenPriceUsd"`,
+      `ALTER TABLE "relay_hash_info" DROP COLUMN "fillGasFee"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP COLUMN "gasFeeUsd"`,
+      `ALTER TABLE "relay_hash_info" DROP COLUMN "fillGasFeeUsd"`,
     );
   }
 }

@@ -282,7 +282,7 @@ export class PriceWorker {
     let gasTokenPriceUsd: string | undefined;
     let gasFeeUsd: string | undefined;
 
-    if (relayHashInfo.gasFee) {
+    if (relayHashInfo.fillGasFee) {
       const destinationChainNativeTokenSymbol =
         constants.PUBLIC_NETWORKS[Number(relayHashInfo.destinationChainId)]
           ?.nativeToken;
@@ -310,7 +310,7 @@ export class PriceWorker {
         nativeTokenPlatformId,
         blockTime,
       );
-      const gasFeeBigInt = BigInt(relayHashInfo.gasFee);
+      const gasFeeBigInt = BigInt(relayHashInfo.fillGasFee);
       const nativeTokenPriceBigInt = BigInt(
         Math.round(nativeTokenPrice * Math.pow(10, 18)),
       );
@@ -322,8 +322,8 @@ export class PriceWorker {
     }
 
     const updatedFields: Partial<typeof relayHashInfo> = {
-      gasTokenPriceUsd,
-      gasFeeUsd,
+      fillGasTokenPriceUsd: gasTokenPriceUsd,
+      fillGasFeeUsd: gasFeeUsd,
     };
 
     if (relayHashInfo.bridgeFeeUsd !== bridgeFee.toString()) {

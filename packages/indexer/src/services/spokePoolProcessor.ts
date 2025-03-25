@@ -299,7 +299,7 @@ export class SpokePoolProcessor {
           fillEventId: event.id,
           status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
-          gasFee: gasFee?.toString(),
+          fillGasFee: gasFee?.toString(),
         };
 
         // Start a transaction
