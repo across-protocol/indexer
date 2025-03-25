@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import winston from "winston";
 import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import { assert } from "@repo/error-handling";
 import * as across from "@across-protocol/sdk";
 import * as constants from "@across-protocol/constants";
@@ -284,12 +284,11 @@ export class PriceWorker {
 
     if (relayHashInfo.gasFee) {
       const destinationChainNativeTokenSymbol =
-        constants.PUBLIC_NETWORKS[
-          Number(relayHashInfo.fillEvent.destinationChainId)
-        ]?.nativeToken;
+        constants.PUBLIC_NETWORKS[Number(relayHashInfo.destinationChainId)]
+          ?.nativeToken;
       if (!destinationChainNativeTokenSymbol) {
         throw new Error(
-          `Destination chain native token symbol not found for chain id ${relayHashInfo.fillEvent.destinationChainId}`,
+          `Destination chain native token symbol not found for chain id ${relayHashInfo.destinationChainId}`,
         );
       }
       const nativeToken =
