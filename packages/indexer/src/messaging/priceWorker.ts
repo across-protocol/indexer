@@ -3,12 +3,14 @@ import { DateTime } from "luxon";
 import winston from "winston";
 import { Job, Worker } from "bullmq";
 import { DataSource, entities } from "@repo/indexer-database";
-import { IndexerQueues } from "./service";
 import { ethers } from "ethers";
-import { findTokenByAddress, yesterday } from "../utils";
 import { assert } from "@repo/error-handling";
 import * as across from "@across-protocol/sdk";
+import * as constants from "@across-protocol/constants";
 import * as ss from "superstruct";
+
+import { IndexerQueues } from "./service";
+import { findTokenByAddress, yesterday } from "../utils";
 
 export const PriceMessage = ss.object({
   fillEventId: ss.number(),
@@ -18,6 +20,17 @@ export type PriceMessage = ss.Infer<typeof PriceMessage>;
 
 export type PriceWorkerConfig = {
   coingeckoApiKey?: string;
+};
+
+type CGHistoricPrice = {
+  id: string;
+  symbol: string;
+  name: string;
+  market_data?: {
+    current_price: {
+      usd: number;
+    };
+  };
 };
 
 /**
@@ -259,15 +272,59 @@ export class PriceWorker {
       price: inputTokenPrice,
       decimals: inputTokenInfo.decimals,
     };
-
     const outputToken = {
       amount: relayHashInfo.fillEvent.outputAmount,
       price: outputTokenPrice,
       decimals: outputTokenInfo.decimals,
     };
-
     const bridgeFee = PriceWorker.calculateBridgeFee(inputToken, outputToken);
-    const updatedFields: Partial<typeof relayHashInfo> = {};
+
+    let gasTokenPriceUsd: string | undefined;
+    let gasFeeUsd: string | undefined;
+
+    if (relayHashInfo.fillGasFee) {
+      const destinationChainNativeTokenSymbol =
+        constants.PUBLIC_NETWORKS[Number(relayHashInfo.destinationChainId)]
+          ?.nativeToken;
+      if (!destinationChainNativeTokenSymbol) {
+        throw new Error(
+          `Destination chain native token symbol not found for chain id ${relayHashInfo.destinationChainId}`,
+        );
+      }
+      const nativeToken =
+        constants.TOKEN_SYMBOLS_MAP[
+          destinationChainNativeTokenSymbol as keyof typeof constants.TOKEN_SYMBOLS_MAP
+        ];
+      if (!nativeToken) {
+        throw new Error(
+          `Native token not found for symbol ${destinationChainNativeTokenSymbol}`,
+        );
+      }
+      const nativeTokenPlatformId = nativeToken.coingeckoId;
+      if (!nativeTokenPlatformId) {
+        throw new Error(
+          `Native token platform id not found for symbol ${destinationChainNativeTokenSymbol}`,
+        );
+      }
+      const nativeTokenPrice = await this.getHistoricalPriceByPlatformId(
+        nativeTokenPlatformId,
+        blockTime,
+      );
+      const gasFeeBigInt = BigInt(relayHashInfo.fillGasFee);
+      const nativeTokenPriceBigInt = BigInt(
+        Math.round(nativeTokenPrice * Math.pow(10, 18)),
+      );
+      const normalizedGasFee =
+        (gasFeeBigInt * nativeTokenPriceBigInt) /
+        BigInt(Math.pow(10, nativeToken.decimals));
+      gasFeeUsd = ethers.utils.formatEther(normalizedGasFee);
+      gasTokenPriceUsd = nativeTokenPrice.toString();
+    }
+
+    const updatedFields: Partial<typeof relayHashInfo> = {
+      fillGasTokenPriceUsd: gasTokenPriceUsd,
+      fillGasFeeUsd: gasFeeUsd,
+    };
 
     if (relayHashInfo.bridgeFeeUsd !== bridgeFee.toString()) {
       updatedFields.bridgeFeeUsd = bridgeFee.toString();
@@ -289,6 +346,23 @@ export class PriceWorker {
       });
     }
   }
+
+  private async getHistoricalPriceByPlatformId(platformId: string, date: Date) {
+    const priceTime = yesterday(date);
+    const cgFormattedDate =
+      DateTime.fromJSDate(priceTime).toFormat("dd-LL-yyyy");
+    const response = await this.coingeckoClient.call<CGHistoricPrice>(
+      `/coins/${platformId}/history?date=${cgFormattedDate}`,
+    );
+    const usdPrice = response.market_data?.current_price?.usd;
+    if (!usdPrice) {
+      throw new Error(
+        `Coingecko call returned no price for platform id ${platformId} at ${cgFormattedDate}`,
+      );
+    }
+    return usdPrice;
+  }
+
   public async close() {
     return this.worker.close();
   }
