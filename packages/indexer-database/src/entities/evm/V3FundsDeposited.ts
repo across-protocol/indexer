@@ -9,9 +9,10 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_v3FundsDeposited_relayHash_block_logIdx", [
+@Unique("UK_FundsDeposited_relayHash_block_txnHash_logIdx", [
   "relayHash",
   "blockNumber",
+  "transactionHash",
   "logIndex",
 ])
 @Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
