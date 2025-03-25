@@ -188,19 +188,14 @@ export class DepositsService {
     }
     return result;
   }
+
   public async getUnfilledDeposits(params: UnfilledDepositsParams): Promise<
-    Array<{
-      originChainId: number;
-      destinationChainId: number;
-      originBlockNumber: number;
-      originDt: number | undefined;
-      originTxHash: string;
-      inputTokenAddress: string;
-      outputTokenAddress: string;
-      inputAmount: string;
-      exclusiveRelayer: string;
-      numSecondsPending: number | undefined;
-    }>
+    Array<
+      entities.V3FundsDeposited & {
+        status: entities.RelayStatus;
+        depositRefundTxHash: string;
+      }
+    >
   > {
     const {
       originChainId,
@@ -214,56 +209,47 @@ export class DepositsService {
     const startDate = new Date(startTimestamp);
     const endDate = new Date(endTimestamp);
 
-    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
-      .createQueryBuilder("rhi")
-      .innerJoinAndSelect("rhi.depositEvent", "depositEvent")
+      .createQueryBuilder("deposit")
+      .leftJoinAndSelect(
+        entities.RelayHashInfo,
+        "rhi",
+        "rhi.depositEventId = deposit.id",
+      )
       .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
-      .andWhere("depositEvent.blockTimestamp BETWEEN :startDate AND :endDate", {
+      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
         startDate,
         endDate,
-      });
+      })
+      .select([
+        `deposit.*`,
+        `rhi.status as status`,
+        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
+      ])
+      .orderBy("deposit.quoteTimestamp", "DESC");
 
     if (originChainId) {
-      queryBuilder.andWhere("depositEvent.originChainId = :originChainId", {
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
         originChainId,
       });
     }
 
     if (destinationChainId) {
       queryBuilder.andWhere(
-        "depositEvent.destinationChainId = :destinationChainId",
+        "deposit.destinationChainId = :destinationChainId",
         {
           destinationChainId,
         },
       );
     }
 
-    queryBuilder.orderBy("depositEvent.id", "ASC").skip(skip).limit(limit);
+    queryBuilder.skip(skip);
+    queryBuilder.limit(limit);
 
-    const results = await queryBuilder.getMany();
-    return results.map((result) => {
-      const depositEvent = result.depositEvent;
-      return {
-        originChainId: depositEvent.originChainId,
-        destinationChainId: depositEvent.destinationChainId,
-        originBlockNumber: depositEvent.blockNumber,
-        originDt: depositEvent.blockTimestamp
-          ? depositEvent.blockTimestamp.getTime()
-          : undefined,
-        originTxHash: depositEvent.transactionHash,
-        inputTokenAddress: depositEvent.inputToken,
-        outputTokenAddress: depositEvent.outputToken,
-        inputAmount: depositEvent.inputAmount,
-        exclusiveRelayer: depositEvent.exclusiveRelayer,
-        numSecondsPending: depositEvent.blockTimestamp
-          ? Math.floor(
-              (Date.now() - depositEvent.blockTimestamp.getTime()) / 1000,
-            )
-          : undefined,
-      };
-    });
+    return queryBuilder.execute();
   }
+
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
     const minute = 60;
     const hour = 60 * minute;

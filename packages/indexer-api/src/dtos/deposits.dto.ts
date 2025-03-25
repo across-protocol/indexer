@@ -46,7 +46,7 @@ export const UnfilledDepositsParams = s.object({
   startTimestamp: s.optional(stringToInt),
   endTimestamp: s.optional(stringToInt),
   minPendingSeconds: s.optional(stringToInt),
-  skip: s.optional(stringToInt),
+  skip: s.defaulted(stringToInt, 0),
   limit: s.defaulted(stringToInt, 50),
 });
 
