@@ -203,7 +203,7 @@ export function envToConfig(env: Env): Config {
     : true;
   const enablePriceWorker = env.ENABLE_PRICE_WORKER
     ? env.ENABLE_PRICE_WORKER === "true"
-    : false;
+    : true;
   const maxBlockRangeSize = env.MAX_BLOCK_RANGE_SIZE
     ? parseInt(env.MAX_BLOCK_RANGE_SIZE)
     : undefined;
