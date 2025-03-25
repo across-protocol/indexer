@@ -26,12 +26,11 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
 };
 
 export function getNoTtlBlockDistance(chainId: number) {
-  return 1_000_000_000_000;
-  // const noTtlBlockDistance = DEFAULT_NO_TTL_DISTANCE[chainId];
-  // if (!noTtlBlockDistance) {
-  //   throw new Error(`No noTtlBlockDistance found for chainId: ${chainId}`);
-  // }
-  // return noTtlBlockDistance;
+  const noTtlBlockDistance = DEFAULT_NO_TTL_DISTANCE[chainId];
+  if (!noTtlBlockDistance) {
+    throw new Error(`No noTtlBlockDistance found for chainId: ${chainId}`);
+  }
+  return noTtlBlockDistance;
 }
 
 // This is the max anticipated distance on each chain before RPC data is likely to be consistent amongst providers.
