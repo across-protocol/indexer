@@ -176,42 +176,4 @@ export function getHubPoolClient(
   );
 }
 
-export type RetryProviderConfig = {
-  providerCacheNamespace: string;
-  maxConcurrency: number;
-  pctRpcCallsLogged: number;
-  standardTtlBlockDistance: number;
-  noTtlBlockDistance: number;
-  providerCacheTtl: number;
-  nodeQuorumThreshold: number;
-  retries: number;
-  delay: number;
-  providerConfigs: [providerUrls: string, chainId: number][];
-  chainId: number;
-};
-export type RetryProviderDeps = {
-  cache: across.interfaces.CachingMechanismInterface;
-  logger: winston.Logger;
-};
-
-export function getRetryProvider(
-  params: RetryProviderConfig & RetryProviderDeps,
-) {
-  return new across.providers.RetryProvider(
-    params.providerConfigs,
-    params.chainId,
-    params.nodeQuorumThreshold,
-    params.retries,
-    params.delay,
-    params.maxConcurrency,
-    params.providerCacheNamespace,
-    params.pctRpcCallsLogged,
-    params.cache,
-    params.standardTtlBlockDistance,
-    params.noTtlBlockDistance,
-    params.providerCacheTtl,
-    params.logger,
-  );
-}
-
 export const BN_ZERO = across.utils.bnZero;

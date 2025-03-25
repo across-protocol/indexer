@@ -13,7 +13,7 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
     value: ObjectType,
     ttl?: number,
   ): Promise<string | undefined> {
-    if (ttl !== undefined) {
+    if (ttl !== undefined && ttl !== Number.POSITIVE_INFINITY) {
       return this.redis.set(key, JSON.stringify(value), "EX", ttl);
     }
     return this.redis.set(key, JSON.stringify(value));

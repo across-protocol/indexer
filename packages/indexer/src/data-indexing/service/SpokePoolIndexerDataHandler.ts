@@ -4,13 +4,13 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import { providers } from "ethers";
 import {
   entities,
   utils as indexerDatabaseUtils,
   SaveQueryResult,
   SaveQueryResultType,
 } from "@repo/indexer-database";
-
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
@@ -143,8 +143,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.deposits,
       SaveQueryResultType.Inserted,
     );
+    const newInsertedFills = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.fills,
+      SaveQueryResultType.Inserted,
+    );
+
+    // Fetch transaction receipts associated only to new inserted events:
+    // (1) deposits for getting the swap before bridge events, (2) fills for getting the gas fee
+    const transactionReceipts = await this.getTransactionReceiptsForEvents([
+      ...newInsertedDeposits,
+      ...newInsertedFills,
+    ]);
+
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
       newInsertedDeposits,
+      transactionReceipts,
       lastFinalisedBlock,
     );
 
@@ -172,6 +185,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents,
       deletedDeposits,
       depositSwapPairs,
+      transactionReceipts,
     );
 
     //FIXME: Remove performance timing
@@ -211,29 +225,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
    */
   private async matchDepositEventsWithSwapEvents(
     deposits: entities.V3FundsDeposited[],
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
     lastFinalisedBlock: number,
   ) {
-    // avoid fetching the same transaction receipt multiple times
-    const uniqueDepositTxHashes = [
-      ...new Set(
-        deposits.map((deposit) => deposit.transactionHash.toLowerCase()),
-      ),
-    ];
-    const transactionReceipts = await Promise.all(
-      uniqueDepositTxHashes.map(async (txHash) => {
-        const receipt = await this.provider.getTransactionReceipt(txHash);
-        if (!receipt) {
-          this.logger.warn({
-            at: "SpokePoolIndexerDataHandler#matchDepositEventsWithSwapEvents",
-            message: `Transaction receipt not found`,
-            txHash,
-            chainId: this.chainId,
-          });
-        }
-        return receipt;
-      }),
-    );
-    const swapBeforeBridgeEvents = transactionReceipts
+    const transactionReceiptsList = Object.values(transactionReceipts);
+    const swapBeforeBridgeEvents = transactionReceiptsList
       .map((transactionReceipt) =>
         EventDecoder.decodeSwapBeforeBridgeEvents(transactionReceipt),
       )
@@ -304,6 +300,46 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       })
       .flat();
     return depositSwapMap;
+  }
+
+  /**
+   * Fetches the transaction receipts for the given events and returns a map of transaction hash to transaction receipt.
+   * The transaction hash key is lowercased.
+   */
+  private async getTransactionReceiptsForEvents(
+    events: (entities.V3FundsDeposited | entities.FilledV3Relay)[],
+  ) {
+    // avoid fetching the same transaction receipt multiple times
+    const uniqueTxHashes = [
+      ...new Set(events.map((e) => e.transactionHash.toLowerCase())),
+    ];
+    const transactionReceipts = await across.utils.mapAsync(
+      uniqueTxHashes,
+      async (txHash) => {
+        const receipt = await this.provider.getTransactionReceipt(txHash);
+        if (!receipt) {
+          this.logger.warn({
+            at: "SpokePoolIndexerDataHandler#matchDepositEventsWithSwapEvents",
+            message: `Transaction receipt not found`,
+            txHash,
+            chainId: this.chainId,
+          });
+        }
+        return receipt;
+      },
+    );
+    const validTransactionReceipts = transactionReceipts.filter(
+      (receipt) => !!receipt,
+    );
+    const transactionReceiptsByTxHash = validTransactionReceipts.reduce(
+      (acc, receipt) => {
+        acc[receipt.transactionHash.toLowerCase()] = receipt;
+        return acc;
+      },
+      {} as Record<string, providers.TransactionReceipt>,
+    );
+
+    return transactionReceiptsByTxHash;
   }
 
   /**
