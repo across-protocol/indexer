@@ -10,6 +10,6 @@ export function getRouter(db: DataSource, redis: Redis): Router {
   const controller = new DepositsController(service);
   router.get("/deposits", controller.getDeposits);
   router.get("/deposit/status", controller.getDepositStatus);
-  router.get("/deposit/unfilled", controller.getUnfilledDeposits);
+  router.get("/deposits/unfilled", controller.getUnfilledDeposits);
   return router;
 }
