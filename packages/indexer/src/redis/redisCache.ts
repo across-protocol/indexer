@@ -15,6 +15,8 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
   ): Promise<string | undefined> {
     if (ttl !== undefined && ttl !== Number.POSITIVE_INFINITY) {
       return this.redis.set(key, JSON.stringify(value), "EX", ttl);
+    } else if (ttl !== undefined && ttl === Number.POSITIVE_INFINITY) {
+      return this.redis.set(key, JSON.stringify(value), "EX", 2147483647);
     }
     return this.redis.set(key, JSON.stringify(value));
   }
