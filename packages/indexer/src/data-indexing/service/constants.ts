@@ -2,6 +2,7 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 
 // taken from https://github.com/UMAprotocol/bot-configs/blob/ed878f5f80509ad4ca55c8200e40670ba50e3b26/serverless-bots/across-v2-bot-config.json#L330C1-L342C25
 const finalisedBlockBufferDistances: Record<number, number> = {
+  // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 80,
   [CHAIN_IDs.ARBITRUM]: 240,
   [CHAIN_IDs.BASE]: 60,
@@ -15,6 +16,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.POLYGON]: 128,
   [CHAIN_IDs.REDSTONE]: 60,
   [CHAIN_IDs.SCROLL]: 40,
+  [CHAIN_IDs.SOLANA]: 40,
   [CHAIN_IDs.SONEIUM]: 60,
   [CHAIN_IDs.UNICHAIN]: 60,
   [CHAIN_IDs.WORLD_CHAIN]: 60,
@@ -22,6 +24,8 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.ZORA]: 60,
   // BOBA is disabled
   [CHAIN_IDs.BOBA]: 0,
+  // Testnets:
+  [CHAIN_IDs.SOLANA_DEVNET]: 40,
 };
 
 export function getFinalisedBlockBufferDistance(chainId: number) {
@@ -37,6 +41,7 @@ export function getFinalisedBlockBufferDistance(chainId: number) {
 }
 
 const loopWaitTimeSeconds: Record<number, number> = {
+  // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
   [CHAIN_IDs.ARBITRUM]: 2,
   [CHAIN_IDs.BASE]: 4,
@@ -50,6 +55,7 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.POLYGON]: 3,
   [CHAIN_IDs.REDSTONE]: 4,
   [CHAIN_IDs.SCROLL]: 6,
+  [CHAIN_IDs.SOLANA]: 2,
   [CHAIN_IDs.SONEIUM]: 4,
   [CHAIN_IDs.UNICHAIN]: 4,
   [CHAIN_IDs.WORLD_CHAIN]: 4,
@@ -57,6 +63,8 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.ZORA]: 4,
   // BOBA is disabled
   [CHAIN_IDs.BOBA]: 0,
+  // Testnets:
+  [CHAIN_IDs.SOLANA_DEVNET]: 2,
 };
 
 export function getLoopWaitTimeSeconds(chainId: number) {

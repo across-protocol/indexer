@@ -6,7 +6,7 @@ import { entities, DataSource } from "@repo/indexer-database";
 
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
-import { RedisCache } from "../../redis/redisCache";
+import { SvmProvider } from "../../web3/RetryProvidersFactory";
 
 const DEFAULT_MAX_BLOCK_RANGE_SIZE = 50_000;
 
@@ -40,7 +40,6 @@ export class Indexer {
   constructor(
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
-    private rpcProvider: ethers.providers.JsonRpcProvider,
     private logger: Logger,
     private dataSource: DataSource,
   ) {
@@ -90,6 +89,8 @@ export class Indexer {
           errorJson: JSON.stringify(error),
         });
         blockRangeProcessedSuccessfully = false;
+        // Introduce an additional delay if errors are encountered
+        await across.utils.delay(30);
       } finally {
         if (!blockRangeResult?.isBackfilling) {
           await across.utils.delay(this.config.loopWaitTimeSeconds);
@@ -143,7 +144,7 @@ export class Indexer {
           id: this.dataHandler.getDataIdentifier(),
         },
       });
-    const latestBlockNumber = await this.rpcProvider.getBlockNumber();
+    const latestBlockNumber = await this.getLatestBlockNumber();
     const lastFinalisedBlockOnChain =
       latestBlockNumber - this.config.finalisedBlockBufferDistance;
 
@@ -182,5 +183,43 @@ export class Indexer {
       lastFinalisedBlock: lastFinalisedBlockInBlockRange,
       isBackfilling,
     };
+  }
+
+  protected async getLatestBlockNumber(): Promise<number> {
+    throw new Error("getLatestBlockNumber not implemented");
+  }
+}
+
+export class EvmIndexer extends Indexer {
+  constructor(
+    config: ConstructorConfig,
+    dataHandler: IndexerDataHandler,
+    logger: Logger,
+    dataSource: DataSource,
+    private rpcProvider: ethers.providers.JsonRpcProvider,
+  ) {
+    super(config, dataHandler, logger, dataSource);
+  }
+
+  protected async getLatestBlockNumber(): Promise<number> {
+    const latestBlockNumber = await this.rpcProvider.getBlockNumber();
+    return latestBlockNumber;
+  }
+}
+
+export class SvmIndexer extends Indexer {
+  constructor(
+    config: ConstructorConfig,
+    dataHandler: IndexerDataHandler,
+    logger: Logger,
+    dataSource: DataSource,
+    private rpcProvider: SvmProvider,
+  ) {
+    super(config, dataHandler, logger, dataSource);
+  }
+
+  protected async getLatestBlockNumber(): Promise<number> {
+    const latestBlockNumber = await this.rpcProvider.getSlot().send();
+    return Number(latestBlockNumber);
   }
 }

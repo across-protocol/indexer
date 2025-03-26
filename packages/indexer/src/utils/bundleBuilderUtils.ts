@@ -1,4 +1,4 @@
-import { utils, clients, interfaces } from "@across-protocol/sdk";
+import { utils, clients, interfaces, providers } from "@across-protocol/sdk";
 import winston from "winston";
 import { entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
@@ -134,7 +134,9 @@ export async function getBlockRangeFromBundleToHead(
       if (disabledChainIds.includes(chainId)) {
         return { chainId, startBlock: previousBlock, endBlock: previousBlock };
       } else {
-        const provider = providers.getProviderForChainId(chainId);
+        const provider = providers.getProviderForChainId(
+          chainId,
+        ) as providers.RetryProvider;
         const currentBlock = await provider.getBlockNumber();
         return {
           chainId,
