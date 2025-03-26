@@ -10,11 +10,6 @@ import {
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
-import {
-  FilledV3Relay,
-  RelayHashInfo,
-  V3FundsDeposited,
-} from "../../../indexer-database/dist/src/entities";
 
 type APIHandler = (
   params?: JSON,
