@@ -112,13 +112,17 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
-      return {
-        ...event,
+      const dbEvent = {
         destinationChainId: event.l2ChainId,
-        destinationToken: event.l2Token,
         l1Token: event.l1Token,
+        destinationToken: event.l2Token,
+        blockNumber: event.blockNumber,
+        transactionHash: event.transactionHash,
+        transactionIndex: event.transactionIndex,
+        logIndex: event.logIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
+      return dbEvent;
     });
     const savedEvents =
       await this.saveAndHandleFinalisationBatch<entities.SetPoolRebalanceRoute>(
