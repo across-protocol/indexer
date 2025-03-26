@@ -21,7 +21,11 @@ export const DepositsParams = s.object({
   // some kind of pagination options, skip could be the start point
   skip: s.optional(stringToInt),
   // pagination limit, how many to return after the start, note we convert string to number
-  limit: s.defaulted(stringToInt, 50),
+  limit: s.refine(
+    s.defaulted(stringToInt, 50),
+    "maxLimit",
+    (value) => value <= 1000 || "Limit must not exceed 1000",
+  ),
 });
 
 export type DepositsParams = s.Infer<typeof DepositsParams>;
@@ -46,7 +50,11 @@ export const FilterDepositsParams = s.object({
   startTimestamp: s.optional(stringToInt),
   endTimestamp: s.optional(stringToInt),
   skip: s.defaulted(stringToInt, 0),
-  limit: s.defaulted(stringToInt, 50),
+  limit: s.refine(
+    s.defaulted(stringToInt, 50),
+    "maxLimit",
+    (value) => value <= 1000 || "Limit must not exceed 1000",
+  ),
   minSecondsToFill: s.optional(stringToInt),
 });
 
