@@ -124,9 +124,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     retryProvidersFactory,
   );
-  const priceWorker = new PriceWorker(redis, postgres, logger, {
-    coingeckoApiKey: config.coingeckoApiKey,
-  });
+  const priceWorker = config.enablePriceWorker
+    ? new PriceWorker(redis, postgres, logger, {
+        coingeckoApiKey: config.coingeckoApiKey,
+      })
+    : undefined;
 
   const swapWorker = new SwapWorker(
     redis,
@@ -146,7 +148,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
       });
       integratorIdWorker.close();
-      priceWorker.close();
+      priceWorker?.close();
       swapWorker.close();
       acrossIndexerManager.stopGracefully();
       bundleServicesManager.stop();

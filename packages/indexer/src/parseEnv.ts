@@ -21,6 +21,7 @@ export type Config = {
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
   coingeckoApiKey?: string;
+  enablePriceWorker: boolean;
 };
 
 export type RedisConfig = {
@@ -200,6 +201,9 @@ export function envToConfig(env: Env): Config {
   const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
     ? env.ENABLE_BUNDLE_BUILDER === "true"
     : true;
+  const enablePriceWorker = env.ENABLE_PRICE_WORKER
+    ? env.ENABLE_PRICE_WORKER === "true"
+    : true;
   const maxBlockRangeSize = env.MAX_BLOCK_RANGE_SIZE
     ? parseInt(env.MAX_BLOCK_RANGE_SIZE)
     : undefined;
@@ -231,5 +235,6 @@ export function envToConfig(env: Env): Config {
     webhookConfig,
     maxBlockRangeSize,
     coingeckoApiKey,
+    enablePriceWorker,
   };
 }
