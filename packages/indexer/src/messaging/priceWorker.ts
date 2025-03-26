@@ -66,6 +66,7 @@ export class PriceWorker {
     );
     this.setWorker();
   }
+
   private async getPrice(
     address: string,
     chainId: number,
@@ -306,7 +307,8 @@ export class PriceWorker {
           `Native token platform id not found for symbol ${destinationChainNativeTokenSymbol}`,
         );
       }
-      const nativeTokenPrice = await this.getHistoricalPriceByPlatformId(
+      const nativeTokenPrice = await this.getPriceForSymbol(
+        nativeToken.symbol,
         nativeTokenPlatformId,
         blockTime,
       );
@@ -347,8 +349,22 @@ export class PriceWorker {
     }
   }
 
-  private async getHistoricalPriceByPlatformId(platformId: string, date: Date) {
-    const priceTime = yesterday(date);
+  private async getPriceForSymbol(
+    symbol: string,
+    platformId: string,
+    time: Date,
+  ) {
+    const priceTime = yesterday(time);
+    const cachedPrice = await this.historicPriceRepository.findOne({
+      where: {
+        date: priceTime,
+        baseCurrency: symbol,
+        quoteCurrency: "usd",
+      },
+    });
+    if (cachedPrice) {
+      return Number(cachedPrice.price);
+    }
     const cgFormattedDate =
       DateTime.fromJSDate(priceTime).toFormat("dd-LL-yyyy");
     const response = await this.coingeckoClient.call<CGHistoricPrice>(
@@ -360,6 +376,19 @@ export class PriceWorker {
         `Coingecko call returned no price for platform id ${platformId} at ${cgFormattedDate}`,
       );
     }
+    await this.historicPriceRepository.upsert(
+      {
+        date: priceTime,
+        baseCurrency: symbol,
+        quoteCurrency: "usd",
+        price: usdPrice.toString(),
+      },
+      {
+        conflictPaths: ["date", "baseCurrency", "quoteCurrency"],
+        skipUpdateIfNoValuesChanged: true,
+      },
+    );
+
     return usdPrice;
   }
 
