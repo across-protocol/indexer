@@ -101,6 +101,7 @@ export async function Main(
     deposits: routers.deposits.getRouter(postgres, redis),
     balances: routers.balances.getRouter(redis),
     statsPage: routers.statsPage.getRouter(postgres),
+    fills: routers.fills.getRouter(postgres), // Added fills router
     webhook: webhooks.router,
   };
   const app = ExpressApp(allRouters);
