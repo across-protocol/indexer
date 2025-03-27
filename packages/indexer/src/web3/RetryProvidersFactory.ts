@@ -98,7 +98,8 @@ export class RetryProvidersFactory {
       providerEnvs.maxConcurrency,
       providerEnvs.providerCacheNamespace,
       providerEnvs.pctRpcCallsLogged,
-      this.redisCache,
+      // TODO: remove this after backfilling is done
+      undefined,
       providerEnvs.standardTtlBlockDistance,
       providerEnvs.noTtlBlockDistance,
       providerEnvs.providerCacheTtl,
