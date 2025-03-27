@@ -117,7 +117,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.BLAST]: 2,
   [CHAIN_IDs.BOBA]: 2,
   [CHAIN_IDs.INK]: 1,
-  [CHAIN_IDs.LENS]: 1,
+  [CHAIN_IDs.LENS]: 600, // TODO: Update to 1 when Lens go live
   [CHAIN_IDs.LINEA]: 3,
   [CHAIN_IDs.LISK]: 2,
   [CHAIN_IDs.MAINNET]: 12,
