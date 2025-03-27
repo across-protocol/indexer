@@ -124,6 +124,20 @@ export function parseProvidersUrls() {
   return results;
 }
 
+export function parseProviderHeaders(chainId: number) {
+  // Permit env-based HTTP headers to be specified.
+  // RPC_PROVIDER_<chainId>_HEADERS=auth
+  // RPC_PROVIDER_<chainId>_HEADER_AUTH=xxx-auth-header
+  let headers: { [k: string]: string } = {};
+  const _headers = process.env[`RPC_PROVIDER_HEADERS_${chainId}`];
+  _headers?.split(",").forEach((header) => {
+    headers[header] =
+      process.env[`RPC_PROVIDER_HEADER_${header.toUpperCase()}_${chainId}`]!;
+  });
+
+  return headers;
+}
+
 export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
   const providerCacheNamespace =
     process.env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
