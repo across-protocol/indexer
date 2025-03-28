@@ -1,10 +1,6 @@
 import { Redis } from "ioredis";
 import { DataSource, entities } from "@repo/indexer-database";
-import type {
-  DepositParams,
-  DepositsParams,
-  UnfilledDepositsParams,
-} from "../dtos/deposits.dto";
+import type { DepositParams, DepositsParams } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
   IncorrectQueryParamsException,
@@ -187,67 +183,6 @@ export class DepositsService {
       );
     }
     return result;
-  }
-
-  public async getUnfilledDeposits(params: UnfilledDepositsParams): Promise<
-    Array<
-      entities.V3FundsDeposited & {
-        status: entities.RelayStatus;
-        depositRefundTxHash: string;
-      }
-    >
-  > {
-    const {
-      originChainId,
-      destinationChainId,
-      startTimestamp = Date.now() - 5 * 60 * 1000,
-      endTimestamp = Date.now(),
-      skip = 0,
-      limit = 50,
-    } = params;
-
-    const startDate = new Date(startTimestamp);
-    const endDate = new Date(endTimestamp);
-
-    const repo = this.db.getRepository(entities.V3FundsDeposited);
-    const queryBuilder = repo
-      .createQueryBuilder("deposit")
-      .leftJoinAndSelect(
-        entities.RelayHashInfo,
-        "rhi",
-        "rhi.depositEventId = deposit.id",
-      )
-      .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
-      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
-        startDate,
-        endDate,
-      })
-      .select([
-        `deposit.*`,
-        `rhi.status as status`,
-        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
-      ])
-      .orderBy("deposit.quoteTimestamp", "DESC");
-
-    if (originChainId) {
-      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
-        originChainId,
-      });
-    }
-
-    if (destinationChainId) {
-      queryBuilder.andWhere(
-        "deposit.destinationChainId = :destinationChainId",
-        {
-          destinationChainId,
-        },
-      );
-    }
-
-    queryBuilder.skip(skip);
-    queryBuilder.limit(limit);
-
-    return queryBuilder.execute();
   }
 
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
