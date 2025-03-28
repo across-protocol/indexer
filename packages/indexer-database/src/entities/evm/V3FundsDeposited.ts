@@ -21,6 +21,7 @@ import {
   "originChainId",
   "logIndex",
 ])
+@Index("IX_v3FundsDeposited_blockTimestamp", ["blockTimestamp"])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
