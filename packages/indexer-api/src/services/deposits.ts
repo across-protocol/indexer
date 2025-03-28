@@ -3,7 +3,7 @@ import { DataSource, entities } from "@repo/indexer-database";
 import type {
   DepositParams,
   DepositsParams,
-  UnfilledDepositsParams,
+  FilterDepositsParams,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
@@ -189,7 +189,7 @@ export class DepositsService {
     return result;
   }
 
-  public async getUnfilledDeposits(params: UnfilledDepositsParams): Promise<
+  public async getUnfilledDeposits(params: FilterDepositsParams): Promise<
     Array<
       entities.V3FundsDeposited & {
         status: entities.RelayStatus;
@@ -202,8 +202,8 @@ export class DepositsService {
       destinationChainId,
       startTimestamp = Date.now() - 5 * 60 * 1000,
       endTimestamp = Date.now(),
-      skip = 0,
-      limit = 50,
+      skip,
+      limit,
     } = params;
 
     const startDate = new Date(startTimestamp);
@@ -241,6 +241,73 @@ export class DepositsService {
         {
           destinationChainId,
         },
+      );
+    }
+
+    queryBuilder.skip(skip);
+    queryBuilder.limit(limit);
+
+    return queryBuilder.execute();
+  }
+
+  public async getFilledDeposits(params: FilterDepositsParams) {
+    const {
+      originChainId,
+      destinationChainId,
+      startTimestamp = Date.now() - 5 * 60 * 1000,
+      endTimestamp = Date.now(),
+      skip,
+      limit,
+      minSecondsToFill,
+    } = params;
+
+    const startDate = new Date(startTimestamp);
+    const endDate = new Date(endTimestamp);
+
+    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const queryBuilder = repo
+      .createQueryBuilder("rhi")
+      .leftJoinAndSelect(
+        entities.V3FundsDeposited,
+        "deposit",
+        "deposit.id = rhi.depositEventId",
+      )
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "fill",
+        "fill.id = rhi.fillEventId",
+      )
+      .where("rhi.status = :status", { status: entities.RelayStatus.Filled })
+      .select([
+        "deposit.*", // Select all columns from depositEvent
+        "rhi.status as status", // Select status from RelayHashInfo
+        "fill.relayer as relayer", // Select relayer from FillEvent
+        "fill.blockTimestamp as fillBlockTimestamp", // Select blockTimestamp from fillEvent
+      ])
+      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
+        startDate,
+        endDate,
+      });
+
+    if (originChainId) {
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
+        originChainId,
+      });
+    }
+
+    if (destinationChainId) {
+      queryBuilder.andWhere(
+        "deposit.destinationChainId = :destinationChainId",
+        {
+          destinationChainId,
+        },
+      );
+    }
+
+    if (minSecondsToFill !== undefined) {
+      queryBuilder.andWhere(
+        "EXTRACT(EPOCH FROM (fill.blockTimestamp - deposit.blockTimestamp)) >= :minSecondsToFill",
+        { minSecondsToFill },
       );
     }
 

@@ -4,7 +4,7 @@ import { DepositsService } from "../services/deposits";
 import {
   DepositsParams,
   DepositParams,
-  UnfilledDepositsParams,
+  FilterDepositsParams,
 } from "../dtos/deposits.dto";
 
 export class DepositsController {
@@ -44,8 +44,21 @@ export class DepositsController {
     next: NextFunction,
   ) => {
     try {
-      const params = s.create(req.query, UnfilledDepositsParams);
+      const params = s.create(req.query, FilterDepositsParams);
       const result = await this.service.getUnfilledDeposits(params);
+      return res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  };
+  public getFilledDeposits = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const params = s.create(req.query, FilterDepositsParams);
+      const result = await this.service.getFilledDeposits(params);
       return res.json(result);
     } catch (err) {
       next(err);
