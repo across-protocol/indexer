@@ -92,7 +92,7 @@ export class DepositsService {
     }
 
     if (params.skip) {
-      queryBuilder.skip(params.skip);
+      queryBuilder.offset(params.skip);
     }
 
     if (params.limit) {
@@ -244,7 +244,7 @@ export class DepositsService {
       );
     }
 
-    queryBuilder.skip(skip);
+    queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
     return queryBuilder.execute();
@@ -311,7 +311,7 @@ export class DepositsService {
       );
     }
 
-    queryBuilder.skip(skip);
+    queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
     return queryBuilder.execute();
