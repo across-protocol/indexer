@@ -1,10 +1,9 @@
-import Redis from "ioredis";
 import winston from "winston";
-import { DataSource } from "@repo/indexer-database";
 import {
   BlockRangeInsertType,
   BundleRepository,
 } from "../database/BundleRepository";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
 
 const BUNDLE_LIVENESS_SECONDS = 4 * 60 * 60; // 4 hour
 const AVERAGE_SECONDS_PER_BLOCK = 13; // 13 seconds per block on ETH
@@ -247,9 +246,14 @@ async function assignBundleRangesToProposal(
           // append-only. As a result, we can guarantee that the index of each chain
           // matches the previous. For the case that the current bundle adds a new chain
           // to the proposal, the corresponding previous event index should resolve undefined
-          // and therefore the start block should be 0.
+          // and therefore the start block should be the spoke pool deployment block number.
+          const spokePoolDeploymentBlockNumber = getDeployedBlockNumber(
+            "SpokePool",
+            chainId,
+          );
           const previousEndBlock =
-            previousEvent.bundleEvaluationBlockNumbers[idx] ?? 0;
+            previousEvent.bundleEvaluationBlockNumbers[idx] ??
+            spokePoolDeploymentBlockNumber;
           return [
             ...acc,
             {
