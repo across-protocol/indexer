@@ -9,6 +9,7 @@ import { BaseIndexer } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
 import { getBlockTime } from "../web3/constants";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import {
   buildPoolRebalanceRoot,
   getBlockRangeBetweenBundles,
@@ -23,6 +24,7 @@ export type BundleConfig = {
   hubPoolClientFactory: utils.HubPoolClientFactory;
   spokePoolClientFactory: utils.SpokePoolClientFactory;
   bundleRepository: BundleRepository;
+  retryProvidersFactory: RetryProvidersFactory;
 };
 
 export class BundleIncludedEventsService extends BaseIndexer {
@@ -116,7 +118,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
       historicalBundle.proposal,
       bundle.proposal,
     );
-    const spokeClients = this.getSpokeClientsForLookbackBlockRange(
+    const spokeClients = await this.getSpokeClientsForLookbackBlockRange(
       lookbackRange,
       spokePoolClientFactory,
     );
@@ -182,20 +184,28 @@ export class BundleIncludedEventsService extends BaseIndexer {
     }
   }
 
-  private getSpokeClientsForLookbackBlockRange(
+  private async getSpokeClientsForLookbackBlockRange(
     lookbackRange: utils.ProposalRangeResult[],
     spokePoolClientFactory: utils.SpokePoolClientFactory,
   ) {
-    return lookbackRange.reduce(
-      (acc, { chainId, startBlock, endBlock }) => {
+    return await lookbackRange.reduce(
+      async (accPromise, { chainId, startBlock, endBlock }) => {
+        const acc = await accPromise;
         // We need to instantiate spoke clients using a higher end block than
         // the bundle range as deposits which fills are included in this bundle could
-        // have occured outside the bundle range of the origin chain
+        // have occured outside the bundle range of the origin chain.
+        // We also need to ensure that the end block is not greater than the latest block on the chain.
         // NOTE: A buffer time of 15 minutes has been proven to work for older bundles
         const blockTime = getBlockTime(chainId);
         const endBlockTimeBuffer = 60 * 15;
         const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
         const endBlockWithBuffer = endBlock + blockBuffer;
+        const provider =
+          this.config.retryProvidersFactory.getProviderForChainId(
+            chainId,
+          ) as across.providers.RetryProvider;
+        const latestBlock = await provider.getBlockNumber();
+        const cappedEndBlock = Math.min(endBlockWithBuffer, latestBlock);
         const deployedBlockNumber = getDeployedBlockNumber(
           "SpokePool",
           chainId,
@@ -205,7 +215,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
           message: `Instantiate SpokePool client for chain ${chainId}`,
           deployedBlockNumber,
           startBlock,
-          endBlockWithBuffer,
+          cappedEndBlock,
         });
         // A chain can be included in the bundle even if the SpokePool is not deployed yet
         // In this case, the SpokePool client will not be instantiated and updated
@@ -215,7 +225,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
             message: `SpokePool client not instantiated as it is not deployed yet for chain ${chainId}`,
             deployedBlockNumber,
             startBlock,
-            endBlockWithBuffer,
+            cappedEndBlock,
           });
           return acc;
         }
@@ -225,14 +235,14 @@ export class BundleIncludedEventsService extends BaseIndexer {
           [chainId]: spokePoolClientFactory.get(
             chainId,
             startBlock,
-            endBlockWithBuffer,
+            cappedEndBlock,
             {
               hubPoolClient: this.hubPoolClient,
             },
           ),
         };
       },
-      {} as Record<number, across.clients.SpokePoolClient>,
+      Promise.resolve({} as Record<number, across.clients.SpokePoolClient>),
     );
   }
 }
