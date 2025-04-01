@@ -55,6 +55,7 @@ export class BundleServicesManager {
       hubPoolClientFactory: this.hubPoolClientFactory,
       spokePoolClientFactory: this.spokePoolClientFactory,
       bundleRepository: this.bundleRepository,
+      retryProvidersFactory: this.retryProvidersFactory,
     });
     return this.bundleIncludedEventsService.start(10);
   }
