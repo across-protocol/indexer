@@ -9,6 +9,7 @@ import { BaseIndexer } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
 import { getBlockTime } from "../web3/constants";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import {
   buildPoolRebalanceRoot,
   getBlockRangeBetweenBundles,
@@ -23,6 +24,7 @@ export type BundleConfig = {
   hubPoolClientFactory: utils.HubPoolClientFactory;
   spokePoolClientFactory: utils.SpokePoolClientFactory;
   bundleRepository: BundleRepository;
+  retryProvidersFactory: RetryProvidersFactory;
 };
 
 export class BundleIncludedEventsService extends BaseIndexer {
@@ -116,9 +118,12 @@ export class BundleIncludedEventsService extends BaseIndexer {
       historicalBundle.proposal,
       bundle.proposal,
     );
+    const latestBlocks =
+      await this.getLatestBlockForBundleChains(lookbackRange);
     const spokeClients = this.getSpokeClientsForLookbackBlockRange(
       lookbackRange,
       spokePoolClientFactory,
+      latestBlocks,
     );
     logger.debug({
       at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
@@ -185,6 +190,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
   private getSpokeClientsForLookbackBlockRange(
     lookbackRange: utils.ProposalRangeResult[],
     spokePoolClientFactory: utils.SpokePoolClientFactory,
+    latestBlocks: Record<number, number>,
   ) {
     return lookbackRange.reduce(
       (acc, { chainId, startBlock, endBlock }) => {
@@ -196,6 +202,8 @@ export class BundleIncludedEventsService extends BaseIndexer {
         const endBlockTimeBuffer = 60 * 15;
         const blockBuffer = Math.round(endBlockTimeBuffer / blockTime);
         const endBlockWithBuffer = endBlock + blockBuffer;
+        const latestBlock = latestBlocks[chainId]!;
+        const cappedEndBlock = Math.min(endBlockWithBuffer, latestBlock);
         const deployedBlockNumber = getDeployedBlockNumber(
           "SpokePool",
           chainId,
@@ -205,7 +213,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
           message: `Instantiate SpokePool client for chain ${chainId}`,
           deployedBlockNumber,
           startBlock,
-          endBlockWithBuffer,
+          cappedEndBlock,
         });
         // A chain can be included in the bundle even if the SpokePool is not deployed yet
         // In this case, the SpokePool client will not be instantiated and updated
@@ -215,7 +223,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
             message: `SpokePool client not instantiated as it is not deployed yet for chain ${chainId}`,
             deployedBlockNumber,
             startBlock,
-            endBlockWithBuffer,
+            cappedEndBlock,
           });
           return acc;
         }
@@ -225,7 +233,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
           [chainId]: spokePoolClientFactory.get(
             chainId,
             startBlock,
-            endBlockWithBuffer,
+            cappedEndBlock,
             {
               hubPoolClient: this.hubPoolClient,
             },
@@ -234,5 +242,22 @@ export class BundleIncludedEventsService extends BaseIndexer {
       },
       {} as Record<number, across.clients.SpokePoolClient>,
     );
+  }
+
+  private async getLatestBlockForBundleChains(
+    lookbackRange: utils.ProposalRangeResult[],
+  ): Promise<Record<number, number>> {
+    const entries = await Promise.all(
+      lookbackRange.map(async ({ chainId }) => {
+        const provider =
+          this.config.retryProvidersFactory.getProviderForChainId(
+            chainId,
+          ) as across.providers.RetryProvider;
+        const latestBlock = await provider.getBlockNumber();
+        return [chainId, latestBlock];
+      }),
+    );
+
+    return Object.fromEntries(entries);
   }
 }
