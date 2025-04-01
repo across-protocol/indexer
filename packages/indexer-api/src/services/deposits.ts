@@ -38,7 +38,7 @@ export class DepositsService {
         `rhi.fillTxHash as "fillTxHash"`,
         `rhi.depositRefundTxHash as "depositRefundTxHash"`,
       ])
-      .orderBy("deposit.quoteTimestamp", "DESC");
+      .orderBy("deposit.blockTimestamp", "DESC");
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
@@ -227,7 +227,7 @@ export class DepositsService {
         `rhi.status as status`,
         `rhi.depositRefundTxHash as "depositRefundTxHash"`,
       ])
-      .orderBy("deposit.quoteTimestamp", "DESC");
+      .orderBy("deposit.blockTimestamp", "DESC");
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
@@ -278,16 +278,17 @@ export class DepositsService {
         "fill.id = rhi.fillEventId",
       )
       .where("rhi.status = :status", { status: entities.RelayStatus.Filled })
+      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
+        startDate,
+        endDate,
+      })
       .select([
         "deposit.*", // Select all columns from depositEvent
         "rhi.status as status", // Select status from RelayHashInfo
         "fill.relayer as relayer", // Select relayer from FillEvent
         "fill.blockTimestamp as fillBlockTimestamp", // Select blockTimestamp from fillEvent
       ])
-      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
-        startDate,
-        endDate,
-      });
+      .orderBy("deposit.blockTimestamp", "DESC");
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {

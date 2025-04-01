@@ -36,7 +36,8 @@ export class FillsService {
         startDate,
         endDate,
       })
-      .select(["fill.*", `rhi.status as status`]);
+      .select(["fill.*", `rhi.status as status`])
+      .orderBy("fill.blockTimestamp", "DESC");
 
     if (originChainId) {
       queryBuilder.andWhere("fill.originChainId = :originChainId", {
