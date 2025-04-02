@@ -4,6 +4,7 @@ import type {
   DepositParams,
   DepositsParams,
   FilterDepositsParams,
+  DepositReturnType,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
@@ -14,7 +15,56 @@ import {
 type APIHandler = (
   params?: JSON,
 ) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
-
+// use in typeorm select statement to match DepositReturnType
+const DepositReturnType = [
+  `deposit.id as "id"`,
+  `deposit.relayHash as "relayHash"`,
+  `deposit.depositId as "depositId"`,
+  `deposit.originChainId as "originChainId"`,
+  `deposit.destinationChainId as "destinationChainId"`,
+  `deposit.fromLiteChain as "fromLiteChain"`,
+  `deposit.toLiteChain as "toLiteChain"`,
+  `deposit.depositor as "depositor"`,
+  `deposit.recipient as "recipient"`,
+  `deposit.inputToken as "inputToken"`,
+  `deposit.inputAmount as "inputAmount"`,
+  `deposit.outputToken as "outputToken"`,
+  `deposit.outputAmount as "outputAmount"`,
+  `deposit.message as "message"`,
+  `deposit.messageHash as "messageHash"`,
+  `deposit.internalHash as "internalHash"`,
+  `deposit.exclusiveRelayer as "exclusiveRelayer"`,
+  `deposit.exclusivityDeadline as "exclusivityDeadline"`,
+  `deposit.fillDeadline as "fillDeadline"`,
+  `deposit.quoteTimestamp as "quoteTimestamp"`,
+  `deposit.integratorId as "integratorId"`,
+  `deposit.transactionHash as "depositTransactionHash"`,
+  `deposit.transactionIndex as "depositTransactionIndex"`,
+  `deposit.logIndex as "depositLogIndex"`,
+  `deposit.blockNumber as "depositBlockNumber"`,
+  `deposit.blockTimestamp as "depositBlockTimestamp"`,
+  `rhi.status as "status"`,
+  `rhi.depositRefundTxHash as "depositRefundTxHash"`,
+  `rhi.swapTokenPriceUsd as "swapTokenPriceUsd"`,
+  `rhi.swapFeeUsd as "swapFeeUsd"`,
+  `rhi.bridgeFeeUsd as "bridgeFeeUsd"`,
+  `rhi.inputPriceUsd as "inputPriceUsd"`,
+  `rhi.outputPriceUsd as "outputPriceUsd"`,
+  `rhi.fillGasFee as "fillGasFee"`,
+  `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
+  `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
+  `fill.relayer as "relayer"`,
+  `fill.blockTimestamp as "fillBlockTimestamp"`,
+  `fill.transactionHash as "fillTransactionHash"`,
+  `swap.transactionHash as "swapTransactionHash"`,
+  `swap.swapToken as "swapToken"`,
+  `swap.acrossInputToken as "acrossInputToken"`,
+  `swap.acrossOutputToken as "acrossOutputToken"`,
+  `swap.swapTokenAmount as "swapTokenAmount"`,
+  `swap.acrossInputAmount as "acrossInputAmount"`,
+  `swap.acrossOutputAmount as "acrossOutputAmount"`,
+  `swap.exchange as exchange`,
+];
 export class DepositsService {
   constructor(
     private db: DataSource,
@@ -23,7 +73,7 @@ export class DepositsService {
 
   public async getDeposits(
     params: DepositsParams,
-  ): Promise<entities.V3FundsDeposited[]> {
+  ): Promise<Array<DepositReturnType>> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
@@ -32,13 +82,18 @@ export class DepositsService {
         "rhi",
         "rhi.depositEventId = deposit.id",
       )
-      .select([
-        `deposit.*`,
-        `rhi.status as status`,
-        `rhi.fillTxHash as "fillTxHash"`,
-        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
-      ])
-      .orderBy("deposit.blockTimestamp", "DESC");
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "swap",
+        "swap.id = rhi.swapBeforeBridgeEventId",
+      )
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "fill",
+        "fill.id = rhi.fillEventId",
+      )
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
@@ -189,14 +244,9 @@ export class DepositsService {
     return result;
   }
 
-  public async getUnfilledDeposits(params: FilterDepositsParams): Promise<
-    Array<
-      entities.V3FundsDeposited & {
-        status: entities.RelayStatus;
-        depositRefundTxHash: string;
-      }
-    >
-  > {
+  public async getUnfilledDeposits(
+    params: FilterDepositsParams,
+  ): Promise<Array<DepositReturnType>> {
     const {
       originChainId,
       destinationChainId,
@@ -222,12 +272,8 @@ export class DepositsService {
         startDate,
         endDate,
       })
-      .select([
-        `deposit.*`,
-        `rhi.status as status`,
-        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
-      ])
-      .orderBy("deposit.blockTimestamp", "DESC");
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
@@ -250,7 +296,9 @@ export class DepositsService {
     return queryBuilder.execute();
   }
 
-  public async getFilledDeposits(params: FilterDepositsParams) {
+  public async getFilledDeposits(
+    params: FilterDepositsParams,
+  ): Promise<Array<DepositReturnType>> {
     const {
       originChainId,
       destinationChainId,
@@ -282,13 +330,8 @@ export class DepositsService {
         startDate,
         endDate,
       })
-      .select([
-        "deposit.*", // Select all columns from depositEvent
-        "rhi.status as status", // Select status from RelayHashInfo
-        "fill.relayer as relayer", // Select relayer from FillEvent
-        "fill.blockTimestamp as fillBlockTimestamp", // Select blockTimestamp from fillEvent
-      ])
-      .orderBy("deposit.blockTimestamp", "DESC");
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
