@@ -237,6 +237,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
             {
               hubPoolClient: this.hubPoolClient,
             },
+            false,
           ),
         };
       },

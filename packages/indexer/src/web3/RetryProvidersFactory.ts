@@ -109,4 +109,54 @@ export class RetryProvidersFactory {
 
     return retryProvider;
   }
+
+  // TODO: This will need to be updated to support custom SVM providers too.
+  /**
+   * Get a custom EVM provider for a given chainId. This is useful for testing
+   * for situations where you need a provider with different settings than the
+   * default ones.
+   */
+  public getCustomEvmProvider({
+    chainId,
+    enableCaching = true,
+  }: {
+    chainId: number;
+    enableCaching: boolean;
+  }): providers.RetryProvider {
+    const providerUrls = parseProvidersUrls().get(chainId);
+
+    if (!providerUrls || providerUrls.length === 0) {
+      throw new Error(`No provider urls found for chainId: ${chainId}`);
+    }
+    const retryProviderEnvs = parseRetryProviderEnvs(chainId);
+
+    let redisCache;
+    let standardTtlBlockDistance;
+    let noTtlBlockDistance;
+    let providerCacheTtl;
+
+    // Caching is enabled by overriding the undefined values
+    if (enableCaching) {
+      redisCache = this.redisCache;
+      standardTtlBlockDistance = getChainCacheFollowDistance(chainId);
+      noTtlBlockDistance = retryProviderEnvs.noTtlBlockDistance;
+      providerCacheTtl = retryProviderEnvs.providerCacheTtl;
+    }
+
+    return new providers.RetryProvider(
+      providerUrls.map((url) => [url, chainId]),
+      chainId,
+      retryProviderEnvs.nodeQuorumThreshold,
+      retryProviderEnvs.retries,
+      retryProviderEnvs.retryDelay,
+      retryProviderEnvs.maxConcurrency,
+      retryProviderEnvs.providerCacheNamespace,
+      retryProviderEnvs.pctRpcCallsLogged,
+      redisCache,
+      standardTtlBlockDistance,
+      noTtlBlockDistance,
+      providerCacheTtl,
+      this.logger,
+    );
+  }
 }
