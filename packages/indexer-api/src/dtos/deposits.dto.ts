@@ -67,8 +67,6 @@ export type DepositReturnType = {
   depositId: string;
   originChainId: number;
   destinationChainId: number;
-  fromLiteChain: boolean;
-  toLiteChain: boolean;
   depositor: string;
   recipient: string;
   inputToken: string;
@@ -77,16 +75,12 @@ export type DepositReturnType = {
   outputAmount: string;
   message: string;
   messageHash?: string;
-  internalHash: string;
   exclusiveRelayer: string;
   exclusivityDeadline?: Date;
   fillDeadline: Date;
   quoteTimestamp: Date;
-  integratorId?: string;
 
   depositTransactionHash: string;
-  depositTransactionIndex: number;
-  depositLogIndex: number;
   depositBlockNumber: number;
   depositBlockTimestamp?: Date;
 
@@ -110,10 +104,5 @@ export type DepositReturnType = {
   // from swap
   swapTransactionHash?: string;
   swapToken?: string;
-  acrossInputToken?: string;
-  acrossOutputToken?: string;
   swapTokenAmount?: string;
-  acrossInputAmount?: string;
-  acrossOutputAmount?: string;
-  exchange?: string;
 };
