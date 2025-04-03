@@ -3,6 +3,7 @@ import winston from "winston";
 import { entities } from "@repo/indexer-database";
 import { BundleRepository } from "../database/BundleRepository";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
 
 export type ProposalRange = Pick<
   entities.ProposedRootBundle,
@@ -87,8 +88,8 @@ export function getBundleBlockRanges(bundle: entities.Bundle) {
  * @returns The block ranges for each chain. For each chain, this is the previous
  *          proposal's evaluation block number + 1 to the current proposal's evaluation block
  *          number. In the case that the new proposal includes ranges for a chain that was not
- *          previously included, the range starts at block 0 for that chain per the ACX UMIP. We
- *          also ensure that disabled chains aren't ticked up. I.e. if a chain has the same end
+ *          previously included, the range starts at the spoke pool deployment block for that chain per the ACX UMIP.
+ *          We also ensure that disabled chains aren't ticked up. I.e. if a chain has the same end
  *          block as the previous proposal range, we don't increment.
  * @dev The ordering of the ranges is the same as the chainIds in the current proposal.
  */
@@ -103,7 +104,7 @@ export function getBlockRangeBetweenBundles(
     startBlock: Math.min(
       previous.bundleEvaluationBlockNumbers[idx]
         ? previous.bundleEvaluationBlockNumbers[idx]! + 1
-        : 0, // If this is a new chain, start from block 0
+        : getDeployedBlockNumber("SpokePool", chainId), // If this is a new chain, start from spoke pool deployment block
       current.bundleEvaluationBlockNumbers[idx]!,
     ),
     endBlock: current.bundleEvaluationBlockNumbers[idx]!,
