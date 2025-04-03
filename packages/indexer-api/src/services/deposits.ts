@@ -143,7 +143,36 @@ export class DepositsService {
       queryBuilder.limit(params.limit);
     }
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+    const speedupPromises = deposits.map(async (deposit) => {
+      const speedups = await speedupRepo
+        .createQueryBuilder("speedup")
+        .where(
+          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+          {
+            depositId: deposit.depositId,
+            originChainId: deposit.originChainId,
+          },
+        )
+        .select([
+          "speedup.transactionHash as transactionHash",
+          "speedup.updatedRecipient as updatedRecipient",
+          "speedup.updatedMessage as updatedMessage",
+          "speedup.blockNumber as blockNumber",
+        ])
+        .getRawMany();
+
+      deposit.speedups = speedups;
+    });
+
+    await Promise.all(speedupPromises);
+
+    return deposits;
   }
 
   public async getDepositStatus(params: DepositParams) {
@@ -282,7 +311,36 @@ export class DepositsService {
     queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+    const speedupPromises = deposits.map(async (deposit) => {
+      const speedups = await speedupRepo
+        .createQueryBuilder("speedup")
+        .where(
+          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+          {
+            depositId: deposit.depositId,
+            originChainId: deposit.originChainId,
+          },
+        )
+        .select([
+          "speedup.transactionHash as transactionHash",
+          "speedup.updatedRecipient as updatedRecipient",
+          "speedup.updatedMessage as updatedMessage",
+          "speedup.blockNumber as blockNumber",
+        ])
+        .getRawMany();
+
+      deposit.speedups = speedups;
+    });
+
+    await Promise.all(speedupPromises);
+
+    return deposits;
   }
 
   public async getFilledDeposits(
@@ -347,7 +405,36 @@ export class DepositsService {
     queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+    const speedupPromises = deposits.map(async (deposit) => {
+      const speedups = await speedupRepo
+        .createQueryBuilder("speedup")
+        .where(
+          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+          {
+            depositId: deposit.depositId,
+            originChainId: deposit.originChainId,
+          },
+        )
+        .select([
+          "speedup.transactionHash as transactionHash",
+          "speedup.updatedRecipient as updatedRecipient",
+          "speedup.updatedMessage as updatedMessage",
+          "speedup.blockNumber as blockNumber",
+        ])
+        .getRawMany();
+
+      deposit.speedups = speedups;
+    });
+
+    await Promise.all(speedupPromises);
+
+    return deposits;
   }
 
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
