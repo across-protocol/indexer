@@ -70,7 +70,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
           entities.V3FundsDeposited,
           eventsChunk,
-          ["relayHash", "blockNumber", "logIndex"],
+          ["relayHash", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
