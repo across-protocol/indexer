@@ -59,3 +59,50 @@ export const FilterDepositsParams = s.object({
 });
 
 export type FilterDepositsParams = s.Infer<typeof FilterDepositsParams>;
+
+export type DepositReturnType = {
+  // Fields from V3FundsDeposited
+  id: number;
+  relayHash: string;
+  depositId: string;
+  originChainId: number;
+  destinationChainId: number;
+  depositor: string;
+  recipient: string;
+  inputToken: string;
+  inputAmount: string;
+  outputToken: string;
+  outputAmount: string;
+  message: string;
+  messageHash?: string;
+  exclusiveRelayer: string;
+  exclusivityDeadline?: Date;
+  fillDeadline: Date;
+  quoteTimestamp: Date;
+
+  depositTransactionHash: string;
+  depositBlockNumber: number;
+  depositBlockTimestamp?: Date;
+
+  // Fields from RelayHashInfo
+  status: entities.RelayStatus;
+  depositRefundTxHash?: string;
+  swapTokenPriceUsd?: string;
+  swapFeeUsd?: string;
+  bridgeFeeUsd?: string;
+  inputPriceUsd?: string;
+  outputPriceUsd?: string;
+  fillGasFee?: string;
+  fillGasFeeUsd?: string;
+  fillGasTokenPriceUsd?: string;
+
+  // from fill
+  relayer?: string;
+  fillBlockTimestamp?: Date;
+  fillTransactionHash?: string;
+
+  // from swap
+  swapTransactionHash?: string;
+  swapToken?: string;
+  swapTokenAmount?: string;
+};
