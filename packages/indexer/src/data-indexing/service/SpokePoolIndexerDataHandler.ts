@@ -444,6 +444,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         disableQuoteBlockLookup: true,
         maxBlockLookback,
       },
+      false,
     );
 
     const initialTime = performance.now();

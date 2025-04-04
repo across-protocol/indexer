@@ -140,6 +140,7 @@ export class SpokePoolClientFactory extends ContractClientFactory<
       hubPoolClient: clients.HubPoolClient;
       maxBlockLookback?: number;
     },
+    enableCaching = true,
   ): clients.SpokePoolClient {
     const hubPoolClient =
       overrides?.hubPoolClient ??
@@ -151,11 +152,15 @@ export class SpokePoolClientFactory extends ContractClientFactory<
 
     const maxBlockLookBack =
       overrides?.maxBlockLookback ?? getMaxBlockLookBack(chainId);
+    const provider = enableCaching
+      ? this.retryProviderFactory.getProviderForChainId(chainId)
+      : this.retryProviderFactory.getCustomEvmProvider({
+          chainId,
+          enableCaching: false,
+        });
 
     return getSpokeClient({
-      provider: this.retryProviderFactory.getProviderForChainId(
-        chainId,
-      ) as providers.RetryProvider,
+      provider: provider as providers.RetryProvider,
       logger: this.logger,
       maxBlockLookBack,
       chainId,
