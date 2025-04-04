@@ -25,6 +25,8 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.WORLD_CHAIN]: 86400,
   [CHAIN_IDs.ZK_SYNC]: 172800,
   [CHAIN_IDs.ZORA]: 86400,
+  // Testnets:
+  [CHAIN_IDs.SOLANA_DEVNET]: 432000,
 };
 
 export function getNoTtlBlockDistance(chainId: number) {

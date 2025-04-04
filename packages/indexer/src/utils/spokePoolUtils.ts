@@ -1,5 +1,6 @@
 import { interfaces, providers } from "@across-protocol/sdk";
 import { utils as ethersUtils } from "ethers";
+import { SvmProvider } from "../web3/RetryProvidersFactory";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
@@ -36,6 +37,28 @@ export async function getIntegratorId(
       .pop()
       ?.substring(0, INTEGRATOR_ID_LENGTH);
   }
+  return integratorId;
+}
+
+export async function getSvmIntegratorId(
+  provider: SvmProvider,
+  txnRef: any, // TODO: fix, should be Signature
+) {
+  const INTEGRATOR_DELIMITER = "1dc0de";
+  const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
+  const txn = await provider
+    .getTransaction(txnRef, {
+      maxSupportedTransactionVersion: 0,
+    })
+    .send();
+  const txnLogs = txn?.meta?.logMessages;
+  const integratorIdLog = txnLogs?.find((log) =>
+    log.includes(INTEGRATOR_DELIMITER),
+  );
+  const integratorId = integratorIdLog
+    ?.split(INTEGRATOR_DELIMITER)
+    .pop()
+    ?.substring(0, INTEGRATOR_ID_LENGTH);
   return integratorId;
 }
 
