@@ -62,7 +62,7 @@ export class DepositsService {
 
   public async getDeposits(
     params: DepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
@@ -264,7 +264,7 @@ export class DepositsService {
 
   public async getUnfilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,
@@ -345,7 +345,7 @@ export class DepositsService {
 
   public async getFilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,

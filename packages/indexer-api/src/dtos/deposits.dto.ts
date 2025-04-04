@@ -106,10 +106,10 @@ export type DepositReturnType = {
   swapToken?: string;
   swapTokenAmount?: string;
 
-  speedups?: Array<{
+  speedups?: {
     transactionHash: string;
     updatedRecipient: string;
     updatedMessage: string;
     blockNumber: number;
-  }>;
+  }[];
 };
