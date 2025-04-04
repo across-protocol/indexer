@@ -165,6 +165,7 @@ export class DepositsService {
             "speedup.updatedRecipient as updatedRecipient",
             "speedup.updatedMessage as updatedMessage",
             "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
           ])
           .getRawMany();
 
@@ -334,6 +335,7 @@ export class DepositsService {
             "speedup.updatedRecipient as updatedRecipient",
             "speedup.updatedMessage as updatedMessage",
             "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
           ])
           .getRawMany();
 
@@ -430,6 +432,7 @@ export class DepositsService {
             "speedup.updatedRecipient as updatedRecipient",
             "speedup.updatedMessage as updatedMessage",
             "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
           ])
           .getRawMany();
 

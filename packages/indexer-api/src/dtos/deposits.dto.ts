@@ -109,6 +109,7 @@ export type DepositReturnType = {
   speedups?: {
     transactionHash: string;
     updatedRecipient: string;
+    updatedOutputAmount: string;
     updatedMessage: string;
     blockNumber: number;
   }[];
