@@ -149,30 +149,31 @@ export class DepositsService {
     const speedupRepo = this.db.getRepository(
       entities.RequestedSpeedUpV3Deposit,
     );
-    const speedupPromises = deposits.map(async (deposit) => {
-      const speedups = await speedupRepo
-        .createQueryBuilder("speedup")
-        .where(
-          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
-          {
-            depositId: deposit.depositId,
-            originChainId: deposit.originChainId,
-          },
-        )
-        .select([
-          "speedup.transactionHash as transactionHash",
-          "speedup.updatedRecipient as updatedRecipient",
-          "speedup.updatedMessage as updatedMessage",
-          "speedup.blockNumber as blockNumber",
-        ])
-        .getRawMany();
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+          ])
+          .getRawMany();
 
-      deposit.speedups = speedups;
-    });
-
-    await Promise.all(speedupPromises);
-
-    return deposits;
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   public async getDepositStatus(params: DepositParams) {
@@ -317,30 +318,31 @@ export class DepositsService {
     const speedupRepo = this.db.getRepository(
       entities.RequestedSpeedUpV3Deposit,
     );
-    const speedupPromises = deposits.map(async (deposit) => {
-      const speedups = await speedupRepo
-        .createQueryBuilder("speedup")
-        .where(
-          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
-          {
-            depositId: deposit.depositId,
-            originChainId: deposit.originChainId,
-          },
-        )
-        .select([
-          "speedup.transactionHash as transactionHash",
-          "speedup.updatedRecipient as updatedRecipient",
-          "speedup.updatedMessage as updatedMessage",
-          "speedup.blockNumber as blockNumber",
-        ])
-        .getRawMany();
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+          ])
+          .getRawMany();
 
-      deposit.speedups = speedups;
-    });
-
-    await Promise.all(speedupPromises);
-
-    return deposits;
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   public async getFilledDeposits(
@@ -411,30 +413,32 @@ export class DepositsService {
     const speedupRepo = this.db.getRepository(
       entities.RequestedSpeedUpV3Deposit,
     );
-    const speedupPromises = deposits.map(async (deposit) => {
-      const speedups = await speedupRepo
-        .createQueryBuilder("speedup")
-        .where(
-          "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
-          {
-            depositId: deposit.depositId,
-            originChainId: deposit.originChainId,
-          },
-        )
-        .select([
-          "speedup.transactionHash as transactionHash",
-          "speedup.updatedRecipient as updatedRecipient",
-          "speedup.updatedMessage as updatedMessage",
-          "speedup.blockNumber as blockNumber",
-        ])
-        .getRawMany();
 
-      deposit.speedups = speedups;
-    });
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+          ])
+          .getRawMany();
 
-    await Promise.all(speedupPromises);
-
-    return deposits;
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
