@@ -5,7 +5,6 @@ import { providers, utils } from "@across-protocol/sdk";
 import {
   parseRetryProviderEnvs,
   parseProvidersUrls,
-  parseProviderHeaders,
   RetryProviderConfig,
 } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";
@@ -35,10 +34,6 @@ export class RetryProvidersFactory {
         throw new Error(`Invalid provider urls found for chainId: ${chainId}`);
       }
       const standardTtlBlockDistance = getChainCacheFollowDistance(chainId);
-      // TODO: Headers are currently applied globally to all providers for a chain.
-      // Need to refactor to support provider-specific headers, as only some providers
-      // (e.g., Lens) require custom headers.
-      const headers = parseProviderHeaders(chainId);
       let provider;
       if (utils.chainIsSvm(chainId)) {
         provider = this.instantiateSvmProvider(
@@ -49,7 +44,7 @@ export class RetryProvidersFactory {
       } else if (utils.chainIsEvm(chainId)) {
         provider = this.instantiateEvmProvider(
           chainId,
-          { ...retryProviderEnvs, standardTtlBlockDistance, headers },
+          { ...retryProviderEnvs, standardTtlBlockDistance },
           providerUrls,
         );
       } else {
@@ -83,14 +78,11 @@ export class RetryProvidersFactory {
 
   private instantiateEvmProvider(
     chainId: number,
-    providerEnvs: RetryProviderConfig & { headers: { [k: string]: string } },
+    providerEnvs: RetryProviderConfig,
     providerUrls: string[],
   ): providers.RetryProvider {
     return new providers.RetryProvider(
-      providerUrls.map((url) => [
-        { url, ...(providerEnvs.headers && { headers: providerEnvs.headers }) },
-        chainId,
-      ]),
+      providerUrls.map((url) => [url, chainId]),
       chainId,
       providerEnvs.nodeQuorumThreshold,
       providerEnvs.retries,
@@ -98,8 +90,7 @@ export class RetryProvidersFactory {
       providerEnvs.maxConcurrency,
       providerEnvs.providerCacheNamespace,
       providerEnvs.pctRpcCallsLogged,
-      // TODO: remove this after backfilling is done
-      undefined,
+      this.redisCache,
       providerEnvs.standardTtlBlockDistance,
       providerEnvs.noTtlBlockDistance,
       providerEnvs.providerCacheTtl,
@@ -117,5 +108,55 @@ export class RetryProvidersFactory {
     }
 
     return retryProvider;
+  }
+
+  // TODO: This will need to be updated to support custom SVM providers too.
+  /**
+   * Get a custom EVM provider for a given chainId. This is useful for testing
+   * for situations where you need a provider with different settings than the
+   * default ones.
+   */
+  public getCustomEvmProvider({
+    chainId,
+    enableCaching = true,
+  }: {
+    chainId: number;
+    enableCaching: boolean;
+  }): providers.RetryProvider {
+    const providerUrls = parseProvidersUrls().get(chainId);
+
+    if (!providerUrls || providerUrls.length === 0) {
+      throw new Error(`No provider urls found for chainId: ${chainId}`);
+    }
+    const retryProviderEnvs = parseRetryProviderEnvs(chainId);
+
+    let redisCache;
+    let standardTtlBlockDistance;
+    let noTtlBlockDistance;
+    let providerCacheTtl;
+
+    // Caching is enabled by overriding the undefined values
+    if (enableCaching) {
+      redisCache = this.redisCache;
+      standardTtlBlockDistance = getChainCacheFollowDistance(chainId);
+      noTtlBlockDistance = retryProviderEnvs.noTtlBlockDistance;
+      providerCacheTtl = retryProviderEnvs.providerCacheTtl;
+    }
+
+    return new providers.RetryProvider(
+      providerUrls.map((url) => [url, chainId]),
+      chainId,
+      retryProviderEnvs.nodeQuorumThreshold,
+      retryProviderEnvs.retries,
+      retryProviderEnvs.retryDelay,
+      retryProviderEnvs.maxConcurrency,
+      retryProviderEnvs.providerCacheNamespace,
+      retryProviderEnvs.pctRpcCallsLogged,
+      redisCache,
+      standardTtlBlockDistance,
+      noTtlBlockDistance,
+      providerCacheTtl,
+      this.logger,
+    );
   }
 }

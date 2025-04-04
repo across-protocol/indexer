@@ -1,6 +1,11 @@
 import { Redis } from "ioredis";
 import { DataSource, entities } from "@repo/indexer-database";
-import type { DepositParams, DepositsParams } from "../dtos/deposits.dto";
+import type {
+  DepositParams,
+  DepositsParams,
+  FilterDepositsParams,
+  DepositReturnType,
+} from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
   IncorrectQueryParamsException,
@@ -10,7 +15,45 @@ import {
 type APIHandler = (
   params?: JSON,
 ) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
-
+// use in typeorm select statement to match DepositReturnType
+const DepositReturnType = [
+  `deposit.id as "id"`,
+  `deposit.relayHash as "relayHash"`,
+  `deposit.depositId as "depositId"`,
+  `deposit.originChainId as "originChainId"`,
+  `deposit.destinationChainId as "destinationChainId"`,
+  `deposit.depositor as "depositor"`,
+  `deposit.recipient as "recipient"`,
+  `deposit.inputToken as "inputToken"`,
+  `deposit.inputAmount as "inputAmount"`,
+  `deposit.outputToken as "outputToken"`,
+  `deposit.outputAmount as "outputAmount"`,
+  `deposit.message as "message"`,
+  `deposit.messageHash as "messageHash"`,
+  `deposit.exclusiveRelayer as "exclusiveRelayer"`,
+  `deposit.exclusivityDeadline as "exclusivityDeadline"`,
+  `deposit.fillDeadline as "fillDeadline"`,
+  `deposit.quoteTimestamp as "quoteTimestamp"`,
+  `deposit.transactionHash as "depositTransactionHash"`,
+  `deposit.blockNumber as "depositBlockNumber"`,
+  `deposit.blockTimestamp as "depositBlockTimestamp"`,
+  `rhi.status as "status"`,
+  `rhi.depositRefundTxHash as "depositRefundTxHash"`,
+  `rhi.swapTokenPriceUsd as "swapTokenPriceUsd"`,
+  `rhi.swapFeeUsd as "swapFeeUsd"`,
+  `rhi.bridgeFeeUsd as "bridgeFeeUsd"`,
+  `rhi.inputPriceUsd as "inputPriceUsd"`,
+  `rhi.outputPriceUsd as "outputPriceUsd"`,
+  `rhi.fillGasFee as "fillGasFee"`,
+  `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
+  `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
+  `fill.relayer as "relayer"`,
+  `fill.blockTimestamp as "fillBlockTimestamp"`,
+  `fill.transactionHash as "fillTransactionHash"`,
+  `swap.transactionHash as "swapTransactionHash"`,
+  `swap.swapToken as "swapToken"`,
+  `swap.swapTokenAmount as "swapTokenAmount"`,
+];
 export class DepositsService {
   constructor(
     private db: DataSource,
@@ -19,7 +62,7 @@ export class DepositsService {
 
   public async getDeposits(
     params: DepositsParams,
-  ): Promise<entities.V3FundsDeposited[]> {
+  ): Promise<Array<DepositReturnType>> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
@@ -28,13 +71,18 @@ export class DepositsService {
         "rhi",
         "rhi.depositEventId = deposit.id",
       )
-      .select([
-        `deposit.*`,
-        `rhi.status as status`,
-        `rhi.fillTxHash as "fillTxHash"`,
-        `rhi.depositRefundTxHash as "depositRefundTxHash"`,
-      ])
-      .orderBy("deposit.quoteTimestamp", "DESC");
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "swap",
+        "swap.id = rhi.swapBeforeBridgeEventId",
+      )
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "fill",
+        "fill.id = rhi.fillEventId",
+      )
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
@@ -88,7 +136,7 @@ export class DepositsService {
     }
 
     if (params.skip) {
-      queryBuilder.skip(params.skip);
+      queryBuilder.offset(params.skip);
     }
 
     if (params.limit) {
@@ -183,6 +231,123 @@ export class DepositsService {
       );
     }
     return result;
+  }
+
+  public async getUnfilledDeposits(
+    params: FilterDepositsParams,
+  ): Promise<Array<DepositReturnType>> {
+    const {
+      originChainId,
+      destinationChainId,
+      startTimestamp = Date.now() - 5 * 60 * 1000,
+      endTimestamp = Date.now(),
+      skip,
+      limit,
+    } = params;
+
+    const startDate = new Date(startTimestamp);
+    const endDate = new Date(endTimestamp);
+
+    const repo = this.db.getRepository(entities.V3FundsDeposited);
+    const queryBuilder = repo
+      .createQueryBuilder("deposit")
+      .leftJoinAndSelect(
+        entities.RelayHashInfo,
+        "rhi",
+        "rhi.depositEventId = deposit.id",
+      )
+      .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
+      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
+        startDate,
+        endDate,
+      })
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
+
+    if (originChainId) {
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
+        originChainId,
+      });
+    }
+
+    if (destinationChainId) {
+      queryBuilder.andWhere(
+        "deposit.destinationChainId = :destinationChainId",
+        {
+          destinationChainId,
+        },
+      );
+    }
+
+    queryBuilder.offset(skip);
+    queryBuilder.limit(limit);
+
+    return queryBuilder.execute();
+  }
+
+  public async getFilledDeposits(
+    params: FilterDepositsParams,
+  ): Promise<Array<DepositReturnType>> {
+    const {
+      originChainId,
+      destinationChainId,
+      startTimestamp = Date.now() - 5 * 60 * 1000,
+      endTimestamp = Date.now(),
+      skip,
+      limit,
+      minSecondsToFill,
+    } = params;
+
+    const startDate = new Date(startTimestamp);
+    const endDate = new Date(endTimestamp);
+
+    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const queryBuilder = repo
+      .createQueryBuilder("rhi")
+      .leftJoinAndSelect(
+        entities.V3FundsDeposited,
+        "deposit",
+        "deposit.id = rhi.depositEventId",
+      )
+      .leftJoinAndSelect(
+        entities.FilledV3Relay,
+        "fill",
+        "fill.id = rhi.fillEventId",
+      )
+      .where("rhi.status = :status", { status: entities.RelayStatus.Filled })
+      .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
+        startDate,
+        endDate,
+      })
+      .orderBy("deposit.blockTimestamp", "DESC")
+      .select(DepositReturnType);
+
+    if (originChainId) {
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
+        originChainId,
+      });
+    }
+
+    if (destinationChainId) {
+      queryBuilder.andWhere(
+        "deposit.destinationChainId = :destinationChainId",
+        {
+          destinationChainId,
+        },
+      );
+    }
+
+    if (minSecondsToFill !== undefined) {
+      queryBuilder.andWhere(
+        "EXTRACT(EPOCH FROM (fill.blockTimestamp - deposit.blockTimestamp)) >= :minSecondsToFill",
+        { minSecondsToFill },
+      );
+    }
+
+    queryBuilder.offset(skip);
+    queryBuilder.limit(limit);
+
+    return queryBuilder.execute();
   }
 
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
