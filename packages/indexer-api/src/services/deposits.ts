@@ -62,7 +62,7 @@ export class DepositsService {
 
   public async getDeposits(
     params: DepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
@@ -143,7 +143,38 @@ export class DepositsService {
       queryBuilder.limit(params.limit);
     }
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
+          ])
+          .getRawMany();
+
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   public async getDepositStatus(params: DepositParams) {
@@ -235,7 +266,7 @@ export class DepositsService {
 
   public async getUnfilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,
@@ -282,12 +313,43 @@ export class DepositsService {
     queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
+          ])
+          .getRawMany();
+
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   public async getFilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<Array<DepositReturnType>> {
+  ): Promise<DepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,
@@ -347,7 +409,39 @@ export class DepositsService {
     queryBuilder.offset(skip);
     queryBuilder.limit(limit);
 
-    return queryBuilder.execute();
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
+    const speedupRepo = this.db.getRepository(
+      entities.RequestedSpeedUpV3Deposit,
+    );
+
+    return Promise.all(
+      deposits.map(async (deposit) => {
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
+          ])
+          .getRawMany();
+
+        return {
+          ...deposit,
+          speedups,
+        };
+      }),
+    );
   }
 
   private getDepositStatusCacheTTLSeconds(status: entities.RelayStatus) {
