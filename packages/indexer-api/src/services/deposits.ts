@@ -16,7 +16,7 @@ type APIHandler = (
   params?: JSON,
 ) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
 // use in typeorm select statement to match DepositReturnType
-const DepositReturnType = [
+const DepositFields = [
   `deposit.id as "id"`,
   `deposit.relayHash as "relayHash"`,
   `deposit.depositId as "depositId"`,
@@ -37,6 +37,9 @@ const DepositReturnType = [
   `deposit.transactionHash as "depositTransactionHash"`,
   `deposit.blockNumber as "depositBlockNumber"`,
   `deposit.blockTimestamp as "depositBlockTimestamp"`,
+];
+
+const RelayHashInfoFields = [
   `rhi.status as "status"`,
   `rhi.depositRefundTxHash as "depositRefundTxHash"`,
   `rhi.swapTokenPriceUsd as "swapTokenPriceUsd"`,
@@ -47,9 +50,15 @@ const DepositReturnType = [
   `rhi.fillGasFee as "fillGasFee"`,
   `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
   `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
+];
+
+const FilledRelayFields = [
   `fill.relayer as "relayer"`,
   `fill.blockTimestamp as "fillBlockTimestamp"`,
   `fill.transactionHash as "fillTransactionHash"`,
+];
+
+const SwapBeforeBridgeFields = [
   `swap.transactionHash as "swapTransactionHash"`,
   `swap.swapToken as "swapToken"`,
   `swap.swapTokenAmount as "swapTokenAmount"`,
@@ -72,7 +81,7 @@ export class DepositsService {
         "rhi.depositEventId = deposit.id",
       )
       .leftJoinAndSelect(
-        entities.FilledV3Relay,
+        entities.SwapBeforeBridge,
         "swap",
         "swap.id = rhi.swapBeforeBridgeEventId",
       )
@@ -82,7 +91,12 @@ export class DepositsService {
         "fill.id = rhi.fillEventId",
       )
       .orderBy("deposit.blockTimestamp", "DESC")
-      .select(DepositReturnType);
+      .select([
+        ...DepositFields,
+        ...RelayHashInfoFields,
+        ...SwapBeforeBridgeFields,
+        ...FilledRelayFields,
+      ]);
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
@@ -293,7 +307,7 @@ export class DepositsService {
         endDate,
       })
       .orderBy("deposit.blockTimestamp", "DESC")
-      .select(DepositReturnType);
+      .select([...DepositFields, ...RelayHashInfoFields]);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
@@ -382,7 +396,7 @@ export class DepositsService {
         endDate,
       })
       .orderBy("deposit.blockTimestamp", "DESC")
-      .select(DepositReturnType);
+      .select([...DepositFields, ...RelayHashInfoFields, ...FilledRelayFields]);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
