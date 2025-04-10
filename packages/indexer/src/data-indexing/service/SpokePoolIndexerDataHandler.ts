@@ -15,7 +15,6 @@ import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
-import { getIntegratorId } from "../../utils/spokePoolUtils";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
@@ -586,7 +585,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     deposits: entities.V3FundsDeposited[],
   ) {
     await across.utils.forEachAsync(deposits, async (deposit) => {
-      const integratorId = await getIntegratorId(
+      const integratorId = await utils.getIntegratorId(
         this.provider,
         deposit.quoteTimestamp,
         deposit.transactionHash,

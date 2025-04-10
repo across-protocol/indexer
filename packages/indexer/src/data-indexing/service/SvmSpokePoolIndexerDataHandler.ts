@@ -5,16 +5,47 @@ import {
   getDeployedBlockNumber,
   SvmSpokeClient,
 } from "@across-protocol/contracts";
+import { Signature, Address, UnixTimestamp } from "@solana/kit";
 
+import * as utils from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
-
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
 
 export type FetchEventsResult = {
   depositEvents: any; // TODO: fix type. Needs SDK changes
   fillEvents: any; // TODO: fix type. Needs SDK changes
+};
+
+// TODO: Export this type from the SDK and use it from there.
+export type EventData =
+  | SvmSpokeClient.FilledRelay
+  | SvmSpokeClient.FundsDeposited;
+
+// TODO: Export this type from the SDK and use it from there.
+export enum SVMEventNames {
+  FilledRelay = "FilledRelay",
+  FundsDeposited = "FundsDeposited",
+}
+
+// TODO: Export this type from the SDK and use it from there.
+export type EventName = keyof typeof SVMEventNames;
+
+// TODO: Export this type from the SDK and use it from there.
+export type EventWithData<T extends EventData> = {
+  confirmationStatus: string | null;
+  blockTime: UnixTimestamp | null;
+  signature: Signature;
+  slot: bigint;
+  name: EventName;
+  data: T;
+  program: Address;
+};
+
+// Teach BigInt how to be represented as JSON.
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
 };
 
 export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
@@ -48,6 +79,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     const events = await this.fetchEventsByRange(blockRange, isBackfilling);
 
+    await this.updateNewDepositsWithIntegratorId(events.depositEvents);
+
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Found events for ${this.getDataIdentifier()}`,
@@ -62,7 +95,6 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     // - store events
     // - get block times
     // - delete unfinalised events
-    // - update new deposits with integrator id
     // - process events
     // - publish price messages
   }
@@ -125,5 +157,19 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       depositEvents,
       fillEvents,
     };
+  }
+
+  private async updateNewDepositsWithIntegratorId(
+    deposits: EventWithData<SvmSpokeClient.FundsDeposited>[],
+  ) {
+    await across.utils.forEachAsync(deposits, async (deposit) => {
+      const integratorId = await utils.getSvmIntegratorId(
+        this.provider,
+        deposit.signature,
+      );
+      if (integratorId) {
+        // TODO: update deposit with integrator id when we are storing them in the database
+      }
+    });
   }
 }
