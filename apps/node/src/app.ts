@@ -11,14 +11,14 @@ import { Logger } from "@uma/logger";
 
 dotenv.config();
 
-const logger = Logger;
+const logger = new Logger();
 
 async function run() {
   const { APP } = process.env;
   assert(APP, 'Specify the application to start with "APP=appname pnpm start"');
   switch (APP) {
     case "template":
-      void (await Template.Main(process.env));
+      await Template.Main(process.env);
       return "Example template app running";
     case "indexer":
       void (await Indexer.Main(Indexer.envToConfig(process.env), logger));
@@ -36,4 +36,6 @@ async function run() {
 
 run()
   .then((x) => x && logger.info({ at: "app", message: x }))
-  .catch(console.log);
+  .catch((error) => {
+    logger.error(error);
+  });
