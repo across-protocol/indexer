@@ -301,7 +301,12 @@ export class DepositsService {
         "rhi",
         "rhi.depositEventId = deposit.id",
       )
-      .where("rhi.status = :status", { status: entities.RelayStatus.Unfilled })
+      .where("rhi.status IN (:...unfilledStatuses)", {
+        unfilledStatuses: [
+          entities.RelayStatus.Unfilled,
+          entities.RelayStatus.SlowFillRequested,
+        ],
+      })
       .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
         startDate,
         endDate,
