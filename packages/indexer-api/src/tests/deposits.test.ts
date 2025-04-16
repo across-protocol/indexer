@@ -72,6 +72,12 @@ describe("Deposits Service Tests", () => {
     await relayHashInfoFixture.deleteAllRelayHashInfoRows();
   });
 
+  after(async () => {
+    // Close connections after all tests
+    await dataSource.destroy();
+    await redis.quit();
+  });
+
   it("should show the deposits table is empty when calling getDeposits", async () => {
     // Ensure the deposits table is empty
     await depositsFixture.deleteAllDeposits();
