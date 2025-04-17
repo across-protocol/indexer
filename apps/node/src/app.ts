@@ -11,7 +11,7 @@ import { Logger } from "@uma/logger";
 
 dotenv.config();
 
-const logger = new Logger();
+const logger = Logger;
 
 async function run() {
   const { APP } = process.env;
