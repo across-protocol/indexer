@@ -15,6 +15,7 @@ import {
   getBlockRangeBetweenBundles,
   getBundleBlockRanges,
 } from "../utils/bundleBuilderUtils";
+import { Config } from "../parseEnv";
 
 export type BundleConfig = {
   hubChainId: number;
@@ -25,6 +26,7 @@ export type BundleConfig = {
   spokePoolClientFactory: utils.SpokePoolClientFactory;
   bundleRepository: BundleRepository;
   retryProvidersFactory: RetryProvidersFactory;
+  config: Config;
 };
 
 export class BundleIncludedEventsService extends BaseIndexer {
@@ -68,7 +70,7 @@ export class BundleIncludedEventsService extends BaseIndexer {
     const { logger, bundleRepository } = this.config;
     const executedBundles =
       await bundleRepository.getExecutedBundlesWithoutEventsAssociated({
-        fromBlock: utils.ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK,
+        fromBlock: this.config.config.bundleEventsServiceStartBlockNumber,
       });
     logger.debug({
       at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",

@@ -13,6 +13,7 @@ services:
     tty: true
     depends_on:
       - postgres
+      - redis
 
   # PostgreSQL Service
   postgres:
@@ -30,6 +31,13 @@ services:
     ports:
       - 5432:5432
 
+  # Redis Service
+  redis:
+    image: redis:6-alpine
+    container_name: redis_cache_e2e
+    volumes:
+      - indexer-e2e-redis-volume:/data
 volumes:
   indexer-e2e-node-modules:
   indexer-e2e-pgdata:
+  indexer-e2e-redis-volume:
