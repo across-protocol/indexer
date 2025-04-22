@@ -14,7 +14,7 @@
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
-    "test": "mocha",
+    "test": "DOTENV_CONFIG_PATH=./../../.env.test mocha",
     "coverage": "nyc mocha",
     "test:watch": "mocha --watch"
   },
@@ -24,12 +24,13 @@
   "dependencies": {
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
-    "@repo/webhooks": "workspace:*",
     "@repo/indexer-database": "workspace:*",
+    "@repo/webhooks": "workspace:*",
     "@types/express": "^4.17.21",
     "@types/supertest": "^6.0.2",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "ioredis": "^5.4.1",
