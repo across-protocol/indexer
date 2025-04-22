@@ -11,7 +11,6 @@ import { providers, Contract } from "ethers";
 import { SpokePoolClient } from "./clients";
 
 export const CONFIG_STORE_VERSION = 4;
-export const ACROSS_V3_MAINNET_DEPLOYMENT_BLOCK = 19277710;
 
 export type GetSpokeClientParams = {
   provider: providers.Provider;

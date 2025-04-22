@@ -56,6 +56,7 @@ export class BundleServicesManager {
       spokePoolClientFactory: this.spokePoolClientFactory,
       bundleRepository: this.bundleRepository,
       retryProvidersFactory: this.retryProvidersFactory,
+      config: this.config,
     });
     return this.bundleIncludedEventsService.start(10);
   }

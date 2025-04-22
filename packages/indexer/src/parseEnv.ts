@@ -22,6 +22,7 @@ export type Config = {
   maxBlockRangeSize?: number;
   coingeckoApiKey?: string;
   enablePriceWorker: boolean;
+  bundleEventsServiceStartBlockNumber: number;
 };
 
 export type RedisConfig = {
@@ -222,6 +223,11 @@ export function envToConfig(env: Env): Config {
     clients: parseWebhookClientsFromString(env.WEBHOOK_CLIENTS ?? "[]"),
   };
   const coingeckoApiKey = env.COINGECKO_API_KEY;
+  const bundleEventsServiceStartBlockNumber =
+    env.BUNDLE_EVENTS_SERVICE_START_BLOCK_NUMBER
+      ? parseInt(env.BUNDLE_EVENTS_SERVICE_START_BLOCK_NUMBER)
+      : // Across v3 mainnet deployment block
+        19277710;
 
   return {
     redisConfig,
@@ -236,5 +242,6 @@ export function envToConfig(env: Env): Config {
     maxBlockRangeSize,
     coingeckoApiKey,
     enablePriceWorker,
+    bundleEventsServiceStartBlockNumber,
   };
 }
