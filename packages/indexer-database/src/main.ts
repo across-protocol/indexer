@@ -7,6 +7,7 @@ import {
   In,
   LessThan,
   Not,
+  EntityManager,
 } from "typeorm";
 import * as entities from "./entities";
 import { DatabaseConfig } from "./model";
@@ -19,6 +20,7 @@ export {
   In,
   LessThan,
   Not,
+  EntityManager,
 };
 
 export const createDataSource = (config: DatabaseConfig): DataSource => {

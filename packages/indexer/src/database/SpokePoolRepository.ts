@@ -1,6 +1,11 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
+import {
+  DataSource,
+  entities,
+  utils as dbUtils,
+  EntityManager,
+} from "@repo/indexer-database";
 import * as utils from "../utils";
 
 export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
@@ -12,10 +17,15 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     super(postgres, logger);
   }
 
-  public updateDepositEventWithIntegratorId(id: number, integratorId: string) {
-    return this.postgres
-      .getRepository(entities.V3FundsDeposited)
-      .update({ id }, { integratorId });
+  public updateDepositEventWithIntegratorId(
+    id: number,
+    integratorId: string,
+    transactionalEntityManager?: EntityManager,
+  ) {
+    const repository = transactionalEntityManager
+      ? transactionalEntityManager.getRepository(entities.V3FundsDeposited)
+      : this.postgres.getRepository(entities.V3FundsDeposited);
+    return repository.update({ id }, { integratorId });
   }
 
   private formatRelayData(
@@ -40,6 +50,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[],
     lastFinalisedBlock: number,
     blockTimes: Record<number, number>,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
       // delete fields that are not needed for the database table
@@ -72,6 +83,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["relayHash", "blockNumber", "transactionHash", "logIndex"],
           [],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -83,6 +95,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     filledV3RelayEvents: across.interfaces.FillWithBlock[],
     lastFinalisedBlock: number,
     blockTimes: Record<number, number>,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
@@ -124,6 +137,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["internalHash"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -133,6 +147,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveRequestedV3SlowFillEvents(
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       const messageHash = event.messageHash;
@@ -157,6 +172,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["internalHash"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -170,6 +186,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       };
     },
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = Object.values(requestedSpeedUpV3Events).flatMap(
       (eventsByDepositId) =>
@@ -192,6 +209,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["depositId", "originChainId", "transactionHash", "logIndex"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -202,6 +220,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[],
     chainId: number,
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
       return {
@@ -219,6 +238,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["chainId", "rootBundleId"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -228,6 +248,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveExecutedRelayerRefundRootEvents(
     executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[],
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
       return {
@@ -245,6 +266,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["chainId", "rootBundleId", "leafId"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -254,6 +276,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async formatAndSaveTokensBridgedEvents(
     tokensBridgedEvents: across.interfaces.TokensBridged[],
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
       return {
@@ -270,6 +293,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           eventsChunk,
           ["chainId", "leafId", "l2TokenAddress", "transactionHash"],
           ["transactionHash"],
+          transactionalEntityManager,
         ),
       ),
     );
@@ -279,6 +303,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   public async deleteUnfinalisedDepositEvents(
     chainId: number,
     lastFinalisedBlock: number,
+    transactionalEntityManager?: EntityManager,
   ) {
     const chainIdColumn = "originChainId";
     const deletedDeposits = await this.deleteUnfinalisedEvents(
@@ -286,6 +311,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       chainIdColumn,
       lastFinalisedBlock,
       entities.V3FundsDeposited,
+      transactionalEntityManager,
     );
     return deletedDeposits;
   }

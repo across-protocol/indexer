@@ -122,6 +122,7 @@ export class AcrossIndexerManager {
             this.webhookWriteFn,
           ),
           this.indexerQueuesService,
+          this.postgres,
         );
         const spokePoolIndexer = new EvmIndexer(
           {
