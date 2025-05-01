@@ -49,6 +49,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete event.updatedMessage;
       delete (event as { quoteBlockNumber?: number }).quoteBlockNumber;
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
+      if (across.utils.invalidOutputToken(event)) {
+        throw new Error(
+          `Invalid output token in FundsDeposited event. DepositId: ${event.depositId}. OriginChainId: ${event.originChainId}. InputToken: ${event.inputToken}.`,
+        );
+      }
       return {
         ...event,
         relayHash: across.utils.getRelayHashFromEvent(event),
@@ -90,6 +95,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       const messageHash = event.messageHash;
       delete (event as { messageHash?: string }).messageHash;
+      if (across.utils.invalidOutputToken(event)) {
+        throw new Error(
+          `Invalid output token in FilledV3Relay event. DepositId: ${event.depositId}. OriginChainId: ${event.originChainId}. InputToken: ${event.inputToken}.`,
+        );
+      }
       return {
         ...Object.keys(event).reduce(
           (acc, key) => {
