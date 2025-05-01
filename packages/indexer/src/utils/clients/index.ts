@@ -1,1 +1,1 @@
-export { SpokePoolClient } from "./SpokePoolClient";
+export { EvmSpokePoolClient } from "./SpokePoolClient";

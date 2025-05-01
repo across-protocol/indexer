@@ -1,3 +1,5 @@
+import winston from "winston";
+import { providers, Contract } from "ethers";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
@@ -5,10 +7,9 @@ import {
   HubPool__factory as HubPoolFactory,
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { providers, Contract } from "ethers";
-import { SpokePoolClient } from "./clients";
+
+import { EvmSpokePoolClient } from "./clients";
 
 export const CONFIG_STORE_VERSION = 4;
 
@@ -44,6 +45,9 @@ export function getSpokeClient(
   params: GetSpokeClientParams,
 ): across.clients.SpokePoolClient {
   const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
+  if (!across.utils.chainIsEvm(chainId)) {
+    throw new Error(`Chain ${chainId} is not an EVM chain`);
+  }
   const address = getAddress("SpokePool", chainId);
   const deployedBlockNumber = getDeployedBlockNumber("SpokePool", chainId);
 
@@ -71,7 +75,7 @@ export function getSpokeClient(
     SpokePoolFactory.abi,
     provider,
   );
-  return new SpokePoolClient(
+  return new EvmSpokePoolClient(
     logger,
     spokePoolContract,
     hubPoolClient,

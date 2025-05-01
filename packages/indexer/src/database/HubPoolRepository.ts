@@ -20,6 +20,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         bundleEvaluationBlockNumbers: event.bundleEvaluationBlockNumbers.map(
           (blockNumber) => parseInt(blockNumber.toString()),
         ),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -42,6 +44,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
       return {
         ...event,
         requestTime: new Date(event.requestTime * 1000),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -65,6 +69,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         ...event,
         caller: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -91,6 +97,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         runningBalances: event.runningBalances.map((balance) =>
           balance.toString(),
         ),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -117,8 +125,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         l1Token: event.l1Token,
         destinationToken: event.l2Token,
         blockNumber: event.blockNumber,
-        transactionHash: event.transactionHash,
-        transactionIndex: event.transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         logIndex: event.logIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };

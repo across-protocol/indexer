@@ -2,7 +2,7 @@ import * as across from "@across-protocol/sdk";
 import { Contract } from "ethers";
 import winston from "winston";
 
-export class SpokePoolClient extends across.clients.SpokePoolClient {
+export class EvmSpokePoolClient extends across.clients.EVMSpokePoolClient {
   constructor(
     logger: winston.Logger,
     spokePool: Contract,
