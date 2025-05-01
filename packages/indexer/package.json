@@ -22,7 +22,7 @@
   "license": "ISC",
   "dependencies": {
     "@across-protocol/constants": "^3.1.63",
-    "@across-protocol/contracts": "^4.0.7",
+    "@across-protocol/contracts": "^4.0.9",
     "@across-protocol/sdk": "^4.1.54",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",
