@@ -59,6 +59,12 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete event.updatedOutputAmount;
       delete event.updatedMessage;
       delete (event as { quoteBlockNumber?: number }).quoteBlockNumber;
+
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
         ...event,
@@ -71,8 +77,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -103,6 +109,12 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       const messageHash = event.messageHash;
       delete (event as { messageHash?: string }).messageHash;
+
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       return {
         ...Object.keys(event).reduce(
           (acc, key) => {
@@ -127,8 +139,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.relayExecutionInfo.updatedMessageHash ||
           event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -156,6 +168,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       const messageHash = event.messageHash;
       delete (event as { messageHash?: string }).messageHash;
+
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
       return {
         ...event,
         internalHash: utils.getInternalHash(
@@ -165,8 +182,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
         ...this.formatRelayData(event),
         message: messageHash,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -198,12 +215,16 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       (eventsByDepositId) =>
         Object.values(eventsByDepositId).flatMap((events) =>
           events.map((event) => {
+            const transactionHash = event.txnRef;
+            const transactionIndex = event.txnIndex;
+            delete (event as { txnRef?: string }).txnRef;
+            delete (event as { txnIndex?: number }).txnIndex;
             return {
               ...event,
               depositId: event.depositId.toString(),
               updatedOutputAmount: event.updatedOutputAmount.toString(),
-              transactionHash: event.txnRef,
-              transactionIndex: event.txnIndex,
+              transactionHash,
+              transactionIndex,
               finalised: event.blockNumber <= lastFinalisedBlock,
             };
           }),
@@ -231,11 +252,15 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
       return {
         ...event,
         chainId,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -261,12 +286,16 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -291,11 +320,15 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
