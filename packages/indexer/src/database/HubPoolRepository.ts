@@ -12,6 +12,11 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = proposedRootBundleEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       return {
         ...event,
         challengePeriodEndTimestamp: new Date(
@@ -20,8 +25,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         bundleEvaluationBlockNumbers: event.bundleEvaluationBlockNumbers.map(
           (blockNumber) => parseInt(blockNumber.toString()),
         ),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -41,11 +46,16 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleDisputedEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       return {
         ...event,
         requestTime: new Date(event.requestTime * 1000),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -65,12 +75,17 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleCanceledEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       return {
         ...event,
         caller: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -90,6 +105,11 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleExecutedEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       return {
         ...event,
         bundleLpFees: event.bundleLpFees.map((fees) => fees.toString()),
@@ -97,8 +117,8 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         runningBalances: event.runningBalances.map((balance) =>
           balance.toString(),
         ),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -120,13 +140,18 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
+      const transactionHash = event.txnRef;
+      const transactionIndex = event.txnIndex;
+      delete (event as { txnRef?: string }).txnRef;
+      delete (event as { txnIndex?: number }).txnIndex;
+
       const dbEvent = {
         destinationChainId: event.l2ChainId,
         l1Token: event.l1Token,
         destinationToken: event.l2Token,
         blockNumber: event.blockNumber,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
+        transactionHash,
+        transactionIndex,
         logIndex: event.logIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
