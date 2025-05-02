@@ -146,20 +146,19 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
     // Starting from here the execution flow is wrapped in a SQL transaction to ensure atomicity.
     // In case of an error, the database should be rolled back to the state before the block range was processed.
-    const { metrics, depositSwapPairs, storedEvents } =
-      await this.postgres.transaction(async (transactionalEntityManager) => {
+    const { metrics } = await this.postgres.transaction(
+      async (transactionalEntityManager) => {
         const result = await this.processBlockRangeEvents(
           transactionalEntityManager,
           events,
           lastFinalisedBlock,
         );
         return result;
-      });
-    // publish new relays to workers to fill in prices
-    await this.publishNewRelays(storedEvents);
-    await this.publishSwaps(depositSwapPairs);
+      },
+    );
 
     const finalPerfTime = performance.now();
+
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message:
@@ -241,9 +240,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     this.profileStoreEvents(storedEvents);
 
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents);
+    await this.publishSwaps(depositSwapPairs);
+
     return {
-      storedEvents,
-      depositSwapPairs,
       metrics: {
         timeToStoreEvents,
         timeToDeleteDeposits,
