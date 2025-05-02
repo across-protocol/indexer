@@ -71,6 +71,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
         ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -125,6 +127,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.relayExecutionInfo.updatedMessageHash ||
           event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -161,6 +165,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ),
         ...this.formatRelayData(event),
         message: messageHash,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -196,6 +202,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
               ...event,
               depositId: event.depositId.toString(),
               updatedOutputAmount: event.updatedOutputAmount.toString(),
+              transactionHash: event.txnRef,
+              transactionIndex: event.txnIndex,
               finalised: event.blockNumber <= lastFinalisedBlock,
             };
           }),
@@ -226,6 +234,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       return {
         ...event,
         chainId,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -255,6 +265,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -282,6 +294,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       return {
         ...event,
         amountToReturn: event.amountToReturn.toString(),
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
