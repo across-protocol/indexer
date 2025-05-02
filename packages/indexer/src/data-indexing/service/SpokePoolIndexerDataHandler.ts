@@ -6,9 +6,7 @@ import {
 } from "@across-protocol/contracts";
 import { providers } from "ethers";
 import {
-  DataSource,
   entities,
-  EntityManager,
   utils as indexerDatabaseUtils,
   SaveQueryResult,
   SaveQueryResultType,
@@ -70,11 +68,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
-    /*
-     * The postgres DataSource is used to execute low level queries such as starting a transaction.
-     * THIS IS AN EXCEPTION! Most of the queries are encouraged to be executed through the repository or entity classes.
-     */
-    private postgres: DataSource,
   ) {
     this.isInitialized = false;
   }
@@ -144,19 +137,66 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       },
       blockRange,
     });
-    // Starting from here the execution flow is wrapped in a SQL transaction to ensure atomicity.
-    // In case of an error, the database should be rolled back to the state before the block range was processed.
-    const { metrics } = await this.postgres.transaction(
-      async (transactionalEntityManager) => {
-        const result = await this.processBlockRangeEvents(
-          transactionalEntityManager,
-          events,
-          lastFinalisedBlock,
-        );
-        return result;
-      },
+    const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.deposits,
+      SaveQueryResultType.Inserted,
+    );
+    const newInsertedFills = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.fills,
+      SaveQueryResultType.Inserted,
     );
 
+    // Fetch transaction receipts associated only to new inserted events:
+    // (1) deposits for getting the swap before bridge events, (2) fills for getting the gas fee
+    const transactionReceipts = await this.getTransactionReceiptsForEvents([
+      ...newInsertedDeposits,
+      ...newInsertedFills,
+    ]);
+
+    const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
+      newInsertedDeposits,
+      transactionReceipts,
+      lastFinalisedBlock,
+    );
+
+    //FIXME: Remove performance timing
+    const timeToStoreEvents = performance.now();
+
+    // Delete unfinalised events
+    const [deletedDeposits, _] = await Promise.all([
+      this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      this.swapBeforeBridgeRepository.deleteUnfinalisedSwapEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+    ]);
+    const timeToDeleteDeposits = performance.now();
+    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+
+    //FIXME: Remove performance timing
+    const timeToUpdateDepositIds = performance.now();
+
+    await this.spokePoolProcessor.process(
+      storedEvents,
+      deletedDeposits,
+      depositSwapPairs,
+      transactionReceipts,
+    );
+
+    //FIXME: Remove performance timing
+    const timeToProcessDeposits = performance.now();
+
+    this.profileStoreEvents(storedEvents);
+
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents);
+    await this.publishSwaps(depositSwapPairs);
+
+    //FIXME: Remove performance timing
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -166,92 +206,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       spokeChainId: this.chainId,
       blockRange: blockRange,
       timeToFetchEvents: timeToFetchEvents - startPerfTime,
-      timeToStoreEvents: metrics.timeToStoreEvents - timeToFetchEvents,
-      timeToDeleteDeposits:
-        metrics.timeToDeleteDeposits - metrics.timeToStoreEvents,
-      timeToUpdateDepositIds:
-        metrics.timeToUpdateWithIntegratorId - metrics.timeToDeleteDeposits,
-      timeToProcessDeposits:
-        metrics.timeToProcessDeposits - metrics.timeToUpdateWithIntegratorId,
-      timeToProcessAnciliaryEvents:
-        finalPerfTime - metrics.timeToProcessDeposits,
+      timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
+      timeToDeleteDeposits: timeToDeleteDeposits - timeToStoreEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToDeleteDeposits,
+      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
+      timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
-  }
-
-  private async processBlockRangeEvents(
-    transactionalEntityManager: EntityManager,
-    events: FetchEventsResult,
-    lastFinalisedBlock: number,
-  ) {
-    const storedEvents = await this.storeEvents(
-      transactionalEntityManager,
-      events,
-      lastFinalisedBlock,
-    );
-    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
-      storedEvents.deposits,
-      SaveQueryResultType.Inserted,
-    );
-    const newInsertedFills = indexerDatabaseUtils.filterSaveQueryResults(
-      storedEvents.fills,
-      SaveQueryResultType.Inserted,
-    );
-    const transactionReceipts = await this.getTransactionReceiptsForEvents([
-      ...newInsertedDeposits,
-      ...newInsertedFills,
-    ]);
-    const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
-      newInsertedDeposits,
-      transactionReceipts,
-      lastFinalisedBlock,
-      transactionalEntityManager,
-    );
-    const timeToStoreEvents = performance.now();
-    // Delete unfinalised events because we are past the lastFinalisedBlock and unfinalised events means a reorg happened
-    const [deletedDeposits, _] = await Promise.all([
-      this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
-        this.chainId,
-        lastFinalisedBlock,
-        transactionalEntityManager,
-      ),
-      this.swapBeforeBridgeRepository.deleteUnfinalisedSwapEvents(
-        this.chainId,
-        lastFinalisedBlock,
-        transactionalEntityManager,
-      ),
-    ]);
-    const timeToDeleteDeposits = performance.now();
-
-    await this.updateNewDepositsWithIntegratorId(
-      newInsertedDeposits,
-      transactionalEntityManager,
-    );
-    const timeToUpdateWithIntegratorId = performance.now();
-
-    await this.spokePoolProcessor.process(
-      storedEvents,
-      deletedDeposits,
-      depositSwapPairs,
-      transactionReceipts,
-      transactionalEntityManager,
-    );
-    const timeToProcessDeposits = performance.now();
-
-    this.profileStoreEvents(storedEvents);
-
-    // publish new relays to workers to fill in prices
-    await this.publishNewRelays(storedEvents);
-    await this.publishSwaps(depositSwapPairs);
-
-    return {
-      metrics: {
-        timeToStoreEvents,
-        timeToDeleteDeposits,
-        timeToUpdateWithIntegratorId,
-        timeToProcessDeposits,
-      },
-    };
   }
 
   /**
@@ -265,7 +226,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     deposits: entities.V3FundsDeposited[],
     transactionReceipts: Record<string, providers.TransactionReceipt>,
     lastFinalisedBlock: number,
-    transactionalEntityManager: EntityManager,
   ) {
     const transactionReceiptsList = Object.values(transactionReceipts);
     const swapBeforeBridgeEvents = transactionReceiptsList
@@ -282,7 +242,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         swapBeforeBridgeEvents,
         this.chainId,
         lastFinalisedBlock,
-        transactionalEntityManager,
       );
     const insertedSwapBeforeBridgeEvents =
       indexerDatabaseUtils.filterSaveQueryResults(
@@ -562,7 +521,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   }
 
   private async storeEvents(
-    transactionalEntityManager: EntityManager,
     params: FetchEventsResult,
     lastFinalisedBlock: number,
   ): Promise<StoreEventsResult> {
@@ -587,39 +545,32 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         v3FundsDepositedEvents,
         lastFinalisedBlock,
         blockTimes,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
         requestedV3SlowFillEvents,
         lastFinalisedBlock,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
         filledV3RelayEvents,
         lastFinalisedBlock,
         blockTimes,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
         executedRelayerRefundRootEvents,
         lastFinalisedBlock,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveRequestedSpeedUpV3Events(
         requestedSpeedUpV3Events,
         lastFinalisedBlock,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
         relayedRootBundleEvents,
         this.chainId,
         lastFinalisedBlock,
-        transactionalEntityManager,
       ),
       spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
         tokensBridgedEvents,
         lastFinalisedBlock,
-        transactionalEntityManager,
       ),
     ]);
     return {
@@ -632,7 +583,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
   private async updateNewDepositsWithIntegratorId(
     deposits: entities.V3FundsDeposited[],
-    transactionalEntityManager: EntityManager,
   ) {
     await across.utils.forEachAsync(deposits, async (deposit) => {
       const integratorId = await utils.getIntegratorId(
@@ -644,7 +594,6 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         await this.spokePoolClientRepository.updateDepositEventWithIntegratorId(
           deposit.id,
           integratorId,
-          transactionalEntityManager,
         );
       }
     });

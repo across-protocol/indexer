@@ -1,11 +1,6 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import {
-  DataSource,
-  entities,
-  utils as dbUtils,
-  EntityManager,
-} from "@repo/indexer-database";
+import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import { SwapBeforeBridgeEvent } from "../web3/model/events";
 
 export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepository {
@@ -21,7 +16,6 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
     swapBeforeBridgeEvents: SwapBeforeBridgeEvent[],
     chainId: number,
     lastFinalisedBlock: number,
-    transactionalEntityManager?: EntityManager,
   ) {
     const formattedEvents = swapBeforeBridgeEvents.map((event) => {
       const entity = new entities.SwapBeforeBridge();
@@ -48,7 +42,6 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
           eventsChunk,
           ["blockNumber", "chainId", "logIndex"],
           [],
-          transactionalEntityManager,
         ),
       ),
     );
@@ -59,7 +52,6 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
   public async deleteUnfinalisedSwapEvents(
     chainId: number,
     lastFinalisedBlock: number,
-    transactionalEntityManager?: EntityManager,
   ) {
     const chainIdColumn = "chainId";
     const deletedSwapEvents = await this.deleteUnfinalisedEvents(
@@ -67,7 +59,6 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
       chainIdColumn,
       lastFinalisedBlock,
       entities.SwapBeforeBridge,
-      transactionalEntityManager,
     );
     return deletedSwapEvents;
   }

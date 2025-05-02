@@ -1,9 +1,4 @@
-import {
-  DataSource,
-  EntityManager,
-  EntityTarget,
-  ObjectLiteral,
-} from "typeorm";
+import { DataSource, EntityTarget, ObjectLiteral } from "typeorm";
 import winston from "winston";
 
 import { SaveQueryResultType, SaveQueryResult } from "../model";
@@ -37,7 +32,6 @@ export class BlockchainEventRepository {
     data: Partial<Entity>[],
     uniqueKeys: (keyof Entity)[],
     comparisonKeys: (keyof Entity)[],
-    transactionalEntityManager?: EntityManager,
   ): Promise<SaveQueryResult<Entity>[]> {
     return Promise.all(
       data.map((dataItem) =>
@@ -46,7 +40,6 @@ export class BlockchainEventRepository {
           dataItem,
           uniqueKeys,
           comparisonKeys,
-          transactionalEntityManager,
         ),
       ),
     );
@@ -65,7 +58,6 @@ export class BlockchainEventRepository {
     data: Partial<Entity>,
     uniqueKeys: (keyof Entity)[],
     comparisonKeys: (keyof Entity)[],
-    transactionalEntityManager?: EntityManager,
   ): Promise<SaveQueryResult<Entity>> {
     const where = uniqueKeys.reduce(
       (acc, key) => {
@@ -74,10 +66,7 @@ export class BlockchainEventRepository {
       },
       {} as Record<keyof Entity, any>,
     );
-    // If a transactional entity manager is provided, use it to execute the query.
-    const repository = transactionalEntityManager
-      ? transactionalEntityManager.getRepository(entity)
-      : this.postgres.getRepository(entity);
+    const repository = this.postgres.getRepository(entity);
     const dbEntity = await repository.findOne({ where });
 
     if (!dbEntity) {
@@ -131,7 +120,6 @@ export class BlockchainEventRepository {
     chainIdColumnIdentifier: string,
     lastFinalisedBlock: number,
     entity: EntityTarget<Entity>,
-    transactionalEntityManager?: EntityManager,
   ): Promise<Entity[]> {
     const entityMetadata = this.postgres.getMetadata(entity);
     const columns = entityMetadata.columns.map((column) => column.propertyName);
@@ -153,9 +141,7 @@ export class BlockchainEventRepository {
       throw new Error(`Cannot delete events of ${entityMetadata.name} entity`);
     }
 
-    const repository = transactionalEntityManager
-      ? transactionalEntityManager.getRepository(entity)
-      : this.postgres.getRepository(entity);
+    const repository = this.postgres.getRepository(entity);
     const deletedRows = await repository
       .createQueryBuilder()
       .softDelete()
