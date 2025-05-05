@@ -122,6 +122,12 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
+    this.logger.debug({
+      at: "HubPoolRepository#formatAndSaveRootBundleExecutedEvents",
+      message: `formatted root bundle executed events`,
+      formattedEvents: JSON.stringify(formattedEvents),
+      lastFinalisedBlock,
+    });
     const savedEvents =
       await this.saveAndHandleFinalisationBatch<entities.RootBundleExecuted>(
         entities.RootBundleExecuted,
