@@ -10,7 +10,7 @@ import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
 import winston from "winston";
 import { BundleRepository } from "../database/BundleRepository";
-import { BaseIndexer } from "../generics";
+import { RepeatableTask } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";
 import { HubPoolBalanceCache } from "../redis/hubBalancesCache";
 import {
@@ -48,7 +48,7 @@ type BundleBuilderConfig = {
   hubChainId: number;
 };
 
-export class BundleBuilderService extends BaseIndexer {
+export class BundleBuilderService extends RepeatableTask {
   private currentBundleCache: BundleLeavesCache;
   private proposedBundleCache: BundleLeavesCache;
   private hubBalanceCache: HubPoolBalanceCache;
@@ -56,7 +56,7 @@ export class BundleBuilderService extends BaseIndexer {
     super(config.logger, "bundleBuilder");
   }
 
-  protected async indexerLogic(): Promise<void> {
+  protected async taskLogic(): Promise<void> {
     // Get the most recent proposed and executed bundles
     const { lastExecutedBundle, lastProposedBundle } =
       await resolveMostRecentProposedAndExecutedBundles(
@@ -70,7 +70,7 @@ export class BundleBuilderService extends BaseIndexer {
     // from all the chains.
     if (!(await this.isCloseEnoughToHead(lastExecutedBundle.proposal))) {
       this.logger.debug({
-        at: "Indexer#BundleBuilderService#indexerLogic",
+        at: "BundleBuilderService#taskLogic",
         message: "Last executed bundle is too far from head, skipping",
         lastExecutedBundleBlock: lastExecutedBundle.proposal.blockNumber,
       });
@@ -89,7 +89,7 @@ export class BundleBuilderService extends BaseIndexer {
     ]);
 
     this.logger.debug({
-      at: "Indexer#BundleBuilderService#indexerLogic",
+      at: "BundleBuilderService#taskLogic",
       message: "Bundle builder loop completed",
       currentLoopResult: currentLoopResult.status,
       proposedLoopResult: proposedLoopResult.status,

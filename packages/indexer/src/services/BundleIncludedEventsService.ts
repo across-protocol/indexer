@@ -5,7 +5,7 @@ import winston from "winston";
 
 import { DataSource, entities } from "@repo/indexer-database";
 
-import { BaseIndexer } from "../generics";
+import { RepeatableTask } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
 import { getBlockTime } from "../web3/constants";
@@ -29,7 +29,7 @@ export type BundleConfig = {
   config: Config;
 };
 
-export class BundleIncludedEventsService extends BaseIndexer {
+export class BundleIncludedEventsService extends RepeatableTask {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
 
@@ -37,21 +37,21 @@ export class BundleIncludedEventsService extends BaseIndexer {
     super(config.logger, "BundleIncludedEventsService");
   }
 
-  protected async indexerLogic(): Promise<void> {
+  protected async taskLogic(): Promise<void> {
     try {
       this.config.logger.debug({
-        at: "Indexer#BundleIncludedEventsService#indexerLogic",
+        at: "BundleIncludedEventsService#taskLogic",
         message: "Starting BundleIncludedEventsService",
       });
       await this.assignSpokePoolEventsToExecutedBundles();
 
       this.config.logger.debug({
-        at: "Indexer#BundleIncludedEventsService#indexerLogic",
+        at: "BundleIncludedEventsService#taskLogic",
         message: "Finished BundleIncludedEventsService",
       });
     } catch (error) {
       this.logger.error({
-        at: "Indexer#BundleIncludedEventsService#indexerLogic",
+        at: "BundleIncludedEventsService#taskLogic",
         message: "Error in BundleIncludedEventsService",
         notificationPath: "across-indexer-error",
         errorJson: JSON.stringify(error),
