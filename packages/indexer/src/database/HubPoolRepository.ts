@@ -2,31 +2,34 @@ import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
+import { FetchEventsResult } from "../data-indexing/service/HubPoolIndexerDataHandler";
+
 export class HubPoolRepository extends utils.BlockchainEventRepository {
   constructor(postgres: DataSource, logger: winston.Logger) {
     super(postgres, logger);
   }
 
   public async formatAndSaveProposedRootBundleEvents(
-    proposedRootBundleEvents: across.interfaces.ProposedRootBundle[],
+    proposedRootBundleEvents: FetchEventsResult["proposedRootBundleEvents"],
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = proposedRootBundleEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
-        ...event,
         challengePeriodEndTimestamp: new Date(
           event.challengePeriodEndTimestamp * 1000,
         ),
+        poolRebalanceLeafCount: event.poolRebalanceLeafCount,
         bundleEvaluationBlockNumbers: event.bundleEvaluationBlockNumbers.map(
           (blockNumber) => parseInt(blockNumber.toString()),
         ),
-        transactionHash,
-        transactionIndex,
+        poolRebalanceRoot: event.poolRebalanceRoot,
+        relayerRefundRoot: event.relayerRefundRoot,
+        slowRelayRoot: event.slowRelayRoot,
+        proposerRoot: event.proposer,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        blockNumber: event.blockNumber,
+        chainIds: event.chainIds,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -46,16 +49,13 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleDisputedEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
-        ...event,
+        disputer: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
-        transactionHash,
-        transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -75,17 +75,13 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleCanceledEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
-        ...event,
         caller: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
-        transactionHash,
-        transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -101,24 +97,25 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
   }
 
   public async formatAndSaveRootBundleExecutedEvents(
-    rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[],
+    rootBundleExecutedEvents: FetchEventsResult["rootBundleExecutedEvents"],
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleExecutedEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
-        ...event,
+        leafId: event.leafId,
+        groupIndex: event.groupIndex,
+        chainId: event.chainId,
+        l1Tokens: event.l1Tokens,
         bundleLpFees: event.bundleLpFees.map((fees) => fees.toString()),
         netSendAmounts: event.netSendAmounts.map((amount) => amount.toString()),
         runningBalances: event.runningBalances.map((balance) =>
           balance.toString(),
         ),
-        transactionHash,
-        transactionIndex,
+        caller: event.caller,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -140,22 +137,16 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
-      const dbEvent = {
+      return {
         destinationChainId: event.l2ChainId,
         l1Token: event.l1Token,
         destinationToken: event.l2Token,
         blockNumber: event.blockNumber,
-        transactionHash,
-        transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
         logIndex: event.logIndex,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
-      return dbEvent;
     });
     const savedEvents =
       await this.saveAndHandleFinalisationBatch<entities.SetPoolRebalanceRoute>(
