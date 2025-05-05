@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
@@ -9,6 +10,7 @@ import { interfaces } from "@across-protocol/sdk";
 
 @Entity({ schema: "evm" })
 @Unique("UK_filledV3Relay_internalHash", ["internalHash"])
+@Index("IX_filledV3Relay_blockTimestamp", ["blockTimestamp"])
 export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;

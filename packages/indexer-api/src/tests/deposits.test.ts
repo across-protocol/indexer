@@ -265,4 +265,57 @@ describe("Deposits Service Tests", () => {
     expect(queriedDeposit?.relayer).to.equal(filledRelayData.relayer);
     expect(queriedDeposit?.status).to.equal(relayHashInfoData.status);
   });
+
+  it("should return the correct deposit status", async () => {
+    // Arrange: Insert a deposit and related relay hash info
+    const depositData = {
+      id: 1,
+      depositor: "0xdepositor",
+      relayHash: "0xrelayhash",
+      depositId: "1",
+      originChainId: 1,
+      destinationChainId: 2,
+      internalHash: "0xinternal20",
+      transactionHash: "0xtransaction20",
+      transactionIndex: 20,
+      logIndex: 20,
+      blockNumber: 1020,
+      finalised: true,
+      createdAt: new Date(),
+      blockTimestamp: new Date(),
+    };
+
+    const relayHashInfoData = {
+      id: 1,
+      depositId: depositData.depositId,
+      depositEventId: depositData.id,
+      status: entities.RelayStatus.Unfilled,
+      originChainId: depositData.originChainId,
+      swapTokenPriceUsd: "1.0",
+      swapFeeUsd: "0.1",
+      bridgeFeeUsd: "0.05",
+      inputPriceUsd: "1.0",
+      outputPriceUsd: "0.9",
+      fillGasFee: "0.01",
+      fillGasFeeUsd: "0.01",
+      fillGasTokenPriceUsd: "1.0",
+    };
+
+    await depositsFixture.insertDeposits([depositData]);
+    await relayHashInfoFixture.insertRelayHashInfos([relayHashInfoData]);
+
+    // Act: Query the deposit status
+    const depositStatus = await depositsService.getDepositStatus({
+      depositId: depositData.depositId,
+      originChainId: depositData.originChainId,
+      index: 0,
+    });
+
+    // Assert: Verify the deposit status and related fields
+    expect(depositStatus).to.be.an("object");
+    expect(depositStatus.depositId).to.equal(depositData.depositId);
+    expect(depositStatus.status).to.equal("pending");
+    expect(depositStatus.pagination.currentIndex).to.equal(0);
+    expect(depositStatus.pagination.maxIndex).to.equal(0);
+  });
 });
