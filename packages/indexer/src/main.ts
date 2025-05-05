@@ -178,19 +178,23 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     message: "Running indexers",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [bundleServicesManagerResults, acrossIndexerManagerResult] =
-    await Promise.allSettled([
-      bundleServicesManager.start(),
-      acrossIndexerManager.start(),
-      hotfixServicesManager.start(),
-    ]);
-
+  const [
+    bundleServicesManagerResults,
+    acrossIndexerManagerResult,
+    hotfixServicesManagerResults,
+  ] = await Promise.allSettled([
+    bundleServicesManager.start(),
+    acrossIndexerManager.start(),
+    hotfixServicesManager.start(),
+  ]);
   logger.info({
     at: "Indexer#Main",
     message: "Indexer loop completed",
     results: {
       bundleServicesManagerRunSuccess:
         bundleServicesManagerResults.status === "fulfilled",
+      hotfixServicesManagerRunSuccess:
+        hotfixServicesManagerResults.status === "fulfilled",
       acrossIndexerManagerRunSuccess:
         acrossIndexerManagerResult.status === "fulfilled",
     },
