@@ -17,6 +17,7 @@ export type Config = {
   svmSpokePoolChainsEnabled: number[];
   enableHubPoolIndexer: boolean;
   enableBundleIncludedEventsService: boolean;
+  enableHotfixServices: boolean;
   enableBundleBuilder: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -199,6 +200,9 @@ export function envToConfig(env: Env): Config {
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
       ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
       : true;
+  const enableHotfixServices = env.ENABLE_HOTFIX_SERVICES
+    ? env.ENABLE_HOTFIX_SERVICES === "true"
+    : false;
   const enableBundleBuilder = env.ENABLE_BUNDLE_BUILDER
     ? env.ENABLE_BUNDLE_BUILDER === "true"
     : true;
@@ -237,6 +241,7 @@ export function envToConfig(env: Env): Config {
     svmSpokePoolChainsEnabled,
     enableHubPoolIndexer,
     enableBundleIncludedEventsService,
+    enableHotfixServices,
     enableBundleBuilder,
     webhookConfig,
     maxBlockRangeSize,

@@ -16,6 +16,7 @@ import {
 // Managers
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
+import { HotfixServicesManager } from "./services/HotfixServicesManager";
 // Repositories
 import { BundleRepository } from "./database/BundleRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
@@ -116,6 +117,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     new BundleRepository(postgres, logger, true),
   );
+  const hotfixServicesManager = new HotfixServicesManager(
+    logger,
+    postgres,
+    config,
+    retryProvidersFactory,
+    indexerQueuesService,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -152,6 +160,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       swapWorker.close();
       acrossIndexerManager.stopGracefully();
       bundleServicesManager.stop();
+      hotfixServicesManager.stop();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -159,6 +168,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       redis?.quit();
       postgres?.destroy();
       logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+      logger.close();
       across.utils.delay(5).finally(() => process.exit());
     }
   });
@@ -172,6 +182,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     await Promise.allSettled([
       bundleServicesManager.start(),
       acrossIndexerManager.start(),
+      hotfixServicesManager.start(),
     ]);
 
   logger.info({
