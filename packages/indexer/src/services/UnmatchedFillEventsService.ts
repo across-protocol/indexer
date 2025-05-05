@@ -21,28 +21,51 @@ export class UnmatchedFillEventsService extends RepeatableTask {
   }
 
   protected async taskLogic() {
-    const now = new Date();
-    const qb = this.postgres.createQueryBuilder(entities.RelayHashInfo, "rhi");
+    try {
+      const now = new Date();
+      const qb = this.postgres.createQueryBuilder(
+        entities.RelayHashInfo,
+        "rhi",
+      );
 
-    qb.leftJoinAndMapOne(
-      "rhi.fillEvent",
-      entities.FilledV3Relay,
-      "f",
-      "f.internalHash = rhi.internalHash",
-    )
-      .where("rhi.status = :status", { status: "expired" })
-      .andWhere("f.id is not null")
-      .andWhere("f.blockTimestamp >= '2025-02-01'")
-      .andWhere("now() - f.blockTimestamp > interval '5 minutes'")
-      .orderBy("f.blockTimestamp", "DESC")
-      .limit(100);
-    const results = await qb.getMany();
-    this.logger.debug({
-      at: "UnmatchedFillEventsService#taskLogic",
-      message: `Found ${results.length} unmatched fill events`,
-    });
+      qb.leftJoinAndMapOne(
+        "rhi.fillEvent",
+        entities.FilledV3Relay,
+        "f",
+        "f.internalHash = rhi.internalHash",
+      )
+        .where("rhi.status = :status", { status: "expired" })
+        .andWhere("f.id is not null")
+        .andWhere("f.blockTimestamp >= '2025-02-01'")
+        .andWhere("now() - f.blockTimestamp > interval '5 minutes'")
+        .orderBy("f.blockTimestamp", "DESC")
+        .limit(100);
+      const results = await qb.getMany();
+      this.logger.debug({
+        at: "UnmatchedFillEventsService#taskLogic",
+        message: `Found ${results.length} unmatched fill events`,
+      });
 
-    for (const rhi of results) {
+      for (const rhi of results) {
+        await this.processUnmatchedFillEvent(rhi);
+      }
+
+      const totalTime = new Date().getTime() - now.getTime();
+      this.logger.debug({
+        at: "UnmatchedFillEventsService#taskLogic",
+        message: `Total time: ${totalTime / 1000}s`,
+      });
+    } catch (error) {
+      this.logger.warn({
+        at: "UnmatchedFillEventsService#taskLogic",
+        errorJson: JSON.stringify(error),
+        error,
+      });
+    }
+  }
+
+  private async processUnmatchedFillEvent(rhi: entities.RelayHashInfo) {
+    try {
       if (!rhi.fillEvent) {
         throw new Error(`Fill event not found for relay hash info ${rhi.id}`);
       }
@@ -70,13 +93,13 @@ export class UnmatchedFillEventsService extends RepeatableTask {
         IndexerQueues.PriceQuery,
         messages,
       );
+    } catch (error) {
+      this.logger.warn({
+        at: "UnmatchedFillEventsService#processUnmatchedFillEvent",
+        errorJson: JSON.stringify(error),
+        error,
+      });
     }
-
-    const totalTime = new Date().getTime() - now.getTime();
-    this.logger.debug({
-      at: "UnmatchedFillEventsService#taskLogic",
-      message: `Total time: ${totalTime / 1000}s`,
-    });
   }
 
   protected initialize() {
