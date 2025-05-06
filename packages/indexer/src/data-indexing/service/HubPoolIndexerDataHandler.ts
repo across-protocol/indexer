@@ -11,13 +11,16 @@ import { BlockRange } from "../model";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
 import { BundleEventsProcessor } from "../../services";
 
-type FetchEventsResult = {
+export type FetchEventsResult = {
   proposedRootBundleEvents: (across.interfaces.ProposedRootBundle & {
     chainIds: number[];
   })[];
   rootBundleCanceledEvents: across.interfaces.CancelledRootBundle[];
   rootBundleDisputedEvents: across.interfaces.DisputedRootBundle[];
-  rootBundleExecutedEvents: across.interfaces.ExecutedRootBundle[];
+  rootBundleExecutedEvents: (across.interfaces.ExecutedRootBundle & {
+    groupIndex: number;
+    caller: string;
+  })[]; // TODO: Add groupIndex and caller to the SDK type
   setPoolRebalanceRouteEvents: (across.interfaces.DestinationTokenWithBlock & {
     l2ChainId: number;
   })[];
@@ -144,7 +147,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
         blockRange.to,
       );
     // we do not have a block range query for executed root bundles
-    const rootBundleExecutedEvents = hubPoolClient.getExecutedRootBundles();
+    const rootBundleExecutedEvents =
+      hubPoolClient.getExecutedRootBundles() as FetchEventsResult["rootBundleExecutedEvents"];
 
     return {
       // we need to make sure we filter out all unecessary events for the block range requested
