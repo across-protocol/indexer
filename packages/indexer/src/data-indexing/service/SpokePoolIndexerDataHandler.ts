@@ -34,8 +34,13 @@ export type FetchEventsResult = {
     };
   };
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
-  executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[];
-  tokensBridgedEvents: across.interfaces.TokensBridged[];
+  executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
+    caller: string;
+    deferredRefunds: boolean;
+  })[]; // TODO: Add missing properties to SDK types
+  tokensBridgedEvents: (across.interfaces.TokensBridged & {
+    caller: string;
+  })[]; // TODO: Add missing properties to SDK types
   blockTimes: Record<number, number>;
 };
 
@@ -482,8 +487,9 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const requestedSpeedUpV3Events = spokePoolClient.getSpeedUps();
     const relayedRootBundleEvents = spokePoolClient.getRootBundleRelays();
     const executedRelayerRefundRootEvents =
-      spokePoolClient.getRelayerRefundExecutions();
-    const tokensBridgedEvents = spokePoolClient.getTokensBridged();
+      spokePoolClient.getRelayerRefundExecutions() as FetchEventsResult["executedRelayerRefundRootEvents"];
+    const tokensBridgedEvents =
+      spokePoolClient.getTokensBridged() as FetchEventsResult["tokensBridgedEvents"];
     // getBlockTimes function will make sure we dont query more than we need to.
     const blockNumbers = [
       ...v3FundsDepositedEvents.map((deposit) => deposit.blockNumber),
