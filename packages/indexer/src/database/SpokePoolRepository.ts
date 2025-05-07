@@ -2,6 +2,7 @@ import winston from "winston";
 import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import * as utils from "../utils";
+import { FetchEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 
 export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -26,13 +27,19 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     return {
       depositId: event.depositId.toString(),
+      originChainId: event.originChainId,
+      depositor: event.depositor,
+      recipient: event.recipient,
+      inputToken: event.inputToken,
       inputAmount: event.inputAmount.toString(),
+      outputToken: event.outputToken,
       outputAmount: event.outputAmount.toString(),
-      fillDeadline: new Date(event.fillDeadline * 1000),
+      exclusiveRelayer: event.exclusiveRelayer,
       exclusivityDeadline:
         event.exclusivityDeadline === 0
           ? undefined
           : new Date(event.exclusivityDeadline * 1000),
+      fillDeadline: new Date(event.fillDeadline * 1000),
     };
   }
 
@@ -42,32 +49,25 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     blockTimes: Record<number, number>,
   ) {
     const formattedEvents = v3FundsDepositedEvents.map((event) => {
-      // delete fields that are not needed for the database table
-      delete event.speedUpSignature;
-      delete event.updatedRecipient;
-      delete event.updatedOutputAmount;
-      delete event.updatedMessage;
-      delete (event as { quoteBlockNumber?: number }).quoteBlockNumber;
-
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
-        ...event,
+        ...this.formatRelayData(event),
         relayHash: across.utils.getRelayHashFromEvent(event),
+        destinationChainId: event.destinationChainId,
+        fromLiteChain: event.fromLiteChain,
+        toLiteChain: event.toLiteChain,
+        message: event.message,
         messageHash: event.messageHash,
         internalHash: utils.getInternalHash(
           event,
           event.messageHash,
           event.destinationChainId,
         ),
-        ...this.formatRelayData(event),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
-        transactionHash,
-        transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -103,22 +103,16 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete (event as { txnIndex?: number }).txnIndex;
 
       return {
-        ...Object.keys(event).reduce(
-          (acc, key) => {
-            if (key !== "relayExecutionInfo") {
-              acc[key] = (event as any)[key];
-            }
-            return acc;
-          },
-          {} as { [key: string]: any },
-        ),
+        ...this.formatRelayData(event),
+        destinationChainId: event.destinationChainId,
+        message: event.messageHash,
+        relayer: event.relayer,
+        repaymentChainId: event.repaymentChainId,
         internalHash: utils.getInternalHash(
           event,
-          messageHash,
+          event.messageHash,
           event.destinationChainId,
         ),
-        ...this.formatRelayData(event),
-        message: messageHash,
         updatedRecipient: event.relayExecutionInfo.updatedRecipient,
         updatedOutputAmount:
           event.relayExecutionInfo.updatedOutputAmount.toString(),
@@ -126,8 +120,10 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.relayExecutionInfo.updatedMessageHash ||
           event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
-        transactionHash,
-        transactionIndex,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -159,16 +155,18 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete (event as { txnRef?: string }).txnRef;
       delete (event as { txnIndex?: number }).txnIndex;
       return {
-        ...event,
+        ...this.formatRelayData(event),
+        destinationChainId: event.destinationChainId,
         internalHash: utils.getInternalHash(
           event,
-          messageHash,
+          event.messageHash,
           event.destinationChainId,
         ),
-        ...this.formatRelayData(event),
-        message: messageHash,
-        transactionHash,
-        transactionIndex,
+        message: event.messageHash,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -203,11 +201,17 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
             delete (event as { txnRef?: string }).txnRef;
             delete (event as { txnIndex?: number }).txnIndex;
             return {
-              ...event,
+              originChainId: event.originChainId,
               depositId: event.depositId.toString(),
+              depositor: event.depositor,
+              updatedRecipient: event.updatedRecipient,
+              updatedMessage: event.updatedMessage,
               updatedOutputAmount: event.updatedOutputAmount.toString(),
-              transactionHash,
-              transactionIndex,
+              depositorSignature: event.depositorSignature,
+              transactionHash: event.txnRef,
+              transactionIndex: event.txnIndex,
+              logIndex: event.logIndex,
+              blockNumber: event.blockNumber,
               finalised: event.blockNumber <= lastFinalisedBlock,
             };
           }),
@@ -238,10 +242,14 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete (event as { txnRef?: string }).txnRef;
       delete (event as { txnIndex?: number }).txnIndex;
       return {
-        ...event,
         chainId,
-        transactionHash,
-        transactionIndex,
+        rootBundleId: event.rootBundleId,
+        relayerRefundRoot: event.relayerRefundRoot,
+        slowRelayRoot: event.slowRelayRoot,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -261,7 +269,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveExecutedRelayerRefundRootEvents(
-    executedRelayerRefundRootEvents: across.interfaces.RelayerRefundExecutionWithBlock[],
+    executedRelayerRefundRootEvents: FetchEventsResult["executedRelayerRefundRootEvents"],
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
@@ -270,11 +278,19 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete (event as { txnRef?: string }).txnRef;
       delete (event as { txnIndex?: number }).txnIndex;
       return {
-        ...event,
+        chainId: event.chainId,
+        rootBundleId: event.rootBundleId,
+        leafId: event.leafId,
+        l2TokenAddress: event.l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
-        transactionHash,
-        transactionIndex,
+        refundAddresses: event.refundAddresses,
+        deferredRefunds: event.deferredRefunds,
+        caller: event.caller,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -293,7 +309,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveTokensBridgedEvents(
-    tokensBridgedEvents: across.interfaces.TokensBridged[],
+    tokensBridgedEvents: FetchEventsResult["tokensBridgedEvents"],
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
@@ -302,10 +318,15 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       delete (event as { txnRef?: string }).txnRef;
       delete (event as { txnIndex?: number }).txnIndex;
       return {
-        ...event,
+        chainId: event.chainId,
+        leafId: event.leafId,
+        l2TokenAddress: event.l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
-        transactionHash,
-        transactionIndex,
+        caller: event.caller,
+        transactionHash: event.txnRef,
+        transactionIndex: event.txnIndex,
+        logIndex: event.logIndex,
+        blockNumber: event.blockNumber,
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
