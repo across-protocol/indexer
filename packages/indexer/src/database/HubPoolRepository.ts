@@ -14,11 +14,6 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = proposedRootBundleEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
         challengePeriodEndTimestamp: new Date(
           event.challengePeriodEndTimestamp * 1000,
@@ -55,11 +50,6 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleDisputedEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
         disputer: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
@@ -86,11 +76,6 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleCanceledEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
         caller: event.disputer,
         requestTime: new Date(event.requestTime * 1000),
@@ -117,11 +102,6 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = rootBundleExecutedEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
         leafId: event.leafId,
         groupIndex: event.groupIndex,

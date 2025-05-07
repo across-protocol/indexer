@@ -94,14 +94,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
-      const messageHash = event.messageHash;
-      delete (event as { messageHash?: string }).messageHash;
-
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
-
       return {
         ...this.formatRelayData(event),
         destinationChainId: event.destinationChainId,
@@ -147,13 +139,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
-      const messageHash = event.messageHash;
-      delete (event as { messageHash?: string }).messageHash;
-
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
       return {
         ...this.formatRelayData(event),
         destinationChainId: event.destinationChainId,
@@ -237,10 +222,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = relayedRootBundleEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
       return {
         chainId,
         rootBundleId: event.rootBundleId,
@@ -273,10 +254,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
       return {
         chainId: event.chainId,
         rootBundleId: event.rootBundleId,
@@ -313,10 +290,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
-      const transactionHash = event.txnRef;
-      const transactionIndex = event.txnIndex;
-      delete (event as { txnRef?: string }).txnRef;
-      delete (event as { txnIndex?: number }).txnIndex;
       return {
         chainId: event.chainId,
         leafId: event.leafId,
