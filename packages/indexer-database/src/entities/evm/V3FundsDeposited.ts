@@ -4,9 +4,11 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { RelayHashInfo } from "../RelayHashInfo";
 
 @Entity({ schema: "evm" })
 @Unique("UK_FundsDeposited_relayHash_block_txnHash_logIdx", [
@@ -111,4 +113,11 @@ export class V3FundsDeposited {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  /**
+   * This is just the reverse side of the relationship,
+   * no additional foreign keys or columns are added to this table
+   */
+  @OneToOne(() => RelayHashInfo, (relayHashInfo) => relayHashInfo.depositEvent)
+  relayHashInfo: RelayHashInfo;
 }
