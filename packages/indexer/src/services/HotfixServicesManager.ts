@@ -43,7 +43,7 @@ export class HotfixServicesManager {
       this.indexerQueuesService,
       this.logger,
     );
-    return this.unmatchedFillEventsService.start(60);
+    return this.unmatchedFillEventsService.start(60 * 60);
   }
 
   private startUnmatchedDepositEventsService() {
@@ -59,6 +59,6 @@ export class HotfixServicesManager {
       this.providersFactory,
       this.logger,
     );
-    return this.unmatchedDepositEventsService.start(60);
+    return this.unmatchedDepositEventsService.start(60 * 60);
   }
 }
