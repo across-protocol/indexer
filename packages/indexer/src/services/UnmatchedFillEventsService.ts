@@ -23,31 +23,28 @@ export class UnmatchedFillEventsService extends RepeatableTask {
   protected async taskLogic() {
     try {
       const now = new Date();
-      const qb = this.postgres.createQueryBuilder(
-        entities.RelayHashInfo,
-        "rhi",
-      );
+      const qb = this.postgres.createQueryBuilder(entities.FilledV3Relay, "f");
 
       qb.leftJoinAndMapOne(
-        "rhi.fillEvent",
-        entities.FilledV3Relay,
-        "f",
-        "f.internalHash = rhi.internalHash",
+        "f.relayHashInfo",
+        entities.RelayHashInfo,
+        "rhi",
+        "f.id = rhi.fillEventId",
       )
-        .where("rhi.status = :status", { status: "expired" })
-        .andWhere("f.id is not null")
-        .andWhere("f.blockTimestamp >= '2025-02-01'")
+        .where("rhi.fillEventId is null")
+        .andWhere("f.finalised = true")
         .andWhere("now() - f.blockTimestamp > interval '5 minutes'")
-        .orderBy("f.blockTimestamp", "DESC")
+        .orderBy("f.id", "DESC")
         .limit(100);
       const results = await qb.getMany();
+
       this.logger.debug({
         at: "UnmatchedFillEventsService#taskLogic",
         message: `Found ${results.length} unmatched fill events`,
       });
 
-      for (const rhi of results) {
-        await this.processUnmatchedFillEvent(rhi);
+      for (const fill of results) {
+        await this.processUnmatchedFillEvent(fill);
       }
 
       const totalTime = new Date().getTime() - now.getTime();
@@ -64,30 +61,31 @@ export class UnmatchedFillEventsService extends RepeatableTask {
     }
   }
 
-  private async processUnmatchedFillEvent(rhi: entities.RelayHashInfo) {
+  private async processUnmatchedFillEvent(fill: entities.FilledV3Relay) {
+    this.logger.debug({
+      at: "UnmatchedFillEventsService#processUnmatchedFillEvent",
+      message: `Found fill ${fill.id} internalHash ${fill.internalHash} with unmatched RelayHashInfo`,
+    });
     try {
-      if (!rhi.fillEvent) {
-        throw new Error(`Fill event not found for relay hash info ${rhi.id}`);
-      }
       const spokePoolProcessor = new SpokePoolProcessor(
         this.postgres,
-        rhi.destinationChainId,
+        fill.destinationChainId,
         this.logger,
       );
       const transactionReceipt = await (
         this.providersFactory.getProviderForChainId(
-          rhi.destinationChainId,
+          fill.destinationChainId,
         ) as providers.RetryProvider
-      ).getTransactionReceipt(rhi.fillEvent.transactionHash);
+      ).getTransactionReceipt(fill.transactionHash);
       await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
         deposits: [],
-        fills: [rhi.fillEvent],
+        fills: [fill],
         slowFillRequests: [],
         transactionReceipts: {
-          [rhi.fillEvent.transactionHash]: transactionReceipt,
+          [fill.transactionHash]: transactionReceipt,
         },
       });
-      const messages: PriceMessage[] = [{ fillEventId: rhi.fillEvent.id }];
+      const messages: PriceMessage[] = [{ fillEventId: fill.id }];
       await this.indexerQueuesService.publishMessagesBulk(
         IndexerQueues.PriceQuery,
         IndexerQueues.PriceQuery,
