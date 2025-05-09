@@ -34,6 +34,7 @@ export class UnmatchedFillEventsService extends RepeatableTask {
         .where("rhi.fillEventId is null")
         .andWhere("f.finalised = true")
         .andWhere("now() - f.blockTimestamp > interval '5 minutes'")
+        .andWhere("f.blockTimestamp >= '2025-02-01'")
         .orderBy("f.id", "DESC")
         .limit(100);
       const results = await qb.getMany();

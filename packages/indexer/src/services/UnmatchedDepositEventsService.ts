@@ -33,6 +33,7 @@ export class UnmatchedDepositEventsService extends RepeatableTask {
         .where("rhi.depositEventId is null")
         .andWhere("d.finalised = true")
         .andWhere("now() - d.blockTimestamp > interval '5 minutes'")
+        .andWhere("d.blockTimestamp >= '2025-02-01'")
         .orderBy("d.id", "DESC")
         .limit(100);
       const results = await qb.getMany();
