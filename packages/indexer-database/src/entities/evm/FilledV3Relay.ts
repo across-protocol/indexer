@@ -3,10 +3,12 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
 import { interfaces } from "@across-protocol/sdk";
+import { RelayHashInfo } from "../RelayHashInfo";
 
 @Entity({ schema: "evm" })
 @Unique("UK_filledV3Relay_internalHash", ["internalHash"])
@@ -98,4 +100,11 @@ export class FilledV3Relay {
 
   @Column({ nullable: true })
   blockTimestamp?: Date;
+
+  /**
+   * This is just the reverse side of the relationship,
+   * no additional foreign keys or columns are added to this table
+   */
+  @OneToOne(() => RelayHashInfo, (relayHashInfo) => relayHashInfo.fillEvent)
+  relayHashInfo: RelayHashInfo;
 }
