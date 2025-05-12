@@ -80,7 +80,7 @@ export type DepositReturnType = {
   fillDeadline: Date;
   quoteTimestamp: Date;
 
-  depositTransactionHash: string;
+  depositTxHash: string; // Renamed from depositTransactionHash
   depositBlockNumber: number;
   depositBlockTimestamp?: Date;
 
@@ -99,7 +99,7 @@ export type DepositReturnType = {
   // from fill
   relayer?: string;
   fillBlockTimestamp?: Date;
-  fillTransactionHash?: string;
+  fillTx?: string; // Renamed from fillTransactionHash
 
   // from swap
   swapTransactionHash?: string;
@@ -113,4 +113,22 @@ export type DepositReturnType = {
     updatedMessage: string;
     blockNumber: number;
   }[];
+};
+
+// Define a type for the pagination information
+export type PaginationInfo = {
+  currentIndex: number;
+  maxIndex: number;
+};
+
+// Define a type for the deposit status response
+export type DepositStatusResponse = {
+  status: string | entities.RelayStatus;
+  originChainId: number;
+  depositId: string;
+  depositTxHash: string | null;
+  fillTx: string | undefined;
+  destinationChainId: number;
+  depositRefundTxHash: string | undefined;
+  pagination: PaginationInfo;
 };
