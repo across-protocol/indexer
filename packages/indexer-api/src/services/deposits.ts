@@ -5,6 +5,8 @@ import type {
   DepositsParams,
   FilterDepositsParams,
   DepositReturnType,
+  PaginationInfo,
+  DepositStatusResponse,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
@@ -34,7 +36,7 @@ const DepositFields = [
   `deposit.exclusivityDeadline as "exclusivityDeadline"`,
   `deposit.fillDeadline as "fillDeadline"`,
   `deposit.quoteTimestamp as "quoteTimestamp"`,
-  `deposit.transactionHash as "depositTransactionHash"`,
+  `deposit.transactionHash as "depositTxHash"`, // Renamed field
   `deposit.blockNumber as "depositBlockNumber"`,
   `deposit.blockTimestamp as "depositBlockTimestamp"`,
 ];
@@ -55,7 +57,7 @@ const RelayHashInfoFields = [
 const FilledRelayFields = [
   `fill.relayer as "relayer"`,
   `fill.blockTimestamp as "fillBlockTimestamp"`,
-  `fill.transactionHash as "fillTransactionHash"`,
+  `fill.transactionHash as "fillTx"`, // Renamed field
 ];
 
 const SwapBeforeBridgeFields = [
@@ -191,7 +193,9 @@ export class DepositsService {
     );
   }
 
-  public async getDepositStatus(params: DepositParams) {
+  public async getDepositStatus(
+    params: DepositParams,
+  ): Promise<DepositStatusResponse> {
     // in the validation rules each of these params are marked as optional
     // but we need to check that at least one of them is present
     if (
