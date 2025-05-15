@@ -1,3 +1,4 @@
+import { utils as ethersUtils } from "ethers";
 import { Redis } from "ioredis";
 import { DataSource, entities } from "@repo/indexer-database";
 import type {
@@ -102,13 +103,13 @@ export class DepositsService {
 
     if (params.depositor) {
       queryBuilder.andWhere("deposit.depositor = :depositor", {
-        depositor: params.depositor,
+        depositor: ethersUtils.getAddress(params.depositor.toLowerCase()),
       });
     }
 
     if (params.recipient) {
       queryBuilder.andWhere("deposit.recipient = :recipient", {
-        recipient: params.recipient,
+        recipient: ethersUtils.getAddress(params.recipient.toLowerCase()),
       });
     }
 
