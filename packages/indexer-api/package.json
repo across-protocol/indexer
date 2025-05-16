@@ -22,6 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@across-protocol/sdk": "^4.1.62",
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/indexer-database": "workspace:*",
@@ -32,7 +33,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
-    "ethers": "^5.8.0",
     "express": "^4.19.2",
     "ioredis": "^5.4.1",
     "superstruct": "2.0.3-1",
