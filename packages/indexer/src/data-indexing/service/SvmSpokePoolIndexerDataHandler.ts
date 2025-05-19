@@ -169,7 +169,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     const endTimeToGetSlotTimes = performance.now();
 
     this.logger.debug({
-      at: "SpokePoolIndexerDataHandler#fetchEventsByRange",
+      at: "SvmSpokePoolIndexerDataHandler#fetchEventsByRange",
       message: "Time to update protocol clients",
       timeToUpdateProtocolClients: timeToUpdateProtocolClients - initialTime,
       timeToUpdateSpokePoolClient:
