@@ -51,15 +51,15 @@ export function getSpokeClient(
   const address = getAddress("SpokePool", chainId);
   const deployedBlockNumber = getDeployedBlockNumber("SpokePool", chainId);
 
-  const toBlock = params.toBlock;
-  const fromBlock = params.fromBlock ?? deployedBlockNumber;
+  const to = params.toBlock;
+  const from = params.fromBlock ?? deployedBlockNumber;
 
   const disableQuoteBlockLookup = params.disableQuoteBlockLookup ?? false;
 
   const eventSearchConfig = {
-    fromBlock,
-    toBlock,
-    maxBlockLookBack,
+    from,
+    to,
+    maxLookBack: maxBlockLookBack,
   };
   logger.debug({
     at: "Indexer#contractUtils#getSpokePoolClient",
@@ -68,7 +68,7 @@ export function getSpokeClient(
     address,
     deployedBlockNumber,
     ...eventSearchConfig,
-    blockRangeSearched: `${fromBlock} to ${toBlock ?? "latest"}`,
+    blockRangeSearched: `${from} to ${to ?? "latest"}`,
   });
   const spokePoolContract = new Contract(
     address,
@@ -116,8 +116,8 @@ export function getConfigStoreClient(
   );
   let lastProcessedBlockNumber: number = deployedBlockNumber;
   const eventSearchConfig = {
-    fromBlock: lastProcessedBlockNumber,
-    maxBlockLookBack,
+    from: lastProcessedBlockNumber,
+    maxLookBack: maxBlockLookBack,
   };
   return new across.clients.AcrossConfigStoreClient(
     logger,
@@ -154,20 +154,20 @@ export function getHubPoolClient(
   const deployedBlockNumber = getDeployedBlockNumber("HubPool", chainId);
 
   const hubPoolContract = new Contract(address, HubPoolFactory.abi, provider);
-  const fromBlock = params.fromBlock ?? deployedBlockNumber;
-  const toBlock = params.toBlock;
+  const from = params.fromBlock ?? deployedBlockNumber;
+  const to = params.toBlock;
 
   const eventSearchConfig = {
-    fromBlock,
-    toBlock,
-    maxBlockLookBack,
+    from,
+    to,
+    maxLookBack: maxBlockLookBack,
   };
   logger.debug({
     at: "Indexer#contractUtils#getHubPoolClient",
     message: "Initializing hubpool",
     chainId,
     ...eventSearchConfig,
-    blockRangeSearched: `${fromBlock} to ${toBlock ?? "latest"}`,
+    blockRangeSearched: `${from} to ${to ?? "latest"}`,
   });
   return new across.clients.HubPoolClient(
     logger,

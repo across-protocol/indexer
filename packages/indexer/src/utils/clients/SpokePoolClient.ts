@@ -11,7 +11,7 @@ export class EvmSpokePoolClient extends across.clients.EVMSpokePoolClient {
     deploymentBlock: number,
     eventSearchConfig?: across.utils.MakeOptional<
       across.utils.EventSearchConfig,
-      "toBlock"
+      "to"
     >,
     private disableQuoteBlockLookup = false,
   ) {

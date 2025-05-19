@@ -114,25 +114,23 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           (blockRange.to - blockRange.from) * 2,
         );
 
-    const spokePoolClient = await across.svm.SvmSpokeEventsClient.create(
+    const spokePoolClient = await across.arch.svm.SvmCpiEventsClient.create(
       this.provider,
     );
     // NOTE: svm spoke client uses bigint
     const fromSlot = BigInt(blockRange.from);
     const toSlot = BigInt(blockRange.to);
 
-    const depositEvents =
-      await spokePoolClient.queryEvents<SvmSpokeClient.FundsDeposited>(
-        "FundsDeposited",
-        fromSlot,
-        toSlot,
-      );
-    const fillEvents =
-      await spokePoolClient.queryEvents<SvmSpokeClient.FilledRelay>(
-        "FilledRelay",
-        fromSlot,
-        toSlot,
-      );
+    const depositEvents = await spokePoolClient.queryEvents(
+      "FundsDeposited",
+      fromSlot,
+      toSlot,
+    );
+    const fillEvents = await spokePoolClient.queryEvents(
+      "FilledRelay",
+      fromSlot,
+      toSlot,
+    );
 
     // NOTE: we can log events for now as it should be a short list
     if (depositEvents.length > 0) {
