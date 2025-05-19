@@ -165,6 +165,8 @@ export class AcrossIndexerManager {
             this.retryProvidersFactory.getProviderForChainId(
               chainId,
             ) as SvmProvider,
+            this.configStoreClientFactory,
+            this.hubPoolClientFactory,
           );
         const svmIndexer = new SvmIndexer(
           {
