@@ -73,14 +73,10 @@ const indexingDelaySeconds: Record<number, number> = {
 };
 
 export function getIndexingDelaySeconds(chainId: number, config: Config) {
-  const envIndexingDelaySeconds = config.indexingDelaySeconds;
-
-  if (envIndexingDelaySeconds) {
-    return envIndexingDelaySeconds;
-  }
-
-  const indexingDelay = indexingDelaySeconds[chainId];
-
+  // The value from ENV is used only to override the hardcoded value. It should not
+  // be used as a fallback in case the hardcoded value is not defined.
+  const indexingDelay =
+    config.indexingDelaySeconds ?? indexingDelaySeconds[chainId];
   if (!indexingDelay) {
     throw new Error(`Indexing delay not defined for chainId: ${chainId}`);
   }
