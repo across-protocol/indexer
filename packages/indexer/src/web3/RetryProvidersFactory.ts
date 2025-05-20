@@ -1,6 +1,6 @@
 import { Logger } from "winston";
 import { PUBLIC_NETWORKS } from "@across-protocol/constants";
-import { providers, utils } from "@across-protocol/sdk";
+import { providers, utils, arch } from "@across-protocol/sdk";
 
 import {
   parseRetryProviderEnvs,
@@ -11,10 +11,7 @@ import { RedisCache } from "../redis/redisCache";
 import { getChainCacheFollowDistance } from "./constants";
 
 // SVM provider helper type.
-// TODO: move to SDK.
-export type SvmProvider = ReturnType<
-  typeof providers.CachedSolanaRpcFactory.prototype.createRpcClient
->;
+export type SvmProvider = arch.svm.SVMProvider;
 
 export class RetryProvidersFactory {
   private retryProviders: Map<number, SvmProvider | providers.RetryProvider> =
