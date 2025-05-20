@@ -17,7 +17,7 @@ export class TokensBridged {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "bigint" })
   chainId: number;
 
   @Column()
