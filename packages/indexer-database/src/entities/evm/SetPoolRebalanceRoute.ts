@@ -16,7 +16,7 @@ export class SetPoolRebalanceRoute {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: false })
+  @Column({ type: "bigint", nullable: false })
   destinationChainId: number;
 
   @Column({ nullable: false })

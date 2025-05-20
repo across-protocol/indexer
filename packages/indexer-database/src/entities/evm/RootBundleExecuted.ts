@@ -23,7 +23,7 @@ export class RootBundleExecuted {
   @Column()
   groupIndex: number;
 
-  @Column()
+  @Column({ type: "bigint" })
   chainId: number;
 
   @Column({ type: "jsonb" })
