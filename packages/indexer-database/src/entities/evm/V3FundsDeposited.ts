@@ -36,10 +36,10 @@ export class V3FundsDeposited {
   @Column({ type: "decimal" })
   depositId: string;
 
-  @Column()
+  @Column({ type: "bigint" })
   originChainId: number;
 
-  @Column()
+  @Column({ type: "bigint" })
   destinationChainId: number;
 
   @Column()
