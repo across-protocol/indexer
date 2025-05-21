@@ -6,7 +6,7 @@ import { eventProcessorManager } from "@repo/webhooks";
 import { Config } from "../../parseEnv";
 import {
   getFinalisedBlockBufferDistance,
-  getLoopWaitTimeSeconds,
+  getIndexingDelaySeconds,
 } from "./constants";
 // Indexers
 import { Indexer, SvmIndexer, EvmIndexer } from "./Indexer";
@@ -84,7 +84,10 @@ export class AcrossIndexerManager {
     );
     this.hubPoolIndexer = new EvmIndexer(
       {
-        loopWaitTimeSeconds: getLoopWaitTimeSeconds(this.config.hubChainId),
+        indexingDelaySeconds: getIndexingDelaySeconds(
+          this.config.hubChainId,
+          this.config,
+        ),
         finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
           this.config.hubChainId,
         ),
@@ -125,7 +128,7 @@ export class AcrossIndexerManager {
         );
         const spokePoolIndexer = new EvmIndexer(
           {
-            loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
+            indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
             finalisedBlockBufferDistance:
               getFinalisedBlockBufferDistance(chainId),
             maxBlockRangeSize: this.config.maxBlockRangeSize,
@@ -170,7 +173,7 @@ export class AcrossIndexerManager {
           );
         const svmIndexer = new SvmIndexer(
           {
-            loopWaitTimeSeconds: getLoopWaitTimeSeconds(chainId),
+            indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
             finalisedBlockBufferDistance:
               getFinalisedBlockBufferDistance(chainId),
             maxBlockRangeSize: this.config.maxBlockRangeSize,
