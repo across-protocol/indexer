@@ -262,11 +262,11 @@ export class DepositsService {
         relay.status === entities.RelayStatus.Unfilled
           ? "pending"
           : relay.status,
-      originChainId: relay.originChainId,
+      originChainId: parseInt(relay.originChainId),
       depositId: relay.depositId,
       depositTxHash: relay.depositTxHash,
       fillTx: relay.fillTxHash,
-      destinationChainId: relay.destinationChainId,
+      destinationChainId: parseInt(relay.destinationChainId),
       depositRefundTxHash: relay.depositRefundTxHash,
       pagination: {
         currentIndex: params.index,
