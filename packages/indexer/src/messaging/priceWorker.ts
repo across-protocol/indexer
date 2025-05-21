@@ -239,21 +239,21 @@ export class PriceWorker {
     const destinationChainId = relayHashInfo.destinationChainId;
     const inputTokenInfo = findTokenByAddress(
       inputTokenAddress,
-      relayHashInfo.originChainId,
+      parseInt(relayHashInfo.originChainId),
     );
     if (!inputTokenInfo) {
       return;
     }
     const outputTokenInfo = findTokenByAddress(
       outputTokenAddress,
-      destinationChainId,
+      parseInt(destinationChainId),
     );
     if (!outputTokenInfo) {
       return;
     }
     const inputTokenPrice = await this.getPrice(
       inputTokenAddress,
-      relayHashInfo.originChainId,
+      parseInt(relayHashInfo.originChainId),
       blockTime,
     );
     if (!inputTokenPrice) {
@@ -261,7 +261,7 @@ export class PriceWorker {
     }
     const outputTokenPrice = await this.getPrice(
       outputTokenAddress,
-      destinationChainId,
+      parseInt(destinationChainId),
       blockTime,
     );
     if (!outputTokenPrice) {

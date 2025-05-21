@@ -3,7 +3,6 @@ import winston from "winston";
 import {
   createDataSource,
   DataSource,
-  Repository,
   entities,
   fixtures,
 } from "@repo/indexer-database";
@@ -110,8 +109,8 @@ describe("Deposits Service Tests", () => {
       depositor: `0x${(i + 1).toString(16).padStart(3, "0")}`,
       relayHash: `0xrelay${i}`,
       depositId: (i + 1).toString(),
-      originChainId: i + 1,
-      destinationChainId: i + 2,
+      originChainId: (i + 1).toString(),
+      destinationChainId: (i + 2).toString(),
       internalHash: `0xinternal${i}`,
       transactionHash: `0xtransaction${i}`,
       transactionIndex: i,
@@ -185,8 +184,8 @@ describe("Deposits Service Tests", () => {
       relayHash: "0xrelay10",
       internalHash: "0xinternal10",
       depositId: "11",
-      originChainId: 1,
-      destinationChainId: 2,
+      originChainId: "1",
+      destinationChainId: "2",
       depositor: "0x789",
       recipient: "0xrecipient",
       inputToken: "0xinputToken",
@@ -216,8 +215,8 @@ describe("Deposits Service Tests", () => {
       depositor: "0x789",
       relayHash: filledRelayData.relayHash,
       depositId: "11",
-      originChainId: 1,
-      destinationChainId: 2,
+      originChainId: "1",
+      destinationChainId: "2",
       internalHash: "0xinternal10",
       transactionHash: "0xtransaction10",
       transactionIndex: 10,
@@ -273,8 +272,8 @@ describe("Deposits Service Tests", () => {
       depositor: "0xdepositor",
       relayHash: "0xrelayhash",
       depositId: "1",
-      originChainId: 1,
-      destinationChainId: 2,
+      originChainId: "1",
+      destinationChainId: "2",
       internalHash: "0xinternal20",
       transactionHash: "0xtransaction20",
       transactionIndex: 20,
@@ -307,7 +306,7 @@ describe("Deposits Service Tests", () => {
     // Act: Query the deposit status
     const depositStatus = await depositsService.getDepositStatus({
       depositId: depositData.depositId,
-      originChainId: depositData.originChainId,
+      originChainId: parseInt(depositData.originChainId),
       index: 0,
     });
 

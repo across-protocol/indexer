@@ -51,11 +51,11 @@ export class RelayHashInfo {
   @Column({ type: "decimal" })
   depositId: string;
 
-  @Column()
-  originChainId: number;
+  @Column({ type: "bigint" })
+  originChainId: string;
 
-  @Column()
-  destinationChainId: number;
+  @Column({ type: "bigint" })
+  destinationChainId: string;
 
   @Column({ type: "varchar", nullable: true })
   depositTxHash: string | null;

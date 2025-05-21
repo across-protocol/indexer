@@ -6,7 +6,7 @@ import type {
   DepositsParams,
   FilterDepositsParams,
   DepositReturnType,
-  PaginationInfo,
+  ParsedDepositReturnType,
   DepositStatusResponse,
 } from "../dtos/deposits.dto";
 import {
@@ -74,7 +74,7 @@ export class DepositsService {
 
   public async getDeposits(
     params: DepositsParams,
-  ): Promise<DepositReturnType[]> {
+  ): Promise<ParsedDepositReturnType[]> {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
@@ -188,6 +188,8 @@ export class DepositsService {
 
         return {
           ...deposit,
+          originChainId: parseInt(deposit.originChainId),
+          destinationChainId: parseInt(deposit.destinationChainId),
           speedups,
         };
       }),
@@ -260,11 +262,11 @@ export class DepositsService {
         relay.status === entities.RelayStatus.Unfilled
           ? "pending"
           : relay.status,
-      originChainId: relay.originChainId,
+      originChainId: parseInt(relay.originChainId),
       depositId: relay.depositId,
       depositTxHash: relay.depositTxHash,
       fillTx: relay.fillTxHash,
-      destinationChainId: relay.destinationChainId,
+      destinationChainId: parseInt(relay.destinationChainId),
       depositRefundTxHash: relay.depositRefundTxHash,
       pagination: {
         currentIndex: params.index,
@@ -285,7 +287,7 @@ export class DepositsService {
 
   public async getUnfilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<DepositReturnType[]> {
+  ): Promise<ParsedDepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,
@@ -365,6 +367,8 @@ export class DepositsService {
 
         return {
           ...deposit,
+          originChainId: parseInt(deposit.originChainId),
+          destinationChainId: parseInt(deposit.destinationChainId),
           speedups,
         };
       }),
@@ -373,7 +377,7 @@ export class DepositsService {
 
   public async getFilledDeposits(
     params: FilterDepositsParams,
-  ): Promise<DepositReturnType[]> {
+  ): Promise<ParsedDepositReturnType[]> {
     const {
       originChainId,
       destinationChainId,
@@ -462,6 +466,8 @@ export class DepositsService {
 
         return {
           ...deposit,
+          originChainId: parseInt(deposit.originChainId),
+          destinationChainId: parseInt(deposit.destinationChainId),
           speedups,
         };
       }),
