@@ -289,7 +289,7 @@ describe("Deposits Service Tests", () => {
       depositId: depositData.depositId,
       depositEventId: depositData.id,
       status: entities.RelayStatus.Unfilled,
-      originChainId: parseInt(depositData.originChainId),
+      originChainId: depositData.originChainId,
       swapTokenPriceUsd: "1.0",
       swapFeeUsd: "0.1",
       bridgeFeeUsd: "0.05",
