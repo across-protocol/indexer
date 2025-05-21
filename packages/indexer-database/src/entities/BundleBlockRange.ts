@@ -19,8 +19,8 @@ export class BundleBlockRange {
   @Column({ nullable: false })
   bundleId: number;
 
-  @Column({ nullable: false })
-  chainId: number;
+  @Column({ type: "bigint", nullable: false })
+  chainId: string;
 
   @Column({ nullable: false })
   startBlock: number;

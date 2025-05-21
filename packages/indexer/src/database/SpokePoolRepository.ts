@@ -217,9 +217,10 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     chainId: number,
     lastFinalisedBlock: number,
   ) {
+    const chainIdString = chainId.toString();
     const formattedEvents = relayedRootBundleEvents.map((event) => {
       return {
-        chainId,
+        chainId: chainIdString,
         rootBundleId: event.rootBundleId,
         relayerRefundRoot: event.relayerRefundRoot,
         slowRelayRoot: event.slowRelayRoot,
@@ -251,7 +252,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
       return {
-        chainId: event.chainId,
+        chainId: event.chainId.toString(),
         rootBundleId: event.rootBundleId,
         leafId: event.leafId,
         l2TokenAddress: event.l2TokenAddress,
@@ -287,7 +288,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
       return {
-        chainId: event.chainId,
+        chainId: event.chainId.toString(),
         leafId: event.leafId,
         l2TokenAddress: event.l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
