@@ -8,14 +8,16 @@ import { providers } from "ethers";
 import {
   entities,
   utils as indexerDatabaseUtils,
-  SaveQueryResult,
   SaveQueryResultType,
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
-import { SpokePoolRepository } from "../../database/SpokePoolRepository";
+import {
+  SpokePoolRepository,
+  StoreEventsResult,
+} from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
@@ -35,20 +37,13 @@ export type FetchEventsResult = {
   };
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
   executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
-    caller: string;
+    caller?: string;
     deferredRefunds: boolean;
   })[]; // TODO: Add missing properties to SDK types
   tokensBridgedEvents: (across.interfaces.TokensBridged & {
-    caller: string;
+    caller?: string;
   })[]; // TODO: Add missing properties to SDK types
   blockTimes: Record<number, number>;
-};
-
-export type StoreEventsResult = {
-  deposits: SaveQueryResult<entities.V3FundsDeposited>[];
-  fills: SaveQueryResult<entities.FilledV3Relay>[];
-  slowFillRequests: SaveQueryResult<entities.RequestedV3SlowFill>[];
-  executedRefundRoots: SaveQueryResult<entities.ExecutedRelayerRefundRoot>[];
 };
 
 export type DepositSwapPair = {

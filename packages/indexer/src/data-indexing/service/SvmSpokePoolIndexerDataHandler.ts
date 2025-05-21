@@ -4,12 +4,22 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import {
+  entities,
+  SaveQueryResultType,
+  utils as indexerDatabaseUtils,
+} from "@repo/indexer-database";
 
 import * as utils from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import {
+  SpokePoolRepository,
+  StoreEventsResult,
+} from "../../database/SpokePoolRepository";
+import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 
 export type FetchEventsResult = {
   fundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -35,6 +45,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     private provider: SvmProvider,
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
+    private spokePoolClientRepository: SpokePoolRepository,
+    private spokePoolProcessor: SpokePoolProcessor,
   ) {}
 
   private initialize() {
@@ -92,13 +104,28 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
     });
 
-    await this.updateNewDepositsWithIntegratorId(events.fundsDepositedEvents);
+    const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+
+    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.deposits,
+      SaveQueryResultType.Inserted,
+    );
+
+    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
 
     // TODO:
-    // - store events
     // - delete unfinalised events
     // - process events
     // - publish price messages
+
+    // TODO: advisory locks take postgres ints as inputs but Solana chain id is above the max allowed value
+    // We have to handle that case before enabling the process step
+    // await this.spokePoolProcessor.process(
+    //   storedEvents,
+    //   [], // deletedDeposits,
+    //   [], // depositSwapPairs,
+    //   {}, // transactionReceipts,
+    // );
   }
 
   private async fetchEventsByRange(
@@ -116,7 +143,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
         );
 
     // TODO: create svm spoke pool client factory and instantiate client using it as we do for evm
-    const spokePoolClient = await across.clients.SvmSpokePoolClient.create(
+    const spokePoolClient = await across.clients.SVMSpokePoolClient.create(
       this.logger,
       this.hubPoolClient,
       this.chainId,
@@ -214,16 +241,76 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     return slotTimestamps;
   }
 
+  private async storeEvents(
+    params: FetchEventsResult,
+    lastFinalisedBlock: number,
+  ): Promise<StoreEventsResult> {
+    const { spokePoolClientRepository } = this;
+    const {
+      fundsDepositedEvents,
+      filledRelayEvents,
+      requestedSlowFillEvents,
+      relayedRootBundleEvents,
+      executedRelayerRefundRootEvents,
+      tokensBridgedEvents,
+      slotTimes,
+    } = params;
+
+    const [
+      savedV3FundsDepositedEvents,
+      savedV3RequestedSlowFills,
+      savedFilledV3RelayEvents,
+      savedExecutedRelayerRefundRootEvents,
+    ] = await Promise.all([
+      spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        fundsDepositedEvents,
+        lastFinalisedBlock,
+        slotTimes,
+      ),
+      spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedSlowFillEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledRelayEvents,
+        lastFinalisedBlock,
+        slotTimes,
+      ),
+      spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+        executedRelayerRefundRootEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+        relayedRootBundleEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+        tokensBridgedEvents,
+        lastFinalisedBlock,
+      ),
+    ]);
+    return {
+      deposits: savedV3FundsDepositedEvents,
+      fills: savedFilledV3RelayEvents,
+      slowFillRequests: savedV3RequestedSlowFills,
+      executedRefundRoots: savedExecutedRelayerRefundRootEvents,
+    };
+  }
+
   private async updateNewDepositsWithIntegratorId(
-    deposits: FetchEventsResult["fundsDepositedEvents"],
+    deposits: entities.V3FundsDeposited[],
   ) {
     await across.utils.forEachAsync(deposits, async (deposit) => {
       const integratorId = await utils.getSvmIntegratorId(
         this.provider,
-        deposit.txnRef,
+        deposit.transactionHash,
       );
       if (integratorId) {
-        // TODO: update deposit with integrator id when we are storing them in the database
+        await this.spokePoolClientRepository.updateDepositEventWithIntegratorId(
+          deposit.id,
+          integratorId,
+        );
       }
     });
   }
