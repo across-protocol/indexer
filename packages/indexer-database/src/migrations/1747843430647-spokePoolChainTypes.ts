@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class SpokePoolEventsChainType21747776000953
-  implements MigrationInterface
-{
-  name = "SpokePoolEventsChainType21747776000953";
+export class SpokePoolChainTypes1747843430647 implements MigrationInterface {
+  name = "SpokePoolChainTypes1747843430647";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // executed_relayer_refund_root
@@ -17,6 +15,14 @@ export class SpokePoolEventsChainType21747776000953
     // tokens_bridged
     await queryRunner.query(
       `ALTER TABLE "evm"."tokens_bridged" ALTER COLUMN "chainId" TYPE bigint`,
+    );
+    // bundle_event
+    await queryRunner.query(
+      `ALTER TABLE "bundle_event" ALTER COLUMN "eventChainId" TYPE bigint`,
+    );
+    // bundle_block_range
+    await queryRunner.query(
+      `ALTER TABLE "bundle_block_range" ALTER COLUMN "chainId" TYPE bigint`,
     );
   }
 
@@ -32,6 +38,14 @@ export class SpokePoolEventsChainType21747776000953
     // tokens_bridged
     await queryRunner.query(
       `ALTER TABLE "evm"."tokens_bridged" ALTER COLUMN "chainId" TYPE integer`,
+    );
+    // bundle_event
+    await queryRunner.query(
+      `ALTER TABLE "bundle_event" ALTER COLUMN "eventChainId" TYPE integer`,
+    );
+    // bundle_block_range
+    await queryRunner.query(
+      `ALTER TABLE "bundle_block_range" ALTER COLUMN "chainId" TYPE integer`,
     );
   }
 }

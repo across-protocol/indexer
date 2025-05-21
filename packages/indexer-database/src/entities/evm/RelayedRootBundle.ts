@@ -16,7 +16,7 @@ export class RelayedRootBundle {
   id: number;
 
   @Column({ type: "bigint" })
-  chainId: number;
+  chainId: string;
 
   @Column()
   rootBundleId: number;

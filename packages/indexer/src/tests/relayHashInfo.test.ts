@@ -320,7 +320,7 @@ describe("RelayHashInfo Tests", () => {
         bundleId: bundle.id,
         type: entities.BundleEventType.ExpiredDeposit,
         relayHash: deposit.internalHash,
-        eventChainId: parseInt(deposit.originChainId),
+        eventChainId: deposit.originChainId,
         eventBlockNumber: deposit.blockNumber,
         eventLogIndex: deposit.logIndex,
       },

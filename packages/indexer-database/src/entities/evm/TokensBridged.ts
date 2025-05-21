@@ -18,7 +18,7 @@ export class TokensBridged {
   id: number;
 
   @Column({ type: "bigint" })
-  chainId: number;
+  chainId: string;
 
   @Column()
   leafId: number;
