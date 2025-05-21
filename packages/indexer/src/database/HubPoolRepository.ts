@@ -105,7 +105,7 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
       return {
         leafId: event.leafId,
         groupIndex: event.groupIndex,
-        chainId: event.chainId,
+        chainId: event.chainId.toString(),
         l1Tokens: event.l1Tokens,
         bundleLpFees: event.bundleLpFees.map((fees) => fees.toString()),
         netSendAmounts: event.netSendAmounts.map((amount) => amount.toString()),
@@ -139,7 +139,7 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
       return {
-        destinationChainId: event.l2ChainId,
+        destinationChainId: event.l2ChainId.toString(),
         l1Token: event.l1Token,
         destinationToken: event.l2Token,
         blockNumber: event.blockNumber,
