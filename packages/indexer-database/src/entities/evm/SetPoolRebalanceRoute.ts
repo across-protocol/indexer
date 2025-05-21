@@ -17,7 +17,7 @@ export class SetPoolRebalanceRoute {
   id: number;
 
   @Column({ type: "bigint", nullable: false })
-  destinationChainId: number;
+  destinationChainId: string;
 
   @Column({ nullable: false })
   l1Token: string;
