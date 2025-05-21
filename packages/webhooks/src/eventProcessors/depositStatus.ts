@@ -11,7 +11,9 @@ import { IEventProcessor, NotificationPayload } from "../types";
 import { WebhookClientRepository } from "../database/webhookClientRepository";
 
 export const DepositStatusEvent = ss.object({
-  originChainId: ss.number(),
+  originChainId: ss.coerce(ss.number(), ss.string(), (value) =>
+    parseInt(value),
+  ),
   depositTxHash: ss.string(),
   depositId: ss.string(),
   status: ss.string(),
@@ -19,7 +21,9 @@ export const DepositStatusEvent = ss.object({
 export type DepositStatusEvent = ss.Infer<typeof DepositStatusEvent>;
 
 export const DepositStatusFilter = ss.object({
-  originChainId: ss.number(),
+  originChainId: ss.coerce(ss.number(), ss.string(), (value) =>
+    parseInt(value),
+  ),
   depositTxHash: ss.string(),
 });
 export type DepositStatusFilter = ss.Infer<typeof DepositStatusFilter>;

@@ -36,11 +36,11 @@ export class V3FundsDeposited {
   @Column({ type: "decimal" })
   depositId: string;
 
-  @Column()
-  originChainId: number;
+  @Column({ type: "bigint" })
+  originChainId: string;
 
-  @Column()
-  destinationChainId: number;
+  @Column({ type: "bigint" })
+  destinationChainId: string;
 
   @Column()
   fromLiteChain: boolean;

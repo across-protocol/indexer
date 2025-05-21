@@ -1,6 +1,6 @@
 import { V3FundsDeposited } from "../entities";
 import { getRandomInt } from "../utils/FixtureUtils";
-import { DataSource, DeleteResult, InsertResult, Repository } from "typeorm";
+import { DataSource, DeleteResult, Repository } from "typeorm";
 
 export class FundsDepositedFixture {
   private repository: Repository<V3FundsDeposited>;
@@ -18,8 +18,8 @@ export class FundsDepositedFixture {
       relayHash: "0xaaa",
       internalHash: "0xaaa",
       depositId: getRandomInt().toString(),
-      originChainId: 1,
-      destinationChainId: 10,
+      originChainId: "1",
+      destinationChainId: "10",
       fromLiteChain: false,
       toLiteChain: false,
       depositor: "0x",

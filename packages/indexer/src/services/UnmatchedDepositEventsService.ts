@@ -70,12 +70,12 @@ export class UnmatchedDepositEventsService extends RepeatableTask {
     try {
       const spokePoolProcessor = new SpokePoolProcessor(
         this.postgres,
-        deposit.originChainId,
+        parseInt(deposit.originChainId),
         this.logger,
       );
       const transactionReceipt = await (
         this.providersFactory.getProviderForChainId(
-          deposit.originChainId,
+          parseInt(deposit.originChainId),
         ) as providers.RetryProvider
       ).getTransactionReceipt(deposit.transactionHash);
       await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({

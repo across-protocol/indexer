@@ -68,7 +68,7 @@ export class IntegratorIdWorker {
       return;
     }
     const provider = this.providerFactory.getProviderForChainId(
-      deposit.originChainId,
+      parseInt(deposit.originChainId),
     );
     const integratorId = await getIntegratorId(
       provider as providers.RetryProvider,

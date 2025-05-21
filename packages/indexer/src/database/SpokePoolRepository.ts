@@ -27,7 +27,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   ) {
     return {
       depositId: event.depositId.toString(),
-      originChainId: event.originChainId,
+      originChainId: event.originChainId.toString(),
       depositor: event.depositor,
       recipient: event.recipient,
       inputToken: event.inputToken,
@@ -53,7 +53,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       return {
         ...this.formatRelayData(event),
         relayHash: across.utils.getRelayHashFromEvent(event),
-        destinationChainId: event.destinationChainId,
+        destinationChainId: event.destinationChainId.toString(),
         fromLiteChain: event.fromLiteChain,
         toLiteChain: event.toLiteChain,
         message: event.message,
@@ -96,7 +96,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
       return {
         ...this.formatRelayData(event),
-        destinationChainId: event.destinationChainId,
+        destinationChainId: event.destinationChainId.toString(),
         message: event.messageHash,
         relayer: event.relayer,
         repaymentChainId: event.repaymentChainId,
@@ -141,7 +141,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents = requestedV3SlowFillEvents.map((event) => {
       return {
         ...this.formatRelayData(event),
-        destinationChainId: event.destinationChainId,
+        destinationChainId: event.destinationChainId.toString(),
         internalHash: utils.getInternalHash(
           event,
           event.messageHash,
