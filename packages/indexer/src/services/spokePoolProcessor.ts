@@ -13,10 +13,8 @@ import {
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
-import {
-  DepositSwapPair,
-  StoreEventsResult,
-} from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import { StoreEventsResult } from "../database/SpokePoolRepository";
 
 enum SpokePoolEvents {
   V3FundsDeposited = "V3FundsDeposited",

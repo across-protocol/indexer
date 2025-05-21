@@ -170,6 +170,13 @@ export class AcrossIndexerManager {
             ) as SvmProvider,
             this.configStoreClientFactory,
             this.hubPoolClientFactory,
+            this.spokePoolRepository,
+            new SpokePoolProcessor(
+              this.postgres,
+              chainId,
+              this.logger,
+              this.webhookWriteFn,
+            ),
           );
         const svmIndexer = new SvmIndexer(
           {
