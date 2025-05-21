@@ -208,8 +208,8 @@ export class SpokePoolProcessor {
           relayHash: event.relayHash,
           internalHash: event.internalHash,
           depositId: event.depositId,
-          originChainId: event.originChainId,
-          destinationChainId: event.destinationChainId,
+          originChainId: parseInt(event.originChainId),
+          destinationChainId: parseInt(event.destinationChainId),
           fillDeadline: event.fillDeadline,
           depositEventId: event.id,
           depositTxHash: event.transactionHash,
@@ -293,8 +293,8 @@ export class SpokePoolProcessor {
         const item: Partial<entities.RelayHashInfo> = {
           internalHash: event.internalHash,
           depositId: event.depositId,
-          originChainId: event.originChainId,
-          destinationChainId: event.destinationChainId,
+          originChainId: parseInt(event.originChainId),
+          destinationChainId: parseInt(event.destinationChainId),
           fillDeadline: event.fillDeadline,
           fillEventId: event.id,
           status: RelayStatus.Filled, // Mark the status as filled.
@@ -366,8 +366,8 @@ export class SpokePoolProcessor {
         const item = {
           internalHash: event.internalHash,
           depositId: event.depositId,
-          originChainId: event.originChainId,
-          destinationChainId: event.destinationChainId,
+          originChainId: parseInt(event.originChainId),
+          destinationChainId: parseInt(event.destinationChainId),
           fillDeadline: event.fillDeadline,
           slowFillRequestEventId: event.id,
         };

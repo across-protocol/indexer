@@ -1,7 +1,7 @@
 import { interfaces } from "@across-protocol/sdk";
 import { FilledV3Relay } from "../entities";
 import { getRandomInt } from "../utils/FixtureUtils";
-import { DataSource, DeleteResult, InsertResult, Repository } from "typeorm";
+import { DataSource, DeleteResult, Repository } from "typeorm";
 
 export class FilledRelayFixture {
   private repository: Repository<FilledV3Relay>;
@@ -19,8 +19,8 @@ export class FilledRelayFixture {
       relayHash: "0xaaa",
       internalHash: "0xaaa",
       depositId: getRandomInt().toString(),
-      originChainId: 1,
-      destinationChainId: 10,
+      originChainId: "1",
+      destinationChainId: "10",
       depositor: "0x",
       recipient: "0x",
       inputToken: "0x",

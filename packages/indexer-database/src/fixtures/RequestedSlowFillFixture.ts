@@ -1,6 +1,6 @@
 import { RequestedV3SlowFill } from "../entities";
 import { getRandomInt } from "../utils/FixtureUtils";
-import { DataSource, DeleteResult, InsertResult, Repository } from "typeorm";
+import { DataSource, DeleteResult, Repository } from "typeorm";
 
 export class RequestedSlowFillFixture {
   private repository: Repository<RequestedV3SlowFill>;
@@ -18,8 +18,8 @@ export class RequestedSlowFillFixture {
       relayHash: "0xaaa",
       internalHash: "0xaaa",
       depositId: getRandomInt().toString(),
-      originChainId: 1,
-      destinationChainId: 10,
+      originChainId: "1",
+      destinationChainId: "10",
       fromLiteChain: false,
       toLiteChain: false,
       depositor: "0x",
