@@ -1,4 +1,5 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { Config } from "../../parseEnv";
 
 // taken from https://github.com/UMAprotocol/bot-configs/blob/ed878f5f80509ad4ca55c8200e40670ba50e3b26/serverless-bots/across-v2-bot-config.json#L330C1-L342C25
 const finalisedBlockBufferDistances: Record<number, number> = {
@@ -42,7 +43,7 @@ export function getFinalisedBlockBufferDistance(chainId: number) {
   return buffer;
 }
 
-const loopWaitTimeSeconds: Record<number, number> = {
+const indexingDelaySeconds: Record<number, number> = {
   // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
   [CHAIN_IDs.ARBITRUM]: 2,
@@ -71,12 +72,14 @@ const loopWaitTimeSeconds: Record<number, number> = {
   [CHAIN_IDs.SOLANA_DEVNET]: 2,
 };
 
-export function getLoopWaitTimeSeconds(chainId: number) {
-  const loopWaitTime = loopWaitTimeSeconds[chainId];
-
-  if (!loopWaitTime) {
-    throw new Error(`Loop wait time not defined for chainId: ${chainId}`);
+export function getIndexingDelaySeconds(chainId: number, config: Config) {
+  // The value from ENV is used only to override the hardcoded value. It should not
+  // be used as a fallback in case the hardcoded value is not defined.
+  const indexingDelay =
+    config.indexingDelaySeconds ?? indexingDelaySeconds[chainId];
+  if (!indexingDelay) {
+    throw new Error(`Indexing delay not defined for chainId: ${chainId}`);
   }
 
-  return loopWaitTime;
+  return indexingDelay;
 }

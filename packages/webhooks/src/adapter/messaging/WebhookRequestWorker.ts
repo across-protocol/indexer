@@ -56,7 +56,7 @@ export class WebhookRequestWorker {
       .findOne({
         where: {
           depositTxHash,
-          originChainId,
+          originChainId: originChainId.toString(),
         },
       });
     if (!relayHashInfo) {

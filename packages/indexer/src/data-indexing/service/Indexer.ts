@@ -11,8 +11,8 @@ import { SvmProvider } from "../../web3/RetryProvidersFactory";
 const DEFAULT_MAX_BLOCK_RANGE_SIZE = 50_000;
 
 export type ConstructorConfig = {
-  /** Time to wait before going to the next block ranges. */
-  loopWaitTimeSeconds: number;
+  /** Time to wait between indexing cycles. */
+  indexingDelaySeconds: number;
   /** Distance from the latest block to consider onchain data finalised. */
   finalisedBlockBufferDistance: number;
   /**
@@ -93,7 +93,7 @@ export class Indexer {
         await across.utils.delay(30);
       } finally {
         if (!blockRangeResult?.isBackfilling) {
-          await across.utils.delay(this.config.loopWaitTimeSeconds);
+          await across.utils.delay(this.config.indexingDelaySeconds);
         } else {
           this.logger.debug({
             at: "Indexer#start",

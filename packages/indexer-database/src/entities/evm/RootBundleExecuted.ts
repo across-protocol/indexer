@@ -23,8 +23,8 @@ export class RootBundleExecuted {
   @Column()
   groupIndex: number;
 
-  @Column()
-  chainId: number;
+  @Column({ type: "bigint" })
+  chainId: string;
 
   @Column({ type: "jsonb" })
   l1Tokens: string[];

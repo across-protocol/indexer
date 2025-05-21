@@ -65,8 +65,8 @@ export type DepositReturnType = {
   id: number;
   relayHash: string;
   depositId: string;
-  originChainId: number;
-  destinationChainId: number;
+  originChainId: string;
+  destinationChainId: string;
   depositor: string;
   recipient: string;
   inputToken: string;
@@ -113,6 +113,15 @@ export type DepositReturnType = {
     updatedMessage: string;
     blockNumber: number;
   }[];
+};
+
+// Add new type for parsed deposits
+export type ParsedDepositReturnType = Omit<
+  DepositReturnType,
+  "originChainId" | "destinationChainId"
+> & {
+  originChainId: number;
+  destinationChainId: number;
 };
 
 // Define a type for the pagination information

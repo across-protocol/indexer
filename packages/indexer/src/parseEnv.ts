@@ -24,6 +24,11 @@ export type Config = {
   coingeckoApiKey?: string;
   enablePriceWorker: boolean;
   bundleEventsServiceStartBlockNumber: number;
+  /**
+   * Override the delay between processing block ranges in seconds in the Indexer class.
+   * If this is not set, then the default hardcoded values will be used.
+   */
+  indexingDelaySeconds?: number;
 };
 
 export type RedisConfig = {
@@ -233,6 +238,10 @@ export function envToConfig(env: Env): Config {
       : // Across v3 mainnet deployment block
         19277710;
 
+  const indexingDelaySeconds = env.INDEXING_DELAY_SECONDS
+    ? parseInt(env.INDEXING_DELAY_SECONDS)
+    : undefined;
+
   return {
     redisConfig,
     postgresConfig,
@@ -248,5 +257,6 @@ export function envToConfig(env: Env): Config {
     coingeckoApiKey,
     enablePriceWorker,
     bundleEventsServiceStartBlockNumber,
+    indexingDelaySeconds,
   };
 }
