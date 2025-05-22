@@ -124,7 +124,7 @@ export class BundleFixture {
    */
   public mockRelayedRootBundle(overrides: Partial<RelayedRootBundle>) {
     return {
-      chainId: 1,
+      chainId: "1",
       rootBundleId: 1,
       relayerRefundRoot: "0xRelayerRefundRoot",
       slowRelayRoot: "0xSlowRelayRoot",
@@ -171,7 +171,7 @@ export class BundleFixture {
     overrides: Partial<ExecutedRelayerRefundRoot>,
   ) {
     return {
-      chainId: 1,
+      chainId: "1",
       rootBundleId: 1,
       leafId: 1,
       l2TokenAddress: "0xL2TokenAddress",
@@ -237,7 +237,7 @@ export class BundleFixture {
       type: BundleEventType.Deposit,
       relayHash: "0xaaa",
       repaymentChainId: "1",
-      eventChainId: 1,
+      eventChainId: "1",
       eventBlockNumber: 1,
       eventLogIndex: 1,
       ...overrides,

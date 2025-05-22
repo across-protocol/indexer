@@ -375,9 +375,13 @@ export class BundleRepository extends utils.BaseRepository {
    * @returns The result of the inserts
    */
   public async associateBlockRangeWithBundle(ranges: BlockRangeInsertType[]) {
+    const formattedRanges = ranges.map((range) => ({
+      ...range,
+      chainId: range.chainId.toString(),
+    }));
     const promises = await Promise.all(
       across.utils
-        .chunk(ranges, 1000)
+        .chunk(formattedRanges, 1000)
         .map((chunk) =>
           this.postgres
             .getRepository(entities.BundleBlockRange)

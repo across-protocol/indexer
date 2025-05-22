@@ -70,7 +70,7 @@ export async function resolveMostRecentProposedAndExecutedBundles(
 export function getBundleBlockRanges(bundle: entities.Bundle) {
   return bundle.proposal.chainIds.map((chainId) => {
     const bundleRange = bundle.ranges.find(
-      (range) => range.chainId === chainId,
+      (range) => range.chainId === chainId.toString(),
     );
     if (!bundleRange) {
       throw Error(

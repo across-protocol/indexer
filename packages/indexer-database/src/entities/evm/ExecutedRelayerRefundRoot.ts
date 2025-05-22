@@ -16,8 +16,8 @@ export class ExecutedRelayerRefundRoot {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  chainId: number;
+  @Column({ type: "bigint" })
+  chainId: string;
 
   @Column()
   rootBundleId: number;
