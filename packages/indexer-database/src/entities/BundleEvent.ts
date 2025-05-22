@@ -35,8 +35,8 @@ export class BundleEvent {
   @Column({ type: "decimal", nullable: true })
   repaymentChainId: string;
 
-  @Column({ nullable: true })
-  eventChainId: number;
+  @Column({ type: "bigint", nullable: true })
+  eventChainId: string;
 
   @Column({ nullable: true })
   eventBlockNumber: number;
