@@ -255,13 +255,16 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           (blockRange.to - blockRange.from) * 2,
         );
 
-    // TODO: create svm spoke pool client factory and instantiate client using it as we do for evm
     const spokePoolClient = await across.clients.SVMSpokePoolClient.create(
       this.logger,
       this.hubPoolClient,
       this.chainId,
       BigInt(this.getStartIndexingBlockNumber()),
-      { from: blockRange.from, to: blockRange.to },
+      {
+        from: blockRange.from,
+        to: blockRange.to,
+        maxLookBack: maxBlockLookback,
+      },
       this.provider,
     );
 
