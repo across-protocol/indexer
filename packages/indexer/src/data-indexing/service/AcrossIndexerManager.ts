@@ -177,6 +177,7 @@ export class AcrossIndexerManager {
               this.logger,
               this.webhookWriteFn,
             ),
+            this.indexerQueuesService,
           );
         const svmIndexer = new SvmIndexer(
           {

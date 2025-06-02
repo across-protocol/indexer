@@ -105,7 +105,7 @@ export class BlockchainEventRepository {
     }
 
     return {
-      data: undefined,
+      data: dbEntity,
       result: SaveQueryResultType.Nothing,
     };
   }
