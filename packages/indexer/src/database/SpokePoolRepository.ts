@@ -181,10 +181,6 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       (eventsByDepositId) =>
         Object.values(eventsByDepositId).flatMap((events) =>
           events.map((event) => {
-            const transactionHash = event.txnRef;
-            const transactionIndex = event.txnIndex;
-            delete (event as { txnRef?: string }).txnRef;
-            delete (event as { txnIndex?: number }).txnIndex;
             return {
               originChainId: event.originChainId,
               depositId: event.depositId.toString(),
