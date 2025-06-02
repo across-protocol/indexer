@@ -11,6 +11,7 @@ import {
   Not,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
@@ -34,7 +35,7 @@ export class SpokePoolProcessor {
     events: StoreEventsResult,
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
-    transactionReceipts: Record<string, providers.TransactionReceipt>,
+    fillsGasFee?: Record<string, bigint | undefined>,
   ) {
     // Update relay hash info records related to deleted deposits
     await this.processDeletedDeposits(deletedDeposits);
@@ -68,7 +69,7 @@ export class SpokePoolProcessor {
       deposits: newDeposits,
       fills: [...newFills, ...updatedFills],
       slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
-      transactionReceipts,
+      fillsGasFee,
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
@@ -175,14 +176,11 @@ export class SpokePoolProcessor {
     deposits: entities.V3FundsDeposited[];
     fills: entities.FilledV3Relay[];
     slowFillRequests: entities.RequestedV3SlowFill[];
-    transactionReceipts?: Record<string, providers.TransactionReceipt>;
+    fillsGasFee?: Record<string, bigint | undefined>;
   }): Promise<void> {
     await Promise.all([
       this.assignDepositEventsToRelayHashInfo(events.deposits),
-      this.assignFillEventsToRelayHashInfo(
-        events.fills,
-        events.transactionReceipts,
-      ),
+      this.assignFillEventsToRelayHashInfo(events.fills, events.fillsGasFee),
       this.assignSlowFillRequestedEventsToRelayHashInfo(
         events.slowFillRequests,
       ),
@@ -271,23 +269,19 @@ export class SpokePoolProcessor {
    */
   private async assignFillEventsToRelayHashInfo(
     events: entities.FilledV3Relay[],
-    transactionReceipts?: Record<string, providers.TransactionReceipt>,
+    fillsGasFee?: Record<string, bigint | undefined>,
   ): Promise<void> {
     const insertResults: InsertResult[] = [];
     const updateResults: UpdateResult[] = [];
     await Promise.all(
       events.map(async (event) => {
         // Format from event to relayHashInfo row
-        const txnReceipt = transactionReceipts?.[event.transactionHash];
-        if (transactionReceipts && !txnReceipt) {
+        const fillGasFee = fillsGasFee?.[event.transactionHash];
+        if (fillsGasFee && !fillGasFee) {
           throw new Error(
-            `Transaction receipt not found for fill event ${event.id} and transaction hash ${event.transactionHash}`,
+            `Fill gas fee not found for fill event ${event.id} and transaction hash ${event.transactionHash}`,
           );
         }
-        const gasFee =
-          txnReceipt?.gasUsed && txnReceipt?.effectiveGasPrice
-            ? txnReceipt.gasUsed.mul(txnReceipt.effectiveGasPrice)
-            : undefined;
         const item: Partial<entities.RelayHashInfo> = {
           internalHash: event.internalHash,
           depositId: event.depositId,
@@ -297,7 +291,7 @@ export class SpokePoolProcessor {
           fillEventId: event.id,
           status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
-          fillGasFee: gasFee?.toString(),
+          fillGasFee: fillGasFee?.toString(),
         };
 
         // Start a transaction

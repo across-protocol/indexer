@@ -4,7 +4,7 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
-import { providers } from "ethers";
+import { ethers, providers } from "ethers";
 import {
   entities,
   utils as indexerDatabaseUtils,
@@ -179,12 +179,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();
-
+    const fillsGasFee = await this.getFillsGasFee(transactionReceipts);
     await this.spokePoolProcessor.process(
       storedEvents,
       deletedDeposits,
       depositSwapPairs,
-      transactionReceipts,
+      fillsGasFee,
     );
 
     //FIXME: Remove performance timing
@@ -638,6 +638,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       IndexerQueues.IntegratorId,
       IndexerQueues.IntegratorId, // Use queue name as job name
       messages,
+    );
+  }
+
+  private async getFillsGasFee(
+    txReceipts: Record<string, ethers.providers.TransactionReceipt>,
+  ): Promise<Record<string, bigint | undefined>> {
+    return Object.keys(txReceipts).reduce(
+      (acc, txHash) => {
+        acc[txHash] = txReceipts[txHash]!.gasUsed.mul(
+          txReceipts[txHash]!.effectiveGasPrice,
+        ).toBigInt();
+        return acc;
+      },
+      {} as Record<string, bigint | undefined>,
     );
   }
 }

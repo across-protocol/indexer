@@ -112,6 +112,13 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
 
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+    const fillsGasFee = await this.getFillsGasFee(events.filledRelayEvents);
+    await this.spokePoolProcessor.process(
+      storedEvents,
+      deletedDeposits,
+      [],
+      fillsGasFee,
+    );
 
     // TODO:
     // - delete unfinalised events
@@ -126,6 +133,30 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     //   [], // depositSwapPairs,
     //   {}, // transactionReceipts,
     // );
+  }
+
+  private async getFillsGasFee(
+    fills: across.interfaces.FillWithBlock[],
+  ): Promise<Record<string, bigint | undefined>> {
+    const fillsGasFee = await Promise.all(
+      fills.map(async (fill) => {
+        const transaction = await this.provider
+          .getTransaction(fill.txnRef as Signature, {
+            maxSupportedTransactionVersion: 0,
+          })
+          .send();
+        return !!transaction?.meta?.fee
+          ? BigInt(transaction.meta.fee.toString())
+          : undefined;
+      }),
+    );
+    return fills.reduce(
+      (acc, fill, index) => {
+        acc[fill.txnRef] = fillsGasFee[index];
+        return acc;
+      },
+      {} as Record<string, bigint | undefined>,
+    );
   }
 
   private async fetchEventsByRange(
