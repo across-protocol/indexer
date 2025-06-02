@@ -154,6 +154,14 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       SaveQueryResultType.Inserted,
     );
 
+    // Delete unfinalised events
+    const deletedDeposits =
+      await this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      );
+    const timeToDeleteDeposits = performance.now();
+
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
     const fillsGasFee = await this.getFillsGasFee(events.filledRelayEvents);
     await this.spokePoolProcessor.process(
