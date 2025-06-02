@@ -216,13 +216,12 @@ export class SpokePoolProcessor {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-          // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.internalHash as string);
+          const lockKey = this.getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
             `SELECT pg_advisory_xact_lock($2, $1)`,
-            [item.originChainId, lockKey],
+            lockKey,
           );
 
           // Retrieve an existing entry that either:
@@ -299,16 +298,13 @@ export class SpokePoolProcessor {
         await this.postgres.transaction(async (transactionalEntityManager) => {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
-
-          // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.internalHash as string);
+          const lockKey = this.getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
             `SELECT pg_advisory_xact_lock($2, $1)`,
-            [item.originChainId, lockKey],
+            lockKey,
           );
-
           // Retrieve an existing entry based on the relayHash.
           // If multiple rows exist, prioritize updating the one from the first deposit event indexed.
           const existingRow = await relayHashInfoRepository
@@ -368,14 +364,12 @@ export class SpokePoolProcessor {
         await this.postgres.transaction(async (transactionalEntityManager) => {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
-
-          // Convert relayHash into a 32-bit integer for database lock usage
-          const lockKey = this.relayHashToInt32(item.internalHash as string);
+          const lockKey = this.getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
             `SELECT pg_advisory_xact_lock($2, $1)`,
-            [item.originChainId, lockKey],
+            lockKey,
           );
 
           // Retrieve an existing entry based on the relayHash.
@@ -478,14 +472,12 @@ export class SpokePoolProcessor {
             logIndex: deposit.logIndex,
           },
         });
-
-        // Convert relayHash into a 32-bit integer for database lock usage
-        const lockKey = this.relayHashToInt32(deposit.internalHash!);
+        const lockKey = this.getDbLockKeyForDeposit(deposit);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
           `SELECT pg_advisory_xact_lock($2, $1)`,
-          [deposit.originChainId, lockKey],
+          lockKey,
         );
 
         const relatedRelayRow = await relayHashInfoRepository.findOne({
@@ -560,6 +552,26 @@ export class SpokePoolProcessor {
         }
       });
     }
+  }
+
+  /**
+   * Generates a lock key for the deposit
+   * @param deposit - The deposit event
+   * @returns A tuple of the origin chain id and the internal hash as a 32-bit integer
+   */
+  private getDbLockKeyForDeposit(
+    deposit:
+      | entities.V3FundsDeposited
+      | entities.FilledV3Relay
+      | entities.RequestedV3SlowFill,
+  ) {
+    return [
+      deposit.originChainId === CHAIN_IDs.SOLANA.toString()
+        ? "342683945"
+        : deposit.originChainId,
+      // Convert internalHash into a 32-bit integer for database lock usage
+      this.relayHashToInt32(deposit.internalHash!),
+    ];
   }
 
   /**
@@ -671,16 +683,12 @@ export class SpokePoolProcessor {
         const relayHashInfoRepo = transactionalEntityManager.getRepository(
           entities.RelayHashInfo,
         );
-
-        // Convert relayHash into a 32-bit integer for database lock usage
-        const lockKey = this.relayHashToInt32(
-          refundEvent.deposit.internalHash!,
-        );
+        const lockKey = this.getDbLockKeyForDeposit(refundEvent.deposit);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
           `SELECT pg_advisory_xact_lock($2, $1)`,
-          [refundEvent.deposit.originChainId, lockKey],
+          lockKey,
         );
 
         const rowToUpdate = await relayHashInfoRepo.findOne({
