@@ -20,6 +20,9 @@ import {
   StoreEventsResult,
 } from "../../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
+import { Signature } from "@solana/kit";
+import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
+import { PriceMessage } from "../../messaging/priceWorker";
 
 export type FetchEventsResult = {
   fundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -47,6 +50,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     private hubPoolFactory: utils.HubPoolClientFactory,
     private spokePoolClientRepository: SpokePoolRepository,
     private spokePoolProcessor: SpokePoolProcessor,
+    private indexerQueuesService: IndexerQueuesService,
   ) {}
 
   private initialize() {
@@ -87,6 +91,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       this.isInitialized = true;
     }
 
+    const startPerfTime = performance.now();
     let events: FetchEventsResult;
 
     try {
@@ -131,6 +136,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
         throw error;
       }
     }
+    const timeToFetchEvents = performance.now();
 
     this.logger.debug({
       at: "Indexer#SvmSpokePoolIndexerDataHandler#processBlockRange",
@@ -148,6 +154,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     });
 
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+    const timeToStoreEvents = performance.now();
 
     const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
       storedEvents.deposits,
@@ -163,6 +170,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     const timeToDeleteDeposits = performance.now();
 
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+    const timeToUpdateDepositIds = performance.now();
+
     const fillsGasFee = await this.getFillsGasFee(events.filledRelayEvents);
     await this.spokePoolProcessor.process(
       storedEvents,
@@ -171,8 +180,30 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       fillsGasFee,
     );
 
+    //FIXME: Remove performance timing
+    const timeToProcessDeposits = performance.now();
+
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents);
+
+    const finalPerfTime = performance.now();
+
+    this.logger.debug({
+      at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
+      message:
+        "System Time Log for SpokePoolIndexerDataHandler#processBlockRange",
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+      timeToFetchEvents: timeToFetchEvents - startPerfTime,
+      timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
+      timeToDeleteDeposits: timeToDeleteDeposits - timeToStoreEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToDeleteDeposits,
+      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
+      timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
+      finalTime: finalPerfTime - startPerfTime,
+    });
+
     // TODO:
-    // - delete unfinalised events
     // - process events
     // - publish price messages
 
@@ -395,5 +426,17 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
         );
       }
     });
+  }
+
+  private async publishNewRelays(storedEvents: StoreEventsResult) {
+    const fills = storedEvents.fills.map(({ data }) => data);
+    const messages: PriceMessage[] = fills.map((fill) => ({
+      fillEventId: fill.id,
+    }));
+    await this.indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.PriceQuery,
+      IndexerQueues.PriceQuery, // Use queue name as job name
+      messages,
+    );
   }
 }
