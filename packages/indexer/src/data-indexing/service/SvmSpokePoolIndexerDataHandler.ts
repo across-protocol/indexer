@@ -87,7 +87,50 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       this.isInitialized = true;
     }
 
-    const events = await this.fetchEventsByRange(blockRange, isBackfilling);
+    let events: FetchEventsResult;
+
+    try {
+      events = await this.fetchEventsByRange(blockRange, isBackfilling);
+    } catch (error) {
+      if ((error as Error).message.includes("Malformed rawEvent for IDL")) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else if ((error as Error).message.includes("Uint8Array expected")) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else if (
+        (error as any)?.context?.__code === -32009 &&
+        (error as any)?.context?.__serverMessage?.includes(
+          "was skipped, or missing in long-term storage",
+        )
+      ) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else {
+        throw error;
+      }
+    }
 
     this.logger.debug({
       at: "Indexer#SvmSpokePoolIndexerDataHandler#processBlockRange",
