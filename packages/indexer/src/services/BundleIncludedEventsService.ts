@@ -9,7 +9,10 @@ import { RepeatableTask } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";
 import { getBlockTime } from "../web3/constants";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import {
+  RetryProvidersFactory,
+  SvmProvider,
+} from "../web3/RetryProvidersFactory";
 import {
   buildPoolRebalanceRoot,
   getBlockRangeBetweenBundles,
@@ -122,7 +125,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
     );
     const latestBlocks =
       await this.getLatestBlockForBundleChains(lookbackRange);
-    const spokeClients = this.getSpokeClientsForLookbackBlockRange(
+    const spokeClients = await this.getSpokeClientsForLookbackBlockRange(
       lookbackRange,
       spokePoolClientFactory,
       latestBlocks,
@@ -189,13 +192,14 @@ export class BundleIncludedEventsService extends RepeatableTask {
     }
   }
 
-  private getSpokeClientsForLookbackBlockRange(
+  private async getSpokeClientsForLookbackBlockRange(
     lookbackRange: utils.ProposalRangeResult[],
     spokePoolClientFactory: utils.SpokePoolClientFactory,
     latestBlocks: Record<number, number>,
   ) {
-    return lookbackRange.reduce(
-      (acc, { chainId, startBlock, endBlock }) => {
+    const clients = await Promise.all(
+      lookbackRange.map(async ({ chainId, startBlock, endBlock }) => {
+        const chainIsSvm = across.utils.chainIsSvm(chainId);
         // We need to instantiate spoke clients using a higher end block than
         // the bundle range as deposits which fills are included in this bundle could
         // have occured outside the bundle range of the origin chain
@@ -206,8 +210,9 @@ export class BundleIncludedEventsService extends RepeatableTask {
         const endBlockWithBuffer = endBlock + blockBuffer;
         const latestBlock = latestBlocks[chainId]!;
         const cappedEndBlock = Math.min(endBlockWithBuffer, latestBlock);
+        const contractName = chainIsSvm ? "SvmSpoke" : "SpokePool";
         const deployedBlockNumber = getDeployedBlockNumber(
-          "SpokePool",
+          contractName,
           chainId,
         );
         this.logger.debug({
@@ -227,24 +232,45 @@ export class BundleIncludedEventsService extends RepeatableTask {
             startBlock,
             cappedEndBlock,
           });
-          return acc;
+          return [chainId, null];
         }
 
-        return {
-          ...acc,
-          [chainId]: spokePoolClientFactory.get(
+        if (chainIsSvm) {
+          const spokePoolClient =
+            await across.clients.SVMSpokePoolClient.create(
+              this.logger,
+              this.hubPoolClient,
+              chainId,
+              BigInt(deployedBlockNumber),
+              {
+                from: startBlock,
+                to: cappedEndBlock,
+              },
+              this.config.retryProvidersFactory.getProviderForChainId(
+                chainId,
+              ) as SvmProvider,
+            );
+          return [chainId, spokePoolClient];
+        } else {
+          return [
             chainId,
-            startBlock,
-            cappedEndBlock,
-            {
-              hubPoolClient: this.hubPoolClient,
-            },
-            false,
-          ),
-        };
-      },
-      {} as Record<number, across.clients.SpokePoolClient>,
+            spokePoolClientFactory.get(
+              chainId,
+              startBlock,
+              cappedEndBlock,
+              {
+                hubPoolClient: this.hubPoolClient,
+              },
+              false,
+            ),
+          ];
+        }
+      }),
     );
+
+    return Object.fromEntries(
+      clients.filter(([_, client]) => client !== null),
+    ) as Record<number, across.clients.SpokePoolClient>;
   }
 
   private async getLatestBlockForBundleChains(
@@ -252,11 +278,22 @@ export class BundleIncludedEventsService extends RepeatableTask {
   ): Promise<Record<number, number>> {
     const entries = await Promise.all(
       lookbackRange.map(async ({ chainId }) => {
-        const provider =
-          this.config.retryProvidersFactory.getProviderForChainId(
-            chainId,
-          ) as across.providers.RetryProvider;
-        const latestBlock = await provider.getBlockNumber();
+        let latestBlock: number;
+        if (across.utils.chainIsEvm(chainId)) {
+          const provider =
+            this.config.retryProvidersFactory.getProviderForChainId(
+              chainId,
+            ) as across.providers.RetryProvider;
+          latestBlock = await provider.getBlockNumber();
+        } else {
+          const provider =
+            this.config.retryProvidersFactory.getProviderForChainId(
+              chainId,
+            ) as SvmProvider;
+          latestBlock = Number(
+            await provider.getSlot({ commitment: "confirmed" }).send(),
+          );
+        }
         return [chainId, latestBlock];
       }),
     );
