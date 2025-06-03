@@ -202,19 +202,6 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
-
-    // TODO:
-    // - process events
-    // - publish price messages
-
-    // TODO: advisory locks take postgres ints as inputs but Solana chain id is above the max allowed value
-    // We have to handle that case before enabling the process step
-    // await this.spokePoolProcessor.process(
-    //   storedEvents,
-    //   [], // deletedDeposits,
-    //   [], // depositSwapPairs,
-    //   {}, // transactionReceipts,
-    // );
   }
 
   private async getFillsGasFee(
