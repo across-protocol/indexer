@@ -190,7 +190,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     //FIXME: Remove performance timing
     const timeToProcessDeposits = performance.now();
 
-    this.profileStoreEvents(storedEvents);
+    // this.profileStoreEvents(storedEvents);
 
     // publish new relays to workers to fill in prices
     await this.publishNewRelays(storedEvents);
@@ -459,17 +459,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     // Specifically, we avoid the EnabledDepositRoute event because this
     // requires a lookback to the deployment block of the SpokePool contract.
     await spokePoolClient.update([
-      "V3FundsDeposited",
-      "FilledV3Relay",
-      "RequestedV3SlowFill",
-      "RequestedSpeedUpV3Deposit",
-      "RelayedRootBundle",
       "ExecutedRelayerRefundRoot",
-      "TokensBridged",
-      "FundsDeposited",
-      "RequestedSpeedUpDeposit",
-      "RequestedSlowFill",
       "FilledRelay",
+      "FundsDeposited",
+      "RelayedRootBundle",
+      "RequestedSlowFill",
+      "RequestedSpeedUpDeposit",
+      "TokensBridged",
     ]);
     const timeToUpdateSpokePoolClient = performance.now();
 
