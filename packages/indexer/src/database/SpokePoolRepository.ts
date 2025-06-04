@@ -253,7 +253,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         Object.values(eventsByDepositId).flatMap((events) =>
           events.map((event) => {
             return {
-              originChainId: event.originChainId,
+              originChainId: event.originChainId.toString(),
               depositId: event.depositId.toString(),
               depositor: event.depositor,
               updatedRecipient: event.updatedRecipient,
