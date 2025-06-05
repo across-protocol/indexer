@@ -29,7 +29,7 @@ export class TokensBridged {
   @Column()
   amountToReturn: string;
 
-  @Column()
+  @Column({ nullable: true })
   caller: string;
 
   @Column()

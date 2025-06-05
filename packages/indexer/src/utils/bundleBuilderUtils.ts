@@ -97,18 +97,21 @@ export function getBlockRangeBetweenBundles(
   previous: ProposalRange,
   current: ProposalRange,
 ): ProposalRangeResult[] {
-  return current.chainIds.map((chainId, idx) => ({
-    chainId,
-    // Prevent incrementing disabled chains by floor-ing the previous block number as
-    // the start block should never be greater than the end block.
-    startBlock: Math.min(
-      previous.bundleEvaluationBlockNumbers[idx]
-        ? previous.bundleEvaluationBlockNumbers[idx]! + 1
-        : getDeployedBlockNumber("SpokePool", chainId), // If this is a new chain, start from spoke pool deployment block
-      current.bundleEvaluationBlockNumbers[idx]!,
-    ),
-    endBlock: current.bundleEvaluationBlockNumbers[idx]!,
-  }));
+  return current.chainIds.map((chainId, idx) => {
+    const contractName = utils.chainIsSvm(chainId) ? "SvmSpoke" : "SpokePool";
+    return {
+      chainId,
+      // Prevent incrementing disabled chains by floor-ing the previous block number as
+      // the start block should never be greater than the end block.
+      startBlock: Math.min(
+        previous.bundleEvaluationBlockNumbers[idx]
+          ? previous.bundleEvaluationBlockNumbers[idx]! + 1
+          : getDeployedBlockNumber(contractName, chainId), // If this is a new chain, start from spoke pool deployment block
+        current.bundleEvaluationBlockNumbers[idx]!,
+      ),
+      endBlock: current.bundleEvaluationBlockNumbers[idx]!,
+    };
+  });
 }
 
 /**

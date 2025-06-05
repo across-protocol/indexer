@@ -23,6 +23,6 @@ export enum SaveQueryResultType {
 }
 
 export type SaveQueryResult<T> = {
-  data: T | undefined;
+  data: T;
   result: SaveQueryResultType;
 };

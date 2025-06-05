@@ -73,18 +73,10 @@ export class UnmatchedDepositEventsService extends RepeatableTask {
         parseInt(deposit.originChainId),
         this.logger,
       );
-      const transactionReceipt = await (
-        this.providersFactory.getProviderForChainId(
-          parseInt(deposit.originChainId),
-        ) as providers.RetryProvider
-      ).getTransactionReceipt(deposit.transactionHash);
       await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
         deposits: [deposit],
         fills: [],
         slowFillRequests: [],
-        transactionReceipts: {
-          [deposit.transactionHash]: transactionReceipt,
-        },
       });
     } catch (error) {
       this.logger.warn({

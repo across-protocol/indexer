@@ -4,18 +4,20 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
-import { providers } from "ethers";
+import { ethers, providers } from "ethers";
 import {
   entities,
   utils as indexerDatabaseUtils,
-  SaveQueryResult,
   SaveQueryResultType,
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
-import { SpokePoolRepository } from "../../database/SpokePoolRepository";
+import {
+  SpokePoolRepository,
+  StoreEventsResult,
+} from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
@@ -35,20 +37,13 @@ export type FetchEventsResult = {
   };
   relayedRootBundleEvents: across.interfaces.RootBundleRelayWithBlock[];
   executedRelayerRefundRootEvents: (across.interfaces.RelayerRefundExecutionWithBlock & {
-    caller: string;
+    caller?: string;
     deferredRefunds: boolean;
   })[]; // TODO: Add missing properties to SDK types
   tokensBridgedEvents: (across.interfaces.TokensBridged & {
-    caller: string;
+    caller?: string;
   })[]; // TODO: Add missing properties to SDK types
   blockTimes: Record<number, number>;
-};
-
-export type StoreEventsResult = {
-  deposits: SaveQueryResult<entities.V3FundsDeposited>[];
-  fills: SaveQueryResult<entities.FilledV3Relay>[];
-  slowFillRequests: SaveQueryResult<entities.RequestedV3SlowFill>[];
-  executedRefundRoots: SaveQueryResult<entities.ExecutedRelayerRefundRoot>[];
 };
 
 export type DepositSwapPair = {
@@ -184,18 +179,18 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     //FIXME: Remove performance timing
     const timeToUpdateDepositIds = performance.now();
-
+    const fillsGasFee = await this.getFillsGasFee(transactionReceipts);
     await this.spokePoolProcessor.process(
       storedEvents,
       deletedDeposits,
       depositSwapPairs,
-      transactionReceipts,
+      fillsGasFee,
     );
 
     //FIXME: Remove performance timing
     const timeToProcessDeposits = performance.now();
 
-    this.profileStoreEvents(storedEvents);
+    // this.profileStoreEvents(storedEvents);
 
     // publish new relays to workers to fill in prices
     await this.publishNewRelays(storedEvents);
@@ -464,17 +459,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     // Specifically, we avoid the EnabledDepositRoute event because this
     // requires a lookback to the deployment block of the SpokePool contract.
     await spokePoolClient.update([
-      "V3FundsDeposited",
-      "FilledV3Relay",
-      "RequestedV3SlowFill",
-      "RequestedSpeedUpV3Deposit",
-      "RelayedRootBundle",
       "ExecutedRelayerRefundRoot",
-      "TokensBridged",
-      "FundsDeposited",
-      "RequestedSpeedUpDeposit",
-      "RequestedSlowFill",
       "FilledRelay",
+      "FundsDeposited",
+      "RelayedRootBundle",
+      "RequestedSlowFill",
+      "RequestedSpeedUpDeposit",
+      "TokensBridged",
     ]);
     const timeToUpdateSpokePoolClient = performance.now();
 
@@ -643,6 +634,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       IndexerQueues.IntegratorId,
       IndexerQueues.IntegratorId, // Use queue name as job name
       messages,
+    );
+  }
+
+  private async getFillsGasFee(
+    txReceipts: Record<string, ethers.providers.TransactionReceipt>,
+  ): Promise<Record<string, bigint | undefined>> {
+    return Object.keys(txReceipts).reduce(
+      (acc, txHash) => {
+        acc[txHash] = txReceipts[txHash]!.gasUsed.mul(
+          txReceipts[txHash]!.effectiveGasPrice,
+        ).toBigInt();
+        return acc;
+      },
+      {} as Record<string, bigint | undefined>,
     );
   }
 }
