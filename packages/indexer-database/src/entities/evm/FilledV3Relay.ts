@@ -13,6 +13,12 @@ import { RelayHashInfo } from "../RelayHashInfo";
 @Entity({ schema: "evm" })
 @Unique("UK_filledV3Relay_internalHash", ["internalHash"])
 @Index("IX_filledV3Relay_blockTimestamp", ["blockTimestamp"])
+@Index("IX_filledV3Relay_relayer", ["relayer"])
+@Index("IX_filledV3Relay_destinationChainId", ["destinationChainId"])
+@Index("IX_filledV3Relay_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
 export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
