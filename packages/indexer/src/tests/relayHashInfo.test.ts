@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import winston from "winston";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import {
   createDataSource,
   DataSource,
@@ -7,6 +8,7 @@ import {
   entities,
   fixtures,
 } from "@repo/indexer-database";
+import { utils, arch } from "@across-protocol/sdk";
 import { parsePostgresConfig } from "../parseEnv";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../services/spokePoolProcessor";
@@ -664,6 +666,98 @@ describe("RelayHashInfo Tests", () => {
       expect(finalRow!.depositEventId).to.equal(replacingDeposit.id);
       expect(finalRow!.fillEventId).to.equal(fill.id);
       expect(finalRow!.status).to.equal(entities.RelayStatus.Filled);
+    });
+  });
+
+  describe("Test adress conversions from bytes32 to specific chain format", () => {
+    const baseEvent = {
+      txnRef: "txHash",
+      blockNumber: 100,
+      txnIndex: 0,
+      logIndex: 0,
+      inputToken: "0x123",
+      outputToken: "0x456",
+      inputAmount: utils.BigNumber.from("100"),
+      outputAmount: utils.BigNumber.from("100"),
+      destinationChainId: 1,
+      depositId: utils.BigNumber.from("2"),
+      quoteTimestamp: 1744657139,
+      fillDeadline: 1744660739,
+      exclusivityDeadline: 0,
+      depositor: "0xdepositor",
+      recipient: "0xrecipient",
+      exclusiveRelayer: "0xexclusiveRelayer",
+      message: "0x",
+      messageHash: "0xmessageHash",
+      quoteBlockNumber: 100,
+      originChainId: 34268394551451,
+      fromLiteChain: false,
+      toLiteChain: false,
+    };
+    it("should handle address conversion correctly. Origin chain is SVM and destination chain is EVM", () => {
+      // Copy base event
+      const event = {
+        ...baseEvent,
+      };
+      // Set origin chainId as SVM and destination chainId as EVM
+      event.originChainId = CHAIN_IDs.SOLANA;
+      event.destinationChainId = CHAIN_IDs.MAINNET;
+      // Set SVM Origin addresses formatted as Bytes32
+      const depositor = arch.svm.getRandomSvmAddress();
+      const inputToken = arch.svm.getRandomSvmAddress();
+      event.depositor = utils.SvmAddress.from(depositor).toBytes32();
+      event.inputToken = utils.SvmAddress.from(inputToken).toBytes32();
+      // Set EVM Destination addresses formatted as Bytes32
+      const recipient = utils.randomAddress();
+      const outputToken = utils.randomAddress();
+      const exclusiveRelayer = utils.AddressZero;
+      event.recipient = utils.EvmAddress.from(recipient).toBytes32();
+      event.outputToken = utils.EvmAddress.from(outputToken).toBytes32();
+      event.exclusiveRelayer =
+        utils.EvmAddress.from(exclusiveRelayer).toBytes32();
+
+      // Format event
+      const formattedEvent = spokePoolRepository.formatRelayData(event);
+
+      // Verify formatted event
+      expect(formattedEvent.depositor).to.equal(depositor);
+      expect(formattedEvent.inputToken).to.equal(inputToken);
+      expect(formattedEvent.recipient).to.equal(recipient);
+      expect(formattedEvent.outputToken).to.equal(outputToken);
+      expect(formattedEvent.exclusiveRelayer).to.equal(exclusiveRelayer);
+    });
+
+    it("should handle address conversion correctly. Origin chain is EVM and destination chain is SVM", () => {
+      // Copy base event
+      const event = {
+        ...baseEvent,
+      };
+      // Set origin chainId as EVM and destination chainId as SVM
+      event.originChainId = CHAIN_IDs.MAINNET;
+      event.destinationChainId = CHAIN_IDs.SOLANA;
+      // Set EVM Origin addresses formatted as Bytes32
+      const depositor = utils.randomAddress();
+      const inputToken = utils.randomAddress();
+      event.depositor = utils.EvmAddress.from(depositor).toBytes32();
+      event.inputToken = utils.EvmAddress.from(inputToken).toBytes32();
+      // Set SVM Destination addresses formatted as Bytes32
+      const recipient = arch.svm.getRandomSvmAddress();
+      const outputToken = arch.svm.getRandomSvmAddress();
+      const exclusiveRelayer = arch.svm.SVM_DEFAULT_ADDRESS;
+      event.recipient = utils.SvmAddress.from(recipient).toBytes32();
+      event.outputToken = utils.SvmAddress.from(outputToken).toBytes32();
+      event.exclusiveRelayer =
+        utils.SvmAddress.from(exclusiveRelayer).toBytes32();
+
+      // Format event
+      const formattedEvent = spokePoolRepository.formatRelayData(event);
+
+      // Verify formatted event
+      expect(formattedEvent.depositor).to.equal(depositor);
+      expect(formattedEvent.inputToken).to.equal(inputToken);
+      expect(formattedEvent.recipient).to.equal(recipient);
+      expect(formattedEvent.outputToken).to.equal(outputToken);
+      expect(formattedEvent.exclusiveRelayer).to.equal(exclusiveRelayer);
     });
   });
 });

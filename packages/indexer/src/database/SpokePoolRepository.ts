@@ -9,8 +9,6 @@ import {
 import * as utils from "../utils";
 import { FetchEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 
-const { EvmAddress, SvmAddress, chainIsEvm, chainIsSvm } = across.utils;
-
 export type StoreEventsResult = {
   deposits: SaveQueryResult<entities.V3FundsDeposited>[];
   fills: SaveQueryResult<entities.FilledV3Relay>[];
@@ -33,7 +31,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       .update({ id }, { integratorId });
   }
 
-  private formatRelayData(
+  public formatRelayData(
     event:
       | across.interfaces.DepositWithBlock
       | across.interfaces.FillWithBlock
@@ -47,34 +45,27 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     let exclusiveRelayer: string;
 
     // Format depositor and inputToken to origin chain format
-    if (chainIsEvm(event.originChainId)) {
-      depositor = EvmAddress.from(event.depositor, "base16").toEvmAddress();
-      inputToken = EvmAddress.from(event.inputToken, "base16").toEvmAddress();
-    } else if (chainIsSvm(event.originChainId)) {
-      depositor = SvmAddress.from(event.depositor, "base16").toBase58();
-      inputToken = SvmAddress.from(event.inputToken, "base16").toBase58();
-    } else {
-      throw new Error(`Unsupported chainId: ${event.originChainId}`);
-    }
-
+    depositor = utils.formatFromBytes32ToChainFormat(
+      event.depositor,
+      event.originChainId,
+    );
+    inputToken = utils.formatFromBytes32ToChainFormat(
+      event.inputToken,
+      event.originChainId,
+    );
     // Format recipient, outputToken and exclusiveRelayer to destination chain format
-    if (chainIsEvm(event.destinationChainId)) {
-      recipient = EvmAddress.from(event.recipient, "base16").toEvmAddress();
-      outputToken = EvmAddress.from(event.outputToken, "base16").toEvmAddress();
-      exclusiveRelayer = EvmAddress.from(
-        event.exclusiveRelayer,
-        "base16",
-      ).toEvmAddress();
-    } else if (chainIsSvm(event.destinationChainId)) {
-      recipient = SvmAddress.from(event.recipient, "base16").toBase58();
-      outputToken = SvmAddress.from(event.outputToken, "base16").toBase58();
-      exclusiveRelayer = SvmAddress.from(
-        event.exclusiveRelayer,
-        "base16",
-      ).toBase58();
-    } else {
-      throw new Error(`Unsupported chainId: ${event.destinationChainId}`);
-    }
+    recipient = utils.formatFromBytes32ToChainFormat(
+      event.recipient,
+      event.destinationChainId,
+    );
+    outputToken = utils.formatFromBytes32ToChainFormat(
+      event.outputToken,
+      event.destinationChainId,
+    );
+    exclusiveRelayer = utils.formatFromBytes32ToChainFormat(
+      event.exclusiveRelayer,
+      event.destinationChainId,
+    );
 
     return {
       depositId: event.depositId.toString(),
@@ -147,21 +138,14 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       // Format relayer and updatedRecipient to destination chain format
       let relayer: string;
       let updatedRecipient: string;
-      if (chainIsEvm(event.destinationChainId)) {
-        relayer = EvmAddress.from(event.relayer, "base16").toEvmAddress();
-        updatedRecipient = EvmAddress.from(
-          event.relayExecutionInfo.updatedRecipient,
-          "base16",
-        ).toEvmAddress();
-      } else if (chainIsSvm(event.destinationChainId)) {
-        relayer = SvmAddress.from(event.relayer, "base16").toBase58();
-        updatedRecipient = SvmAddress.from(
-          event.relayExecutionInfo.updatedRecipient,
-          "base16",
-        ).toBase58();
-      } else {
-        throw new Error(`Unsupported chainId: ${event.destinationChainId}`);
-      }
+      relayer = utils.formatFromBytes32ToChainFormat(
+        event.relayer,
+        event.destinationChainId,
+      );
+      updatedRecipient = utils.formatFromBytes32ToChainFormat(
+        event.relayExecutionInfo.updatedRecipient,
+        event.destinationChainId,
+      );
 
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
 
@@ -325,25 +309,14 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       // Format l2TokenAddress and refundAddresses to destination chain format
       let l2TokenAddress: string;
       let refundAddresses: string[];
-      if (chainIsEvm(event.chainId)) {
-        l2TokenAddress = EvmAddress.from(
-          event.l2TokenAddress,
-          "base16",
-        ).toEvmAddress();
-        refundAddresses = event.refundAddresses.map((address) =>
-          EvmAddress.from(address, "base16").toEvmAddress(),
-        );
-      } else if (chainIsSvm(event.chainId)) {
-        l2TokenAddress = SvmAddress.from(
-          event.l2TokenAddress,
-          "base16",
-        ).toBase58();
-        refundAddresses = event.refundAddresses.map((address) =>
-          SvmAddress.from(address, "base16").toBase58(),
-        );
-      } else {
-        throw new Error(`Unsupported chainId: ${event.chainId}`);
-      }
+      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+        event.l2TokenAddress,
+        event.chainId,
+      );
+      refundAddresses = event.refundAddresses.map((address) =>
+        utils.formatFromBytes32ToChainFormat(address, event.chainId),
+      );
+
       return {
         chainId: event.chainId.toString(),
         rootBundleId: event.rootBundleId,
@@ -382,19 +355,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents = tokensBridgedEvents.map((event) => {
       // Format l2TokenAddress to destination chain format
       let l2TokenAddress: string;
-      if (chainIsEvm(event.chainId)) {
-        l2TokenAddress = EvmAddress.from(
-          event.l2TokenAddress,
-          "base16",
-        ).toEvmAddress();
-      } else if (chainIsSvm(event.chainId)) {
-        l2TokenAddress = SvmAddress.from(
-          event.l2TokenAddress,
-          "base16",
-        ).toBase58();
-      } else {
-        throw new Error(`Unsupported chainId: ${event.chainId}`);
-      }
+      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+        event.l2TokenAddress,
+        event.chainId,
+      );
+
       return {
         chainId: event.chainId.toString(),
         leafId: event.leafId,
