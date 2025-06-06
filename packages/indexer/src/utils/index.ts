@@ -1,3 +1,4 @@
+export * from "./adressUtils";
 export * from "./contractUtils";
 export * from "./contractFactoryUtils";
 export * from "./bundleBuilderUtils";
