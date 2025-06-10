@@ -58,7 +58,7 @@ describe("/deposit", () => {
     };
     await relayHashInfoFixture.insertRelayHashInfos([relayHashInfoData]);
     const response = await request(app).get("/deposit").query({
-      depositId: deposit.id,
+      depositId: deposit.depositId,
       originChainId: deposit.originChainId,
     });
     console.log(response.body);
