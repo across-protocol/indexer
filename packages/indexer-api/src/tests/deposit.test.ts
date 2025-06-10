@@ -63,6 +63,6 @@ describe("/deposit", () => {
     });
     console.log(response.body);
     expect(response.status).to.equal(200);
-    expect(response.body).to.be.an("array").that.is.not.empty;
+    expect(response.body.deposit.id).to.equal(deposit.id);
   });
 });
