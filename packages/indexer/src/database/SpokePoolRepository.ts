@@ -1,8 +1,20 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
+import {
+  DataSource,
+  entities,
+  utils as dbUtils,
+  SaveQueryResult,
+} from "@repo/indexer-database";
 import * as utils from "../utils";
 import { FetchEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+
+export type StoreEventsResult = {
+  deposits: SaveQueryResult<entities.V3FundsDeposited>[];
+  fills: SaveQueryResult<entities.FilledV3Relay>[];
+  slowFillRequests: SaveQueryResult<entities.RequestedV3SlowFill>[];
+  executedRefundRoots: SaveQueryResult<entities.ExecutedRelayerRefundRoot>[];
+};
 
 export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -19,22 +31,52 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       .update({ id }, { integratorId });
   }
 
-  private formatRelayData(
+  public formatRelayData(
     event:
       | across.interfaces.DepositWithBlock
       | across.interfaces.FillWithBlock
       | across.interfaces.SlowFillRequestWithBlock,
   ) {
+    // Format address fields from bytes32 to specific chain format
+    let depositor: string;
+    let recipient: string;
+    let inputToken: string;
+    let outputToken: string;
+    let exclusiveRelayer: string;
+
+    // Format depositor and inputToken to origin chain format
+    depositor = utils.formatFromBytes32ToChainFormat(
+      event.depositor,
+      event.originChainId,
+    );
+    inputToken = utils.formatFromBytes32ToChainFormat(
+      event.inputToken,
+      event.originChainId,
+    );
+    // Format recipient, outputToken and exclusiveRelayer to destination chain format
+    recipient = utils.formatFromBytes32ToChainFormat(
+      event.recipient,
+      event.destinationChainId,
+    );
+    outputToken = utils.formatFromBytes32ToChainFormat(
+      event.outputToken,
+      event.destinationChainId,
+    );
+    exclusiveRelayer = utils.formatFromBytes32ToChainFormat(
+      event.exclusiveRelayer,
+      event.destinationChainId,
+    );
+
     return {
       depositId: event.depositId.toString(),
       originChainId: event.originChainId.toString(),
-      depositor: event.depositor,
-      recipient: event.recipient,
-      inputToken: event.inputToken,
+      depositor,
+      recipient,
+      inputToken,
       inputAmount: event.inputAmount.toString(),
-      outputToken: event.outputToken,
+      outputToken,
       outputAmount: event.outputAmount.toString(),
-      exclusiveRelayer: event.exclusiveRelayer,
+      exclusiveRelayer,
       exclusivityDeadline:
         event.exclusivityDeadline === 0
           ? undefined
@@ -93,19 +135,32 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     blockTimes: Record<number, number>,
   ) {
     const formattedEvents = filledV3RelayEvents.map((event) => {
+      // Format relayer and updatedRecipient to destination chain format
+      let relayer: string;
+      let updatedRecipient: string;
+      relayer = utils.formatFromBytes32ToChainFormat(
+        event.relayer,
+        event.destinationChainId,
+      );
+      updatedRecipient = utils.formatFromBytes32ToChainFormat(
+        event.relayExecutionInfo.updatedRecipient,
+        event.destinationChainId,
+      );
+
       const blockTimestamp = new Date(blockTimes[event.blockNumber]! * 1000);
+
       return {
         ...this.formatRelayData(event),
         destinationChainId: event.destinationChainId.toString(),
         message: event.messageHash,
-        relayer: event.relayer,
+        relayer,
         repaymentChainId: event.repaymentChainId,
         internalHash: utils.getInternalHash(
           event,
           event.messageHash,
           event.destinationChainId,
         ),
-        updatedRecipient: event.relayExecutionInfo.updatedRecipient,
+        updatedRecipient,
         updatedOutputAmount:
           event.relayExecutionInfo.updatedOutputAmount.toString(),
         updatedMessage:
@@ -182,7 +237,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         Object.values(eventsByDepositId).flatMap((events) =>
           events.map((event) => {
             return {
-              originChainId: event.originChainId,
+              originChainId: event.originChainId.toString(),
               depositId: event.depositId.toString(),
               depositor: event.depositor,
               updatedRecipient: event.updatedRecipient,
@@ -251,14 +306,25 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = executedRelayerRefundRootEvents.map((event) => {
+      // Format l2TokenAddress and refundAddresses to destination chain format
+      let l2TokenAddress: string;
+      let refundAddresses: string[];
+      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+        event.l2TokenAddress,
+        event.chainId,
+      );
+      refundAddresses = event.refundAddresses.map((address) =>
+        utils.formatFromBytes32ToChainFormat(address, event.chainId),
+      );
+
       return {
         chainId: event.chainId.toString(),
         rootBundleId: event.rootBundleId,
         leafId: event.leafId,
-        l2TokenAddress: event.l2TokenAddress,
+        l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
         refundAmounts: event.refundAmounts.map((amount) => amount.toString()),
-        refundAddresses: event.refundAddresses,
+        refundAddresses,
         deferredRefunds: event.deferredRefunds,
         caller: event.caller,
         transactionHash: event.txnRef,
@@ -287,10 +353,17 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = tokensBridgedEvents.map((event) => {
+      // Format l2TokenAddress to destination chain format
+      let l2TokenAddress: string;
+      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+        event.l2TokenAddress,
+        event.chainId,
+      );
+
       return {
         chainId: event.chainId.toString(),
         leafId: event.leafId,
-        l2TokenAddress: event.l2TokenAddress,
+        l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
         caller: event.caller,
         transactionHash: event.txnRef,

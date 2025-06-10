@@ -17,8 +17,8 @@ export class RequestedSpeedUpV3Deposit {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  originChainId: number;
+  @Column({ type: "bigint" })
+  originChainId: string;
 
   @Column({ type: "decimal" })
   depositId: string;

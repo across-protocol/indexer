@@ -2,10 +2,14 @@ import winston from "winston";
 
 import { RepeatableTask } from "../generics";
 import { DataSource, entities } from "@repo/indexer-database";
-import { providers } from "@across-protocol/sdk";
+import { providers, utils } from "@across-protocol/sdk";
+import { Signature } from "@solana/kit";
 
 import { SpokePoolProcessor } from "./spokePoolProcessor";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import {
+  RetryProvidersFactory,
+  SvmProvider,
+} from "../web3/RetryProvidersFactory";
 import { IndexerQueues } from "../messaging/service";
 import { IndexerQueuesService } from "../messaging/service";
 import { PriceMessage } from "../messaging/priceWorker";
@@ -73,18 +77,41 @@ export class UnmatchedFillEventsService extends RepeatableTask {
         parseInt(fill.destinationChainId),
         this.logger,
       );
-      const transactionReceipt = await (
-        this.providersFactory.getProviderForChainId(
+
+      let fillsGasFee: Record<string, bigint | undefined>;
+
+      if (utils.chainIsSvm(Number(fill.destinationChainId))) {
+        const provider = this.providersFactory.getProviderForChainId(
           parseInt(fill.destinationChainId),
-        ) as providers.RetryProvider
-      ).getTransactionReceipt(fill.transactionHash);
+        ) as SvmProvider;
+        const transaction = await provider
+          .getTransaction(fill.transactionHash as Signature, {
+            maxSupportedTransactionVersion: 0,
+          })
+          .send();
+        fillsGasFee = {
+          [fill.transactionHash]: !!transaction?.meta?.fee
+            ? BigInt(transaction.meta.fee.toString())
+            : undefined,
+        };
+      } else {
+        const provider = this.providersFactory.getProviderForChainId(
+          parseInt(fill.destinationChainId),
+        ) as providers.RetryProvider;
+        const transactionReceipt = await provider.getTransactionReceipt(
+          fill.transactionHash,
+        );
+        fillsGasFee = {
+          [fill.transactionHash]: transactionReceipt.gasUsed
+            .mul(transactionReceipt.effectiveGasPrice)
+            .toBigInt(),
+        };
+      }
       await spokePoolProcessor.assignSpokeEventsToRelayHashInfo({
         deposits: [],
         fills: [fill],
         slowFillRequests: [],
-        transactionReceipts: {
-          [fill.transactionHash]: transactionReceipt,
-        },
+        fillsGasFee,
       });
       const messages: PriceMessage[] = [{ fillEventId: fill.id }];
       await this.indexerQueuesService.publishMessagesBulk(
