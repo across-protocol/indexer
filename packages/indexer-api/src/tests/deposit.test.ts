@@ -51,6 +51,8 @@ describe("/deposit", () => {
     const [deposit] = await depositsFixture.insertDeposits([]);
     const relayHashInfoData = {
       id: 1,
+      depositId: deposit.depositId,
+      originChainId: deposit.originChainId,
       depositEventId: deposit.id,
       status: entities.RelayStatus.Unfilled,
     };
