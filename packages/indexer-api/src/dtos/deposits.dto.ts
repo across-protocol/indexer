@@ -1,4 +1,5 @@
 import * as s from "superstruct";
+import { utils } from "@across-protocol/sdk";
 import { entities } from "@repo/indexer-database";
 
 const stringToInt = s.coerce(s.number(), s.string(), (value) => {
@@ -9,13 +10,28 @@ const stringToInt = s.coerce(s.number(), s.string(), (value) => {
   return parseInt(value, 10);
 });
 
+const parseAddressField = s.coerce(s.string(), s.string(), (value) => {
+  // Try to parse as evm address
+  if (utils.isValidEvmAddress(value.toLowerCase())) {
+    return utils.toAddress(value.toLowerCase());
+  } else {
+    // Try to parse as svm address
+    try {
+      return utils.SvmAddress.from(value).toBase58();
+    } catch (error) {
+      // Otherwise use original value
+      return value;
+    }
+  }
+});
+
 export const DepositsParams = s.object({
-  depositor: s.optional(s.string()),
-  recipient: s.optional(s.string()),
+  depositor: s.optional(parseAddressField),
+  recipient: s.optional(parseAddressField),
   originChainId: s.optional(stringToInt),
   destinationChainId: s.optional(stringToInt),
-  inputToken: s.optional(s.string()),
-  outputToken: s.optional(s.string()),
+  inputToken: s.optional(parseAddressField),
+  outputToken: s.optional(parseAddressField),
   integratorId: s.optional(s.string()),
   status: s.optional(s.enums(Object.values(entities.RelayStatus))),
   // some kind of pagination options, skip could be the start point

@@ -38,6 +38,20 @@ export class DepositsController {
     }
   };
 
+  public getDeposit = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const params = s.create(req.query, DepositParams);
+      const result = await this.service.getDeposit(params);
+      return res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   public getUnfilledDeposits = async (
     req: Request,
     res: Response,

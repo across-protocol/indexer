@@ -40,7 +40,7 @@ export class ExecutedRelayerRefundRoot {
   @Column({ nullable: true })
   deferredRefunds: boolean;
 
-  @Column()
+  @Column({ nullable: true })
   caller: string;
 
   @Column()

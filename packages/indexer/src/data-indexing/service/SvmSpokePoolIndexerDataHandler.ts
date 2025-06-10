@@ -4,12 +4,25 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import {
+  entities,
+  SaveQueryResultType,
+  utils as indexerDatabaseUtils,
+} from "@repo/indexer-database";
 
 import * as utils from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import {
+  SpokePoolRepository,
+  StoreEventsResult,
+} from "../../database/SpokePoolRepository";
+import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
+import { Signature } from "@solana/kit";
+import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
+import { PriceMessage } from "../../messaging/priceWorker";
 
 export type FetchEventsResult = {
   fundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -35,6 +48,9 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     private provider: SvmProvider,
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
+    private spokePoolClientRepository: SpokePoolRepository,
+    private spokePoolProcessor: SpokePoolProcessor,
+    private indexerQueuesService: IndexerQueuesService,
   ) {}
 
   private initialize() {
@@ -75,7 +91,52 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       this.isInitialized = true;
     }
 
-    const events = await this.fetchEventsByRange(blockRange, isBackfilling);
+    const startPerfTime = performance.now();
+    let events: FetchEventsResult;
+
+    try {
+      events = await this.fetchEventsByRange(blockRange, isBackfilling);
+    } catch (error) {
+      if ((error as Error).message.includes("Malformed rawEvent for IDL")) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else if ((error as Error).message.includes("Uint8Array expected")) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else if (
+        (error as any)?.context?.__code === -32009 &&
+        (error as any)?.context?.__serverMessage?.includes(
+          "was skipped, or missing in long-term storage",
+        )
+      ) {
+        events = {
+          fundsDepositedEvents: [],
+          filledRelayEvents: [],
+          requestedSlowFillEvents: [],
+          relayedRootBundleEvents: [],
+          executedRelayerRefundRootEvents: [],
+          tokensBridgedEvents: [],
+          slotTimes: {},
+        };
+      } else {
+        throw error;
+      }
+    }
+    const timeToFetchEvents = performance.now();
 
     this.logger.debug({
       at: "Indexer#SvmSpokePoolIndexerDataHandler#processBlockRange",
@@ -92,13 +153,79 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
     });
 
-    await this.updateNewDepositsWithIntegratorId(events.fundsDepositedEvents);
+    const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
+    const timeToStoreEvents = performance.now();
 
-    // TODO:
-    // - store events
-    // - delete unfinalised events
-    // - process events
-    // - publish price messages
+    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.deposits,
+      SaveQueryResultType.Inserted,
+    );
+
+    // Delete unfinalised events
+    const deletedDeposits =
+      await this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      );
+    const timeToDeleteDeposits = performance.now();
+
+    await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
+    const timeToUpdateDepositIds = performance.now();
+
+    const fillsGasFee = await this.getFillsGasFee(events.filledRelayEvents);
+    await this.spokePoolProcessor.process(
+      storedEvents,
+      deletedDeposits,
+      [],
+      fillsGasFee,
+    );
+
+    //FIXME: Remove performance timing
+    const timeToProcessDeposits = performance.now();
+
+    // publish new relays to workers to fill in prices
+    await this.publishNewRelays(storedEvents);
+
+    const finalPerfTime = performance.now();
+
+    this.logger.debug({
+      at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
+      message:
+        "System Time Log for SpokePoolIndexerDataHandler#processBlockRange",
+      spokeChainId: this.chainId,
+      blockRange: blockRange,
+      timeToFetchEvents: timeToFetchEvents - startPerfTime,
+      timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
+      timeToDeleteDeposits: timeToDeleteDeposits - timeToStoreEvents,
+      timeToUpdateDepositIds: timeToUpdateDepositIds - timeToDeleteDeposits,
+      timeToProcessDeposits: timeToProcessDeposits - timeToUpdateDepositIds,
+      timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
+      finalTime: finalPerfTime - startPerfTime,
+    });
+  }
+
+  private async getFillsGasFee(
+    fills: across.interfaces.FillWithBlock[],
+  ): Promise<Record<string, bigint | undefined>> {
+    const fillsGasFee = await Promise.all(
+      fills.map(async (fill) => {
+        const transaction = await this.provider
+          .getTransaction(fill.txnRef as Signature, {
+            maxSupportedTransactionVersion: 0,
+          })
+          .send();
+        return !!transaction?.meta?.fee
+          ? BigInt(transaction.meta.fee.toString())
+          : undefined;
+      }),
+    );
+    return fills.reduce(
+      (acc, fill, index) => {
+        acc[fill.txnRef] = fillsGasFee[index];
+        return acc;
+      },
+      {} as Record<string, bigint | undefined>,
+    );
   }
 
   private async fetchEventsByRange(
@@ -115,13 +242,16 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           (blockRange.to - blockRange.from) * 2,
         );
 
-    // TODO: create svm spoke pool client factory and instantiate client using it as we do for evm
-    const spokePoolClient = await across.clients.SvmSpokePoolClient.create(
+    const spokePoolClient = await across.clients.SVMSpokePoolClient.create(
       this.logger,
       this.hubPoolClient,
       this.chainId,
       BigInt(this.getStartIndexingBlockNumber()),
-      { from: blockRange.from, to: blockRange.to },
+      {
+        from: blockRange.from,
+        to: blockRange.to,
+        maxLookBack: maxBlockLookback,
+      },
       this.provider,
     );
 
@@ -214,17 +344,89 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     return slotTimestamps;
   }
 
+  private async storeEvents(
+    params: FetchEventsResult,
+    lastFinalisedBlock: number,
+  ): Promise<StoreEventsResult> {
+    const { spokePoolClientRepository } = this;
+    const {
+      fundsDepositedEvents,
+      filledRelayEvents,
+      requestedSlowFillEvents,
+      relayedRootBundleEvents,
+      executedRelayerRefundRootEvents,
+      tokensBridgedEvents,
+      slotTimes,
+    } = params;
+
+    const [
+      savedV3FundsDepositedEvents,
+      savedV3RequestedSlowFills,
+      savedFilledV3RelayEvents,
+      savedExecutedRelayerRefundRootEvents,
+    ] = await Promise.all([
+      spokePoolClientRepository.formatAndSaveV3FundsDepositedEvents(
+        fundsDepositedEvents,
+        lastFinalisedBlock,
+        slotTimes,
+      ),
+      spokePoolClientRepository.formatAndSaveRequestedV3SlowFillEvents(
+        requestedSlowFillEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveFilledV3RelayEvents(
+        filledRelayEvents,
+        lastFinalisedBlock,
+        slotTimes,
+      ),
+      spokePoolClientRepository.formatAndSaveExecutedRelayerRefundRootEvents(
+        executedRelayerRefundRootEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveRelayedRootBundleEvents(
+        relayedRootBundleEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
+        tokensBridgedEvents,
+        lastFinalisedBlock,
+      ),
+    ]);
+    return {
+      deposits: savedV3FundsDepositedEvents,
+      fills: savedFilledV3RelayEvents,
+      slowFillRequests: savedV3RequestedSlowFills,
+      executedRefundRoots: savedExecutedRelayerRefundRootEvents,
+    };
+  }
+
   private async updateNewDepositsWithIntegratorId(
-    deposits: FetchEventsResult["fundsDepositedEvents"],
+    deposits: entities.V3FundsDeposited[],
   ) {
     await across.utils.forEachAsync(deposits, async (deposit) => {
       const integratorId = await utils.getSvmIntegratorId(
         this.provider,
-        deposit.txnRef,
+        deposit.transactionHash,
       );
       if (integratorId) {
-        // TODO: update deposit with integrator id when we are storing them in the database
+        await this.spokePoolClientRepository.updateDepositEventWithIntegratorId(
+          deposit.id,
+          integratorId,
+        );
       }
     });
+  }
+
+  private async publishNewRelays(storedEvents: StoreEventsResult) {
+    const fills = storedEvents.fills.map(({ data }) => data);
+    const messages: PriceMessage[] = fills.map((fill) => ({
+      fillEventId: fill.id,
+    }));
+    await this.indexerQueuesService.publishMessagesBulk(
+      IndexerQueues.PriceQuery,
+      IndexerQueues.PriceQuery, // Use queue name as job name
+      messages,
+    );
   }
 }

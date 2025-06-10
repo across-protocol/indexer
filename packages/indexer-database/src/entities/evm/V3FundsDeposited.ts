@@ -17,6 +17,11 @@ import { RelayHashInfo } from "../RelayHashInfo";
   "transactionHash",
   "logIndex",
 ])
+@Index("IX_v3FundsDeposited_destinationChainId", ["destinationChainId"])
+@Index("IX_v3FundsDeposited_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
 @Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
 @Index("IX_v3FundsDeposited_finalised", ["finalised"])
 @Index("IX_deposits_block_chain_logIndex", [
