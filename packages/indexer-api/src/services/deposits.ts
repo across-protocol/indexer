@@ -284,6 +284,108 @@ export class DepositsService {
     return result;
   }
 
+  public async getDeposit(params: DepositParams) {
+    // in the validation rules each of these params are marked as optional
+    // but we need to check that at least one of them is present
+    if (
+      !(
+        (params.depositId && params.originChainId) ||
+        params.depositTxHash ||
+        params.relayDataHash
+      )
+    ) {
+      throw new IncorrectQueryParamsException();
+    }
+
+    // construct cache key
+    const cacheKey = this.getDepositCacheKey(params);
+    const cachedData = await this.redis.get(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
+    // no cached data, so we need to query the database
+    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const queryBuilder = repo.createQueryBuilder("rhi");
+
+    queryBuilder.leftJoinAndSelect(
+      entities.V3FundsDeposited,
+      "deposit",
+      "rhi.depositEventId = deposit.id",
+    );
+    queryBuilder.leftJoinAndSelect(
+      entities.SwapBeforeBridge,
+      "swap",
+      "swap.id = rhi.swapBeforeBridgeEventId",
+    );
+    queryBuilder.leftJoinAndSelect(
+      entities.FilledV3Relay,
+      "fill",
+      "fill.id = rhi.fillEventId",
+    );
+
+    if (params.depositId && params.originChainId) {
+      queryBuilder.andWhere(
+        "rhi.depositId = :depositId AND rhi.originChainId = :originChainId",
+        {
+          depositId: params.depositId,
+          originChainId: params.originChainId,
+        },
+      );
+    }
+
+    if (params.depositTxHash) {
+      queryBuilder.andWhere("rhi.depositTxHash = :depositTxHash", {
+        depositTxHash: params.depositTxHash,
+      });
+    }
+
+    if (params.relayDataHash) {
+      queryBuilder.andWhere("rhi.relayHash = :relayDataHash", {
+        relayDataHash: params.relayDataHash,
+      });
+    }
+
+    const matchingRelays = await queryBuilder
+      .orderBy("rhi.depositEventId", "ASC")
+      .select([
+        ...DepositFields,
+        ...RelayHashInfoFields,
+        ...SwapBeforeBridgeFields,
+        ...FilledRelayFields,
+      ])
+      .execute();
+    const numberMatchingRelays = matchingRelays.length;
+    if (numberMatchingRelays === 0) throw new DepositNotFoundException();
+    const relay = matchingRelays[params.index];
+    if (!relay) {
+      throw new IndexParamOutOfRangeException(
+        `Index ${params.index} out of range. Index must be between 0 and ${numberMatchingRelays - 1}`,
+      );
+    }
+
+    const result = {
+      deposit: {
+        ...relay,
+      },
+      pagination: {
+        currentIndex: params.index,
+        maxIndex: numberMatchingRelays - 1,
+      },
+    };
+
+    if (this.shouldCacheDepositResponse(relay)) {
+      await this.redis.set(
+        cacheKey,
+        JSON.stringify(result),
+        "EX",
+        this.getDepositCacheTTLSeconds(relay),
+      );
+    }
+    return result;
+  }
+
   public async getUnfilledDeposits(
     params: FilterDepositsParams,
   ): Promise<ParsedDepositReturnType[]> {
@@ -492,6 +594,27 @@ export class DepositsService {
     }
   }
 
+  private getDepositCacheTTLSeconds(deposit: DepositReturnType) {
+    const minute = 60;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+
+    if (
+      deposit.status === entities.RelayStatus.Filled &&
+      deposit.depositBlockTimestamp &&
+      deposit.fillBlockTimestamp &&
+      deposit.bridgeFeeUsd
+    ) {
+      return hour;
+    }
+
+    if (deposit.status === entities.RelayStatus.Refunded) {
+      return hour;
+    }
+
+    return 0;
+  }
+
   private shouldCacheDepositStatusResponse(status: entities.RelayStatus) {
     return [
       entities.RelayStatus.Expired,
@@ -499,6 +622,23 @@ export class DepositsService {
       entities.RelayStatus.Refunded,
       entities.RelayStatus.SlowFillRequested,
     ].includes(status);
+  }
+
+  private shouldCacheDepositResponse(deposit: DepositReturnType) {
+    if (
+      deposit.status === entities.RelayStatus.Filled &&
+      deposit.depositBlockTimestamp &&
+      deposit.fillBlockTimestamp &&
+      deposit.bridgeFeeUsd
+    ) {
+      return true;
+    }
+
+    if (deposit.status === entities.RelayStatus.Refunded) {
+      return true;
+    }
+
+    return false;
   }
 
   private getDepositStatusCacheKey(params: DepositParams) {
@@ -517,5 +657,21 @@ export class DepositsService {
     throw new Error(
       "Could not get deposit status: could not locate cache data",
     );
+  }
+
+  private getDepositCacheKey(params: DepositParams) {
+    if (params.depositId && params.originChainId) {
+      return `deposit-${params.depositId}-${params.originChainId}-${params.index}`;
+    }
+    if (params.depositTxHash) {
+      return `deposit-${params.depositTxHash}-${params.index}`;
+    }
+    if (params.relayDataHash) {
+      return `deposit-${params.relayDataHash}-${params.index}`;
+    }
+
+    // in theory this should never happen because we have already checked
+    // that at least one of the params is present
+    throw new Error("Could not get deposit: could not locate cache data");
   }
 }
