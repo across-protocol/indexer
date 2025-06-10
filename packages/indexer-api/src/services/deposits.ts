@@ -284,6 +284,101 @@ export class DepositsService {
     return result;
   }
 
+  public async getDeposit(
+    params: DepositParams,
+  ): Promise<DepositStatusResponse> {
+    // in the validation rules each of these params are marked as optional
+    // but we need to check that at least one of them is present
+    if (
+      !(
+        (params.depositId && params.originChainId) ||
+        params.depositTxHash ||
+        params.relayDataHash
+      )
+    ) {
+      throw new IncorrectQueryParamsException();
+    }
+
+    // construct cache key
+    const cacheKey = this.getDepositStatusCacheKey(params);
+    const cachedData = await this.redis.get(cacheKey);
+
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
+    // no cached data, so we need to query the database
+    const repo = this.db.getRepository(entities.RelayHashInfo);
+    const queryBuilder = repo.createQueryBuilder("rhi");
+
+    queryBuilder.leftJoinAndSelect(
+      "depositEvent",
+      "deposit",
+      "rhi.depositEventId = deposit.id",
+    );
+
+    if (params.depositId && params.originChainId) {
+      queryBuilder.andWhere(
+        "rhi.depositId = :depositId AND rhi.originChainId = :originChainId",
+        {
+          depositId: params.depositId,
+          originChainId: params.originChainId,
+        },
+      );
+    }
+
+    if (params.depositTxHash) {
+      queryBuilder.andWhere("rhi.depositTxHash = :depositTxHash", {
+        depositTxHash: params.depositTxHash,
+      });
+    }
+
+    if (params.relayDataHash) {
+      queryBuilder.andWhere("rhi.relayHash = :relayDataHash", {
+        relayDataHash: params.relayDataHash,
+      });
+    }
+
+    const matchingRelays = await queryBuilder
+      .orderBy("rhi.depositEventId", "ASC")
+      .getMany();
+    const numberMatchingRelays = matchingRelays.length;
+    if (numberMatchingRelays === 0) throw new DepositNotFoundException();
+    const relay = matchingRelays[params.index];
+    if (!relay) {
+      throw new IndexParamOutOfRangeException(
+        `Index ${params.index} out of range. Index must be between 0 and ${numberMatchingRelays - 1}`,
+      );
+    }
+
+    const result = {
+      status:
+        relay.status === entities.RelayStatus.Unfilled
+          ? "pending"
+          : relay.status,
+      originChainId: parseInt(relay.originChainId),
+      depositId: relay.depositId,
+      depositTxHash: relay.depositTxHash,
+      fillTx: relay.fillTxHash,
+      destinationChainId: parseInt(relay.destinationChainId),
+      depositRefundTxHash: relay.depositRefundTxHash,
+      pagination: {
+        currentIndex: params.index,
+        maxIndex: numberMatchingRelays - 1,
+      },
+    };
+
+    if (this.shouldCacheDepositStatusResponse(relay.status)) {
+      await this.redis.set(
+        cacheKey,
+        JSON.stringify(result),
+        "EX",
+        this.getDepositStatusCacheTTLSeconds(relay.status),
+      );
+    }
+    return result;
+  }
+
   public async getUnfilledDeposits(
     params: FilterDepositsParams,
   ): Promise<ParsedDepositReturnType[]> {
