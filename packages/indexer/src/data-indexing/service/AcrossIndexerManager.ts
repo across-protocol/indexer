@@ -170,6 +170,7 @@ export class AcrossIndexerManager {
             ) as SvmProvider,
             this.configStoreClientFactory,
             this.hubPoolClientFactory,
+            this.spokePoolClientFactory,
             this.spokePoolRepository,
             new SpokePoolProcessor(
               this.postgres,
