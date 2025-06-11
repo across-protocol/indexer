@@ -33,6 +33,8 @@ export type FetchEventsResult = {
     deferredRefunds: boolean;
   })[]; // TODO: Add missing property to SDK type
   tokensBridgedEvents: across.interfaces.TokensBridged[];
+  bridgedToHubPoolEvents: across.interfaces.BridgedToHubPoolWithBlock[];
+  claimedRelayerRefunds: across.interfaces.ClaimedRelayerRefundWithBlock[];
   slotTimes: Record<number, number>;
 };
 
@@ -106,6 +108,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           executedRelayerRefundRootEvents: [],
           tokensBridgedEvents: [],
           slotTimes: {},
+          bridgedToHubPoolEvents: [],
+          claimedRelayerRefunds: [],
         };
       } else if ((error as Error).message.includes("Uint8Array expected")) {
         events = {
@@ -116,6 +120,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           executedRelayerRefundRootEvents: [],
           tokensBridgedEvents: [],
           slotTimes: {},
+          bridgedToHubPoolEvents: [],
+          claimedRelayerRefunds: [],
         };
       } else if (
         (error as any)?.context?.__code === -32009 &&
@@ -130,6 +136,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           relayedRootBundleEvents: [],
           executedRelayerRefundRootEvents: [],
           tokensBridgedEvents: [],
+          bridgedToHubPoolEvents: [],
+          claimedRelayerRefunds: [],
           slotTimes: {},
         };
       } else {
@@ -149,6 +157,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
         executedRelayerRefundRootEvents:
           events.executedRelayerRefundRootEvents.length,
         tokensBridgedEvents: events.tokensBridgedEvents.length,
+        bridgedToHubPoolEvents: events.bridgedToHubPoolEvents.length,
+        claimedRelayerRefundEvents: events.claimedRelayerRefunds.length,
       },
       blockRange,
     });
@@ -268,6 +278,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     // Specifically, we avoid the EnabledDepositRoute event because this
     // requires a lookback to the deployment block of the SpokePool contract.
     await spokePoolClient.update([
+      "BridgedToHubPool",
+      "ClaimedRelayerRefund",
       "ExecutedRelayerRefundRoot",
       "FilledRelay",
       "FundsDeposited",
@@ -288,6 +300,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       spokePoolClient.getRelayerRefundExecutions() as FetchEventsResult["executedRelayerRefundRootEvents"];
     const tokensBridgedEvents =
       spokePoolClient.getTokensBridged() as FetchEventsResult["tokensBridgedEvents"];
+    const bridgedToHubPoolEvents = spokePoolClient.getBridgedToHubPoolEvents();
+    const claimedRelayerRefunds = spokePoolClient.getClaimedRelayerRefunds();
     // getSlotTimes function will make sure we dont query more than we need to.
     const slots = [
       ...fundsDepositedEvents.map((deposit) => deposit.blockNumber),
@@ -319,6 +333,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      bridgedToHubPoolEvents,
+      claimedRelayerRefunds,
       slotTimes,
     };
   }
@@ -356,6 +372,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      bridgedToHubPoolEvents,
+      claimedRelayerRefunds,
       slotTimes,
     } = params;
 
@@ -390,6 +408,16 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       ),
       spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
         tokensBridgedEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveBridgedToHubPoolEvents(
+        bridgedToHubPoolEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveClaimedRelayerRefunds(
+        claimedRelayerRefunds,
+        this.chainId,
         lastFinalisedBlock,
       ),
     ]);
