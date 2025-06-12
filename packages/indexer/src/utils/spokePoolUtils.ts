@@ -75,11 +75,11 @@ export function getInternalHash(
     messageHash: messageHash,
     fillDeadline: relayData.fillDeadline,
     exclusivityDeadline: relayData.exclusivityDeadline,
-    depositor: ethersUtils.hexZeroPad(relayData.depositor, 32),
-    recipient: ethersUtils.hexZeroPad(relayData.recipient, 32),
-    inputToken: ethersUtils.hexZeroPad(relayData.inputToken, 32),
-    outputToken: ethersUtils.hexZeroPad(relayData.outputToken, 32),
-    exclusiveRelayer: ethersUtils.hexZeroPad(relayData.exclusiveRelayer, 32),
+    depositor: relayData.depositor.toBytes32(),
+    recipient: relayData.recipient.toBytes32(),
+    inputToken: relayData.inputToken.toBytes32(),
+    outputToken: relayData.outputToken.toBytes32(),
+    exclusiveRelayer: relayData.exclusiveRelayer.toBytes32(),
   };
   return ethersUtils.keccak256(
     ethersUtils.defaultAbiCoder.encode(
