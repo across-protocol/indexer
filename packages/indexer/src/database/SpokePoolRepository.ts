@@ -45,24 +45,24 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     let exclusiveRelayer: string;
 
     // Format depositor and inputToken to origin chain format
-    depositor = utils.formatFromBytes32ToChainFormat(
+    depositor = utils.formatFromAddressToChainFormat(
       event.depositor,
       event.originChainId,
     );
-    inputToken = utils.formatFromBytes32ToChainFormat(
+    inputToken = utils.formatFromAddressToChainFormat(
       event.inputToken,
       event.originChainId,
     );
     // Format recipient, outputToken and exclusiveRelayer to destination chain format
-    recipient = utils.formatFromBytes32ToChainFormat(
+    recipient = utils.formatFromAddressToChainFormat(
       event.recipient,
       event.destinationChainId,
     );
-    outputToken = utils.formatFromBytes32ToChainFormat(
+    outputToken = utils.formatFromAddressToChainFormat(
       event.outputToken,
       event.destinationChainId,
     );
-    exclusiveRelayer = utils.formatFromBytes32ToChainFormat(
+    exclusiveRelayer = utils.formatFromAddressToChainFormat(
       event.exclusiveRelayer,
       event.destinationChainId,
     );
@@ -144,11 +144,11 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       // Format relayer and updatedRecipient to destination chain format
       let relayer: string;
       let updatedRecipient: string;
-      relayer = utils.formatFromBytes32ToChainFormat(
+      relayer = utils.formatFromAddressToChainFormat(
         event.relayer,
         event.destinationChainId,
       );
-      updatedRecipient = utils.formatFromBytes32ToChainFormat(
+      updatedRecipient = utils.formatFromAddressToChainFormat(
         event.relayExecutionInfo.updatedRecipient,
         event.destinationChainId,
       );
@@ -239,8 +239,10 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
             return {
               originChainId: event.originChainId.toString(),
               depositId: event.depositId.toString(),
-              depositor: event.depositor,
-              updatedRecipient: event.updatedRecipient,
+              // Note: speed ups are not enabled in Solana so depositor must be an evm address
+              depositor: event.depositor.toEvmAddress(),
+              // Note: fillRelayWithUpdatedDeposit is not enabled in Solana so updatedRecipient most likely is an evm address
+              updatedRecipient: event.updatedRecipient.toEvmAddress(),
               updatedMessage: event.updatedMessage,
               updatedOutputAmount: event.updatedOutputAmount.toString(),
               depositorSignature: event.depositorSignature,
@@ -303,12 +305,12 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       // Format l2TokenAddress and refundAddresses to destination chain format
       let l2TokenAddress: string;
       let refundAddresses: string[];
-      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+      l2TokenAddress = utils.formatFromAddressToChainFormat(
         event.l2TokenAddress,
         event.chainId,
       );
       refundAddresses = event.refundAddresses.map((address) =>
-        utils.formatFromBytes32ToChainFormat(address, event.chainId),
+        utils.formatFromAddressToChainFormat(address, event.chainId),
       );
 
       return {
@@ -346,7 +348,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents = tokensBridgedEvents.map((event) => {
       // Format l2TokenAddress to destination chain format
       let l2TokenAddress: string;
-      l2TokenAddress = utils.formatFromBytes32ToChainFormat(
+      l2TokenAddress = utils.formatFromAddressToChainFormat(
         event.l2TokenAddress,
         event.chainId,
       );

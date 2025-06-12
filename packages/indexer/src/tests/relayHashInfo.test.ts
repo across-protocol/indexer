@@ -8,7 +8,7 @@ import {
   entities,
   fixtures,
 } from "@repo/indexer-database";
-import { utils, arch } from "@across-protocol/sdk";
+import { utils, arch, interfaces } from "@across-protocol/sdk";
 import { parsePostgresConfig } from "../parseEnv";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../services/spokePoolProcessor";
@@ -670,13 +670,13 @@ describe("RelayHashInfo Tests", () => {
   });
 
   describe("Test adress conversions from bytes32 to specific chain format", () => {
-    const baseEvent = {
+    const baseEvent: interfaces.DepositWithBlock = {
       txnRef: "txHash",
       blockNumber: 100,
       txnIndex: 0,
       logIndex: 0,
-      inputToken: "0x123",
-      outputToken: "0x456",
+      inputToken: utils.EvmAddress.from("0x123"),
+      outputToken: utils.EvmAddress.from("0x456"),
       inputAmount: utils.BigNumber.from("100"),
       outputAmount: utils.BigNumber.from("100"),
       destinationChainId: 1,
@@ -684,9 +684,9 @@ describe("RelayHashInfo Tests", () => {
       quoteTimestamp: 1744657139,
       fillDeadline: 1744660739,
       exclusivityDeadline: 0,
-      depositor: "0xdepositor",
-      recipient: "0xrecipient",
-      exclusiveRelayer: "0xexclusiveRelayer",
+      depositor: utils.EvmAddress.from("0xdepositor"),
+      recipient: utils.EvmAddress.from("0xrecipient"),
+      exclusiveRelayer: utils.EvmAddress.from("0xexclusiveRelayer"),
       message: "0x",
       messageHash: "0xmessageHash",
       quoteBlockNumber: 100,
@@ -705,16 +705,15 @@ describe("RelayHashInfo Tests", () => {
       // Set SVM Origin addresses formatted as Bytes32
       const depositor = arch.svm.getRandomSvmAddress();
       const inputToken = arch.svm.getRandomSvmAddress();
-      event.depositor = utils.SvmAddress.from(depositor).toBytes32();
-      event.inputToken = utils.SvmAddress.from(inputToken).toBytes32();
+      event.depositor = utils.SvmAddress.from(depositor);
+      event.inputToken = utils.SvmAddress.from(inputToken);
       // Set EVM Destination addresses formatted as Bytes32
       const recipient = utils.randomAddress();
       const outputToken = utils.randomAddress();
       const exclusiveRelayer = utils.AddressZero;
-      event.recipient = utils.EvmAddress.from(recipient).toBytes32();
-      event.outputToken = utils.EvmAddress.from(outputToken).toBytes32();
-      event.exclusiveRelayer =
-        utils.EvmAddress.from(exclusiveRelayer).toBytes32();
+      event.recipient = utils.EvmAddress.from(recipient);
+      event.outputToken = utils.EvmAddress.from(outputToken);
+      event.exclusiveRelayer = utils.EvmAddress.from(exclusiveRelayer);
 
       // Format event
       const formattedEvent = spokePoolRepository.formatRelayData(event);
@@ -738,16 +737,15 @@ describe("RelayHashInfo Tests", () => {
       // Set EVM Origin addresses formatted as Bytes32
       const depositor = utils.randomAddress();
       const inputToken = utils.randomAddress();
-      event.depositor = utils.EvmAddress.from(depositor).toBytes32();
-      event.inputToken = utils.EvmAddress.from(inputToken).toBytes32();
+      event.depositor = utils.EvmAddress.from(depositor);
+      event.inputToken = utils.EvmAddress.from(inputToken);
       // Set SVM Destination addresses formatted as Bytes32
       const recipient = arch.svm.getRandomSvmAddress();
       const outputToken = arch.svm.getRandomSvmAddress();
       const exclusiveRelayer = arch.svm.SVM_DEFAULT_ADDRESS;
-      event.recipient = utils.SvmAddress.from(recipient).toBytes32();
-      event.outputToken = utils.SvmAddress.from(outputToken).toBytes32();
-      event.exclusiveRelayer =
-        utils.SvmAddress.from(exclusiveRelayer).toBytes32();
+      event.recipient = utils.SvmAddress.from(recipient);
+      event.outputToken = utils.SvmAddress.from(outputToken);
+      event.exclusiveRelayer = utils.SvmAddress.from(exclusiveRelayer);
 
       // Format event
       const formattedEvent = spokePoolRepository.formatRelayData(event);

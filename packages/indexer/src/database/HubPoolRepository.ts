@@ -3,6 +3,7 @@ import * as across from "@across-protocol/sdk";
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 import { FetchEventsResult } from "../data-indexing/service/HubPoolIndexerDataHandler";
+import { formatFromAddressToChainFormat } from "../utils/adressUtils";
 
 export class HubPoolRepository extends utils.BlockchainEventRepository {
   constructor(postgres: DataSource, logger: winston.Logger) {
@@ -25,7 +26,7 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         poolRebalanceRoot: event.poolRebalanceRoot,
         relayerRefundRoot: event.relayerRefundRoot,
         slowRelayRoot: event.slowRelayRoot,
-        proposer: event.proposer,
+        proposer: event.proposer.toEvmAddress(),
         transactionHash: event.txnRef,
         transactionIndex: event.txnIndex,
         logIndex: event.logIndex,
@@ -106,7 +107,7 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
         leafId: event.leafId,
         groupIndex: event.groupIndex,
         chainId: event.chainId.toString(),
-        l1Tokens: event.l1Tokens,
+        l1Tokens: event.l1Tokens.map((token) => token.toEvmAddress()),
         bundleLpFees: event.bundleLpFees.map((fees) => fees.toString()),
         netSendAmounts: event.netSendAmounts.map((amount) => amount.toString()),
         runningBalances: event.runningBalances.map((balance) =>
@@ -138,10 +139,14 @@ export class HubPoolRepository extends utils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const formattedEvents = setPoolRebalanceRouteEvents.map((event) => {
+      const destinationToken = formatFromAddressToChainFormat(
+        event.l2Token,
+        event.l2ChainId,
+      );
       return {
         destinationChainId: event.l2ChainId.toString(),
-        l1Token: event.l1Token,
-        destinationToken: event.l2Token,
+        l1Token: event.l1Token.toEvmAddress(),
+        destinationToken,
         blockNumber: event.blockNumber,
         transactionHash: event.txnRef,
         transactionIndex: event.txnIndex,
