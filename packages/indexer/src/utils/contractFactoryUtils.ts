@@ -1,12 +1,17 @@
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { clients, providers } from "@across-protocol/sdk";
 import { Logger } from "winston";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { clients, providers, utils } from "@across-protocol/sdk";
+
 import { getMaxBlockLookBack } from "../web3/constants";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import {
+  RetryProvidersFactory,
+  SvmProvider,
+} from "../web3/RetryProvidersFactory";
 import {
   getConfigStoreClient,
   getHubPoolClient,
-  getSpokeClient,
+  getEvmSpokeClient,
+  getSvmSpokeClient,
 } from "./contractUtils";
 
 abstract class ContractClientFactory<
@@ -32,6 +37,31 @@ abstract class ContractClientFactory<
     toBlock?: number,
     overrides?: GetOverrides,
   ): ClientType;
+}
+
+abstract class AsyncContractClientFactory<
+  ClientType,
+  RequiredFactories = undefined,
+  GetOverrides = undefined,
+> {
+  constructor(
+    protected readonly retryProviderFactory: RetryProvidersFactory,
+    protected readonly logger: Logger,
+    protected readonly requiredFactories: RequiredFactories,
+  ) {
+    logger.debug({
+      at: "Indexer#ContractClientFactory#constructor",
+      message: "Initializing contract client factory",
+      factory: this.constructor.name,
+    });
+  }
+
+  abstract get(
+    chainId: number,
+    fromBlock?: number,
+    toBlock?: number,
+    overrides?: GetOverrides,
+  ): Promise<ClientType>;
 }
 
 export class ConfigStoreClientFactory extends ContractClientFactory<clients.AcrossConfigStoreClient> {
@@ -81,6 +111,7 @@ export class HubPoolClientFactory extends ContractClientFactory<
   ) {
     super(retryProviderFactory, logger, requiredFactories);
   }
+
   get(
     _chainId: number, // Unused
     fromBlock?: number,
@@ -119,7 +150,7 @@ type SpokeFactoryRequiredFactories = {
 type SpokeFactoryGetFunctionOverrides = {
   hubPoolClient: clients.HubPoolClient;
 };
-export class SpokePoolClientFactory extends ContractClientFactory<
+export class SpokePoolClientFactory extends AsyncContractClientFactory<
   clients.SpokePoolClient,
   SpokeFactoryRequiredFactories,
   SpokeFactoryGetFunctionOverrides
@@ -131,7 +162,8 @@ export class SpokePoolClientFactory extends ContractClientFactory<
   ) {
     super(retryProviderFactory, logger, requiredFactories);
   }
-  get(
+
+  async get(
     chainId: number,
     fromBlock?: number,
     toBlock?: number,
@@ -141,7 +173,7 @@ export class SpokePoolClientFactory extends ContractClientFactory<
       maxBlockLookback?: number;
     },
     enableCaching = true,
-  ): clients.SpokePoolClient {
+  ): Promise<clients.SpokePoolClient> {
     const hubPoolClient =
       overrides?.hubPoolClient ??
       this.requiredFactories.hubPoolClientFactory.get(
@@ -159,15 +191,32 @@ export class SpokePoolClientFactory extends ContractClientFactory<
           enableCaching: false,
         });
 
-    return getSpokeClient({
-      provider: provider as providers.RetryProvider,
-      logger: this.logger,
-      maxBlockLookBack,
-      chainId,
-      hubPoolClient,
-      fromBlock,
-      toBlock,
-      disableQuoteBlockLookup: overrides?.disableQuoteBlockLookup,
-    });
+    if (utils.chainIsEvm(chainId)) {
+      return getEvmSpokeClient({
+        provider: provider as providers.RetryProvider,
+        logger: this.logger,
+        maxBlockLookBack,
+        chainId,
+        hubPoolClient,
+        fromBlock,
+        toBlock,
+        disableQuoteBlockLookup: overrides?.disableQuoteBlockLookup,
+      });
+    }
+
+    if (utils.chainIsSvm(chainId)) {
+      return getSvmSpokeClient({
+        provider: provider as SvmProvider,
+        logger: this.logger,
+        chainId,
+        maxBlockLookBack,
+        fromBlock,
+        toBlock,
+        hubPoolClient,
+        disableQuoteBlockLookup: overrides?.disableQuoteBlockLookup,
+      });
+    }
+
+    throw new Error(`Chain ${chainId} is not an EVM or SVM chain`);
   }
 }

@@ -120,6 +120,10 @@ export class RetryProvidersFactory {
     chainId: number;
     enableCaching: boolean;
   }): providers.RetryProvider {
+    if (!utils.chainIsEvm(chainId)) {
+      throw new Error(`Chain ${chainId} is not an EVM chain`);
+    }
+
     const providerUrls = parseProvidersUrls().get(chainId);
 
     if (!providerUrls || providerUrls.length === 0) {
