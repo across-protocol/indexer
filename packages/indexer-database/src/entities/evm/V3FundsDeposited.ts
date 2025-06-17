@@ -31,15 +31,6 @@ import { RelayHashInfo } from "../RelayHashInfo";
   "depositId",
   "originChainId",
 ])
-@Index("IX_v3FundsDeposited_deletedAt", ["deletedAt"])
-@Index("IX_v3FundsDeposited_finalised", ["finalised"])
-@Index("IX_deposits_block_chain_logIndex", [
-  "blockNumber",
-  "originChainId",
-  "logIndex",
-])
-@Index("IX_v3FundsDeposited_blockTimestamp", ["blockTimestamp"])
-@Index("IX_v3FundsDeposited_depositor", ["depositor"])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()
   id: number;
