@@ -434,7 +434,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
           (blockRange.to - blockRange.from) * 2,
         );
 
-    const spokePoolClient = this.spokePoolFactory.get(
+    const spokePoolClient = await this.spokePoolFactory.get(
       this.chainId,
       blockRange.from,
       blockRange.to,

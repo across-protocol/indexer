@@ -1,4 +1,5 @@
 import { Logger } from "winston";
+import { Signature } from "@solana/kit";
 import * as across from "@across-protocol/sdk";
 import {
   getDeployedAddress,
@@ -20,7 +21,6 @@ import {
   StoreEventsResult,
 } from "../../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
-import { Signature } from "@solana/kit";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { PriceMessage } from "../../messaging/priceWorker";
 
@@ -48,6 +48,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     private provider: SvmProvider,
     private configStoreFactory: utils.ConfigStoreClientFactory,
     private hubPoolFactory: utils.HubPoolClientFactory,
+    private spokePoolFactory: utils.SpokePoolClientFactory,
     private spokePoolClientRepository: SpokePoolRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
@@ -242,17 +243,15 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
           (blockRange.to - blockRange.from) * 2,
         );
 
-    const spokePoolClient = await across.clients.SVMSpokePoolClient.create(
-      this.logger,
-      this.hubPoolClient,
+    const spokePoolClient = await this.spokePoolFactory.get(
       this.chainId,
-      BigInt(this.getStartIndexingBlockNumber()),
+      blockRange.from,
+      blockRange.to,
       {
-        from: blockRange.from,
-        to: blockRange.to,
-        maxLookBack: maxBlockLookback,
+        hubPoolClient: this.hubPoolClient,
+        disableQuoteBlockLookup: true,
+        maxBlockLookback,
       },
-      this.provider,
     );
 
     const initialTime = performance.now();

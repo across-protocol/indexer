@@ -399,20 +399,21 @@ export class BundleBuilderService extends RepeatableTask {
       bundleHead,
     );
     // Instantiate spoke clients
-    const spokeClients = lookbackRange.reduce(
-      (acc, { chainId, startBlock, endBlock }) => ({
-        ...acc,
-        [chainId]: this.config.spokePoolClientFactory.get(
+    const spokeClients = Object.fromEntries(
+      await Promise.all(
+        lookbackRange.map(async ({ chainId, startBlock, endBlock }) => [
           chainId,
-          startBlock,
-          endBlock,
-          {
-            hubPoolClient,
-          },
-        ),
-      }),
-      {} as Record<number, clients.SpokePoolClient>,
-    );
+          await this.config.spokePoolClientFactory.get(
+            chainId,
+            startBlock,
+            endBlock,
+            {
+              hubPoolClient,
+            },
+          ),
+        ]),
+      ),
+    ) as Record<number, clients.SpokePoolClient>;
     // Update all clients
     await configStoreClient.update();
     await hubPoolClient.update();

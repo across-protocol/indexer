@@ -66,6 +66,7 @@ export class PriceWorker {
     );
     this.setWorker();
   }
+
   private async getPrice(
     address: string,
     chainId: number,
