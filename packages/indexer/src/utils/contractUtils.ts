@@ -1,5 +1,6 @@
 import winston from "winston";
 import { providers, Contract } from "ethers";
+import { address } from "@solana/kit";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
@@ -9,11 +10,12 @@ import {
 } from "@across-protocol/contracts";
 import * as across from "@across-protocol/sdk";
 
-import { EvmSpokePoolClient } from "./clients";
+import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
+import { SvmProvider } from "../web3/RetryProvidersFactory";
 
 export const CONFIG_STORE_VERSION = 4;
 
-export type GetSpokeClientParams = {
+export type GetEvmSpokeClientParams = {
   provider: providers.Provider;
   logger: winston.Logger;
   maxBlockLookBack: number;
@@ -35,14 +37,14 @@ function getAddress(contractName: string, chainId: number): string {
 }
 
 /**
- * Resolves a spoke pool client with the given parameters
+ * Resolves an EVM spoke pool client with the given parameters
  * @param params Parameters to resolve a spoke client.
  * @returns A spoke pool client configured with the given parameters
- * @see {@link across.clients.SpokePoolClient} for client
+ * @see {@link across.clients.EvmSpokePoolClient} for client
  * @see {@link GetSpokeClientParams} for params
  */
-export function getSpokeClient(
-  params: GetSpokeClientParams,
+export function getEvmSpokeClient(
+  params: GetEvmSpokeClientParams,
 ): across.clients.SpokePoolClient {
   const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
   if (!across.utils.chainIsEvm(chainId)) {
@@ -82,6 +84,71 @@ export function getSpokeClient(
     chainId,
     deployedBlockNumber,
     eventSearchConfig,
+    disableQuoteBlockLookup,
+  );
+}
+
+export type GetSvmSpokeClientParams = {
+  chainId: number;
+  provider: SvmProvider;
+  logger: winston.Logger;
+  maxBlockLookBack: number;
+  fromBlock?: number;
+  toBlock?: number;
+  hubPoolClient: across.clients.HubPoolClient;
+  disableQuoteBlockLookup?: boolean;
+};
+
+/**
+ * Resolves an SVM spoke pool client with the given parameters
+ * @param params Parameters to resolve an SVM spoke client.
+ * @returns A spoke pool client configured with the given parameters
+ * @see {@link across.clients.SVMSpokePoolClient} for client
+ * @see {@link GetSpokeClientParams} for params
+ */
+export async function getSvmSpokeClient(
+  params: GetSvmSpokeClientParams,
+): Promise<across.clients.SpokePoolClient> {
+  const { provider, logger, maxBlockLookBack, chainId, hubPoolClient } = params;
+  if (!across.utils.chainIsSvm(chainId)) {
+    throw new Error(`Chain ${chainId} is not an SVM chain`);
+  }
+  const programId = getAddress("SvmSpoke", chainId);
+  const statePda = await across.arch.svm.getStatePda(address(programId));
+  const deploymentSlot = getDeployedBlockNumber("SvmSpoke", chainId);
+
+  const to = params.toBlock;
+  const from = params.fromBlock ?? deploymentSlot;
+  const eventSearchConfig = {
+    from,
+    to,
+    maxLookBack: maxBlockLookBack,
+  };
+
+  const disableQuoteBlockLookup = params.disableQuoteBlockLookup ?? false;
+
+  const svmEventsClient =
+    await across.arch.svm.SvmCpiEventsClient.create(provider);
+
+  logger.debug({
+    at: "Indexer#contractUtils#getSvmSpokeClient",
+    message: "Initializing SVM spoke pool",
+    chainId,
+    programId,
+    deploymentSlot,
+    ...eventSearchConfig,
+    slotRangeSearched: `${from} to ${to ?? "latest"}`,
+  });
+
+  return new SvmSpokePoolClient(
+    logger,
+    hubPoolClient,
+    chainId,
+    BigInt(deploymentSlot),
+    eventSearchConfig,
+    svmEventsClient,
+    address(programId),
+    statePda,
     disableQuoteBlockLookup,
   );
 }

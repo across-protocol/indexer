@@ -109,7 +109,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
     const historicalBundle = await bundleRepository.retrieveMostRecentBundle(
       entities.BundleStatus.Executed,
       bundle.proposal.blockNumber,
-      8,
+      16,
     );
     // Skip the bundle if we don't have enough historical data
     if (!historicalBundle) {
@@ -235,36 +235,19 @@ export class BundleIncludedEventsService extends RepeatableTask {
           return [chainId, null];
         }
 
-        if (chainIsSvm) {
-          const spokePoolClient =
-            await across.clients.SVMSpokePoolClient.create(
-              this.logger,
-              this.hubPoolClient,
-              chainId,
-              BigInt(deployedBlockNumber),
-              {
-                from: startBlock,
-                to: cappedEndBlock,
-              },
-              this.config.retryProvidersFactory.getProviderForChainId(
-                chainId,
-              ) as SvmProvider,
-            );
-          return [chainId, spokePoolClient];
-        } else {
-          return [
-            chainId,
-            spokePoolClientFactory.get(
-              chainId,
-              startBlock,
-              cappedEndBlock,
-              {
-                hubPoolClient: this.hubPoolClient,
-              },
-              false,
-            ),
-          ];
-        }
+        const enableCaching = chainIsSvm ? true : false;
+
+        const spokePoolClient = await spokePoolClientFactory.get(
+          chainId,
+          startBlock,
+          cappedEndBlock,
+          {
+            hubPoolClient: this.hubPoolClient,
+          },
+          enableCaching,
+        );
+
+        return [chainId, spokePoolClient];
       }),
     );
 
