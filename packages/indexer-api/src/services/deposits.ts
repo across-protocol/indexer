@@ -92,7 +92,7 @@ export class DepositsService {
         "fill",
         "fill.id = rhi.fillEventId",
       )
-      .orderBy("deposit.blockTimestamp", "DESC")
+      .orderBy("deposit.blockTimestamp", "DESC", "NULLS LAST")
       .select([
         ...DepositFields,
         ...RelayHashInfoFields,
