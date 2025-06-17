@@ -109,7 +109,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
     const historicalBundle = await bundleRepository.retrieveMostRecentBundle(
       entities.BundleStatus.Executed,
       bundle.proposal.blockNumber,
-      8,
+      16,
     );
     // Skip the bundle if we don't have enough historical data
     if (!historicalBundle) {
