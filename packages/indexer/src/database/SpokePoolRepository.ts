@@ -419,7 +419,9 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           chainId,
         ),
         amount: event.amount.toString(),
-        caller: utils.formatFromBytes32ToChainFormat(event.caller, chainId),
+        caller: event.caller
+          ? utils.formatFromBytes32ToChainFormat(event.caller, chainId)
+          : undefined,
         ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
