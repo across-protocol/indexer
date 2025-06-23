@@ -53,7 +53,7 @@ export const DepositParams = s.object({
    * @deprecated Use depositTxnRef instead.
    * Once with supporting SVM chains, all references
    * to EVM terminology is being deprecated for more general terms.
-   * 
+   *
    */
   depositTxHash: s.optional(s.string()),
   depositTxnRef: s.optional(s.string()),
