@@ -7,10 +7,11 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_claimedRelayerRefunds_token_address_txnHash", [
-  "l2TokenAddress",
-  "refundAddress",
+@Unique("UK_claimedRelayerRefunds_chain_block_tx_log", [
+  "chainId",
+  "blockNumber",
   "transactionHash",
+  "logIndex",
 ])
 export class ClaimedRelayerRefunds {
   @PrimaryGeneratedColumn()

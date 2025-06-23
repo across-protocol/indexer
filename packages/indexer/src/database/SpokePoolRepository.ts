@@ -396,7 +396,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       await this.saveAndHandleFinalisationBatch<entities.BridgedToHubPool>(
         entities.BridgedToHubPool,
         formattedEvents,
-        ["transactionHash"],
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
         [],
       );
     return savedEvents;
@@ -430,8 +430,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       await this.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
         entities.ClaimedRelayerRefunds,
         formattedEvents,
-        ["chainId", "l2TokenAddress", "refundAddress"],
-        ["transactionHash"],
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+        [],
       );
     return savedEvents;
   }

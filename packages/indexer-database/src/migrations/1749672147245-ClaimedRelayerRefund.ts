@@ -17,7 +17,7 @@ export class ClaimedRelayerRefund1749672147245 implements MigrationInterface {
       "blockNumber" integer NOT NULL,
       "finalised" boolean NOT NULL,
       "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-      CONSTRAINT "UK_claimedRelayerRefunds_token_address_txnHash" UNIQUE ("l2TokenAddress", "refundAddress", "transactionHash"),
+      CONSTRAINT "UK_claimedRelayerRefunds_chain_block_tx_log" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
       CONSTRAINT "PK_43fe8759f55c08fa596a32bbd3f" PRIMARY KEY ("id"))`,
     );
   }
