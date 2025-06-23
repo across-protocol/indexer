@@ -7,7 +7,12 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_bridgedToHubPool_txHash", ["transactionHash"])
+@Unique("UK_bridgedToHubPool_chain_block_txHash_logIndex", [
+  "chainId",
+  "blockNumber",
+  "transactionHash",
+  "logIndex",
+])
 export class BridgedToHubPool {
   @PrimaryGeneratedColumn()
   id: number;

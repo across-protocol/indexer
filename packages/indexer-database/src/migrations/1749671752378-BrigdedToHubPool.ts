@@ -15,7 +15,7 @@ export class BrigdedToHubPool1749671752378 implements MigrationInterface {
       "blockNumber" integer NOT NULL,
       "finalised" boolean NOT NULL,
       "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-      CONSTRAINT "UK_bridgedToHubPool_txHash" UNIQUE ("transactionHash"),
+      CONSTRAINT "UK_bridgedToHubPool_chain_block_txHash_logIndex" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
       CONSTRAINT "PK_8225cd322fbba7429edc5e80b6a" PRIMARY KEY ("id"))`,
     );
   }
