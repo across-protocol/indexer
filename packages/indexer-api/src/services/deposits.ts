@@ -112,6 +112,16 @@ export class DepositsService {
       });
     }
 
+    // Filter deposits by address - matches deposits where the address appears as either depositor or recipient
+    if (params.address) {
+      queryBuilder.andWhere(
+        "deposit.depositor = :address OR deposit.recipient = :address",
+        {
+          address: params.address,
+        },
+      );
+    }
+
     if (params.inputToken) {
       queryBuilder.andWhere("deposit.inputToken = :inputToken", {
         inputToken: params.inputToken,

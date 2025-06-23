@@ -26,6 +26,7 @@ const parseAddressField = s.coerce(s.string(), s.string(), (value) => {
 });
 
 export const DepositsParams = s.object({
+  address: s.optional(parseAddressField), // matches deposits where the address appears as either depositor or recipient
   depositor: s.optional(parseAddressField),
   recipient: s.optional(parseAddressField),
   originChainId: s.optional(stringToInt),
