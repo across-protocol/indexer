@@ -49,7 +49,14 @@ export type DepositsParams = s.Infer<typeof DepositsParams>;
 export const DepositParams = s.object({
   depositId: s.optional(s.string()),
   originChainId: s.optional(stringToInt),
+  /**
+   * @deprecated Use depositTxnRef instead.
+   * Once with supporting SVM chains, all references
+   * to EVM terminology is being deprecated for more general terms.
+   * 
+   */
   depositTxHash: s.optional(s.string()),
+  depositTxnRef: s.optional(s.string()),
   relayDataHash: s.optional(s.string()),
   index: s.refine(
     s.defaulted(stringToInt, 0),
