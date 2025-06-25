@@ -21,6 +21,7 @@ import { RelayHashInfo } from "../RelayHashInfo";
 @Index("IX_v3FundsDeposited_finalised", ["finalised"])
 @Index("IX_v3FundsDeposited_blockTimestamp", ["blockTimestamp"])
 @Index("IX_v3FundsDeposited_depositor", ["depositor"])
+@Index("IX_v3FundsDeposited_recipient", ["recipient"])
 @Index("IX_v3FundsDeposited_destinationChainId", ["destinationChainId"])
 @Index("IX_deposits_block_chain_logIndex", [
   "blockNumber",

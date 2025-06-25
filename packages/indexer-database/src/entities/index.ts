@@ -13,6 +13,8 @@ export * from "./evm/RelayedRootBundle";
 export * from "./evm/ExecutedRelayerRefundRoot";
 export * from "./evm/TokensBridged";
 export * from "./evm/SwapBeforeBridge";
+export * from "./evm/BridgedToHubPool";
+export * from "./evm/ClaimedRelayerRefunds";
 
 // Others
 export * from "./Bundle";

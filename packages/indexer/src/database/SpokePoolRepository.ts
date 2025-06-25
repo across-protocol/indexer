@@ -85,6 +85,15 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     };
   }
 
+  public formatTxnData(event: across.interfaces.SortableEvent) {
+    return {
+      transactionHash: event.txnRef,
+      transactionIndex: event.txnIndex,
+      logIndex: event.logIndex,
+      blockNumber: event.blockNumber,
+    };
+  }
+
   public async formatAndSaveV3FundsDepositedEvents(
     v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[],
     lastFinalisedBlock: number,
@@ -106,10 +115,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.destinationChainId,
         ),
         quoteTimestamp: new Date(event.quoteTimestamp * 1000),
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -167,10 +173,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.relayExecutionInfo.updatedMessageHash ||
           event.relayExecutionInfo.updatedMessage,
         fillType: event.relayExecutionInfo.fillType,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
         blockTimestamp,
       };
@@ -203,10 +206,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           event.destinationChainId,
         ),
         message: event.messageHash,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -244,10 +244,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
               updatedMessage: event.updatedMessage,
               updatedOutputAmount: event.updatedOutputAmount.toString(),
               depositorSignature: event.depositorSignature,
-              transactionHash: event.txnRef,
-              transactionIndex: event.txnIndex,
-              logIndex: event.logIndex,
-              blockNumber: event.blockNumber,
+              ...this.formatTxnData(event),
               finalised: event.blockNumber <= lastFinalisedBlock,
             };
           }),
@@ -279,10 +276,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         rootBundleId: event.rootBundleId,
         relayerRefundRoot: event.relayerRefundRoot,
         slowRelayRoot: event.slowRelayRoot,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -327,10 +321,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         refundAddresses,
         deferredRefunds: event.deferredRefunds,
         caller: event.caller,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -366,10 +357,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         l2TokenAddress,
         amountToReturn: event.amountToReturn.toString(),
         caller: event.caller,
-        transactionHash: event.txnRef,
-        transactionIndex: event.txnIndex,
-        logIndex: event.logIndex,
-        blockNumber: event.blockNumber,
+        ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
@@ -385,6 +373,67 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       ),
     );
     return savedEvents.flat();
+  }
+
+  public async formatAndSaveBridgedToHubPoolEvents(
+    bridgedToHubPoolEvents: across.interfaces.BridgedToHubPoolWithBlock[],
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const formattedEvents = bridgedToHubPoolEvents.map((event) => {
+      return {
+        chainId: chainId.toString(),
+        amount: event.amount.toString(),
+        l2TokenAddress: utils.formatFromBytes32ToChainFormat(
+          event.mint,
+          chainId,
+        ),
+        ...this.formatTxnData(event),
+        finalised: event.blockNumber <= lastFinalisedBlock,
+      };
+    });
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.BridgedToHubPool>(
+        entities.BridgedToHubPool,
+        formattedEvents,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+        [],
+      );
+    return savedEvents;
+  }
+
+  public async formatAndSaveClaimedRelayerRefunds(
+    claimedRelayerRefunds: across.interfaces.ClaimedRelayerRefundWithBlock[],
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const formattedEvents = claimedRelayerRefunds.map((event) => {
+      return {
+        chainId: chainId.toString(),
+        l2TokenAddress: utils.formatFromBytes32ToChainFormat(
+          event.l2TokenAddress,
+          chainId,
+        ),
+        refundAddress: utils.formatFromBytes32ToChainFormat(
+          event.refundAddress,
+          chainId,
+        ),
+        amount: event.amount.toString(),
+        caller: event.caller
+          ? utils.formatFromBytes32ToChainFormat(event.caller, chainId)
+          : undefined,
+        ...this.formatTxnData(event),
+        finalised: event.blockNumber <= lastFinalisedBlock,
+      };
+    });
+    const savedEvents =
+      await this.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
+        entities.ClaimedRelayerRefunds,
+        formattedEvents,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+        [],
+      );
+    return savedEvents;
   }
 
   public async deleteUnfinalisedDepositEvents(
