@@ -152,7 +152,8 @@ export class BundleBuilderService extends RepeatableTask {
 
     // Iterate over all l1 tokens and resolve the liquid reserves
     const hubBalances = await Promise.all(
-      l1Tokens.map(async ({ address: l1Token }) => {
+      l1Tokens.map(async ({ address }) => {
+        const l1Token = address.toEvmAddress();
         const hubPoolContract = hubClient.hubPool as typechain.HubPool;
 
         // Resolve the liquid reserve for the given L1Token stored in the
@@ -445,23 +446,24 @@ export class BundleBuilderService extends RepeatableTask {
       configStoreClient,
     );
     // Map the leaves to the desired format
-    return leaves.map((leaf) => ({
-      chainId: leaf.chainId,
-      l1Tokens: leaf.l1Tokens,
-      netSendAmounts: leaf.netSendAmounts.map((balance, idx) =>
-        utils.formatUnits(
-          balance,
-          utils.getTokenInfo(leaf.l1Tokens[idx]!, hubPoolClient.chainId)
-            .decimals,
+    return leaves.map((leaf) => {
+      const l1Tokens = leaf.l1Tokens.map((token) => token.toEvmAddress());
+      return {
+        chainId: leaf.chainId,
+        l1Tokens,
+        netSendAmounts: leaf.netSendAmounts.map((balance, idx) =>
+          utils.formatUnits(
+            balance,
+            utils.getTokenInfo(l1Tokens[idx]!, hubPoolClient.chainId).decimals,
+          ),
         ),
-      ),
-      runningBalances: leaf.runningBalances.map((balance, idx) =>
-        utils.formatUnits(
-          balance,
-          utils.getTokenInfo(leaf.l1Tokens[idx]!, hubPoolClient.chainId)
-            .decimals,
+        runningBalances: leaf.runningBalances.map((balance, idx) =>
+          utils.formatUnits(
+            balance,
+            utils.getTokenInfo(l1Tokens[idx]!, hubPoolClient.chainId).decimals,
+          ),
         ),
-      ),
-    }));
+      };
+    });
   }
 }

@@ -13,7 +13,7 @@ const stringToInt = s.coerce(s.number(), s.string(), (value) => {
 const parseAddressField = s.coerce(s.string(), s.string(), (value) => {
   // Try to parse as evm address
   if (utils.isValidEvmAddress(value.toLowerCase())) {
-    return utils.toAddress(value.toLowerCase());
+    return utils.toEvmAddress(value.toLowerCase());
   } else {
     // Try to parse as svm address
     try {
