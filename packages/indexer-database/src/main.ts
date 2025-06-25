@@ -38,6 +38,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.RootBundleExecuted,
       entities.SetPoolRebalanceRoute,
       // SpokePool
+      entities.BridgedToHubPool,
+      entities.ClaimedRelayerRefunds,
       entities.ExecutedRelayerRefundRoot,
       entities.FilledV3Relay,
       entities.RelayedRootBundle,
