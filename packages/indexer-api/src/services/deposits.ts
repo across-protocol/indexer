@@ -100,16 +100,26 @@ export class DepositsService {
         ...FilledRelayFields,
       ]);
 
-    if (params.depositor) {
-      queryBuilder.andWhere("deposit.depositor = :depositor", {
-        depositor: params.depositor,
-      });
-    }
+    if (params.address) {
+      // Filter deposits by address - matches deposits where the provided address is either depositor or recipient
+      queryBuilder.andWhere(
+        "deposit.depositor = :address OR deposit.recipient = :address",
+        {
+          address: params.address,
+        },
+      );
+    } else {
+      if (params.depositor) {
+        queryBuilder.andWhere("deposit.depositor = :depositor", {
+          depositor: params.depositor,
+        });
+      }
 
-    if (params.recipient) {
-      queryBuilder.andWhere("deposit.recipient = :recipient", {
-        recipient: params.recipient,
-      });
+      if (params.recipient) {
+        queryBuilder.andWhere("deposit.recipient = :recipient", {
+          recipient: params.recipient,
+        });
+      }
     }
 
     if (params.inputToken) {
