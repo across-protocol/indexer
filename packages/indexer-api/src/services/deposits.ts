@@ -187,6 +187,9 @@ export class DepositsService {
 
         return {
           ...deposit,
+          depositTxnRef: deposit.depositTxHash,
+          depositRefundTxnRef: deposit.depositRefundTxHash,
+          fillTxnRef: deposit.fillTx,
           originChainId: parseInt(deposit.originChainId),
           destinationChainId: parseInt(deposit.destinationChainId),
           speedups,
@@ -204,6 +207,7 @@ export class DepositsService {
       !(
         (params.depositId && params.originChainId) ||
         params.depositTxHash ||
+        params.depositTxnRef ||
         params.relayDataHash
       )
     ) {
@@ -236,6 +240,10 @@ export class DepositsService {
       queryBuilder.andWhere("rhi.depositTxHash = :depositTxHash", {
         depositTxHash: params.depositTxHash,
       });
+    } else if (params.depositTxnRef) {
+      queryBuilder.andWhere("rhi.depositTxHash = :depositTxnRef", {
+        depositTxnRef: params.depositTxnRef,
+      });
     }
 
     if (params.relayDataHash) {
@@ -264,9 +272,12 @@ export class DepositsService {
       originChainId: parseInt(relay.originChainId),
       depositId: relay.depositId,
       depositTxHash: relay.depositTxHash,
+      depositTxnRef: relay.depositTxHash,
       fillTx: relay.fillTxHash,
+      fillTxnRef: relay.fillTxHash,
       destinationChainId: parseInt(relay.destinationChainId),
       depositRefundTxHash: relay.depositRefundTxHash,
+      depositRefundTxnRef: relay.depositRefundTxHash,
       pagination: {
         currentIndex: params.index,
         maxIndex: numberMatchingRelays - 1,
@@ -291,6 +302,7 @@ export class DepositsService {
       !(
         (params.depositId && params.originChainId) ||
         params.depositTxHash ||
+        params.depositTxnRef ||
         params.relayDataHash
       )
     ) {
@@ -339,6 +351,10 @@ export class DepositsService {
       queryBuilder.andWhere("rhi.depositTxHash = :depositTxHash", {
         depositTxHash: params.depositTxHash,
       });
+    } else if (params.depositTxnRef) {
+      queryBuilder.andWhere("rhi.depositTxHash = :depositTxnRef", {
+        depositTxnRef: params.depositTxnRef,
+      });
     }
 
     if (params.relayDataHash) {
@@ -368,6 +384,9 @@ export class DepositsService {
     const result = {
       deposit: {
         ...relay,
+        depositTxnRef: relay.depositTxHash,
+        depositRefundTxnRef: relay.depositRefundTxHash,
+        fillTxnRef: relay.fillTxHash,
       },
       pagination: {
         currentIndex: params.index,
@@ -647,6 +666,8 @@ export class DepositsService {
     }
     if (params.depositTxHash) {
       return `depositStatus-${params.depositTxHash}-${params.index}`;
+    } else if (params.depositTxnRef) {
+      return `depositStatus-${params.depositTxnRef}-${params.index}`;
     }
     if (params.relayDataHash) {
       return `depositStatus-${params.relayDataHash}-${params.index}`;
@@ -665,6 +686,8 @@ export class DepositsService {
     }
     if (params.depositTxHash) {
       return `deposit-${params.depositTxHash}-${params.index}`;
+    } else if (params.depositTxnRef) {
+      return `deposit-${params.depositTxnRef}-${params.index}`;
     }
     if (params.relayDataHash) {
       return `deposit-${params.relayDataHash}-${params.index}`;
