@@ -386,8 +386,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       return {
         chainId: chainId.toString(),
         amount: event.amount.toString(),
-        l2TokenAddress: utils.formatFromBytes32ToChainFormat(
-          event.mint,
+        l2TokenAddress: utils.formatFromAddressToChainFormat(
+          across.utils.toAddressType(event.mint, chainId),
           chainId,
         ),
         ...this.formatTxnData(event),
@@ -412,17 +412,20 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents = claimedRelayerRefunds.map((event) => {
       return {
         chainId: chainId.toString(),
-        l2TokenAddress: utils.formatFromBytes32ToChainFormat(
-          event.l2TokenAddress,
+        l2TokenAddress: utils.formatFromAddressToChainFormat(
+          across.utils.toAddressType(event.l2TokenAddress, chainId),
           chainId,
         ),
-        refundAddress: utils.formatFromBytes32ToChainFormat(
-          event.refundAddress,
+        refundAddress: utils.formatFromAddressToChainFormat(
+          across.utils.toAddressType(event.refundAddress, chainId),
           chainId,
         ),
         amount: event.amount.toString(),
         caller: event.caller
-          ? utils.formatFromBytes32ToChainFormat(event.caller, chainId)
+          ? utils.formatFromAddressToChainFormat(
+              across.utils.toAddressType(event.caller, chainId),
+              chainId,
+            )
           : undefined,
         ...this.formatTxnData(event),
         finalised: event.blockNumber <= lastFinalisedBlock,
