@@ -252,8 +252,8 @@ importers:
   packages/indexer-api:
     dependencies:
       '@across-protocol/sdk':
-        specifier: ^4.2.14-alpha.0
-        version: 4.2.14-alpha.0(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@22.7.3)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+        specifier: ^4.2.16-alpha.4
+        version: 4.2.16-alpha.4(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@22.7.3)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@repo/error-handling':
         specifier: workspace:*
         version: link:../error-handling
@@ -349,8 +349,8 @@ importers:
   packages/indexer-database:
     dependencies:
       '@across-protocol/sdk':
-        specifier: ^4.2.14-alpha.0
-        version: 4.2.14-alpha.0(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+        specifier: ^4.2.16-alpha.4
+        version: 4.2.16-alpha.4(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       pg:
         specifier: ^8.4.0
         version: 8.12.0
@@ -630,6 +630,10 @@ packages:
   '@across-protocol/sdk@4.2.14-alpha.0':
     resolution: {integrity: sha512-6Uyd36/xnWgH9+e1FomocUl/qeLd9AugEGkvb056SOa8tNED1lI1Li2wDaJXwBWht51xN7ImOzB4D2UCYdtPNg==}
     engines: {node: '>=20.18.0'}
+
+  '@across-protocol/sdk@4.2.16-alpha.4':
+    resolution: {integrity: sha512-xLLiimD6hZdQm4YXIvDMTeunFEez7JIY7QeGEYT+TerDAhsu8PWISgBRUqjHAP0oRC3Z/bmlrpjt5mHUa7AUMg==}
+    engines: {node: '>=20.19.2'}
 
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
@@ -8934,10 +8938,10 @@ snapshots:
       - ws
       - zod
 
-  '@across-protocol/sdk@4.2.14-alpha.0(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+  '@across-protocol/sdk@4.2.16-alpha.4(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
       '@across-protocol/across-token': 1.0.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
-      '@across-protocol/constants': 3.1.67
+      '@across-protocol/constants': 3.1.68
       '@across-protocol/contracts': 4.0.12(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@coral-xyz/anchor': 0.30.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@eth-optimism/sdk': 3.3.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
@@ -8986,10 +8990,10 @@ snapshots:
       - ws
       - zod
 
-  '@across-protocol/sdk@4.2.14-alpha.0(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@22.7.3)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+  '@across-protocol/sdk@4.2.16-alpha.4(@eth-optimism/contracts@0.6.0(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(ts-node@10.9.2(@types/node@22.7.3)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
       '@across-protocol/across-token': 1.0.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(ts-node@10.9.2(@types/node@22.7.3)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
-      '@across-protocol/constants': 3.1.67
+      '@across-protocol/constants': 3.1.68
       '@across-protocol/contracts': 4.0.12(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@coral-xyz/anchor': 0.30.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@eth-optimism/sdk': 3.3.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
