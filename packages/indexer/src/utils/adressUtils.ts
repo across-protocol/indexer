@@ -1,6 +1,6 @@
 import { utils, arch } from "@across-protocol/sdk";
 
-const { EvmAddress, SvmAddress, chainIsEvm, chainIsSvm, isZeroAddress } = utils;
+const { chainIsEvm, chainIsSvm } = utils;
 
 export function formatFromAddressToChainFormat(
   address: utils.Address,
