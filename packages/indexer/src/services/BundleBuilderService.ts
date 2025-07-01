@@ -447,10 +447,10 @@ export class BundleBuilderService extends RepeatableTask {
     );
     // Map the leaves to the desired format
     return leaves.map((leaf) => {
-      const l1Tokens = leaf.l1Tokens.map((token) => token.toEvmAddress());
+      const l1Tokens = leaf.l1Tokens;
       return {
         chainId: leaf.chainId,
-        l1Tokens,
+        l1Tokens: l1Tokens.map((token) => token.toEvmAddress()),
         netSendAmounts: leaf.netSendAmounts.map((balance, idx) =>
           utils.formatUnits(
             balance,
