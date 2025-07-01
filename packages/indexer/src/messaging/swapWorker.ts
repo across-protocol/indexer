@@ -74,7 +74,7 @@ export class SwapWorker {
         } catch (error) {
           this.logger.error({
             at: "SwapWorker",
-            message: `Error getting swap infor for hash ${data.swapEventId}`,
+            message: `Error getting swap info for hash ${data.swapEventId}`,
             error,
           });
           throw error;
