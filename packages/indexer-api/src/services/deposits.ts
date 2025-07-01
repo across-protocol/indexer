@@ -1,5 +1,4 @@
 import { Redis } from "ioredis";
-import { utils } from "@across-protocol/sdk";
 import { DataSource, entities } from "@repo/indexer-database";
 import type {
   DepositParams,
@@ -125,13 +124,13 @@ export class DepositsService {
 
     if (params.inputToken) {
       queryBuilder.andWhere("deposit.inputToken = :inputToken", {
-        inputToken: utils.toAddress(params.inputToken.toLowerCase()),
+        inputToken: params.inputToken,
       });
     }
 
     if (params.outputToken) {
       queryBuilder.andWhere("deposit.outputToken = :outputToken", {
-        outputToken: utils.toAddress(params.outputToken.toLowerCase()),
+        outputToken: params.outputToken,
       });
     }
 
