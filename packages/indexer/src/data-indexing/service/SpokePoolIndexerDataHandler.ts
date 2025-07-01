@@ -43,6 +43,7 @@ export type FetchEventsResult = {
   tokensBridgedEvents: (across.interfaces.TokensBridged & {
     caller?: string;
   })[]; // TODO: Add missing properties to SDK types
+  claimedRelayerRefunds: across.interfaces.ClaimedRelayerRefundWithBlock[];
   blockTimes: Record<number, number>;
 };
 
@@ -134,6 +135,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         executedRelayerRefundRootEvents:
           events.executedRelayerRefundRootEvents.length,
         tokensBridgedEvents: events.tokensBridgedEvents.length,
+        claimedRelayerRefunds: events.claimedRelayerRefunds.length,
       },
       blockRange,
     });
@@ -459,6 +461,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     // Specifically, we avoid the EnabledDepositRoute event because this
     // requires a lookback to the deployment block of the SpokePool contract.
     await spokePoolClient.update([
+      "ClaimedRelayerRefund",
       "ExecutedRelayerRefundRoot",
       "FilledRelay",
       "FundsDeposited",
@@ -481,6 +484,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       spokePoolClient.getRelayerRefundExecutions() as FetchEventsResult["executedRelayerRefundRootEvents"];
     const tokensBridgedEvents =
       spokePoolClient.getTokensBridged() as FetchEventsResult["tokensBridgedEvents"];
+    const claimedRelayerRefunds = spokePoolClient.getClaimedRelayerRefunds();
     // getBlockTimes function will make sure we dont query more than we need to.
     const blockNumbers = [
       ...v3FundsDepositedEvents.map((deposit) => deposit.blockNumber),
@@ -513,6 +517,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      claimedRelayerRefunds,
       blockTimes,
     };
   }
@@ -530,6 +535,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       relayedRootBundleEvents,
       executedRelayerRefundRootEvents,
       tokensBridgedEvents,
+      claimedRelayerRefunds,
       blockTimes,
     } = params;
     const [
@@ -567,6 +573,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       ),
       spokePoolClientRepository.formatAndSaveTokensBridgedEvents(
         tokensBridgedEvents,
+        lastFinalisedBlock,
+      ),
+      spokePoolClientRepository.formatAndSaveClaimedRelayerRefunds(
+        claimedRelayerRefunds,
+        this.chainId,
         lastFinalisedBlock,
       ),
     ]);
