@@ -15,6 +15,10 @@ import { RelayHashInfo } from "../RelayHashInfo";
 @Index("IX_filledV3Relay_blockTimestamp", ["blockTimestamp"])
 @Index("IX_filledV3Relay_relayer", ["relayer"])
 @Index("IX_filledV3Relay_destinationChainId", ["destinationChainId"])
+@Index("IX_filledV3Relay_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
 @Index("IX_filledV3Relay_originChainId_depositId", [
   "originChainId",
   "depositId",

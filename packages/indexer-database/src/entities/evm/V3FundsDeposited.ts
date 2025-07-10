@@ -28,6 +28,10 @@ import { RelayHashInfo } from "../RelayHashInfo";
   "originChainId",
   "logIndex",
 ])
+@Index("IX_v3FundsDeposited_depositId_originChainId", [
+  "depositId",
+  "originChainId",
+])
 @Index("IX_v3FundsDeposited_originChainId_depositId", [
   "originChainId",
   "depositId",
