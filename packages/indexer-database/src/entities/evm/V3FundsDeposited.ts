@@ -32,6 +32,10 @@ import { RelayHashInfo } from "../RelayHashInfo";
   "depositId",
   "originChainId",
 ])
+@Index("IX_v3FundsDeposited_originChainId_depositId", [
+  "originChainId",
+  "depositId",
+])
 @Index("IX_v3FundsDeposited_internalHash", ["internalHash"])
 export class V3FundsDeposited {
   @PrimaryGeneratedColumn()

@@ -19,6 +19,10 @@ import { RelayHashInfo } from "../RelayHashInfo";
   "depositId",
   "originChainId",
 ])
+@Index("IX_filledV3Relay_originChainId_depositId", [
+  "originChainId",
+  "depositId",
+])
 export class FilledV3Relay {
   @PrimaryGeneratedColumn()
   id: number;
