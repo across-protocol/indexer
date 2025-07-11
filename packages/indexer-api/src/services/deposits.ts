@@ -92,7 +92,7 @@ export class DepositsService {
         "fill",
         "fill.id = rhi.fillEventId",
       )
-      .orderBy("deposit.blockTimestamp", "DESC", "NULLS LAST")
+      .orderBy("deposit.blockTimestamp", "DESC")
       .select([
         ...DepositFields,
         ...RelayHashInfoFields,
@@ -168,6 +168,8 @@ export class DepositsService {
     if (params.limit) {
       queryBuilder.limit(params.limit);
     }
+
+    console.log(queryBuilder.getQueryAndParameters());
 
     const deposits: DepositReturnType[] = await queryBuilder.execute();
 
