@@ -169,8 +169,6 @@ export class DepositsService {
       queryBuilder.limit(params.limit);
     }
 
-    console.log(queryBuilder.getQueryAndParameters());
-
     const deposits: DepositReturnType[] = await queryBuilder.execute();
 
     // Fetch speedup events for each deposit
