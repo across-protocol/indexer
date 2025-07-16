@@ -27,11 +27,14 @@ export class RedisCache implements across.interfaces.CachingMechanismInterface {
     return this.redis.publish(channel, message);
   }
 
-  public async sub(channel: string, listener: (message: string, channel: string) => void): Promise<number> {
+  public async sub(
+    channel: string,
+    listener: (message: string, channel: string) => void,
+  ): Promise<number> {
     await this.redis.subscribe(channel);
-    this.redis.on('message', (channel, message) => {
+    this.redis.on("message", (channel, message) => {
       listener(message, channel);
-    })
+    });
     return 1;
   }
 }
