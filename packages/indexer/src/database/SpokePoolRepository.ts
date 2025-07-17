@@ -196,34 +196,40 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     requestedV3SlowFillEvents: across.interfaces.SlowFillRequestWithBlock[],
     lastFinalisedBlock: number,
   ) {
-    const formattedEvents = requestedV3SlowFillEvents.map((event) => {
-      let internalHash: string | undefined;
-      try {
-        internalHash = utils.getInternalHash(
-          event,
-          event.messageHash,
-          event.destinationChainId,
-        );
-      } catch (error: any) {
-        if (error.reason === "overflow" && error.code === "NUMERIC_FAULT" && error.operation === "BigNumber.from") {
-          this.logger.warn({
-            at: "SpokePoolRepository#formatAndSaveRequestedV3SlowFillEvents",
-            message: "Overflow error when getting internal hash",
+    const formattedEvents = requestedV3SlowFillEvents
+      .map((event) => {
+        let internalHash: string | undefined;
+        try {
+          internalHash = utils.getInternalHash(
             event,
-            error,
-          });
-          return undefined;
+            event.messageHash,
+            event.destinationChainId,
+          );
+        } catch (error: any) {
+          if (
+            error.reason === "overflow" &&
+            error.code === "NUMERIC_FAULT" &&
+            error.operation === "BigNumber.from"
+          ) {
+            this.logger.warn({
+              at: "SpokePoolRepository#formatAndSaveRequestedV3SlowFillEvents",
+              message: "Overflow error when getting internal hash",
+              event,
+              error,
+            });
+            return undefined;
+          }
         }
-      }
-      return {
-        ...this.formatRelayData(event),
-        destinationChainId: event.destinationChainId.toString(),
-        internalHash,
-        message: event.messageHash,
-        ...this.formatTxnData(event),
-        finalised: event.blockNumber <= lastFinalisedBlock,
-      };
-    }).filter((event) => event !== undefined);
+        return {
+          ...this.formatRelayData(event),
+          destinationChainId: event.destinationChainId.toString(),
+          internalHash,
+          message: event.messageHash,
+          ...this.formatTxnData(event),
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      })
+      .filter((event) => event !== undefined);
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
