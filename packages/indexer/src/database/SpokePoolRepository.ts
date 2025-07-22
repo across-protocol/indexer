@@ -146,7 +146,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       let updatedRecipient: string;
       relayer = utils.formatFromAddressToChainFormat(
         event.relayer,
-        event.destinationChainId,
+        event.repaymentChainId,
       );
       updatedRecipient = utils.formatFromAddressToChainFormat(
         event.relayExecutionInfo.updatedRecipient,
