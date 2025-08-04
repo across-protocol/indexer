@@ -64,6 +64,8 @@ export class RetryProvidersFactory {
     const rpcFactory = new providers.CachedSolanaRpcFactory(
       providerEnvs.providerCacheNamespace,
       this.redisCache,
+      providerEnvs.retries,
+      providerEnvs.retryDelay,
       providerEnvs.maxConcurrency,
       providerEnvs.pctRpcCallsLogged,
       this.logger,
