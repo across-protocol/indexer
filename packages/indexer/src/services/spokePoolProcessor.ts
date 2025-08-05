@@ -626,7 +626,7 @@ export class SpokePoolProcessor {
     const bundleEventsRepository = this.postgres.getRepository(
       entities.BundleEvent,
     );
-    const refundEvents = (await bundleEventsRepository
+    const refundEventsQb = bundleEventsRepository
       .createQueryBuilder("be")
       .innerJoinAndSelect("be.bundle", "bundle")
       .innerJoinAndMapOne(
@@ -635,15 +635,21 @@ export class SpokePoolProcessor {
         "dep",
         "be.relayHash = dep.internalHash AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
       )
+      .innerJoin(entities.RelayHashInfo, "rhi", "dep.id = rhi.depositEventId")
       .where("be.type = :expiredDeposit", {
         expiredDeposit: entities.BundleEventType.ExpiredDeposit,
       })
       .andWhere("dep.originChainId = :chainId", { chainId: this.chainId })
+      .andWhere("rhi.status = :status", {
+        status: entities.RelayStatus.Expired,
+      })
       .orderBy("be.bundleId", "DESC")
-      .limit(100)
-      .getMany()) as (entities.BundleEvent & {
-      deposit: entities.V3FundsDeposited;
-    })[];
+      .limit(100);
+
+    const refundEvents =
+      (await refundEventsQb.getMany()) as (entities.BundleEvent & {
+        deposit: entities.V3FundsDeposited;
+      })[];
 
     const updatedRows: entities.RelayHashInfo[] = [];
     for (const refundEvent of refundEvents) {
