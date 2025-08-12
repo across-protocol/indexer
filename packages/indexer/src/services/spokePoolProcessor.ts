@@ -11,11 +11,11 @@ import {
   Not,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
+import { getDbLockKeyForDeposit } from "../utils";
 
 enum SpokePoolEvents {
   V3FundsDeposited = "V3FundsDeposited",
@@ -78,11 +78,7 @@ export class SpokePoolProcessor {
     const timeToUpdateExpiredRelaysStart = performance.now();
     const expiredDeposits = await this.updateExpiredRelays();
     const timeToUpdateExpiredRelaysEnd = performance.now();
-
-    // Update refunded deposits
-    const timeToUpdateRefundedDepositsStart = performance.now();
-    const refundedDeposits = await this.updateRefundedDepositsStatus();
-    const timeToUpdateRefundedDepositsEnd = performance.now();
+    const end = performance.now();
 
     // Send webhook notifications
     // Notify webhook of new deposits
@@ -137,19 +133,6 @@ export class SpokePoolProcessor {
       });
     });
 
-    // Notify webhook of refunded deposits
-    refundedDeposits.forEach((deposit) => {
-      this.webhookWriteFn?.({
-        type: WebhookTypes.DepositStatus,
-        event: {
-          depositId: deposit.depositId,
-          originChainId: deposit.originChainId,
-          depositTxHash: deposit.depositTxHash,
-          status: RelayStatus.Refunded,
-        },
-      });
-    });
-
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#process",
       message: "System Time Log for SpokePoolProcessor#process",
@@ -159,11 +142,7 @@ export class SpokePoolProcessor {
         timeToAssignSpokeEventsToRelayHashInfoStart,
       timeToUpdateExpiredRelays:
         timeToUpdateExpiredRelaysEnd - timeToUpdateExpiredRelaysStart,
-      timeToUpdateRefundedDeposits:
-        timeToUpdateRefundedDepositsEnd - timeToUpdateRefundedDepositsStart,
-      totalTime:
-        timeToUpdateRefundedDepositsEnd -
-        timeToAssignSpokeEventsToRelayHashInfoStart,
+      totalTime: end - timeToAssignSpokeEventsToRelayHashInfoStart,
     });
   }
 
@@ -216,7 +195,7 @@ export class SpokePoolProcessor {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
 
-          const lockKey = this.getDbLockKeyForDeposit(event);
+          const lockKey = getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -298,7 +277,7 @@ export class SpokePoolProcessor {
         await this.postgres.transaction(async (transactionalEntityManager) => {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
-          const lockKey = this.getDbLockKeyForDeposit(event);
+          const lockKey = getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -364,7 +343,7 @@ export class SpokePoolProcessor {
         await this.postgres.transaction(async (transactionalEntityManager) => {
           const relayHashInfoRepository =
             transactionalEntityManager.getRepository(entities.RelayHashInfo);
-          const lockKey = this.getDbLockKeyForDeposit(event);
+          const lockKey = getDbLockKeyForDeposit(event);
           // Acquire a lock to prevent concurrent modifications on the same relayHash.
           // The lock is automatically released when the transaction commits or rolls back.
           await transactionalEntityManager.query(
@@ -472,7 +451,7 @@ export class SpokePoolProcessor {
             logIndex: deposit.logIndex,
           },
         });
-        const lockKey = this.getDbLockKeyForDeposit(deposit);
+        const lockKey = getDbLockKeyForDeposit(deposit);
         // Acquire a lock to prevent concurrent modifications on the same relayHash.
         // The lock is automatically released when the transaction commits or rolls back.
         await transactionalEntityManager.query(
@@ -555,26 +534,6 @@ export class SpokePoolProcessor {
   }
 
   /**
-   * Generates a lock key for the deposit
-   * @param deposit - The deposit event
-   * @returns A tuple of the origin chain id and the internal hash as a 32-bit integer
-   */
-  private getDbLockKeyForDeposit(
-    deposit:
-      | entities.V3FundsDeposited
-      | entities.FilledV3Relay
-      | entities.RequestedV3SlowFill,
-  ) {
-    return [
-      deposit.originChainId === CHAIN_IDs.SOLANA.toString()
-        ? "342683945"
-        : deposit.originChainId,
-      // Convert internalHash into a 32-bit integer for database lock usage
-      this.relayHashToInt32(deposit.internalHash!),
-    ];
-  }
-
-  /**
    * Updates the status of expired relays originated from this processor's chain id
    * @returns An array with the updated relays
    */
@@ -609,162 +568,6 @@ export class SpokePoolProcessor {
     }
 
     return expiredDeposits.raw;
-  }
-
-  /**
-   * Calls the database to find relays with related refunds in the bundle events table.
-   * When a matching refund is found, updates the relay status to refunded
-   * @returns An array with the updated relays
-   */
-  public async updateRefundedDepositsStatus(): Promise<
-    entities.RelayHashInfo[]
-  > {
-    this.logger.debug({
-      at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
-      message: `Updating status for refunded deposits`,
-    });
-    const bundleEventsRepository = this.postgres.getRepository(
-      entities.BundleEvent,
-    );
-    const refundEventsQb = bundleEventsRepository
-      .createQueryBuilder("be")
-      .innerJoinAndSelect("be.bundle", "bundle")
-      .innerJoinAndMapOne(
-        "be.deposit",
-        entities.V3FundsDeposited,
-        "dep",
-        "be.relayHash = dep.internalHash AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
-      )
-      .innerJoin(entities.RelayHashInfo, "rhi", "dep.id = rhi.depositEventId")
-      .where("be.type = :expiredDeposit", {
-        expiredDeposit: entities.BundleEventType.ExpiredDeposit,
-      })
-      .andWhere("dep.originChainId = :chainId", { chainId: this.chainId })
-      .andWhere("rhi.status = :status", {
-        status: entities.RelayStatus.Expired,
-      })
-      .orderBy("be.bundleId", "DESC")
-      .limit(100);
-
-    const refundEvents =
-      (await refundEventsQb.getMany()) as (entities.BundleEvent & {
-        deposit: entities.V3FundsDeposited;
-      })[];
-
-    const updatedRows: entities.RelayHashInfo[] = [];
-    for (const refundEvent of refundEvents) {
-      // Get the relayerRefundRoot that included this refund
-      const relayerRefundRoot = refundEvent.bundle.relayerRefundRoot;
-
-      // Look for a relayed root bundle event that matches the relayerRefundRoot
-      const relayRootBundleRepo = this.postgres.getRepository(
-        entities.RelayedRootBundle,
-      );
-      const relayedRootBundleEvent = await relayRootBundleRepo
-        .createQueryBuilder("rrb")
-        .select("rrb.rootBundleId")
-        .where("rrb.relayerRefundRoot = :relayerRefundRoot", {
-          relayerRefundRoot,
-        })
-        .andWhere("rrb.chainId = :chainId", { chainId: this.chainId })
-        .getOne();
-      if (!relayedRootBundleEvent) continue;
-
-      // Look for the execution of the relayer refund root using the rootBundleId
-      const rootBundleId = relayedRootBundleEvent.rootBundleId;
-      const executedRelayerRefundRepo = this.postgres.getRepository(
-        entities.ExecutedRelayerRefundRoot,
-      );
-      const executedRelayerRefundRootEvent = await executedRelayerRefundRepo
-        .createQueryBuilder("err")
-        .where("err.rootBundleId = :rootBundleId", {
-          rootBundleId,
-        })
-        .andWhere("err.chainId = :chainId", { chainId: this.chainId })
-        .getOne();
-      if (!executedRelayerRefundRootEvent) continue;
-
-      // If we found the execution of the relayer refund root, we can update the relay status
-      await this.postgres.transaction(async (transactionalEntityManager) => {
-        const relayHashInfoRepo = transactionalEntityManager.getRepository(
-          entities.RelayHashInfo,
-        );
-        const lockKey = this.getDbLockKeyForDeposit(refundEvent.deposit);
-        // Acquire a lock to prevent concurrent modifications on the same relayHash.
-        // The lock is automatically released when the transaction commits or rolls back.
-        await transactionalEntityManager.query(
-          `SELECT pg_advisory_xact_lock($2, $1)`,
-          lockKey,
-        );
-
-        const rowToUpdate = await relayHashInfoRepo.findOne({
-          where: {
-            internalHash: refundEvent.relayHash,
-            depositEvent: {
-              originChainId: refundEvent.deposit.originChainId,
-              blockNumber: refundEvent.deposit.blockNumber,
-              logIndex: refundEvent.deposit.logIndex,
-            },
-          },
-        });
-        if (rowToUpdate) {
-          if (rowToUpdate.status === entities.RelayStatus.Filled) {
-            this.logger.warn({
-              at: "SpokePoolProcessor#updateRefundedDepositsStatus",
-              message: `Found a filled relay with id ${rowToUpdate.id} that is being unexpectedly refunded.`,
-            });
-          }
-          const updatedRow = await relayHashInfoRepo
-            .createQueryBuilder()
-            .update()
-            .set({
-              status: entities.RelayStatus.Refunded,
-              depositRefundTxHash:
-                executedRelayerRefundRootEvent.transactionHash,
-            })
-            .where("id = :rowToUpdateId", {
-              rowToUpdateId: rowToUpdate.id,
-            })
-            .returning("*")
-            .execute();
-          updatedRows.push(updatedRow.raw[0]);
-        }
-      });
-    }
-    if (updatedRows.length > 0) {
-      this.logger.debug({
-        at: "Indexer#SpokePoolProcessor#updateRefundedDepositsStatus",
-        message: `Updated ${updatedRows.length} refunded deposits`,
-      });
-    }
-    return updatedRows;
-  }
-
-  /**
-   * Generates a 32bit integer based on an input string
-   */
-  private relayHashToInt32(relayHash: string): number {
-    let hash = 0;
-    let chr;
-
-    // If the input string is empty, return 0
-    if (relayHash.length === 0) return hash;
-
-    // Loop through each character in the string
-    for (let i = 0; i < relayHash.length; i++) {
-      // Get the Unicode value of the character
-      chr = relayHash.charCodeAt(i);
-
-      // Perform bitwise operations to generate a hash
-      // This shifts the hash left by 5 bits, subtracts itself, and adds the character code
-      hash = (hash << 5) - hash + chr;
-
-      // Convert the result into a 32-bit integer by forcing it into the signed integer range
-      hash |= 0;
-    }
-
-    // Return the final computed 32-bit integer hash
-    return hash;
   }
 
   /**

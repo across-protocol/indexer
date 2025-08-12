@@ -12,6 +12,7 @@ import { utils, arch, interfaces } from "@across-protocol/sdk";
 import { parsePostgresConfig } from "../parseEnv";
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { SpokePoolProcessor } from "../services/spokePoolProcessor";
+import { RefundedDepositsStatusService } from "../services/RefundedDepositsStatusService";
 
 describe("RelayHashInfo Tests", () => {
   // Set up
@@ -41,6 +42,8 @@ describe("RelayHashInfo Tests", () => {
 
   // Processor
   let spokePoolProcessor: SpokePoolProcessor;
+
+  let refundedDepositsStatusService: RefundedDepositsStatusService;
 
   before(async () => {
     // Connect to database
@@ -72,6 +75,11 @@ describe("RelayHashInfo Tests", () => {
       dataSource,
       1, // ChainId - for simplicity we'll use the same processor for all tests
       logger,
+    );
+
+    refundedDepositsStatusService = new RefundedDepositsStatusService(
+      logger,
+      dataSource,
     );
   });
 
@@ -329,7 +337,8 @@ describe("RelayHashInfo Tests", () => {
     ]);
 
     // Process refunds
-    await spokePoolProcessor.updateRefundedDepositsStatus();
+    // for simplicity a single chainId is used in all test cases
+    await refundedDepositsStatusService.updateRelayStatusForRefundedDeposits(1);
 
     // Verify final relayHashInfo state
     const updatedRelayHashInfo = await relayHashInfoRepository.findOne({
