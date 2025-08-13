@@ -132,6 +132,7 @@ export class RefundedDepositsStatusService {
             .where("id = :rowToUpdateId", {
               rowToUpdateId: rowToUpdate.id,
             })
+            .returning("id")
             .execute();
           console.log(`updatedRow ${JSON.stringify(updatedRow)} ${updatedRow}`);
           updatedRows.push(updatedRow.raw[0]);
