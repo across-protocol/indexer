@@ -51,10 +51,12 @@ export class RefundedDepositsStatusService {
         deposit: entities.V3FundsDeposited;
       })[];
 
-    this.logger.debug({
-      at: "Indexer#BundleIncludedEventsService#updateRefundedDepositsStatus",
-      message: `Found ${refundEvents.length} ${entities.BundleEventType.ExpiredDeposit} bundle events on chain ${chainId}`,
-    });
+    if (refundEvents.length > 0) {
+      this.logger.debug({
+        at: "Indexer#BundleIncludedEventsService#updateRefundedDepositsStatus",
+        message: `Found ${refundEvents.length} ${entities.BundleEventType.ExpiredDeposit} bundle events on chain ${chainId}`,
+      });
+    }
 
     const updatedRows: entities.RelayHashInfo[] = [];
     for (const refundEvent of refundEvents) {
