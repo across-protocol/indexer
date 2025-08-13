@@ -336,6 +336,12 @@ describe("RelayHashInfo Tests", () => {
       },
     ]);
 
+    await relayHashInfoRepository.update(
+      {
+        internalHash: deposit.internalHash,
+      },
+      { status: entities.RelayStatus.Expired },
+    );
     // Process refunds
     // for simplicity a single chainId is used in all test cases
     await refundedDepositsStatusService.updateRelayStatusForRefundedDeposits(1);
