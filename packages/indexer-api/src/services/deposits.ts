@@ -288,6 +288,7 @@ export class DepositsService {
       destinationChainId: parseInt(relay.destinationChainId),
       depositRefundTxHash: relay.depositRefundTxHash,
       depositRefundTxnRef: relay.depositRefundTxHash,
+      destinationActionsSucceeded: relay.callsFailedEventId === null,
       pagination: {
         currentIndex: params.index,
         maxIndex: numberMatchingRelays - 1,

@@ -23,7 +23,7 @@
   "dependencies": {
     "@across-protocol/constants": "^3.1.71",
     "@across-protocol/contracts": "^4.1.1",
-    "@across-protocol/sdk": "^4.3.31",
+    "@across-protocol/sdk": "^4.3.44",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",
     "@solana/kit": "^2.1.0",

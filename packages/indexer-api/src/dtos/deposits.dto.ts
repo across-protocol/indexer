@@ -163,5 +163,6 @@ export type DepositStatusResponse = {
   fillTx: string | undefined;
   destinationChainId: number;
   depositRefundTxHash: string | undefined;
+  destinationActionsSucceeded: boolean;
   pagination: PaginationInfo;
 };

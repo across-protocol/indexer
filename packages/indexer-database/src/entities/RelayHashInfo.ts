@@ -13,8 +13,8 @@ import {
 import { V3FundsDeposited } from "./evm/V3FundsDeposited";
 import { FilledV3Relay } from "./evm/FilledV3Relay";
 import { RequestedV3SlowFill } from "./evm/RequestedV3SlowFill";
-import { HistoricPrice } from "./HistoricPrice";
 import { SwapBeforeBridge } from "./evm/SwapBeforeBridge";
+import { CallsFailed } from "./evm/CallsFailed";
 
 export enum RelayStatus {
   Unfilled = "unfilled",
@@ -102,6 +102,16 @@ export class RelayHashInfo {
     foreignKeyConstraintName: "FK_relayHashInfo_swapBeforeBridgeEventId",
   })
   swapBeforeBridgeEvent: SwapBeforeBridge;
+
+  @Column({ nullable: true })
+  callsFailedEventId: number;
+
+  @OneToOne(() => CallsFailed, { nullable: true })
+  @JoinColumn({
+    name: "callsFailedEventId",
+    foreignKeyConstraintName: "FK_relayHashInfo_callsFailedEventId",
+  })
+  callsFailedEvent: CallsFailed;
 
   @Column()
   fillDeadline: Date;

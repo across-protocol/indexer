@@ -14,7 +14,10 @@ import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
-import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import {
+  DepositSwapPair,
+  FillCallsFailedPair,
+} from "../data-indexing/service/SpokePoolIndexerDataHandler";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
 
 enum SpokePoolEvents {
@@ -35,6 +38,7 @@ export class SpokePoolProcessor {
     events: StoreEventsResult,
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
+    fillCallsFailedPairs: FillCallsFailedPair[],
     fillsGasFee?: Record<string, bigint | undefined>,
   ) {
     // Update relay hash info records related to deleted deposits
@@ -72,6 +76,7 @@ export class SpokePoolProcessor {
       fillsGasFee,
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
+    await this.assignCallsFailedEventToRelayHashInfo(fillCallsFailedPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Update expired deposits
@@ -776,6 +781,27 @@ export class SpokePoolProcessor {
           { depositEventId: depositSwapPair.deposit.id },
           {
             swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
+          },
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Assigns the CallsFailed event to the relay hash info
+   */
+  private async assignCallsFailedEventToRelayHashInfo(
+    fillCallsFailedPairs: FillCallsFailedPair[],
+  ) {
+    const relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+    await Promise.all(
+      fillCallsFailedPairs.map((fillCallsFailedPair) =>
+        relayHashInfoRepository.update(
+          { fillEventId: fillCallsFailedPair.fill.id },
+          {
+            callsFailedEventId: fillCallsFailedPair.callsFailed.id,
           },
         ),
       ),

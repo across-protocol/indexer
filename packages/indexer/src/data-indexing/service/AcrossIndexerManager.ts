@@ -31,6 +31,7 @@ import { BundleRepository } from "../../database/BundleRepository";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
+import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;
@@ -47,6 +48,7 @@ export class AcrossIndexerManager {
     private hubPoolRepository: HubPoolRepository,
     private spokePoolRepository: SpokePoolRepository,
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
+    private callsFailedRepository: CallsFailedRepository,
     private bundleRepository: BundleRepository,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
@@ -118,6 +120,7 @@ export class AcrossIndexerManager {
           this.spokePoolClientFactory,
           this.spokePoolRepository,
           this.swapBeforeBridgeRepository,
+          this.callsFailedRepository,
           new SpokePoolProcessor(
             this.postgres,
             chainId,
