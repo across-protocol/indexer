@@ -31,6 +31,8 @@ export class RefundedDepositsStatusService {
         "be.deposit",
         entities.V3FundsDeposited,
         "dep",
+        // there can be multiple deposits with the same relay hash,
+        // but we only want to update the status for the exact event that was included in the bundle
         "be.relayHash = dep.internalHash AND be.eventChainId = dep.originChainId AND be.eventBlockNumber = dep.blockNumber AND be.eventLogIndex = dep.logIndex",
       )
       .innerJoin(entities.RelayHashInfo, "rhi", "dep.id = rhi.depositEventId")
