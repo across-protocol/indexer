@@ -133,9 +133,7 @@ export class RefundedDepositsStatusService {
               rowToUpdateId: rowToUpdate.id,
             })
             .execute();
-          console.log(
-            `updatedRow.raw[0] ${JSON.stringify(updatedRow.raw[0])} ${updatedRow.raw[0]}`,
-          );
+          console.log(`updatedRow ${JSON.stringify(updatedRow)} ${updatedRow}`);
           updatedRows.push(updatedRow.raw[0]);
         }
       });
