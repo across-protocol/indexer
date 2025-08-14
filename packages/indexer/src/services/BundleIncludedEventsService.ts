@@ -19,6 +19,7 @@ import {
   getBundleBlockRanges,
 } from "../utils/bundleBuilderUtils";
 import { Config } from "../parseEnv";
+import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";
 
 export type BundleConfig = {
   hubChainId: number;
@@ -30,6 +31,7 @@ export type BundleConfig = {
   bundleRepository: BundleRepository;
   retryProvidersFactory: RetryProvidersFactory;
   config: Config;
+  refundedDepositsStatusService: RefundedDepositsStatusService;
 };
 
 export class BundleIncludedEventsService extends RepeatableTask {
@@ -47,6 +49,14 @@ export class BundleIncludedEventsService extends RepeatableTask {
         message: "Starting BundleIncludedEventsService",
       });
       await this.assignSpokePoolEventsToExecutedBundles();
+      for (const chainId of [
+        ...this.config.config.evmSpokePoolChainsEnabled,
+        ...this.config.config.svmSpokePoolChainsEnabled,
+      ]) {
+        await this.config.refundedDepositsStatusService.updateRelayStatusForRefundedDeposits(
+          chainId,
+        );
+      }
 
       this.config.logger.debug({
         at: "BundleIncludedEventsService#taskLogic",
