@@ -1,5 +1,9 @@
 import { interfaces, providers } from "@across-protocol/sdk";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { utils as ethersUtils } from "ethers";
+
+import { entities } from "@repo/indexer-database";
+
 import { SvmProvider } from "../web3/RetryProvidersFactory";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
@@ -103,4 +107,51 @@ export function getInternalHash(
       [_relayData, destinationChainId],
     ),
   );
+}
+
+/**
+ * Generates a lock key for the deposit
+ * @param deposit - The deposit event
+ * @returns A tuple of the origin chain id and the internal hash as a 32-bit integer
+ */
+export function getDbLockKeyForDeposit(
+  deposit:
+    | entities.V3FundsDeposited
+    | entities.FilledV3Relay
+    | entities.RequestedV3SlowFill,
+) {
+  return [
+    deposit.originChainId === CHAIN_IDs.SOLANA.toString()
+      ? "342683945"
+      : deposit.originChainId,
+    // Convert internalHash into a 32-bit integer for database lock usage
+    relayHashToInt32(deposit.internalHash!),
+  ];
+}
+
+/**
+ * Generates a 32bit integer based on an input string
+ */
+export function relayHashToInt32(relayHash: string): number {
+  let hash = 0;
+  let chr;
+
+  // If the input string is empty, return 0
+  if (relayHash.length === 0) return hash;
+
+  // Loop through each character in the string
+  for (let i = 0; i < relayHash.length; i++) {
+    // Get the Unicode value of the character
+    chr = relayHash.charCodeAt(i);
+
+    // Perform bitwise operations to generate a hash
+    // This shifts the hash left by 5 bits, subtracts itself, and adds the character code
+    hash = (hash << 5) - hash + chr;
+
+    // Convert the result into a 32-bit integer by forcing it into the signed integer range
+    hash |= 0;
+  }
+
+  // Return the final computed 32-bit integer hash
+  return hash;
 }
