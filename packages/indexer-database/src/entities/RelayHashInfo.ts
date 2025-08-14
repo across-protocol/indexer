@@ -150,6 +150,9 @@ export class RelayHashInfo {
   @Column({ nullable: true, type: "decimal" })
   fillGasTokenPriceUsd: string;
 
+  @Column({ nullable: true })
+  includedActions: boolean;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

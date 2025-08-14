@@ -52,6 +52,10 @@ const RelayHashInfoFields = [
   `rhi.fillGasFee as "fillGasFee"`,
   `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
   `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
+  `CASE 
+    WHEN rhi.includedActions = true THEN (rhi.callsFailedEventId IS NULL)
+    ELSE NULL
+  END as "actionsSucceeded"`,
 ];
 
 const FilledRelayFields = [
@@ -288,7 +292,10 @@ export class DepositsService {
       destinationChainId: parseInt(relay.destinationChainId),
       depositRefundTxHash: relay.depositRefundTxHash,
       depositRefundTxnRef: relay.depositRefundTxHash,
-      destinationActionsSucceeded: relay.callsFailedEventId === null,
+      actionsSucceeded:
+        relay.includedActions === true
+          ? relay.callsFailedEventId === null
+          : null,
       pagination: {
         currentIndex: params.index,
         maxIndex: numberMatchingRelays - 1,

@@ -1,5 +1,5 @@
 import winston from "winston";
-import { providers } from "ethers";
+import { utils } from "@across-protocol/sdk";
 
 import {
   DataSource,
@@ -214,6 +214,7 @@ export class SpokePoolProcessor {
           fillDeadline: event.fillDeadline,
           depositEventId: event.id,
           depositTxHash: event.transactionHash,
+          includedActions: !utils.isMessageEmpty(event.message),
         };
 
         // Start a transaction
@@ -296,6 +297,9 @@ export class SpokePoolProcessor {
           status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
           fillGasFee: fillGasFee?.toString(),
+          includedActions: !utils.isFillOrSlowFillRequestMessageEmpty(
+            event.updatedMessage,
+          ),
         };
 
         // Start a transaction
@@ -363,6 +367,9 @@ export class SpokePoolProcessor {
           destinationChainId: event.destinationChainId,
           fillDeadline: event.fillDeadline,
           slowFillRequestEventId: event.id,
+          includedActions: !utils.isFillOrSlowFillRequestMessageEmpty(
+            event.message,
+          ),
         };
 
         // Start a transaction
