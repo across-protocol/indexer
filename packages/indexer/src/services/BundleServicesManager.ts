@@ -11,6 +11,7 @@ import {
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { BundleRepository } from "../database/BundleRepository";
 import { BundleIncludedEventsService } from "./BundleIncludedEventsService";
+import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";
 
 export class BundleServicesManager {
   private bundleBuilderService?: BundleBuilderService;
@@ -47,6 +48,10 @@ export class BundleServicesManager {
       });
       return;
     }
+    const refundedDepositsStatusService = new RefundedDepositsStatusService(
+      this.logger,
+      this.postgres,
+    );
     this.bundleIncludedEventsService = new BundleIncludedEventsService({
       hubChainId: this.config.hubChainId,
       logger: this.logger,
@@ -57,6 +62,7 @@ export class BundleServicesManager {
       bundleRepository: this.bundleRepository,
       retryProvidersFactory: this.retryProvidersFactory,
       config: this.config,
+      refundedDepositsStatusService,
     });
     return this.bundleIncludedEventsService.start(10);
   }
