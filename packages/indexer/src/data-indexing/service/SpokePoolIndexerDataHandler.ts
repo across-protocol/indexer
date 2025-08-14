@@ -155,12 +155,17 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.fills,
       SaveQueryResultType.Inserted,
     );
+    const updatedFills = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.fills,
+      SaveQueryResultType.Updated,
+    );
 
     // Fetch transaction receipts associated only to new inserted events:
     // (1) deposits for getting the swap before bridge events, (2) fills for getting the gas fee
     const transactionReceipts = await this.getTransactionReceiptsForEvents([
       ...newInsertedDeposits,
       ...newInsertedFills,
+      ...updatedFills,
     ]);
 
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
@@ -171,7 +176,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     const fillCallsFailedPairs =
       await this.matchFillEventsWithCallsFailedEvents(
-        newInsertedFills,
+        [...newInsertedFills, ...updatedFills],
         transactionReceipts,
         lastFinalisedBlock,
       );
@@ -180,16 +185,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const timeToStoreEvents = performance.now();
 
     // Delete unfinalised events
-    const [deletedDeposits, _, __] = await Promise.all([
+    const [deletedDeposits, _] = await Promise.all([
       this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
         this.chainId,
         lastFinalisedBlock,
       ),
       this.swapBeforeBridgeRepository.deleteUnfinalisedSwapEvents(
-        this.chainId,
-        lastFinalisedBlock,
-      ),
-      this.callsFailedRepository.deleteUnfinalisedCallsFailedEvents(
         this.chainId,
         lastFinalisedBlock,
       ),

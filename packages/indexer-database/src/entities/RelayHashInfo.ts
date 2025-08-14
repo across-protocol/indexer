@@ -104,7 +104,7 @@ export class RelayHashInfo {
   swapBeforeBridgeEvent: SwapBeforeBridge;
 
   @Column({ nullable: true })
-  callsFailedEventId: number;
+  callsFailedEventId: number | null;
 
   @OneToOne(() => CallsFailed, { nullable: true })
   @JoinColumn({
