@@ -11,7 +11,6 @@ import {
   Not,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
@@ -569,33 +568,6 @@ export class SpokePoolProcessor {
     }
 
     return expiredDeposits.raw;
-  }
-
-  /**
-   * Generates a 32bit integer based on an input string
-   */
-  private relayHashToInt32(relayHash: string): number {
-    let hash = 0;
-    let chr;
-
-    // If the input string is empty, return 0
-    if (relayHash.length === 0) return hash;
-
-    // Loop through each character in the string
-    for (let i = 0; i < relayHash.length; i++) {
-      // Get the Unicode value of the character
-      chr = relayHash.charCodeAt(i);
-
-      // Perform bitwise operations to generate a hash
-      // This shifts the hash left by 5 bits, subtracts itself, and adds the character code
-      hash = (hash << 5) - hash + chr;
-
-      // Convert the result into a 32-bit integer by forcing it into the signed integer range
-      hash |= 0;
-    }
-
-    // Return the final computed 32-bit integer hash
-    return hash;
   }
 
   /**
