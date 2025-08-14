@@ -19,6 +19,7 @@ import {
   StoreEventsResult,
 } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
+import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
@@ -52,6 +53,11 @@ export type DepositSwapPair = {
   swapBeforeBridge: entities.SwapBeforeBridge;
 };
 
+export type FillCallsFailedPair = {
+  fill: entities.FilledV3Relay;
+  callsFailed: entities.CallsFailed;
+};
+
 export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -67,6 +73,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private spokePoolFactory: utils.SpokePoolClientFactory,
     private spokePoolClientRepository: SpokePoolRepository,
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
+    private callsFailedRepository: CallsFailedRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
   ) {
@@ -148,12 +155,17 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents.fills,
       SaveQueryResultType.Inserted,
     );
+    const updatedFills = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.fills,
+      SaveQueryResultType.Updated,
+    );
 
     // Fetch transaction receipts associated only to new inserted events:
     // (1) deposits for getting the swap before bridge events, (2) fills for getting the gas fee
     const transactionReceipts = await this.getTransactionReceiptsForEvents([
       ...newInsertedDeposits,
       ...newInsertedFills,
+      ...updatedFills,
     ]);
 
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
@@ -161,6 +173,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       transactionReceipts,
       lastFinalisedBlock,
     );
+
+    const fillCallsFailedPairs =
+      await this.matchFillEventsWithCallsFailedEvents(
+        [...newInsertedFills, ...updatedFills],
+        transactionReceipts,
+        lastFinalisedBlock,
+      );
 
     //FIXME: Remove performance timing
     const timeToStoreEvents = performance.now();
@@ -186,6 +205,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       storedEvents,
       deletedDeposits,
       depositSwapPairs,
+      fillCallsFailedPairs,
       fillsGasFee,
     );
 
@@ -301,6 +321,88 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       })
       .flat();
     return depositSwapMap;
+  }
+
+  /**
+   * Function that matches the new FilledRelay events with CallsFailed events
+   * 1. for each tx receipt, get CallsFailed events
+   * 2. insert the CallsFailed events into the database
+   * 3. group the FilledRelay and CallsFailed events by transaction hash
+   */
+  private async matchFillEventsWithCallsFailedEvents(
+    fills: entities.FilledV3Relay[],
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
+    lastFinalisedBlock: number,
+  ) {
+    const transactionReceiptsList = Object.values(transactionReceipts);
+    const callsFailedEvents = transactionReceiptsList
+      .map((transactionReceipt) =>
+        EventDecoder.decodeCallsFailedEvents(transactionReceipt),
+      )
+      .flat();
+    const saveResult =
+      await this.callsFailedRepository.formatAndSaveCallsFailedEvents(
+        callsFailedEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      );
+    const insertedCallsFailedEvents =
+      indexerDatabaseUtils.filterSaveQueryResults(
+        saveResult,
+        SaveQueryResultType.Inserted,
+      );
+    const fillsAndCallsFailedByTxHash = insertedCallsFailedEvents.reduce(
+      (acc, callsFailed) => {
+        acc[callsFailed.transactionHash] = {
+          fills: fills.filter(
+            (f) =>
+              f.transactionHash.toLowerCase() ===
+              callsFailed.transactionHash.toLowerCase(),
+          ),
+          callsFailedEvents: insertedCallsFailedEvents.filter(
+            (c) =>
+              c.transactionHash.toLowerCase() ===
+              callsFailed.transactionHash.toLowerCase(),
+          ),
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          fills: entities.FilledV3Relay[];
+          callsFailedEvents: entities.CallsFailed[];
+        }
+      >,
+    );
+
+    // match the fill with the CallsFailed event
+    const fillCallsFailedMap = Object.values(fillsAndCallsFailedByTxHash)
+      .map((fillAndCallsFailed) => {
+        const { fills, callsFailedEvents } = fillAndCallsFailed;
+        const sortedFills = fills.sort((a, b) => a.logIndex - b.logIndex);
+        const sortedCallsFailedEvents = callsFailedEvents.sort(
+          (a, b) => a.logIndex - b.logIndex,
+        );
+        const matchedPairs: FillCallsFailedPair[] = [];
+        const usedCallsFailed = new Set<number>(); // Track used CallsFailed by their log index
+
+        sortedFills.forEach((fill) => {
+          const matchingCallsFailed = sortedCallsFailedEvents.find(
+            (callsFailed) =>
+              callsFailed.logIndex > fill.logIndex &&
+              !usedCallsFailed.has(callsFailed.logIndex),
+          );
+          if (matchingCallsFailed) {
+            matchedPairs.push({ fill, callsFailed: matchingCallsFailed });
+            usedCallsFailed.add(matchingCallsFailed.logIndex); // Mark this CallsFailed as used
+          }
+        });
+
+        return matchedPairs;
+      })
+      .flat();
+    return fillCallsFailedMap;
   }
 
   /**

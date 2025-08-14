@@ -1,6 +1,9 @@
 import { ethers } from "ethers";
-import { SwapBeforeBridgeEvent } from "./model/events";
-import { SwapAndBridgeBase__factory } from "@across-protocol/contracts";
+import { SwapBeforeBridgeEvent, CallsFailedEvent } from "./model/events";
+import {
+  SwapAndBridgeBase__factory,
+  MulticallHandler__factory,
+} from "@across-protocol/contracts";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -12,6 +15,18 @@ export class EventDecoder {
       receipt,
       swapBeforeBridgeEventTopic,
       SwapAndBridgeBase__factory.abi,
+    );
+
+    return events;
+  }
+
+  static decodeCallsFailedEvents(receipt: ethers.providers.TransactionReceipt) {
+    const callsFailedEventTopic =
+      "0x5296f22c5d0413b66d0bf45c479c4e2ca5b278634bdbd028b48e49502105f966";
+    const events: CallsFailedEvent[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      callsFailedEventTopic,
+      MulticallHandler__factory.abi,
     );
 
     return events;

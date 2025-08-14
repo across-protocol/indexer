@@ -1,5 +1,5 @@
 import winston from "winston";
-import { providers } from "ethers";
+import { utils } from "@across-protocol/sdk";
 
 import {
   DataSource,
@@ -13,7 +13,10 @@ import {
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
 
 import { RelayStatus } from "../../../indexer-database/dist/src/entities";
-import { DepositSwapPair } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import {
+  DepositSwapPair,
+  FillCallsFailedPair,
+} from "../data-indexing/service/SpokePoolIndexerDataHandler";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
 import { getDbLockKeyForDeposit } from "../utils";
 
@@ -35,6 +38,7 @@ export class SpokePoolProcessor {
     events: StoreEventsResult,
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
+    fillCallsFailedPairs: FillCallsFailedPair[],
     fillsGasFee?: Record<string, bigint | undefined>,
   ) {
     // Update relay hash info records related to deleted deposits
@@ -72,6 +76,7 @@ export class SpokePoolProcessor {
       fillsGasFee,
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
+    await this.assignCallsFailedEventToRelayHashInfo(fillCallsFailedPairs);
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Update expired deposits
@@ -188,6 +193,7 @@ export class SpokePoolProcessor {
           fillDeadline: event.fillDeadline,
           depositEventId: event.id,
           depositTxHash: event.transactionHash,
+          includedActions: !utils.isMessageEmpty(event.message),
         };
 
         // Start a transaction
@@ -270,6 +276,9 @@ export class SpokePoolProcessor {
           status: RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
           fillGasFee: fillGasFee?.toString(),
+          includedActions: !utils.isFillOrSlowFillRequestMessageEmpty(
+            event.updatedMessage,
+          ),
         };
 
         // Start a transaction
@@ -337,6 +346,9 @@ export class SpokePoolProcessor {
           destinationChainId: event.destinationChainId,
           fillDeadline: event.fillDeadline,
           slowFillRequestEventId: event.id,
+          includedActions: !utils.isFillOrSlowFillRequestMessageEmpty(
+            event.message,
+          ),
         };
 
         // Start a transaction
@@ -585,6 +597,27 @@ export class SpokePoolProcessor {
           { depositEventId: depositSwapPair.deposit.id },
           {
             swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
+          },
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Assigns the CallsFailed event to the relay hash info
+   */
+  private async assignCallsFailedEventToRelayHashInfo(
+    fillCallsFailedPairs: FillCallsFailedPair[],
+  ) {
+    const relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+    await Promise.all(
+      fillCallsFailedPairs.map((fillCallsFailedPair) =>
+        relayHashInfoRepository.update(
+          { fillEventId: fillCallsFailedPair.fill.id },
+          {
+            callsFailedEventId: fillCallsFailedPair.callsFailed.id,
           },
         ),
       ),

@@ -140,7 +140,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     await this.spokePoolProcessor.process(
       storedEvents,
       deletedDeposits,
-      [],
+      [], // swapBeforeBridge events
+      [], // callsFailed events
       fillsGasFee,
     );
 
