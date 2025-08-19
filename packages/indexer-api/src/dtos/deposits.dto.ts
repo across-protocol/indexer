@@ -119,6 +119,7 @@ export type DepositReturnType = {
   fillGasFee?: string;
   fillGasFeeUsd?: string;
   fillGasTokenPriceUsd?: string;
+  actionsSucceeded?: boolean | null;
 
   // from fill
   relayer?: string;
@@ -163,5 +164,6 @@ export type DepositStatusResponse = {
   fillTx: string | undefined;
   destinationChainId: number;
   depositRefundTxHash: string | undefined;
+  actionsSucceeded: boolean | null;
   pagination: PaginationInfo;
 };

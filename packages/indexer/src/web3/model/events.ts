@@ -11,3 +11,10 @@ export interface SwapBeforeBridgeEvent extends providers.Log {
     exchange: string;
   };
 }
+
+export interface CallsFailedEvent extends providers.Log {
+  args: {
+    calls: [string, string, BigNumber][]; // [target, calldata, value]
+    fallbackRecipient: string;
+  };
+}
