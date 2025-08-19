@@ -65,7 +65,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
         message: `Updated HubPool and ConfigStore clients in ${duration / 1000} seconds`,
       });
 
-      // await this.assignSpokePoolEventsToExecutedBundles();
+      await this.assignSpokePoolEventsToExecutedBundles();
       const enabledChainIds =
         this.configStoreClient.getChainIdIndicesForBlock();
       for (const chainId of enabledChainIds) {
