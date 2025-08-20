@@ -29,7 +29,7 @@ export class ClaimedRelayerRefunds {
   @Column()
   amount: string;
 
-  @Column()
+  @Column({ nullable: true })
   caller: string;
 
   @Column()
