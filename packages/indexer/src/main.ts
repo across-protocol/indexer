@@ -27,6 +27,7 @@ import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
+import { CallsFailedRepository } from "./database/CallsFailedRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -102,6 +103,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new HubPoolRepository(postgres, logger),
     new SpokePoolRepository(postgres, logger),
     new SwapBeforeBridgeRepository(postgres, logger),
+    new CallsFailedRepository(postgres, logger),
     new BundleRepository(postgres, logger, true),
     indexerQueuesService,
     write,

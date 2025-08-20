@@ -44,15 +44,31 @@ export class BundleIncludedEventsService extends RepeatableTask {
 
   protected async taskLogic(): Promise<void> {
     try {
-      this.config.logger.debug({
+      const { logger } = this.config;
+      logger.debug({
         at: "BundleIncludedEventsService#taskLogic",
         message: "Starting BundleIncludedEventsService",
       });
+
+      // Update HubPool and ConfigStore clients
+      logger.debug({
+        at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
+        message: "Updating HubPool and ConfigStore clients",
+      });
+      const startTime = Date.now();
+      await this.configStoreClient.update();
+      await this.hubPoolClient.update();
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      logger.debug({
+        at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
+        message: `Updated HubPool and ConfigStore clients in ${duration / 1000} seconds`,
+      });
+
       await this.assignSpokePoolEventsToExecutedBundles();
-      for (const chainId of [
-        ...this.config.config.evmSpokePoolChainsEnabled,
-        ...this.config.config.svmSpokePoolChainsEnabled,
-      ]) {
+      const enabledChainIds =
+        this.configStoreClient.getChainIdIndicesForBlock();
+      for (const chainId of enabledChainIds) {
         await this.config.refundedDepositsStatusService.updateRelayStatusForRefundedDeposits(
           chainId,
         );
@@ -92,20 +108,6 @@ export class BundleIncludedEventsService extends RepeatableTask {
     if (executedBundles.length === 0) {
       return;
     }
-
-    logger.debug({
-      at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
-      message: "Updating HubPool and ConfigStore clients",
-    });
-    const startTime = Date.now();
-    await this.configStoreClient.update();
-    await this.hubPoolClient.update();
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    logger.debug({
-      at: "Indexer#BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
-      message: `Updated HubPool and ConfigStore clients in ${duration / 1000} seconds`,
-    });
 
     for (const bundle of executedBundles) {
       await this.getEventsIncludedInBundle(bundle);
