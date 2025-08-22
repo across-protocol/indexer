@@ -22,7 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/sdk": "^4.3.47",
+    "@across-protocol/sdk": "^4.3.50",
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/indexer-database": "workspace:*",
