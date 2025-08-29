@@ -53,7 +53,7 @@ const RelayHashInfoFields = [
   `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
   `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
   `CASE 
-    WHEN rhi.includedActions = true THEN (rhi.callsFailedEventId IS NULL)
+    WHEN rhi.includedActions = true AND rhi.status = 'filled' THEN (rhi.callsFailedEventId IS NULL)
     ELSE NULL
   END as "actionsSucceeded"`,
 ];
@@ -293,7 +293,8 @@ export class DepositsService {
       depositRefundTxHash: relay.depositRefundTxHash,
       depositRefundTxnRef: relay.depositRefundTxHash,
       actionsSucceeded:
-        relay.includedActions === true
+        relay.includedActions === true &&
+        relay.status === entities.RelayStatus.Filled
           ? relay.callsFailedEventId === null
           : null,
       pagination: {
