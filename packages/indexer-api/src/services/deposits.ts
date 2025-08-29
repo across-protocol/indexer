@@ -53,7 +53,7 @@ const RelayHashInfoFields = [
   `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
   `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
   `CASE 
-    WHEN rhi.includedActions = true AND rhi.status = 'Filled' THEN (rhi.callsFailedEventId IS NULL)
+    WHEN rhi.includedActions = true AND rhi.status = 'filled' THEN (rhi.callsFailedEventId IS NULL)
     ELSE NULL
   END as "actionsSucceeded"`,
 ];
