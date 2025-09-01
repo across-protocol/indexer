@@ -251,9 +251,12 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   ) {
     const transactionReceiptsList = Object.values(transactionReceipts);
     const swapBeforeBridgeEvents = transactionReceiptsList
-      .map((transactionReceipt) =>
-        EventDecoder.decodeSwapBeforeBridgeEvents(transactionReceipt),
-      )
+      .map((transactionReceipt) => [
+        ...EventDecoder.decodeSwapBeforeBridgeEvents(transactionReceipt),
+        ...EventDecoder.decodeSpokePoolPeripherySwapBeforeBridgeEvents(
+          transactionReceipt,
+        ),
+      ])
       .flat();
     /**
      * this calls `saveAndHandleFinalisation()` from the `BlockchainEventRepository`. Not sure if this is the best way to do it
