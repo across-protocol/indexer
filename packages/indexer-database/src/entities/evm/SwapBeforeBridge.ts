@@ -41,6 +41,9 @@ export class SwapBeforeBridge {
   @Column()
   exchange: string;
 
+  @Column({ type: "text", nullable: true })
+  exchangeCalldata?: string;
+
   @Column()
   blockHash: string;
 

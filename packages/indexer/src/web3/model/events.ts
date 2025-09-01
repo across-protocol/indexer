@@ -9,6 +9,7 @@ export interface SwapBeforeBridgeEvent extends providers.Log {
     acrossInputAmount: BigNumber;
     acrossOutputAmount: BigNumber;
     exchange: string;
+    exchangeCalldata?: string;
   };
 }
 
