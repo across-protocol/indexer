@@ -1,5 +1,5 @@
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs, getDeployedBlockNumber } from "@across-protocol/contracts";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
 import Redis from "ioredis";
 import winston from "winston";
 
@@ -134,7 +134,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
     const lookbackRange = getBlockRangeBetweenBundles(
       historicalBundle.proposal,
       bundle.proposal,
-    ).filter(({ chainId }) => chainId !== CHAIN_IDs.LENS); // FIXME: This is a workaround to avoid instantiating Lens spoke pool client
+    );
     const latestBlocks =
       await this.getLatestBlockForBundleChains(lookbackRange);
     const spokeClients = await this.getSpokeClientsForLookbackBlockRange(
