@@ -147,36 +147,21 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
     });
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
-    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
-      storedEvents.deposits,
-      SaveQueryResultType.Inserted,
-    );
-    const newInsertedFills = indexerDatabaseUtils.filterSaveQueryResults(
-      storedEvents.fills,
-      SaveQueryResultType.Inserted,
-    );
-    const updatedFills = indexerDatabaseUtils.filterSaveQueryResults(
-      storedEvents.fills,
-      SaveQueryResultType.Updated,
-    );
-
-    // Fetch transaction receipts associated only to new inserted events:
-    // (1) deposits for getting the swap before bridge events, (2) fills for getting the gas fee
+    // Fetch transaction receipts associated to deposits for getting the swap before bridge events, and to fills for getting the gas fee
     const transactionReceipts = await this.getTransactionReceiptsForEvents([
-      ...newInsertedDeposits,
-      ...newInsertedFills,
-      ...updatedFills,
+      ...storedEvents.deposits.map((d) => d.data),
+      ...storedEvents.fills.map((f) => f.data),
     ]);
 
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
-      newInsertedDeposits,
+      storedEvents.deposits.map((d) => d.data),
       transactionReceipts,
       lastFinalisedBlock,
     );
 
     const fillCallsFailedPairs =
       await this.matchFillEventsWithCallsFailedEvents(
-        [...newInsertedFills, ...updatedFills],
+        storedEvents.fills.map((f) => f.data),
         transactionReceipts,
         lastFinalisedBlock,
       );
@@ -196,6 +181,10 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       ),
     ]);
     const timeToDeleteDeposits = performance.now();
+    const newInsertedDeposits = indexerDatabaseUtils.filterSaveQueryResults(
+      storedEvents.deposits,
+      SaveQueryResultType.Inserted,
+    );
     await this.updateNewDepositsWithIntegratorId(newInsertedDeposits);
 
     //FIXME: Remove performance timing
