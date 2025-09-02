@@ -1,7 +1,7 @@
 import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
-import { WebhookFactory, WebhookTypes } from "@repo/webhooks";
+import { WebhookFactory } from "@repo/webhooks";
 
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";

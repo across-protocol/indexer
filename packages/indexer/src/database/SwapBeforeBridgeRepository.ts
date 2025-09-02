@@ -26,6 +26,7 @@ export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepositor
       entity.acrossInputAmount = event.args.acrossInputAmount.toString();
       entity.acrossOutputAmount = event.args.acrossOutputAmount.toString();
       entity.exchange = event.args.exchange;
+      entity.exchangeCalldata = event.args.exchangeCalldata;
       entity.blockHash = event.blockHash;
       entity.blockNumber = event.blockNumber;
       entity.transactionHash = event.transactionHash;
