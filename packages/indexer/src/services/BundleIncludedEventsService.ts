@@ -110,7 +110,17 @@ export class BundleIncludedEventsService extends RepeatableTask {
     }
 
     for (const bundle of executedBundles) {
-      await this.getEventsIncludedInBundle(bundle);
+      try {
+        await this.getEventsIncludedInBundle(bundle);
+      } catch (error) {
+        this.logger.error({
+          at: "BundleIncludedEventsService#assignSpokePoolEventsToExecutedBundles",
+          message: "Error in BundleIncludedEventsService",
+          notificationPath: "across-indexer-error",
+          errorJson: JSON.stringify(error),
+          error,
+        });
+      }
     }
   }
 
