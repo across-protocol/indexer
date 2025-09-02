@@ -1,4 +1,5 @@
 import { Logger } from "winston";
+import { ethers } from "ethers";
 import { PUBLIC_NETWORKS } from "@across-protocol/constants";
 import { providers, utils, arch } from "@across-protocol/sdk";
 
@@ -80,8 +81,14 @@ export class RetryProvidersFactory {
     providerEnvs: RetryProviderConfig,
     providerUrls: string[],
   ): providers.RetryProvider {
+    const connectionInfo = this.getConnectionInfo(
+      providerUrls,
+      chainId,
+      providerEnvs,
+    );
+
     return new providers.RetryProvider(
-      providerUrls.map((url) => [url, chainId]),
+      connectionInfo,
       chainId,
       providerEnvs.nodeQuorumThreshold,
       providerEnvs.retries,
@@ -146,8 +153,14 @@ export class RetryProvidersFactory {
       providerCacheTtl = retryProviderEnvs.providerCacheTtl;
     }
 
+    const connectionInfo = this.getConnectionInfo(
+      providerUrls,
+      chainId,
+      retryProviderEnvs,
+    );
+
     return new providers.RetryProvider(
-      providerUrls.map((url) => [url, chainId]),
+      connectionInfo,
       chainId,
       retryProviderEnvs.nodeQuorumThreshold,
       retryProviderEnvs.retries,
@@ -161,5 +174,61 @@ export class RetryProvidersFactory {
       providerCacheTtl,
       this.logger,
     );
+  }
+
+  private createRpcRateLimitedCallback(retries: number) {
+    const logEveryNRateLimitErrors = 100;
+    let rateLimitLogCounter = 0;
+
+    return ({
+        nodeMaxConcurrency,
+        logger,
+      }: {
+        nodeMaxConcurrency: number;
+        logger: Logger;
+      }) =>
+      async (attempt: number, url: string): Promise<boolean> => {
+        const baseDelay = 1000 * Math.pow(2, attempt);
+        const delayMs = baseDelay + baseDelay * Math.random();
+
+        if (logger && rateLimitLogCounter++ % logEveryNRateLimitErrors === 0) {
+          logger.debug({
+            at: "ProviderUtils#rpcRateLimited",
+            message: `Got rate-limit (429) response on attempt ${attempt}.`,
+            rpc: url,
+            retryAfter: `${delayMs} ms`,
+            workers: nodeMaxConcurrency,
+          });
+        }
+        await utils.delay(delayMs);
+
+        return attempt < retries;
+      };
+  }
+
+  private getConnectionInfo(
+    providerUrls: string[],
+    chainId: number,
+    retryProviderEnvs: RetryProviderConfig,
+  ): [ethers.utils.ConnectionInfo, number][] {
+    const rpcRateLimited = this.createRpcRateLimitedCallback(
+      retryProviderEnvs.retries,
+    );
+
+    return providerUrls.map((url): [ethers.utils.ConnectionInfo, number] => {
+      const config = {
+        url,
+        timeout: retryProviderEnvs.timeout,
+        allowGzip: true,
+        throttleSlotInterval: 1,
+        throttleCallback: rpcRateLimited({
+          nodeMaxConcurrency: retryProviderEnvs.maxConcurrency,
+          logger: this.logger,
+        }),
+        errorPassThrough: true,
+      };
+
+      return [config, chainId];
+    });
   }
 }

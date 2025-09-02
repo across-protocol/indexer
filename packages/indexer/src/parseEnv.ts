@@ -41,12 +41,13 @@ export type ProviderConfig = [providerUrl: string, chainId: number];
 
 export type RetryProviderConfig = {
   providerCacheNamespace: string;
+  providerCacheTtl?: number;
   maxConcurrency: number;
   pctRpcCallsLogged: number;
   standardTtlBlockDistance?: number;
   noTtlBlockDistance: number;
-  providerCacheTtl?: number;
   nodeQuorumThreshold: number;
+  timeout: number;
   retries: number;
   retryDelay: number;
 };
@@ -134,6 +135,9 @@ export function parseProvidersUrls() {
 export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
   const providerCacheNamespace =
     process.env.PROVIDER_CACHE_NAMESPACE || "indexer_provider_cache";
+  const providerCacheTtl = process.env.PROVIDER_CACHE_TTL
+    ? Number(process.env.PROVIDER_CACHE_TTL)
+    : undefined;
   const maxConcurrency = Number(
     process.env[`NODE_MAX_CONCURRENCY_${chainId}`] ||
       process.env.NODE_MAX_CONCURRENCY ||
@@ -144,11 +148,13 @@ export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
       process.env.NODE_PCT_RPC_CALLS_LOGGED ||
       "0",
   );
-  const providerCacheTtl = process.env.PROVIDER_CACHE_TTL
-    ? Number(process.env.PROVIDER_CACHE_TTL)
-    : undefined;
   const nodeQuorumThreshold = Number(
     process.env[`NODE_QUORUM_${chainId}`] || process.env.NODE_QUORUM || "1",
+  );
+  const timeout = Number(
+    process.env[`NODE_TIMEOUT_${chainId}`] ||
+      process.env.NODE_TIMEOUT ||
+      "60000", // 60 seconds
   );
   const retries = Number(
     process.env[`NODE_RETRIES_${chainId}`] || process.env.NODE_RETRIES || "0",
@@ -168,10 +174,11 @@ export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
 
   return {
     providerCacheNamespace,
+    providerCacheTtl,
     maxConcurrency,
     pctRpcCallsLogged,
-    providerCacheTtl,
     nodeQuorumThreshold,
+    timeout,
     retries,
     retryDelay,
     noTtlBlockDistance,

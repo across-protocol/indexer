@@ -309,7 +309,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
           entities.RelayedRootBundle,
           eventsChunk,
-          ["chainId", "rootBundleId"],
+          ["chainId", "rootBundleId", "transactionHash"],
           ["transactionHash"],
         ),
       ),
@@ -353,7 +353,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
           entities.ExecutedRelayerRefundRoot,
           eventsChunk,
-          ["chainId", "rootBundleId", "leafId"],
+          ["chainId", "rootBundleId", "leafId", "transactionHash"],
           ["transactionHash"],
         ),
       ),

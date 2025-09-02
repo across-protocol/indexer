@@ -7,9 +7,10 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_relayedRootBundle_chainId_rootBundleId", [
+@Unique("UK_rrb_chainId_rootBundleId_txn", [
   "chainId",
   "rootBundleId",
+  "transactionHash",
 ])
 export class RelayedRootBundle {
   @PrimaryGeneratedColumn()
