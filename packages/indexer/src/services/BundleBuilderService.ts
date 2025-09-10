@@ -439,11 +439,13 @@ export class BundleBuilderService extends RepeatableTask {
       false,
     );
     // Build pool rebalance root and resolve the leaves
-    const { leaves } = buildPoolRebalanceRoot(
+    const { leaves } = await buildPoolRebalanceRoot(
       bundleRangeForBundleClient,
       bundleData,
       hubPoolClient,
       configStoreClient,
+      bundleDataClient,
+      spokeClients,
     );
     // Map the leaves to the desired format
     return leaves.map((leaf) => {

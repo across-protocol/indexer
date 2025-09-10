@@ -166,6 +166,8 @@ export function buildPoolRebalanceRoot(
   bundleData: interfaces.LoadDataReturnValue,
   hubPoolClient: clients.HubPoolClient,
   configStoreClient: clients.AcrossConfigStoreClient,
+  bundleDataClient: clients.BundleDataClient.BundleDataClient,
+  spokePoolClients: interfaces.SpokePoolClientsByChain,
 ) {
   return clients.BundleDataClient._buildPoolRebalanceRoot(
     ranges[0]![1]!, // Mainnet is always the first chain. Second element is the end block
@@ -178,6 +180,8 @@ export function buildPoolRebalanceRoot(
     {
       hubPoolClient,
       configStoreClient,
+      bundleDataClient,
+      spokePoolClients,
     },
   );
 }
