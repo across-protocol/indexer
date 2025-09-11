@@ -44,35 +44,12 @@ export class SpokePoolProcessor {
     // Update relay hash info records related to deleted deposits
     await this.processDeletedDeposits(deletedDeposits);
 
-    const newDeposits = dbUtils.filterSaveQueryResults(
-      events.deposits,
-      SaveQueryResultType.Inserted,
-    );
-
-    const newFills = dbUtils.filterSaveQueryResults(
-      events.fills,
-      SaveQueryResultType.Inserted,
-    );
-    const updatedFills = dbUtils.filterSaveQueryResults(
-      events.fills,
-      SaveQueryResultType.Updated,
-    );
-
-    const newSlowFillRequests = dbUtils.filterSaveQueryResults(
-      events.slowFillRequests,
-      SaveQueryResultType.Inserted,
-    );
-    const updatedSlowFillRequests = dbUtils.filterSaveQueryResults(
-      events.slowFillRequests,
-      SaveQueryResultType.Updated,
-    );
-
     // Assign events to relay hash info
     const timeToAssignSpokeEventsToRelayHashInfoStart = performance.now();
     await this.assignSpokeEventsToRelayHashInfo({
-      deposits: newDeposits,
-      fills: [...newFills, ...updatedFills],
-      slowFillRequests: [...newSlowFillRequests, ...updatedSlowFillRequests],
+      deposits: events.deposits.map((d) => d.data),
+      fills: events.fills.map((f) => f.data),
+      slowFillRequests: events.slowFillRequests.map((s) => s.data),
       fillsGasFee,
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
@@ -81,62 +58,9 @@ export class SpokePoolProcessor {
 
     // Update expired deposits
     const timeToUpdateExpiredRelaysStart = performance.now();
-    const expiredDeposits = await this.updateExpiredRelays();
+    await this.updateExpiredRelays();
     const timeToUpdateExpiredRelaysEnd = performance.now();
     const end = performance.now();
-
-    // Send webhook notifications
-    // Notify webhook of new deposits
-    newDeposits.forEach((deposit) => {
-      this.webhookWriteFn?.({
-        type: WebhookTypes.DepositStatus,
-        event: {
-          depositId: deposit.depositId,
-          originChainId: deposit.originChainId,
-          depositTxHash: deposit.transactionHash,
-          status: RelayStatus.Unfilled,
-        },
-      });
-    });
-
-    // Notify webhook of new slow fill requests
-    newSlowFillRequests.forEach((deposit) => {
-      this.webhookWriteFn?.({
-        type: WebhookTypes.DepositStatus,
-        event: {
-          depositId: deposit.depositId,
-          originChainId: deposit.originChainId,
-          depositTxHash: deposit.transactionHash,
-          status: RelayStatus.SlowFillRequested,
-        },
-      });
-    });
-
-    // Notify webhook of new fills
-    newFills.forEach((fill) => {
-      this.webhookWriteFn?.({
-        type: WebhookTypes.DepositStatus,
-        event: {
-          depositId: fill.depositId,
-          originChainId: fill.originChainId,
-          depositTxHash: fill.transactionHash,
-          status: RelayStatus.Filled,
-        },
-      });
-    });
-
-    // Notify webhook of expired deposits
-    expiredDeposits.forEach((deposit) => {
-      this.webhookWriteFn?.({
-        type: WebhookTypes.DepositStatus,
-        event: {
-          depositId: deposit.depositId,
-          originChainId: deposit.originChainId,
-          depositTxHash: deposit.depositTxHash,
-          status: RelayStatus.Expired,
-        },
-      });
-    });
 
     this.logger.debug({
       at: "Indexer#SpokePoolProcessor#process",
@@ -622,5 +546,65 @@ export class SpokePoolProcessor {
         ),
       ),
     );
+  }
+
+  private notifyWebhooks(
+    deposits: entities.V3FundsDeposited[],
+    fills: entities.FilledV3Relay[],
+    slowFillRequests: entities.RequestedV3SlowFill[],
+    expiredDeposits: entities.RelayHashInfo[],
+  ) {
+    // Send webhook notifications
+    // Notify webhook of new deposits
+    deposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.transactionHash,
+          status: RelayStatus.Unfilled,
+        },
+      });
+    });
+
+    // Notify webhook of new slow fill requests
+    slowFillRequests.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.transactionHash,
+          status: RelayStatus.SlowFillRequested,
+        },
+      });
+    });
+
+    // Notify webhook of new fills
+    fills.forEach((fill) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: fill.depositId,
+          originChainId: fill.originChainId,
+          depositTxHash: fill.transactionHash,
+          status: RelayStatus.Filled,
+        },
+      });
+    });
+
+    // Notify webhook of expired deposits
+    expiredDeposits.forEach((deposit) => {
+      this.webhookWriteFn?.({
+        type: WebhookTypes.DepositStatus,
+        event: {
+          depositId: deposit.depositId,
+          originChainId: deposit.originChainId,
+          depositTxHash: deposit.depositTxHash,
+          status: RelayStatus.Expired,
+        },
+      });
+    });
   }
 }

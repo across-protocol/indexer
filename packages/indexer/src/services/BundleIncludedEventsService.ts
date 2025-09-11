@@ -188,11 +188,14 @@ export class BundleIncludedEventsService extends RepeatableTask {
     );
 
     // Build pool rebalance root and check it matches with the root of the stored bundle
-    const poolRebalanceRoot = buildPoolRebalanceRoot(
+    const poolRebalanceRoot = await buildPoolRebalanceRoot(
+      bundle.proposal.blockNumber,
       bundleBlockRanges,
       bundleData,
       this.hubPoolClient,
       this.configStoreClient,
+      bundleDataClient,
+      spokeClients,
     );
     if (bundle.poolRebalanceRoot !== poolRebalanceRoot.tree.getHexRoot()) {
       logger.warn({

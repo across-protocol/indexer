@@ -162,13 +162,16 @@ export function convertProposalRangeResultToProposalRange(
 }
 
 export function buildPoolRebalanceRoot(
+  latestMainnetBlock: number,
   ranges: number[][],
   bundleData: interfaces.LoadDataReturnValue,
   hubPoolClient: clients.HubPoolClient,
   configStoreClient: clients.AcrossConfigStoreClient,
+  bundleDataClient: clients.BundleDataClient.BundleDataClient,
+  spokePoolClients: interfaces.SpokePoolClientsByChain,
 ) {
   return clients.BundleDataClient._buildPoolRebalanceRoot(
-    ranges[0]![1]!, // Mainnet is always the first chain. Second element is the end block
+    latestMainnetBlock,
     ranges[0]![1]!, // Mainnet is always the first chain. Second element is the end block
     bundleData.bundleDepositsV3,
     bundleData.bundleFillsV3,
@@ -178,6 +181,8 @@ export function buildPoolRebalanceRoot(
     {
       hubPoolClient,
       configStoreClient,
+      bundleDataClient,
+      spokePoolClients,
     },
   );
 }
