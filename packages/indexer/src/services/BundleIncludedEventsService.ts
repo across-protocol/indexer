@@ -189,6 +189,7 @@ export class BundleIncludedEventsService extends RepeatableTask {
 
     // Build pool rebalance root and check it matches with the root of the stored bundle
     const poolRebalanceRoot = await buildPoolRebalanceRoot(
+      bundle.proposal.blockNumber,
       bundleBlockRanges,
       bundleData,
       this.hubPoolClient,
