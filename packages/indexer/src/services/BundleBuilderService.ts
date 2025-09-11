@@ -440,6 +440,7 @@ export class BundleBuilderService extends RepeatableTask {
     );
     // Build pool rebalance root and resolve the leaves
     const { leaves } = await buildPoolRebalanceRoot(
+      bundleRangeForBundleClient[0]![1]!, // Mainnet is always the first chain. Second element is the end block
       bundleRangeForBundleClient,
       bundleData,
       hubPoolClient,
