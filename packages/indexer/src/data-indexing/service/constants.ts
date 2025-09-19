@@ -47,7 +47,7 @@ export function getFinalisedBlockBufferDistance(chainId: number) {
 const indexingDelaySeconds: Record<number, number> = {
   // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
-  [CHAIN_IDs.ARBITRUM]: 2,
+  [CHAIN_IDs.ARBITRUM]: 3,
   [CHAIN_IDs.BASE]: 4,
   [CHAIN_IDs.BLAST]: 4,
   [CHAIN_IDs.BSC]: 1,
