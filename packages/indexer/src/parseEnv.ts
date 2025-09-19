@@ -29,6 +29,11 @@ export type Config = {
    * If this is not set, then the default hardcoded values will be used.
    */
   indexingDelaySeconds?: number;
+  /**
+   * Override the delay between runs in seconds for the BundleIncludedEventsService.
+   * If this is not set, defaults to 60 seconds.
+   */
+  bundleEventsServiceDelaySeconds?: number;
 };
 
 export type RedisConfig = {
@@ -249,6 +254,11 @@ export function envToConfig(env: Env): Config {
     ? parseInt(env.INDEXING_DELAY_SECONDS)
     : undefined;
 
+  const bundleIncludedEventsServiceDelaySeconds =
+    env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
+      ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
+      : 60;
+
   return {
     redisConfig,
     postgresConfig,
@@ -265,5 +275,6 @@ export function envToConfig(env: Env): Config {
     enablePriceWorker,
     bundleEventsServiceStartBlockNumber,
     indexingDelaySeconds,
+    bundleEventsServiceDelaySeconds: bundleIncludedEventsServiceDelaySeconds,
   };
 }
