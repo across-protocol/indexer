@@ -47,13 +47,13 @@ export function getFinalisedBlockBufferDistance(chainId: number) {
 const indexingDelaySeconds: Record<number, number> = {
   // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
-  [CHAIN_IDs.ARBITRUM]: 2,
+  [CHAIN_IDs.ARBITRUM]: 3,
   [CHAIN_IDs.BASE]: 4,
   [CHAIN_IDs.BLAST]: 4,
   [CHAIN_IDs.BSC]: 1,
   [CHAIN_IDs.HYPEREVM]: 4,
   [CHAIN_IDs.INK]: 4,
-  [CHAIN_IDs.LENS]: 3,
+  [CHAIN_IDs.LENS]: 8,
   [CHAIN_IDs.LISK]: 3,
   [CHAIN_IDs.LINEA]: 6,
   [CHAIN_IDs.MAINNET]: 10,
@@ -66,7 +66,7 @@ const indexingDelaySeconds: Record<number, number> = {
   [CHAIN_IDs.SONEIUM]: 4,
   [CHAIN_IDs.UNICHAIN]: 4,
   [CHAIN_IDs.WORLD_CHAIN]: 4,
-  [CHAIN_IDs.ZK_SYNC]: 3,
+  [CHAIN_IDs.ZK_SYNC]: 8,
   [CHAIN_IDs.ZORA]: 4,
   // BOBA is disabled
   [CHAIN_IDs.BOBA]: 0,
