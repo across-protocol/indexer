@@ -31,7 +31,7 @@ export type Config = {
   indexingDelaySeconds?: number;
   /**
    * Override the delay between runs in seconds for the BundleIncludedEventsService.
-   * If this is not set, defaults to 60 seconds.
+   * If this is not set, defaults to the hardcoded value.
    */
   bundleEventsServiceDelaySeconds?: number;
 };
@@ -257,7 +257,7 @@ export function envToConfig(env: Env): Config {
   const bundleIncludedEventsServiceDelaySeconds =
     env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
       ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
-      : 60;
+      : 30;
 
   return {
     redisConfig,
