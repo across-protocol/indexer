@@ -64,7 +64,9 @@ export class BundleServicesManager {
       config: this.config,
       refundedDepositsStatusService,
     });
-    return this.bundleIncludedEventsService.start(10);
+    return this.bundleIncludedEventsService.start(
+      this.config.bundleEventsServiceDelaySeconds!,
+    );
   }
 
   private startBundleBuilderService() {
