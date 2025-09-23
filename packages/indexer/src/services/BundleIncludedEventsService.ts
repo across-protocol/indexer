@@ -17,6 +17,7 @@ import {
   buildPoolRebalanceRoot,
   getBlockRangeBetweenBundles,
   getBundleBlockRanges,
+  DEFAULT_ARWEAVE_GATEWAY,
 } from "../utils/bundleBuilderUtils";
 import { Config } from "../parseEnv";
 import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";
@@ -37,6 +38,7 @@ export type BundleConfig = {
 export class BundleIncludedEventsService extends RepeatableTask {
   private hubPoolClient: across.clients.HubPoolClient;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
+  private arweaveClient: across.caching.ArweaveClient;
 
   constructor(private readonly config: BundleConfig) {
     super(config.logger, "BundleIncludedEventsService");
@@ -90,9 +92,31 @@ export class BundleIncludedEventsService extends RepeatableTask {
   }
 
   protected async initialize(): Promise<void> {
-    const { hubPoolClientFactory } = this.config;
+    const { hubPoolClientFactory, logger } = this.config;
     this.hubPoolClient = hubPoolClientFactory.get(this.config.hubChainId);
     this.configStoreClient = this.hubPoolClient.configStoreClient;
+
+    // Initialize ArweaveClient for read-only operations
+    // Using dummy JWK to prevent accidental writes
+    const dummyJWK = {
+      kty: "RSA",
+      e: "AQAB",
+      n: "0",
+      d: "0",
+      p: "0",
+      q: "0",
+      dp: "0",
+      dq: "0",
+      qi: "0",
+    };
+
+    this.arweaveClient = new across.caching.ArweaveClient(
+      dummyJWK,
+      logger,
+      DEFAULT_ARWEAVE_GATEWAY.url,
+      DEFAULT_ARWEAVE_GATEWAY.protocol,
+      DEFAULT_ARWEAVE_GATEWAY.port,
+    );
   }
 
   private async assignSpokePoolEventsToExecutedBundles(): Promise<void> {
@@ -157,20 +181,33 @@ export class BundleIncludedEventsService extends RepeatableTask {
       message: `Updating spoke clients for lookback range for bundle ${bundle.id}`,
       lookbackRange,
     });
-    const startTime = Date.now();
-    await Promise.all(
-      Object.values(spokeClients).map((client) => client.update()),
-    );
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    logger.debug({
-      at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
-      message: `Updated spoke clients in ${duration / 1000} seconds for bundle ${bundle.id}`,
-    });
+
+    // Try to update spoke clients, but allow fallback to Arweave if this fails
+    let spokeClientsUpdated = false;
+    try {
+      const startTime = Date.now();
+      await Promise.all(
+        Object.values(spokeClients).map((client) => client.update()),
+      );
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      logger.debug({
+        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
+        message: `Updated spoke clients in ${duration / 1000} seconds for bundle ${bundle.id}`,
+      });
+      spokeClientsUpdated = true;
+    } catch (error) {
+      logger.warn({
+        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
+        message: `Failed to update spoke clients for bundle ${bundle.id}. Will attempt Arweave fallback.`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      spokeClientsUpdated = false;
+    }
     const clients = {
       hubPoolClient: this.hubPoolClient,
       configStoreClient: this.configStoreClient,
-      arweaveClient: null as unknown as across.caching.ArweaveClient, // FIXME: This is a hack to avoid instantiating the Arweave client
+      arweaveClient: this.arweaveClient,
     };
     // Instantiate bundle data client and reconstruct bundle
     const bundleDataClient =
@@ -182,38 +219,154 @@ export class BundleIncludedEventsService extends RepeatableTask {
       );
     // Get bundle ranges as an array of [startBlock, endBlock] for each chain
     const bundleBlockRanges = getBundleBlockRanges(bundle);
-    const bundleData = await bundleDataClient.loadData(
-      bundleBlockRanges,
-      spokeClients,
-    );
 
-    // Build pool rebalance root and check it matches with the root of the stored bundle
-    const poolRebalanceRoot = await buildPoolRebalanceRoot(
-      bundle.proposal.blockNumber,
+    // Try reconstructing bundle with blockchain data first, then Arweave fallback
+    // Skip blockchain reconstruction if spoke clients failed to update
+    const reconstructionResult = await this.attemptBundleReconstruction(
+      bundle,
       bundleBlockRanges,
-      bundleData,
-      this.hubPoolClient,
-      this.configStoreClient,
       bundleDataClient,
       spokeClients,
+      spokeClientsUpdated,
     );
-    if (bundle.poolRebalanceRoot !== poolRebalanceRoot.tree.getHexRoot()) {
-      logger.warn({
-        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
-        message: `Mismatching roots. Skipping bundle ${bundle.id}.`,
-      });
-      return;
-    } else {
-      const storedEvents = await bundleRepository.storeBundleEvents(
-        bundleData,
-        bundle.id,
+
+    if (!reconstructionResult.success) {
+      return; // Both attempts failed
+    }
+
+    // Store the bundle events
+    const storedEvents = await bundleRepository.storeBundleEvents(
+      reconstructionResult.bundleData,
+      bundle.id,
+    );
+    await bundleRepository.updateBundleEventsAssociatedFlag(bundle.id);
+    logger.debug({
+      at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
+      message: `Stored bundle events for bundle ${bundle.id}`,
+      storedEvents,
+    });
+  }
+
+  /**
+   * Attempts to reconstruct bundle data using blockchain first, then Arweave fallback
+   */
+  private async attemptBundleReconstruction(
+    bundle: entities.Bundle,
+    bundleBlockRanges: number[][],
+    bundleDataClient: across.clients.BundleDataClient.BundleDataClient,
+    spokeClients: Record<number, across.clients.SpokePoolClient>,
+    spokeClientsUpdated: boolean,
+  ): Promise<{ success: true; bundleData: any } | { success: false }> {
+    // First attempt: blockchain data (only if spoke clients were updated successfully)
+    if (spokeClientsUpdated) {
+      const blockchainResult = await this.reconstructBundleWithSource(
+        bundle,
+        bundleBlockRanges,
+        bundleDataClient,
+        spokeClients,
+        false, // useArweave = false
+        "blockchain",
       );
-      await bundleRepository.updateBundleEventsAssociatedFlag(bundle.id);
-      logger.debug({
-        at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
-        message: `Stored bundle events for bundle ${bundle.id}`,
-        storedEvents,
+
+      if (blockchainResult.success) {
+        return blockchainResult;
+      }
+
+      this.logger.warn({
+        at: "Indexer#BundleIncludedEventsService#attemptBundleReconstruction",
+        message: `Blockchain reconstruction failed for bundle ${bundle.id}. Trying Arweave fallback.`,
       });
+    } else {
+      // Skip blockchain reconstruction since spoke clients failed to update
+      this.logger.info({
+        at: "Indexer#BundleIncludedEventsService#attemptBundleReconstruction",
+        message: `Skipping blockchain reconstruction for bundle ${bundle.id} due to spoke client update failure. Using Arweave fallback.`,
+      });
+    }
+
+    // Arweave fallback attempt
+    // Note: Arweave reconstruction doesn't rely on spoke clients being updated
+    // since it fetches data directly from Arweave storage
+    const arweaveResult = await this.reconstructBundleWithSource(
+      bundle,
+      bundleBlockRanges,
+      bundleDataClient,
+      spokeClients,
+      true, // useArweave = true
+      "arweave",
+    );
+
+    if (!arweaveResult.success) {
+      this.logger.error({
+        at: "Indexer#BundleIncludedEventsService#attemptBundleReconstruction",
+        message: `Both blockchain and Arweave reconstruction failed for bundle ${bundle.id}`,
+        notificationPath: "across-indexer-error",
+      });
+    }
+
+    return arweaveResult;
+  }
+
+  private async reconstructBundleWithSource(
+    bundle: entities.Bundle,
+    bundleBlockRanges: number[][],
+    bundleDataClient: across.clients.BundleDataClient.BundleDataClient,
+    spokeClients: Record<number, across.clients.SpokePoolClient>,
+    useArweave: boolean,
+    sourceName: string,
+  ): Promise<{ success: true; bundleData: any } | { success: false }> {
+    this.logger.debug({
+      at: "Indexer#BundleIncludedEventsService#reconstructBundleWithSource",
+      message: `Attempting bundle ${bundle.id} reconstruction using ${sourceName} data`,
+    });
+
+    try {
+      const bundleData = await bundleDataClient.loadData(
+        bundleBlockRanges,
+        spokeClients,
+        useArweave,
+      );
+
+      // Skip root validation for Arweave reconstruction since there could've been changes in the
+      // BundleDataClient logic that makes it impossible to get matching roots
+      if (useArweave) {
+        this.logger.debug({
+          at: "Indexer#BundleIncludedEventsService#reconstructBundleWithSource",
+          message: `Skipping root validation for Arweave reconstruction of bundle ${bundle.id}`,
+        });
+        return { success: true, bundleData };
+      }
+
+      // Perform root validation for blockchain reconstruction
+      const poolRebalanceRoot = await buildPoolRebalanceRoot(
+        bundle.proposal.blockNumber,
+        bundleBlockRanges,
+        bundleData,
+        this.hubPoolClient,
+        this.configStoreClient,
+        bundleDataClient,
+        spokeClients,
+      );
+
+      const rootMatches =
+        bundle.poolRebalanceRoot === poolRebalanceRoot.tree.getHexRoot();
+
+      if (rootMatches) {
+        return { success: true, bundleData };
+      } else {
+        this.logger.warn({
+          at: "Indexer#BundleIncludedEventsService#reconstructBundleWithSource",
+          message: `Mismatching roots. Skipping bundle ${bundle.id}.`,
+        });
+        return { success: false };
+      }
+    } catch (error) {
+      this.logger.warn({
+        at: "Indexer#BundleIncludedEventsService#reconstructBundleWithSource",
+        message: `Error during ${sourceName} reconstruction for bundle ${bundle.id}`,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { success: false };
     }
   }
 
@@ -285,8 +438,12 @@ export class BundleIncludedEventsService extends RepeatableTask {
     lookbackRange: utils.ProposalRangeResult[],
   ): Promise<Record<number, number>> {
     const entries = await Promise.all(
-      lookbackRange.map(async ({ chainId }) => {
+      lookbackRange.map(async ({ chainId, startBlock, endBlock }) => {
         let latestBlock: number;
+        // If chain is disabled, just return the end block as the latest block
+        if (startBlock === endBlock) {
+          return [chainId, endBlock];
+        }
         if (across.utils.chainIsEvm(chainId)) {
           const provider =
             this.config.retryProvidersFactory.getProviderForChainId(

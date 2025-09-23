@@ -5,6 +5,13 @@ import { BundleRepository } from "../database/BundleRepository";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { getDeployedBlockNumber } from "@across-protocol/contracts";
 
+// Arweave gateway configuration
+export const DEFAULT_ARWEAVE_GATEWAY = {
+  url: "arweave.net",
+  port: 443,
+  protocol: "https" as const,
+};
+
 export type ProposalRange = Pick<
   entities.ProposedRootBundle,
   "bundleEvaluationBlockNumbers" | "chainIds"
