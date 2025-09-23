@@ -389,10 +389,20 @@ export class BundleIncludedEventsService extends RepeatableTask {
         const latestBlock = latestBlocks[chainId]!;
         const cappedEndBlock = Math.min(endBlockWithBuffer, latestBlock);
         const contractName = chainIsSvm ? "SvmSpoke" : "SpokePool";
-        const deployedBlockNumber = getDeployedBlockNumber(
-          contractName,
-          chainId,
-        );
+        let deployedBlockNumber: number;
+
+        try {
+          deployedBlockNumber = getDeployedBlockNumber(contractName, chainId);
+        } catch (error) {
+          this.logger.debug({
+            at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
+            message: `Could not get deployed block number for chain ${chainId}`,
+            startBlock,
+            cappedEndBlock,
+          });
+          return [chainId, null];
+        }
+
         this.logger.debug({
           at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
           message: `Instantiate SpokePool client for chain ${chainId}`,
