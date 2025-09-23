@@ -81,7 +81,7 @@ export class DepositsService {
     const repo = this.db.getRepository(entities.V3FundsDeposited);
     const queryBuilder = repo
       .createQueryBuilder("deposit")
-      .leftJoinAndSelect(
+      .innerJoinAndSelect(
         entities.RelayHashInfo,
         "rhi",
         "rhi.depositEventId = deposit.id",
