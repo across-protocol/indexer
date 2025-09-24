@@ -21,8 +21,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/constants": "^3.1.77",
-    "@across-protocol/contracts": "^4.1.8",
+    "@across-protocol/constants": "^3.1.79",
+    "@across-protocol/contracts": "^4.1.9",
     "@across-protocol/sdk": "^4.3.63",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",
