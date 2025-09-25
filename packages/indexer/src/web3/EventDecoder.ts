@@ -1,6 +1,10 @@
 import { ethers } from "ethers";
 import { MulticallHandler__factory } from "@across-protocol/contracts";
-import { SwapBeforeBridgeEvent, CallsFailedEvent } from "./model/events";
+import {
+  SwapBeforeBridgeEvent,
+  CallsFailedEvent,
+  TerminalTransferEvent,
+} from "./model/events";
 import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
@@ -42,6 +46,24 @@ export class EventDecoder {
       receipt,
       callsFailedEventTopic,
       MulticallHandler__factory.abi,
+    );
+
+    return events;
+  }
+
+  static decodeTerminalTransferEvents(
+    receipt: ethers.providers.TransactionReceipt,
+  ) {
+    const transferEventTopic =
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    const transferABI = [
+      "event Transfer(address indexed from, address indexed to, uint256 value)",
+    ];
+
+    const events: TerminalTransferEvent[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      transferEventTopic,
+      transferABI,
     );
 
     return events;

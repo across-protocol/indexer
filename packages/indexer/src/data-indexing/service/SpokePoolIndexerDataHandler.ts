@@ -26,6 +26,7 @@ import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
 import { EventDecoder } from "../../web3/EventDecoder";
+import { matchFillEventsWithTerminalTransfers } from "../../utils/terminalTransferUtils";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -166,6 +167,27 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       );
 
+    // Match fill events with terminal transfer events
+    const fillTerminalTransferPairs = matchFillEventsWithTerminalTransfers(
+      storedEvents.fills.map((f) => f.data),
+      transactionReceipts,
+    );
+
+    if (fillTerminalTransferPairs.length > 0) {
+      this.logger.info({
+        at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
+        message: "Found fill transactions with terminal transfer destinations",
+        count: fillTerminalTransferPairs.length,
+        pairs: fillTerminalTransferPairs.map((pair) => ({
+          fillEventId: pair.fill.id,
+          transactionHash: pair.fill.transactionHash,
+          destinationChainId: pair.fill.destinationChainId,
+          outputAmount: pair.fill.outputAmount,
+          terminalTransferChainId: pair.terminalTransferChainId,
+        })),
+      });
+    }
+
     //FIXME: Remove performance timing
     const timeToStoreEvents = performance.now();
 
@@ -195,6 +217,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       deletedDeposits,
       depositSwapPairs,
       fillCallsFailedPairs,
+      fillTerminalTransferPairs,
       fillsGasFee,
     );
 

@@ -17,6 +17,7 @@ import {
   DepositSwapPair,
   FillCallsFailedPair,
 } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import { FillTerminalTransferPair } from "../utils/terminalTransferUtils";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
 import { getDbLockKeyForDeposit } from "../utils";
 
@@ -39,6 +40,7 @@ export class SpokePoolProcessor {
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
     fillCallsFailedPairs: FillCallsFailedPair[],
+    fillTerminalTransferPairs: FillTerminalTransferPair[],
     fillsGasFee?: Record<string, bigint | undefined>,
   ) {
     // Update relay hash info records related to deleted deposits
@@ -54,6 +56,9 @@ export class SpokePoolProcessor {
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     await this.assignCallsFailedEventToRelayHashInfo(fillCallsFailedPairs);
+    await this.assignTerminalTransferEventToRelayHashInfo(
+      fillTerminalTransferPairs,
+    );
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
     // Update expired deposits
@@ -542,6 +547,28 @@ export class SpokePoolProcessor {
           { fillEventId: fillCallsFailedPair.fill.id },
           {
             callsFailedEventId: fillCallsFailedPair.callsFailed.id,
+          },
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Assigns terminal transfer information to the relay hash info
+   */
+  private async assignTerminalTransferEventToRelayHashInfo(
+    fillTerminalTransferPairs: FillTerminalTransferPair[],
+  ) {
+    const relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+    await Promise.all(
+      fillTerminalTransferPairs.map((fillTerminalTransferPair) =>
+        relayHashInfoRepository.update(
+          { fillEventId: fillTerminalTransferPair.fill.id },
+          {
+            terminalTransferChainId:
+              fillTerminalTransferPair.terminalTransferChainId,
           },
         ),
       ),
