@@ -5,13 +5,13 @@ export class RelayHashInfo1758762765600 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" ADD "terminalTransferChainId" bigint`,
+      `ALTER TABLE "relay_hash_info" ADD "actionsTargetChainId" bigint`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "relay_hash_info" DROP COLUMN "terminalTransferChainId"`,
+      `ALTER TABLE "relay_hash_info" DROP COLUMN "actionsTargetChainId"`,
     );
   }
 }

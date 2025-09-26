@@ -142,7 +142,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       deletedDeposits,
       [], // swapBeforeBridge events
       [], // callsFailed events
-      [], // fillTerminalTransferPairs
+      [], // targetChainAction pairs
       fillsGasFee,
     );
 

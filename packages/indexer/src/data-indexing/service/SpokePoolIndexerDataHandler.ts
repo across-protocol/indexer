@@ -26,7 +26,7 @@ import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
 import { EventDecoder } from "../../web3/EventDecoder";
-import { matchFillEventsWithTerminalTransfers } from "../../utils/terminalTransferUtils";
+import { matchFillEventsWithTargetChainActions } from "../../utils/targetChainActionsUtils";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -167,23 +167,24 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       );
 
-    // Match fill events with terminal transfer events
-    const fillTerminalTransferPairs = matchFillEventsWithTerminalTransfers(
+    // Match fill events with target chain action events
+    const fillTargetChainActionPairs = matchFillEventsWithTargetChainActions(
       storedEvents.fills.map((f) => f.data),
       transactionReceipts,
     );
 
-    if (fillTerminalTransferPairs.length > 0) {
-      this.logger.info({
+    if (fillTargetChainActionPairs.length > 0) {
+      this.logger.debug({
         at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
-        message: "Found fill transactions with terminal transfer destinations",
-        count: fillTerminalTransferPairs.length,
-        pairs: fillTerminalTransferPairs.map((pair) => ({
+        message:
+          "Found fill transactions with target chain action destinations",
+        count: fillTargetChainActionPairs.length,
+        pairs: fillTargetChainActionPairs.map((pair) => ({
           fillEventId: pair.fill.id,
           transactionHash: pair.fill.transactionHash,
           destinationChainId: pair.fill.destinationChainId,
           outputAmount: pair.fill.outputAmount,
-          terminalTransferChainId: pair.terminalTransferChainId,
+          actionsTargetChainId: pair.actionsTargetChainId,
         })),
       });
     }
@@ -217,7 +218,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       deletedDeposits,
       depositSwapPairs,
       fillCallsFailedPairs,
-      fillTerminalTransferPairs,
+      fillTargetChainActionPairs,
       fillsGasFee,
     );
 
