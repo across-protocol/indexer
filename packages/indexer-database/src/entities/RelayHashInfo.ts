@@ -154,7 +154,7 @@ export class RelayHashInfo {
   includedActions: boolean;
 
   @Column({ nullable: true, type: "bigint" })
-  terminalTransferChainId: string;
+  actionsTargetChainId: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

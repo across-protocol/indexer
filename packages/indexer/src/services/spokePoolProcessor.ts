@@ -17,7 +17,7 @@ import {
   DepositSwapPair,
   FillCallsFailedPair,
 } from "../data-indexing/service/SpokePoolIndexerDataHandler";
-import { FillTerminalTransferPair } from "../utils/terminalTransferUtils";
+import { FillTargetChainActionPair } from "../utils/targetChainActionsUtils";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
 import { getDbLockKeyForDeposit } from "../utils";
 
@@ -40,7 +40,7 @@ export class SpokePoolProcessor {
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
     fillCallsFailedPairs: FillCallsFailedPair[],
-    fillTerminalTransferPairs: FillTerminalTransferPair[],
+    fillTargetChainActionPairs: FillTargetChainActionPair[],
     fillsGasFee?: Record<string, bigint | undefined>,
   ) {
     // Update relay hash info records related to deleted deposits
@@ -56,8 +56,8 @@ export class SpokePoolProcessor {
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     await this.assignCallsFailedEventToRelayHashInfo(fillCallsFailedPairs);
-    await this.assignTerminalTransferEventToRelayHashInfo(
-      fillTerminalTransferPairs,
+    await this.assignTargetChainActionEventToRelayHashInfo(
+      fillTargetChainActionPairs,
     );
     const timeToAssignSpokeEventsToRelayHashInfoEnd = performance.now();
 
@@ -554,21 +554,21 @@ export class SpokePoolProcessor {
   }
 
   /**
-   * Assigns terminal transfer information to the relay hash info
+   * Assigns target chain action information to the relay hash info
    */
-  private async assignTerminalTransferEventToRelayHashInfo(
-    fillTerminalTransferPairs: FillTerminalTransferPair[],
+  private async assignTargetChainActionEventToRelayHashInfo(
+    fillTargetChainActionPairs: FillTargetChainActionPair[],
   ) {
     const relayHashInfoRepository = this.postgres.getRepository(
       entities.RelayHashInfo,
     );
     await Promise.all(
-      fillTerminalTransferPairs.map((fillTerminalTransferPair) =>
+      fillTargetChainActionPairs.map((fillTargetChainActionPair) =>
         relayHashInfoRepository.update(
-          { fillEventId: fillTerminalTransferPair.fill.id },
+          { fillEventId: fillTargetChainActionPair.fill.id },
           {
-            terminalTransferChainId:
-              fillTerminalTransferPair.terminalTransferChainId,
+            actionsTargetChainId:
+              fillTargetChainActionPair.actionsTargetChainId,
           },
         ),
       ),

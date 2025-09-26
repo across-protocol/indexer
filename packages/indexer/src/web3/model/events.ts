@@ -20,7 +20,7 @@ export interface CallsFailedEvent extends providers.Log {
   };
 }
 
-export interface TerminalTransferEvent extends providers.Log {
+export interface TransferEvent extends providers.Log {
   args: {
     from: string;
     to: string;
