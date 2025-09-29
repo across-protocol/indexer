@@ -62,6 +62,7 @@ export class EventDecoder {
       receipt,
       transferEventTopic,
       transferABI,
+      true,
     );
 
     return events;
@@ -71,13 +72,15 @@ export class EventDecoder {
     receipt: ethers.providers.TransactionReceipt,
     eventTopic: string,
     abi: any,
+    skipEmptyLogs: boolean = false,
   ) {
     const events: (ethers.providers.Log & { args: any })[] = [];
 
     for (const log of receipt.logs) {
       const contractInterface = new ethers.utils.Interface(abi);
 
-      if (log.topics.length === 0) continue;
+      if (log.topics.length === 0 || (log.data === "0x" && skipEmptyLogs))
+        continue;
 
       try {
         const parsedLog = contractInterface.parseLog(log);
