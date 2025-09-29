@@ -56,7 +56,6 @@ const RelayHashInfoFields = [
     WHEN rhi.includedActions = true AND rhi.status = 'filled' THEN (rhi.callsFailedEventId IS NULL)
     ELSE NULL
   END as "actionsSucceeded"`,
-  `rhi.actionsTargetChainId as "actionsTargetChainId"`,
 ];
 
 const FilledRelayFields = [
