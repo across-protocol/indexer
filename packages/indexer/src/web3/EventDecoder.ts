@@ -1,6 +1,10 @@
 import { ethers } from "ethers";
 import { MulticallHandler__factory } from "@across-protocol/contracts";
-import { SwapBeforeBridgeEvent, CallsFailedEvent } from "./model/events";
+import {
+  SwapBeforeBridgeEvent,
+  CallsFailedEvent,
+  TransferEvent,
+} from "./model/events";
 import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
@@ -47,17 +51,36 @@ export class EventDecoder {
     return events;
   }
 
+  static decodeTransferEvents(receipt: ethers.providers.TransactionReceipt) {
+    const transferEventTopic =
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    const transferABI = [
+      "event Transfer(address indexed from, address indexed to, uint256 value)",
+    ];
+
+    const events: TransferEvent[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      transferEventTopic,
+      transferABI,
+      true,
+    );
+
+    return events;
+  }
+
   static decodeTransactionReceiptLogs(
     receipt: ethers.providers.TransactionReceipt,
     eventTopic: string,
     abi: any,
+    skipEmptyLogs: boolean = false,
   ) {
     const events: (ethers.providers.Log & { args: any })[] = [];
 
     for (const log of receipt.logs) {
       const contractInterface = new ethers.utils.Interface(abi);
 
-      if (log.topics.length === 0) continue;
+      if (log.topics.length === 0 || (log.data === "0x" && skipEmptyLogs))
+        continue;
 
       try {
         const parsedLog = contractInterface.parseLog(log);

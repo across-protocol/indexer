@@ -19,3 +19,11 @@ export interface CallsFailedEvent extends providers.Log {
     fallbackRecipient: string;
   };
 }
+
+export interface TransferEvent extends providers.Log {
+  args: {
+    from: string;
+    to: string;
+    value: BigNumber;
+  };
+}
