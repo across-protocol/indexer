@@ -153,6 +153,9 @@ export class RelayHashInfo {
   @Column({ nullable: true })
   includedActions: boolean;
 
+  @Column({ nullable: true, type: "bigint" })
+  actionsTargetChainId: string;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

@@ -26,6 +26,7 @@ import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
 import { EventDecoder } from "../../web3/EventDecoder";
+import { matchFillEventsWithTargetChainActions } from "../../utils/targetChainActionsUtils";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -166,6 +167,28 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       );
 
+    // Match fill events with target chain action events
+    const fillTargetChainActionPairs = matchFillEventsWithTargetChainActions(
+      storedEvents.fills.map((f) => f.data),
+      transactionReceipts,
+    );
+
+    if (fillTargetChainActionPairs.length > 0) {
+      this.logger.debug({
+        at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
+        message:
+          "Found fill transactions with target chain action destinations",
+        count: fillTargetChainActionPairs.length,
+        pairs: fillTargetChainActionPairs.map((pair) => ({
+          fillEventId: pair.fill.id,
+          transactionHash: pair.fill.transactionHash,
+          destinationChainId: pair.fill.destinationChainId,
+          outputAmount: pair.fill.outputAmount,
+          actionsTargetChainId: pair.actionsTargetChainId,
+        })),
+      });
+    }
+
     //FIXME: Remove performance timing
     const timeToStoreEvents = performance.now();
 
@@ -195,6 +218,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       deletedDeposits,
       depositSwapPairs,
       fillCallsFailedPairs,
+      fillTargetChainActionPairs,
       fillsGasFee,
     );
 
