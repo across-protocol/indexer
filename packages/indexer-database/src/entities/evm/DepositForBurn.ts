@@ -29,24 +29,15 @@ export class DepositForBurn {
   @Column()
   depositor: string;
 
-  /**
-   * needs hex slice
-   */
   @Column()
   mintRecipient: string;
 
   @Column()
   destinationDomain: number;
 
-  /**
-   * needs hex slice
-   */
   @Column()
   destinationTokenMessenger: string;
 
-  /**
-   * needs hex slice
-   */
   @Column()
   destinationCaller: string;
 
