@@ -145,7 +145,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         depositForBurnEvents,
       );
     const filteredMessageReceivedEvents =
-      await this.filterTransactionsFromAcrossFinalizer(messageReceivedEvents);
+      this.filterTransactionsFromAcrossFinalizer(messageReceivedEvents);
     const [transactionReceipts, blocks] = await Promise.all([
       this.getTransactionsReceipts([
         ...new Set([
@@ -243,7 +243,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private async filterTransactionsFromAcrossFinalizer(
+  private filterTransactionsFromAcrossFinalizer(
     messageReceivedEvents: MessageReceivedEvent[],
   ) {
     return messageReceivedEvents.filter((event) => {
