@@ -226,7 +226,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           ...this.formatTransactionData(event),
 
           blockTimestamp: blockDates[event.blockHash]!,
-          chainId,
+          chainId: chainId.toString(),
 
           amount: event.args.amount.toString(),
           burnToken: event.args.burnToken,
@@ -269,7 +269,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
           blockTimestamp: blockDates[event.blockHash]!,
-          chainId,
+          chainId: chainId.toString(),
           message: event.args.message,
           version: decodedMessage.version,
           sourceDomain: decodedMessage.sourceDomain,
@@ -320,7 +320,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
           blockTimestamp: blockDates[event.blockHash]!,
-          chainId,
+          chainId: chainId.toString(),
           caller: event.args.caller,
           sourceDomain: event.args.sourceDomain,
           nonce: event.args.nonce,
@@ -356,7 +356,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
           blockTimestamp: blockDates[event.blockHash]!,
-          chainId,
+          chainId: chainId.toString(),
           mintRecipient: event.args.mintRecipient,
           amount: event.args.amount.toString(),
           mintToken: event.args.mintToken,
