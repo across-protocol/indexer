@@ -38,11 +38,6 @@ export type FetchEventsResult = {
 };
 export type StoreEventsResult = {};
 
-export type FillCallsFailedPair = {
-  fill: entities.FilledV3Relay;
-  callsFailed: entities.CallsFailed;
-};
-
 const TOKEN_MESSENGER_ADDRESS = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
 const MESSAGE_TRANSMITTER_ADDRESS =
   "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
