@@ -33,6 +33,51 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     super(postgres, logger);
   }
 
+  public async deleteUnfinalisedCCTPEvents(
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const chainIdColumn = "chainId";
+    const [
+      depositForBurnEvents,
+      messageSentEvents,
+      mintAndWithdrawEvents,
+      messageReceivedEvents,
+    ] = await Promise.all([
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.DepositForBurn,
+      ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.MessageSent,
+      ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.MintAndWithdraw,
+      ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.MessageReceived,
+      ),
+    ]);
+
+    return {
+      depositForBurnEvents,
+      messageSentEvents,
+      mintAndWithdrawEvents,
+      messageReceivedEvents,
+    };
+  }
+
   public async formatAndSaveBurnEvents(
     burnEvents: BurnEventsPair[],
     lastFinalisedBlock: number,

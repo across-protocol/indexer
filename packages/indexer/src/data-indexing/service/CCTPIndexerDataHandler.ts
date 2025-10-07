@@ -19,6 +19,7 @@ import {
   MintAndWithdrawLog,
 } from "../adapter/cctp-v2/model";
 import { CCTPRepository } from "../../database/CctpRepository";
+import { getIndexingStartBlockNumber } from "../adapter/cctp-v2/service";
 
 export type BurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -67,7 +68,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return `cctp:v2:${this.chainId}`;
   }
   public getStartIndexingBlockNumber() {
-    return getDeployedBlockNumber("SpokePool", this.chainId);
+    return getIndexingStartBlockNumber(this.chainId);
   }
 
   public async processBlockRange(
@@ -90,9 +91,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange(blockRange, isBackfilling);
+    const events = await this.fetchEventsByRange(blockRange);
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
+    const deletedEvents = await this.cctpRepository.deleteUnfinalisedCCTPEvents(
+      this.chainId,
+      lastFinalisedBlock,
+    );
+    const timeToDeleteEvents = performance.now();
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -102,12 +108,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       blockRange: blockRange,
       finalTime: finalPerfTime - startPerfTime,
       timeToStoreEvents: timeToStoreEvents - startPerfTime,
+      timeToDeleteEvents: timeToDeleteEvents - timeToStoreEvents,
     });
   }
 
   private async fetchEventsByRange(
     blockRange: BlockRange,
-    isBackfilling: boolean,
   ): Promise<FetchEventsResult> {
     const tokenMessengerContract = new ethers.Contract(
       TOKEN_MESSENGER_ADDRESS,
