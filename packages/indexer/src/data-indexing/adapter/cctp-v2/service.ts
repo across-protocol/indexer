@@ -1,10 +1,35 @@
 import { ethers } from "ethers";
 import {
   CCTP_NO_DOMAIN,
+  CHAIN_IDs,
   PRODUCTION_NETWORKS,
   TEST_NETWORKS,
 } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
+
+// we need to fetch only recent events, so
+// roughly starting with date of Oct 1st, 2025
+const STARTING_BLOCK_NUMBERS = {
+  [CHAIN_IDs.ARBITRUM]: 384463853,
+  [CHAIN_IDs.BASE]: 36193725,
+  [CHAIN_IDs.HYPEREVM]: 15083577,
+  [CHAIN_IDs.INK]: 26328532,
+  [CHAIN_IDs.MAINNET]: 23474786,
+  [CHAIN_IDs.OPTIMISM]: 141788893,
+  [CHAIN_IDs.POLYGON]: 77089546,
+  [CHAIN_IDs.UNICHAIN]: 28500000,
+  [CHAIN_IDs.WORLD_CHAIN]: 19873068,
+};
+
+export function getIndexingStartBlockNumber(chainId: number) {
+  const blockNumber = STARTING_BLOCK_NUMBERS[chainId];
+  if (!blockNumber) {
+    throw new Error(
+      `No starting block number found for CCTP indexing on chainId: ${chainId}`,
+    );
+  }
+  return blockNumber;
+}
 
 /**
  * Converts a 32-byte hex string with padding to a standard ETH address.
