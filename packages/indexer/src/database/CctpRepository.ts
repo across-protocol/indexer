@@ -23,6 +23,7 @@ import {
   BurnEventsPair,
   MintEventsPair,
 } from "../data-indexing/service/CCTPIndexerDataHandler";
+import { formatFromAddressToChainFormat } from "../utils";
 
 export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -205,23 +206,26 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           event.args.mintRecipient,
           destinationChainId,
         );
-        const mintRecipient = across.utils.chainIsSvm(destinationChainId)
-          ? mintRecipientAddressType.toBase58()
-          : mintRecipientAddressType.toEvmAddress();
+        const mintRecipient = formatFromAddressToChainFormat(
+          mintRecipientAddressType,
+          destinationChainId,
+        );
         const tokenMessengerAddressType = across.utils.toAddressType(
           event.args.destinationTokenMessenger,
           destinationChainId,
         );
-        const tokenMessenger = across.utils.chainIsSvm(destinationChainId)
-          ? tokenMessengerAddressType.toBase58()
-          : tokenMessengerAddressType.toEvmAddress();
+        const tokenMessenger = formatFromAddressToChainFormat(
+          tokenMessengerAddressType,
+          destinationChainId,
+        );
         const destinationCallerAddressType = across.utils.toAddressType(
           event.args.destinationCaller,
           destinationChainId,
         );
-        const destinationCaller = across.utils.chainIsSvm(destinationChainId)
-          ? destinationCallerAddressType.toBase58()
-          : destinationCallerAddressType.toEvmAddress();
+        const destinationCaller = formatFromAddressToChainFormat(
+          destinationCallerAddressType,
+          destinationChainId,
+        );
         return {
           ...this.formatTransactionData(event),
 
@@ -314,9 +318,10 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           event.args.sender,
           sourceChainId,
         );
-        const sender = across.utils.chainIsSvm(sourceChainId)
-          ? senderAddressType.toBase58()
-          : senderAddressType.toEvmAddress();
+        const sender = formatFromAddressToChainFormat(
+          senderAddressType,
+          sourceChainId,
+        );
         return {
           ...this.formatTransactionData(event),
           blockTimestamp: blockDates[event.blockHash]!,
