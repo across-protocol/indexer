@@ -30,6 +30,14 @@ export class CCTPIndexerManager {
 
   public async start() {
     try {
+      if (!this.config.enableCctpIndexer) {
+        this.logger.warn({
+          at: "Indexer#CCTPIndexerManager#start",
+          message: "CCTP indexer is disabled",
+        });
+        return;
+      }
+
       return Promise.all([this.startEvmIndexer()]);
     } catch (error) {
       this.logger.error({
