@@ -57,7 +57,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private cctpRepository: CCTPRepository,
-    // private indexerQueuesService: IndexerQueuesService,
   ) {
     this.isInitialized = false;
   }
