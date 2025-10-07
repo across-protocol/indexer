@@ -32,8 +32,8 @@ export class MintAndWithdraw {
   @Column({ type: "bigint" })
   feeCollected: string;
 
-  @Column()
-  chainId: number;
+  @Column({ type: "bigint" })
+  chainId: string;
 
   @Column()
   blockHash: string;

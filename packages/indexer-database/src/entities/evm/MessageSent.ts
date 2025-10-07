@@ -53,8 +53,8 @@ export class MessageSent {
   @Column()
   messageBody: string;
 
-  @Column()
-  chainId: number;
+  @Column({ type: "bigint" })
+  chainId: string;
 
   @Column()
   blockHash: string;
