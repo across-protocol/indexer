@@ -68,6 +68,9 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.DepositForBurn,
       entities.MessageReceived,
       entities.MintAndWithdraw,
+      // OFT
+      entities.OFTSent,
+      entities.OFTReceived,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
