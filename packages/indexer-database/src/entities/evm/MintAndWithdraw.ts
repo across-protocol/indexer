@@ -9,10 +9,9 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_mintAndWithdraw_chain_block_txn_log", [
+@Unique("UK_mintAndWithdraw_chainId_blockHash_logIndex", [
   "chainId",
-  "blockNumber",
-  "transactionHash",
+  "blockHash",
   "logIndex",
 ])
 @Index("IX_mintAndWithdraw_finalised", ["finalised"])
@@ -35,6 +34,9 @@ export class MintAndWithdraw {
 
   @Column({ type: "bigint" })
   chainId: string;
+
+  @Column()
+  blockHash: string;
 
   @Column()
   blockNumber: number;

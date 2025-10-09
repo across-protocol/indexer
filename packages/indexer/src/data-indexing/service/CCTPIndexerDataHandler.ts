@@ -1,13 +1,11 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat } from "../../utils";
-import {
-  BlockRange,
-  HYPERCORE_FLOW_EXECUTOR_ADDRESS,
-  SimpleTransferFlowCompletedLog,
-} from "../model";
+import { getDeployedBlockNumber } from "@across-protocol/contracts";
+
+import { entities } from "@repo/indexer-database";
+
+import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
 import {
@@ -19,88 +17,30 @@ import {
   MessageReceivedEvent,
   MessageSentLog,
   MintAndWithdrawLog,
-  DepositForBurnWithBlock,
-  MessageSentWithBlock,
-  MessageReceivedWithBlock,
-  MintAndWithdrawWithBlock,
-  SponsoredDepositForBurnLog,
-  SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
-import {
-  CCTPRepository,
-  BurnEventsPair,
-  MintEventsPair,
-} from "../../database/CctpRepository";
-import {
-  getIndexingStartBlockNumber,
-  decodeMessage,
-  getCctpDestinationChainFromDomain,
-  isHypercoreWithdraw,
-} from "../adapter/cctp-v2/service";
-import { createMapWithDefault } from "../../utils/map";
-import { entities, SaveQueryResult } from "@repo/indexer-database";
+import { CCTPRepository } from "../../database/CctpRepository";
+import { getIndexingStartBlockNumber } from "../adapter/cctp-v2/service";
 
-export type EvmBurnEventsPair = {
+export type BurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
   messageSent: MessageSentLog;
 };
-export type EvmMintEventsPair = {
+export type MintEventsPair = {
   messageReceived: MessageReceivedEvent;
   mintAndWithdraw: MintAndWithdrawLog;
 };
 export type FetchEventsResult = {
-  burnEvents: EvmBurnEventsPair[];
-  mintEvents: EvmMintEventsPair[];
-  sponsoredBurnEvents: SponsoredDepositForBurnLog[];
-  simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[];
+  burnEvents: BurnEventsPair[];
+  mintEvents: MintEventsPair[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
 };
-export type StoreEventsResult = {
-  savedBurnEvents: {
-    depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
-    messageSentEvent: SaveQueryResult<entities.MessageSent>;
-  }[];
-  savedMintEvents: {
-    messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
-    mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
-  }[];
-  savedSponsoredBurnEvents: SaveQueryResult<entities.SponsoredDepositForBurn>[];
-  savedSimpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
-};
+export type StoreEventsResult = {};
 
-// Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
-  {
-    [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-    [CHAIN_IDs.HYPEREVM_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-  },
-  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-);
-
-// Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-      [CHAIN_IDs.HYPEREVM_TESTNET]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-    },
-    "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
-  );
-
-// TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-    },
-    "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  );
-
+const TOKEN_MESSENGER_ADDRESS = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
+const MESSAGE_TRANSMITTER_ADDRESS =
+  "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
 
@@ -153,7 +93,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       lastFinalisedBlock,
     );
     const timeToDeleteEvents = performance.now();
-    await this.processEvents(storedEvents, deletedEvents.messageReceivedEvents);
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -170,29 +109,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
-    const tokenMessengerAddress = TOKEN_MESSENGER_ADDRESS[this.chainId];
-    const messageTransmitterAddress = MESSAGE_TRANSMITTER_ADDRESS[this.chainId];
-    const sponsoredCCTPSrcPeripheryAddress =
-      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
-    const hyperEvmExecutorAddress =
-      HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
-
-    if (!tokenMessengerAddress || !messageTransmitterAddress) {
-      const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
-      this.logger.error({
-        at: "CCTPIndexerDataHandler#fetchEventsByRange",
-        message: errorMessage,
-      });
-      throw new Error(errorMessage);
-    }
-
     const tokenMessengerContract = new ethers.Contract(
-      tokenMessengerAddress,
+      TOKEN_MESSENGER_ADDRESS,
       TOKEN_MESSENGER_V2_ABI,
       this.provider,
     );
     const messageTransmitterContract = new ethers.Contract(
-      messageTransmitterAddress,
+      MESSAGE_TRANSMITTER_ADDRESS,
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
@@ -208,18 +131,16 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blockRange.to,
       ) as Promise<MessageReceivedEvent[]>,
     ]);
-    const depositForBurnTransactions = await this.getTransactions([
+    const transactions = await this.getTransactions([
       ...new Set(depositForBurnEvents.map((event) => event.transactionHash)),
     ]);
     const filteredDepositForBurnEvents =
       await this.filterTransactionsFromSwapApi(
-        depositForBurnTransactions,
+        transactions,
         depositForBurnEvents,
       );
-
-    const filteredMessageReceivedEvents = this.filterMintTransactions(
-      messageReceivedEvents,
-    );
+    const filteredMessageReceivedEvents =
+      this.filterTransactionsFromAcrossFinalizer(messageReceivedEvents);
     const [transactionReceipts, blocks] = await Promise.all([
       this.getTransactionsReceipts([
         ...new Set([
@@ -236,25 +157,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         ]),
       ]),
     ]);
-    const filteredDepositForBurnTxReceipts =
+    const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
       this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
         ...new Set(
           filteredDepositForBurnEvents.map((event) => event.transactionHash),
         ),
-      ]);
-
-    const filteredMessageReceivedTxReceipts =
-      this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
-        ...new Set(
-          filteredMessageReceivedEvents.map((event) => event.transactionHash),
-        ),
-      ]);
-
-    const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
-      filteredDepositForBurnTxReceipts,
-      messageTransmitterAddress,
+      ]),
+      MESSAGE_TRANSMITTER_ADDRESS,
     );
-
     const mintAndWithdrawEvents =
       this.getMintAndWithdrawEventsFromTransactionReceipts(
         this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
@@ -262,44 +172,16 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
             filteredMessageReceivedEvents.map((event) => event.transactionHash),
           ),
         ]),
-        tokenMessengerAddress,
+        TOKEN_MESSENGER_ADDRESS,
       );
-
     const burnEvents = await this.matchDepositForBurnWithMessageSentEvents(
       filteredDepositForBurnEvents,
       messageSentEvents,
     );
-
     const mintEvents = await this.matchMessageReceivedWithMintAndWithdrawEvents(
       filteredMessageReceivedEvents,
       mintAndWithdrawEvents,
     );
-
-    let sponsoredBurnEvents: SponsoredDepositForBurnLog[] = [];
-    if (sponsoredCCTPSrcPeripheryAddress) {
-      sponsoredBurnEvents =
-        this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
-          // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
-          filteredDepositForBurnTxReceipts,
-          sponsoredCCTPSrcPeripheryAddress,
-          filteredDepositForBurnEvents,
-        );
-    } else {
-      this.logger.debug({
-        at: "CCTPIndexerDataHandler#fetchEventsByRange",
-        message: `Sponsored CCTP Src Periphery address not configured for chain ${this.chainId}, skipping fetching SponsoredDepositForBurn events`,
-      });
-    }
-
-    let simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
-      [];
-    if (hyperEvmExecutorAddress) {
-      simpleTransferFlowCompletedEvents =
-        this.getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
-          filteredMessageReceivedTxReceipts,
-          hyperEvmExecutorAddress,
-        );
-    }
 
     this.runChecks(burnEvents, mintEvents);
 
@@ -307,23 +189,22 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.logger.debug({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: `Found ${burnEvents.length} burn events from Swap API on chain ${this.chainId}`,
+        // burnEvents,
       });
     }
     if (mintEvents.length > 0) {
       this.logger.debug({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
+        // mintEvents,
       });
     }
-
     return {
       burnEvents,
       mintEvents,
-      sponsoredBurnEvents,
-      simpleTransferFlowCompletedEvents,
       blocks,
       transactionReceipts,
-      transactions: depositForBurnTransactions,
+      transactions,
     };
   }
 
@@ -357,25 +238,17 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private filterMintTransactions(
+  private filterTransactionsFromAcrossFinalizer(
     messageReceivedEvents: MessageReceivedEvent[],
   ) {
     return messageReceivedEvents.filter((event) => {
-      if (WHITELISTED_FINALIZERS.includes(event.args.caller)) {
-        return true;
-      }
-      const result = isHypercoreWithdraw(event.args.messageBody, {
-        logger: this.logger,
-        chainId: this.chainId,
-        transactionHash: event.transactionHash,
-      });
-      return result.isValid;
+      return WHITELISTED_FINALIZERS.includes(event.args.caller);
     });
   }
 
   private runChecks(
-    burnEvents: EvmBurnEventsPair[],
-    mintEvents: EvmMintEventsPair[],
+    burnEvents: BurnEventsPair[],
+    mintEvents: MintEventsPair[],
   ) {
     for (const burnEventsPair of burnEvents) {
       if (!burnEventsPair.depositForBurn || !burnEventsPair.messageSent) {
@@ -445,86 +318,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return events;
   }
 
-  private getSponsoredDepositForBurnEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    sponsoredCCTPSrcPeripheryAddress: string,
-    depositForBurnEvents: DepositForBurnEvent[],
-  ) {
-    const events: SponsoredDepositForBurnLog[] = [];
-    // DepositForBurn events and SponsoredDepositForBurn events are emitted in the same transaction
-    const depositForBurnEventsByTxHash = depositForBurnEvents.reduce(
-      (acc, event) => {
-        if (!acc[event.transactionHash]) {
-          acc[event.transactionHash] = [];
-        }
-        acc[event.transactionHash]!.push(event);
-        return acc;
-      },
-      {} as Record<string, DepositForBurnEvent[]>,
-    );
-
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const sponsoredDepositForBurnEvents: SponsoredDepositForBurnLog[] =
-        EventDecoder.decodeCCTPSponsoredDepositForBurnEvents(
-          transactionReceipt,
-          sponsoredCCTPSrcPeripheryAddress,
-        );
-
-      if (sponsoredDepositForBurnEvents.length > 0) {
-        const depositForBurnEvents = (
-          depositForBurnEventsByTxHash[txHash] || []
-        ).sort((a, b) => a.logIndex - b.logIndex);
-        for (const sponsoredDepositForBurnEvent of sponsoredDepositForBurnEvents) {
-          // If a SponsoredDepositForBurn event is found, we need to find the corresponding DepositForBurn event to get the destination chain id
-          // The correct DepositForBurn event that matches a SponsoredDepositForBurn event is the one with the highest log index that is still lower than the SponsoredDepositForBurn event's log index
-          const matchingDepositForBurnEvent = depositForBurnEvents.find(
-            (depositForBurnEvent) =>
-              depositForBurnEvent.logIndex <
-              sponsoredDepositForBurnEvent.logIndex,
-          );
-
-          if (matchingDepositForBurnEvent) {
-            const destinationChainId = getCctpDestinationChainFromDomain(
-              matchingDepositForBurnEvent.args.destinationDomain,
-            );
-
-            events.push({
-              ...sponsoredDepositForBurnEvent,
-              destinationChainId,
-            });
-          }
-        }
-      }
-    }
-
-    return events;
-  }
-
-  private getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    hyperEvmExecutorAddress: string,
-  ) {
-    const events: SimpleTransferFlowCompletedLog[] = [];
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
-        EventDecoder.decodeSimpleTransferFlowCompletedEvents(
-          transactionReceipt,
-          hyperEvmExecutorAddress,
-        );
-      if (simpleTransferFlowCompletedEvents.length > 0) {
-        events.push(...simpleTransferFlowCompletedEvents);
-      }
-    }
-
-    return events;
-  }
-
   private async getTransactionsReceipts(uniqueTransactionHashes: string[]) {
     const transactionReceipts = await Promise.all(
       uniqueTransactionHashes.map(async (txHash) => {
@@ -579,228 +372,42 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const {
       burnEvents,
       mintEvents,
-      sponsoredBurnEvents,
-      simpleTransferFlowCompletedEvents,
       blocks,
+      transactionReceipts,
+      transactions,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
 
-    // Convert EVM events to chain-agnostic format
-    const chainAgnosticBurnEvents = burnEvents.map((pair) =>
-      this.convertBurnEventsPairToChainAgnostic(pair),
-    );
-
-    const chainAgnosticMintEvents = mintEvents.map((pair) =>
-      this.convertMintEventsPairToChainAgnostic(pair),
-    );
-
-    const chainAgnosticSponsoredBurnEvents = sponsoredBurnEvents.map((event) =>
-      this.convertSponsoredDepositForBurnToChainAgnostic(event),
-    );
-
-    const [
-      savedBurnEvents,
-      savedMintEvents,
-      savedSponsoredBurnEvents,
-      savedSimpleTransferFlowCompletedEvents,
-    ] = await Promise.all([
+    const [savedBurnEvents, savedMintEvents] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
-        chainAgnosticBurnEvents,
+        burnEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
       ),
       this.cctpRepository.formatAndSaveMintEvents(
-        chainAgnosticMintEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-      ),
-      this.cctpRepository.formatAndSaveSponsoredBurnEvents(
-        chainAgnosticSponsoredBurnEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-      ),
-      this.cctpRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
-        simpleTransferFlowCompletedEvents,
+        mintEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
       ),
     ]);
-
     return {
       savedBurnEvents,
       savedMintEvents,
-      savedSponsoredBurnEvents,
-      savedSimpleTransferFlowCompletedEvents,
     };
-  }
-
-  // TODO: Refactor into an aggregator/processor class
-  private async processEvents(
-    storedEvents: StoreEventsResult,
-    deletedMessageReceivedEvents: entities.MessageReceived[],
-  ) {
-    // Delete HyperCore CCTP withdrawals related to deleted MessageReceived events
-    await this.cctpRepository.deleteHypercoreCctpWithdrawalsForMessageReceived(
-      deletedMessageReceivedEvents,
-    );
-
-    // Save HyperCore CCTP withdrawals
-    const { savedMintEvents } = storedEvents;
-    const savedHypercoreCctpWithdrawals =
-      await this.cctpRepository.formatAndSaveHypercoreCctpWithdrawals(
-        savedMintEvents,
-        this.chainId,
-      );
-
-    this.logger.debug({
-      at: "CCTPIndexerDataHandler#processEvents",
-      message: `Processed ${savedHypercoreCctpWithdrawals.length} HyperCore CCTP withdrawals`,
-      chainId: this.chainId,
-    });
   }
 
   private getBlocksTimestamps(
     blocks: Record<string, providers.Block>,
-  ): Record<number, Date> {
+  ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
-        acc[block.number] = new Date(block.timestamp * 1000);
+        acc[blockHash] = new Date(block.timestamp * 1000);
         return acc;
       },
-      {} as Record<number, Date>,
+      {} as Record<string, Date>,
     );
-  }
-
-  private convertSponsoredDepositForBurnToChainAgnostic(
-    event: SponsoredDepositForBurnLog,
-  ): SponsoredDepositForBurnWithBlock {
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      nonce: event.args.nonce,
-      originSender: event.args.originSender,
-      finalRecipient: event.destinationChainId
-        ? formatFromAddressToChainFormat(
-            across.utils.toAddressType(
-              event.args.finalRecipient,
-              event.destinationChainId,
-            ),
-            event.destinationChainId,
-          )
-        : event.args.finalRecipient,
-      quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
-      maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
-      maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
-      finalToken: event.args.finalToken,
-      signature: event.args.signature,
-    };
-  }
-
-  private convertDepositForBurnToChainAgnostic(
-    event: DepositForBurnEvent,
-  ): DepositForBurnWithBlock {
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      burnToken: event.args.burnToken,
-      amount: event.args.amount.toString(),
-      depositor: event.args.depositor,
-      mintRecipient: event.args.mintRecipient,
-      destinationDomain: event.args.destinationDomain,
-      destinationTokenMessenger: event.args.destinationTokenMessenger,
-      destinationCaller: event.args.destinationCaller,
-      maxFee: event.args.maxFee.toString(),
-      minFinalityThreshold: event.args.minFinalityThreshold,
-      hookData: event.args.hookData,
-    };
-  }
-
-  private convertMessageSentToChainAgnostic(
-    event: MessageSentLog,
-  ): MessageSentWithBlock {
-    const messageBytes = ethers.utils.arrayify(event.args.message);
-    const decodedMessage = decodeMessage(messageBytes);
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      message: event.args.message,
-      version: decodedMessage.version,
-      sourceDomain: decodedMessage.sourceDomain,
-      destinationDomain: decodedMessage.destinationDomain,
-      nonce: decodedMessage.nonce,
-      sender: decodedMessage.sender,
-      recipient: decodedMessage.recipient,
-      destinationCaller: decodedMessage.destinationCaller,
-      minFinalityThreshold: decodedMessage.minFinalityThreshold,
-      finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
-      messageBody: decodedMessage.messageBody,
-    };
-  }
-
-  private convertBurnEventsPairToChainAgnostic(
-    pair: EvmBurnEventsPair,
-  ): BurnEventsPair {
-    return {
-      depositForBurn: this.convertDepositForBurnToChainAgnostic(
-        pair.depositForBurn,
-      ),
-      messageSent: this.convertMessageSentToChainAgnostic(pair.messageSent),
-    };
-  }
-
-  private convertMessageReceivedToChainAgnostic(
-    event: MessageReceivedEvent,
-  ): MessageReceivedWithBlock {
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      caller: event.args.caller,
-      sourceDomain: event.args.sourceDomain,
-      nonce: event.args.nonce,
-      sender: event.args.sender,
-      finalityThresholdExecuted: event.args.finalityThresholdExecuted,
-      messageBody: event.args.messageBody,
-    };
-  }
-
-  private convertMintAndWithdrawToChainAgnostic(
-    event: MintAndWithdrawLog,
-  ): MintAndWithdrawWithBlock {
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      mintRecipient: event.args.mintRecipient,
-      amount: event.args.amount.toString(),
-      mintToken: event.args.mintToken,
-      feeCollected: event.args.feeCollected.toString(),
-    };
-  }
-
-  private convertMintEventsPairToChainAgnostic(
-    pair: EvmMintEventsPair,
-  ): MintEventsPair {
-    return {
-      messageReceived: this.convertMessageReceivedToChainAgnostic(
-        pair.messageReceived,
-      ),
-      mintAndWithdraw: this.convertMintAndWithdrawToChainAgnostic(
-        pair.mintAndWithdraw,
-      ),
-    };
   }
 
   private async matchDepositForBurnWithMessageSentEvents(
@@ -836,7 +443,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         const sortedMessageSent = (
           messageSentEventsMap[txHash] as MessageSentLog[]
         ).sort((a, b) => a.logIndex - b.logIndex);
-        const matchedPairs: EvmBurnEventsPair[] = [];
+        const matchedPairs: BurnEventsPair[] = [];
         const matchedMessageSentLogIndexes = new Set<number>();
 
         sortedDepositForBurn.forEach((depositForBurn) => {
@@ -857,7 +464,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         acc[txHash] = matchedPairs;
         return acc;
       },
-      {} as Record<string, EvmBurnEventsPair[]>,
+      {} as Record<string, BurnEventsPair[]>,
     );
     return Object.values(burnEvents).flat();
   }
@@ -895,7 +502,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         const sortedMintAndWithdraw = (
           mintAndWithdrawEventsMap[txHash] as MintAndWithdrawLog[]
         ).sort((a, b) => a.logIndex - b.logIndex);
-        const matchedPairs: EvmMintEventsPair[] = [];
+        const matchedPairs: MintEventsPair[] = [];
         const matchedMintAndWithdrawLogIndexes = new Set<number>();
 
         sortedMessageReceived.forEach((messageReceived) => {
@@ -918,7 +525,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         acc[txHash] = matchedPairs;
         return acc;
       },
-      {} as Record<string, EvmMintEventsPair[]>,
+      {} as Record<string, MintEventsPair[]>,
     );
     return Object.values(mintEvents).flat();
   }

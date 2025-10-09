@@ -19,11 +19,7 @@ export type Config = {
   enableBundleIncludedEventsService: boolean;
   enableHotfixServices: boolean;
   enableBundleBuilder: boolean;
-  cctpIndexerChainIds: number[];
-  enableCctpFinalizer: boolean;
-  pubSubCctpFinalizerTopic: string;
-  pubSubGcpProjectId: string;
-  enableOftIndexer: boolean;
+  enableCctpIndexer: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
   coingeckoApiKey?: string;
@@ -223,17 +219,9 @@ export function envToConfig(env: Env): Config {
   const enableHubPoolIndexer = env.ENABLE_HUBPOOL_INDEXER
     ? env.ENABLE_HUBPOOL_INDEXER === "true"
     : true;
-  const cctpIndexerChainIds = parseArray(env.CCTP_INDEXER_CHAIN_IDS).map(
-    parseNumber,
-  );
-  const enableOftIndexer = env.ENABLE_OFT_INDEXER
-    ? env.ENABLE_OFT_INDEXER === "true"
+  const enableCctpIndexer = env.ENABLE_CCTP_INDEXER
+    ? env.ENABLE_CCTP_INDEXER === "true"
     : false;
-  const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
-    ? env.ENABLE_CCTP_FINALIZER === "true"
-    : false;
-  const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
-  const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
   const enableBundleIncludedEventsService =
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
       ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
@@ -290,11 +278,7 @@ export function envToConfig(env: Env): Config {
     enableBundleIncludedEventsService,
     enableHotfixServices,
     enableBundleBuilder,
-    cctpIndexerChainIds,
-    enableOftIndexer,
-    enableCctpFinalizer,
-    pubSubCctpFinalizerTopic,
-    pubSubGcpProjectId,
+    enableCctpIndexer,
     webhookConfig,
     maxBlockRangeSize,
     coingeckoApiKey,

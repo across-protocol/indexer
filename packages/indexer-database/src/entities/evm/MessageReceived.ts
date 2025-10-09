@@ -9,10 +9,9 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_messageReceived_chain_block_txn_log", [
+@Unique("UK_messageReceived_chainId_blockHash_logIndex", [
   "chainId",
-  "blockNumber",
-  "transactionHash",
+  "blockHash",
   "logIndex",
 ])
 @Index("IX_messageReceived_finalised", ["finalised"])
@@ -41,6 +40,9 @@ export class MessageReceived {
 
   @Column({ type: "bigint" })
   chainId: string;
+
+  @Column()
+  blockHash: string;
 
   @Column()
   blockNumber: number;
