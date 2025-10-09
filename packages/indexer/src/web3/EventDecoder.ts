@@ -9,6 +9,10 @@ import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
 } from "./model/abis";
+import {
+  MessageSentLog,
+  MintAndWithdrawLog,
+} from "../data-indexing/adapter/cctp-v2/model";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -64,6 +68,50 @@ export class EventDecoder {
       transferABI,
       true,
     );
+
+    return events;
+  }
+
+  /**
+   * Decode CCTP MessageSent events and optionally specify the address of
+   * the contract that emitted the event to avoid naming collisions.
+   */
+  static decodeCCTPMessageSentEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    const eventTopic =
+      "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
+    const eventAbi = ["event MessageSent (bytes message)"];
+    let events: MessageSentLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeCCTPMintAndWithdrawEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    const eventTopic =
+      "0x50c55e915134d457debfa58eb6f4342956f8b0616d51a89a3659360178e1ab63";
+    const eventAbi = [
+      "event MintAndWithdraw(address indexed mintRecipient, uint256 amount, address indexed mintToken, uint256 feeCollected)",
+    ];
+    let events: MintAndWithdrawLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
 
     return events;
   }

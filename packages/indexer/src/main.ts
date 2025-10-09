@@ -28,6 +28,8 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { CallsFailedRepository } from "./database/CallsFailedRepository";
+import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
+import { CCTPRepository } from "./database/CctpRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -108,6 +110,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     indexerQueuesService,
     write,
   );
+  const cctpIndexerManager = new CCTPIndexerManager(
+    logger,
+    config,
+    postgres,
+    retryProvidersFactory,
+    new CCTPRepository(postgres, logger),
+  );
   const bundleServicesManager = new BundleServicesManager(
     config,
     logger,
@@ -161,6 +170,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       priceWorker?.close();
       swapWorker.close();
       acrossIndexerManager.stopGracefully();
+      cctpIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
     } else {
@@ -183,10 +193,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const [
     bundleServicesManagerResults,
     acrossIndexerManagerResult,
+    cctpIndexerManagerResult,
     hotfixServicesManagerResults,
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
+    cctpIndexerManager.start(),
     hotfixServicesManager.start(),
   ]);
   logger.info({
@@ -199,6 +211,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         hotfixServicesManagerResults.status === "fulfilled",
       acrossIndexerManagerRunSuccess:
         acrossIndexerManagerResult.status === "fulfilled",
+      cctpIndexerManagerRunSuccess:
+        cctpIndexerManagerResult.status === "fulfilled",
     },
   });
   await integratorIdWorker.close();
