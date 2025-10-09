@@ -23,7 +23,7 @@ export class DepositForBurn {
   @Column()
   burnToken: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   amount: string;
 
   @Column()
@@ -41,7 +41,7 @@ export class DepositForBurn {
   @Column()
   destinationCaller: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   maxFee: string;
 
   @Column()

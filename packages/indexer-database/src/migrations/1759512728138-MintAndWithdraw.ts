@@ -8,9 +8,9 @@ export class MintAndWithdraw1759512728138 implements MigrationInterface {
       `CREATE TABLE "evm"."mint_and_withdraw" (
         "id" SERIAL NOT NULL,
         "mintRecipient" character varying NOT NULL,
-        "amount" bigint NOT NULL,
+        "amount" decimal NOT NULL,
         "mintToken" character varying NOT NULL,
-        "feeCollected" bigint NOT NULL,
+        "feeCollected" decimal NOT NULL,
         "chainId" bigint NOT NULL,
         "blockHash" character varying NOT NULL,
         "blockNumber" integer NOT NULL,

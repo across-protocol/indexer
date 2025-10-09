@@ -23,13 +23,13 @@ export class MintAndWithdraw {
   @Column()
   mintRecipient: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   amount: string;
 
   @Column()
   mintToken: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   feeCollected: string;
 
   @Column({ type: "bigint" })
