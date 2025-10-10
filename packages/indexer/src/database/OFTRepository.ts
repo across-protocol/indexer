@@ -152,12 +152,19 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
   }
 
   private formatTransactionData(event: ethers.providers.Log | ethers.Event) {
+    const {
+      blockHash,
+      blockNumber,
+      logIndex,
+      transactionHash,
+      transactionIndex,
+    } = event;
     return {
-      blockHash: event.blockHash,
-      blockNumber: event.blockNumber,
-      logIndex: event.logIndex,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
+      blockHash,
+      blockNumber,
+      logIndex,
+      transactionHash,
+      transactionIndex,
     };
   }
 }
