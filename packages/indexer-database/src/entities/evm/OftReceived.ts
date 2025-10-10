@@ -29,7 +29,7 @@ export class OFTReceived {
   @Column()
   toAddress: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   amountReceivedLD: string;
 
   @Column()

@@ -10,7 +10,7 @@ export class OFTReceive1759917689137 implements MigrationInterface {
         "guid" character varying NOT NULL,
         "srcEid" integer NOT NULL,
         "toAddress" character varying NOT NULL,
-        "amountReceivedLD" bigint NOT NULL,
+        "amountReceivedLD" decimal NOT NULL,
         "token" character varying NOT NULL,
         "chainId" bigint NOT NULL,
         "blockHash" character varying NOT NULL,

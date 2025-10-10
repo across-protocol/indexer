@@ -29,10 +29,10 @@ export class OFTSent {
   @Column()
   fromAddress: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   amountSentLD: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "decimal" })
   amountReceivedLD: string;
 
   @Column()
