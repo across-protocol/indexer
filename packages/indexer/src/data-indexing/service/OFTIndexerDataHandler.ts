@@ -19,8 +19,7 @@ export type FetchEventsResult = {
 };
 export type StoreEventsResult = {};
 
-// const SWAP_API_CALLDATA_MARKER = "73c0de";
-const SWAP_API_CALLDATA_MARKER = "0";
+const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
