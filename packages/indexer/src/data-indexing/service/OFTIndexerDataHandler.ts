@@ -20,6 +20,7 @@ import {
   getChainIdForEndpointId,
   getCorrespondingTokenAddress,
   getOftChainConfiguration,
+  isEndpointIdSupported,
 } from "../adapter/oft/service";
 import { RelayStatus } from "../../../../indexer-database/dist/src/entities";
 
@@ -137,10 +138,12 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       transactions,
       oftSentEvents,
     );
+    const filteredOftReceivedEvents =
+      await this.filterTransactionsForSupportedEndpointIds(oftReceivedEvents);
     const blocks = await this.getBlocks([
       ...new Set([
         ...filteredOftSentEvents.map((event) => event.blockHash),
-        ...oftReceivedEvents.map((event) => event.blockHash),
+        ...filteredOftReceivedEvents.map((event) => event.blockHash),
       ]),
     ]);
     if (oftSentEvents.length > 0) {
@@ -157,7 +160,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     }
     return {
       oftSentEvents: filteredOftSentEvents,
-      oftReceivedEvents,
+      oftReceivedEvents: filteredOftReceivedEvents,
       blocks,
     };
   }
@@ -208,6 +211,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     return transactionReceiptsMap;
   }
 
+  private async filterTransactionsForSupportedEndpointIds(
+    oftReceivedEvents: OFTReceivedEvent[],
+  ) {
+    return oftReceivedEvents.filter((event) => {
+      return isEndpointIdSupported(event.args.srcEid);
+    });
+  }
+
   private async filterTransactionsFromSwapApi(
     transactions: Record<string, Transaction>,
     oftSentEvents: OFTSentEvent[],
@@ -219,7 +230,10 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       .map((transaction) => transaction.hash);
 
     return oftSentEvents.filter((event) => {
-      return transactionHashes.includes(event.transactionHash);
+      return (
+        transactionHashes.includes(event.transactionHash) &&
+        isEndpointIdSupported(event.args.dstEid)
+      );
     });
   }
 
@@ -384,9 +398,9 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       originChainId: originChainId.toString(),
       // TODO
       originTokenAddress: getCorrespondingTokenAddress(
-        originChainId,
-        oftReceivedEvent.token,
         this.chainId,
+        oftReceivedEvent.token,
+        originChainId,
       ),
       originTokenAmount: oftReceivedEvent.amountReceivedLD,
       status: RelayStatus.Filled,

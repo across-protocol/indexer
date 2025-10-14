@@ -76,8 +76,15 @@ export function getChainIdForEndpointId(endpointId: number) {
   return Number(chainId);
 }
 
+export function isEndpointIdSupported(endpointId: number) {
+  return Object.keys(OFT_SUPPORTED_CHAINS).some(
+    (chainId) =>
+      OFT_SUPPORTED_CHAINS[Number(chainId)]!.endpointId === endpointId,
+  );
+}
+
 export function getSupportOftChainIds() {
-  return Object.keys(OFT_SUPPORTED_CHAINS).map(Number);
+  return Object.keys(OFT_SUPPORTED_CHAINS).map((chainId) => Number(chainId));
 }
 
 export function getCorrespondingTokenAddress(

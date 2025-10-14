@@ -55,7 +55,7 @@ export class OFTIndexerManager {
   }
 
   private async startEvmIndexer() {
-    const indexers = Object.keys(getSupportOftChainIds()).map((chainId) => {
+    const indexers = getSupportOftChainIds().map((chainId) => {
       const provider = this.retryProvidersFactory.getCustomEvmProvider({
         chainId: Number(chainId),
         enableCaching: false,
