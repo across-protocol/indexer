@@ -130,6 +130,17 @@ export function getDbLockKeyForDeposit(
 }
 
 /**
+ * Generates a lock key for the deposit
+ * @param deposit - The deposit event
+ * @returns A tuple of the origin chain id and the internal hash as a 32-bit integer
+ */
+export function getDbLockKeyForOftEvent(
+  event: entities.OFTSent | entities.OFTReceived,
+) {
+  return [relayHashToInt32(event.guid)];
+}
+
+/**
  * Generates a 32bit integer based on an input string
  */
 export function relayHashToInt32(relayHash: string): number {

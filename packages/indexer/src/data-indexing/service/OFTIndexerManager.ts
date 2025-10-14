@@ -13,6 +13,7 @@ import {
 import { EvmIndexer, Indexer } from "./Indexer";
 import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
 import { OftRepository } from "../../database/OftRepository";
+import { getSupportOftChainIds } from "../adapter/oft/service";
 
 const MAX_BLOCK_RANGE_SIZE = 10_000;
 
@@ -54,7 +55,7 @@ export class OFTIndexerManager {
   }
 
   private async startEvmIndexer() {
-    const indexers = Object.keys(OFT_SUPPORTED_CHAINS).map((chainId) => {
+    const indexers = Object.keys(getSupportOftChainIds()).map((chainId) => {
       const provider = this.retryProvidersFactory.getCustomEvmProvider({
         chainId: Number(chainId),
         enableCaching: false,
@@ -64,6 +65,7 @@ export class OFTIndexerManager {
         Number(chainId),
         provider,
         this.oftRepository,
+        this.postgres,
       );
       const indexer = new EvmIndexer(
         {
@@ -102,26 +104,3 @@ export class OFTIndexerManager {
     return Promise.resolve();
   }
 }
-
-export const OFT_SUPPORTED_CHAINS = {
-  [CHAIN_IDs.MAINNET]: {
-    address: "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee",
-    startBlockNumber: 23400000,
-  },
-  [CHAIN_IDs.ARBITRUM]: {
-    address: "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92",
-    startBlockNumber: 385700000,
-  },
-  [CHAIN_IDs.POLYGON]: {
-    address: "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13",
-    startBlockNumber: 77200000,
-  },
-  [CHAIN_IDs.HYPEREVM]: {
-    address: "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98",
-    startBlockNumber: 15500000,
-  },
-  [CHAIN_IDs.PLASMA]: {
-    address: "0x02ca37966753bDdDf11216B73B16C1dE756A7CF9",
-    startBlockNumber: 2500000,
-  },
-};
