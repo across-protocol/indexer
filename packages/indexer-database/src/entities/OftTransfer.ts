@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from "typeorm";
 import { OFTSent } from "./evm/OftSent";
@@ -12,6 +14,9 @@ import { OFTReceived } from "./evm/OftReceived";
 import { RelayStatus } from "./RelayHashInfo";
 
 @Entity()
+@Unique("UK_oft_transfer_guid", ["guid"])
+@Index("IX_oft_transfer_origin_txn_ref", ["originTxnRef"])
+@Index("IX_oft_transfer_status", ["status"])
 export class OftTransfer {
   @PrimaryGeneratedColumn()
   id: number;
@@ -38,20 +43,20 @@ export class OftTransfer {
   destinationTokenAmount?: string;
 
   @Column({ nullable: true })
-  originTxnRef?: string | null;
+  originTxnRef?: string;
 
   @Column({ nullable: true })
-  destinationTxnRef?: string | null;
+  destinationTxnRef?: string;
 
   @Column({ nullable: true })
-  oftSentEventId?: number | null;
+  oftSentEventId?: number;
 
   @OneToOne(() => OFTSent, (oftSentEvent) => oftSentEvent.id)
   @JoinColumn({ name: "oftSentEventId" })
   oftSentEvent?: OFTSent;
 
   @Column({ nullable: true })
-  oftReceivedEventId?: number | null;
+  oftReceivedEventId?: number;
 
   @OneToOne(() => OFTReceived, (oftReceivedEvent) => oftReceivedEvent.id)
   @JoinColumn({ name: "oftReceivedEventId" })
@@ -68,13 +73,13 @@ export class OftTransfer {
   bridgeFeeUsd?: string;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasFee?: string | null;
+  originGasFee?: string;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasFeeUsd?: string | null;
+  originGasFeeUsd?: string;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasTokenPriceUsd?: string | null;
+  originGasTokenPriceUsd?: string;
 
   @CreateDateColumn()
   createdAt: Date;
