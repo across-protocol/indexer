@@ -1,7 +1,6 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { getDeployedBlockNumber } from "@across-protocol/contracts";
 
 import { entities } from "@repo/indexer-database";
 
