@@ -1,5 +1,5 @@
 import winston from "winston";
-import { ethers, BigNumber } from "ethers";
+import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
 
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
@@ -7,9 +7,7 @@ import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import {
   OFTReceivedEvent,
   OFTSentEvent,
-  SponsoredOFTSendLog,
 } from "../data-indexing/adapter/oft/model";
-import { formatFromAddressToChainFormat } from "../utils";
 
 export class OftRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -109,74 +107,6 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
           entities.OFTSent,
           eventsChunk,
           ["chainId", "blockHash", "logIndex"],
-          [],
-        ),
-      ),
-    );
-    const result = savedEvents.flat();
-    return result;
-  }
-
-  public async deleteUnfinalisedSponsoredOFTSendEvents(
-    chainId: number,
-    lastFinalisedBlock: number,
-  ) {
-    const chainIdColumn = "chainId";
-    const [sponsoredOFTSendEvents] = await Promise.all([
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.SponsoredOFTSend,
-      ),
-    ]);
-
-    return {
-      sponsoredOFTSendEvents,
-    };
-  }
-
-  public async formatAndSaveSponsoredOFTSendEvents(
-    sponsoredOFTSendEvents: SponsoredOFTSendLog[],
-    lastFinalisedBlock: number,
-    chainId: number,
-    blockDates: Record<string, Date>,
-  ) {
-    const formattedEvents: Partial<entities.SponsoredOFTSend>[] =
-      sponsoredOFTSendEvents.map((event) => {
-        const finalRecipientAddressType = across.utils.toAddressType(
-          event.args.finalRecipient,
-          chainId,
-        );
-        const finalRecipient = formatFromAddressToChainFormat(
-          finalRecipientAddressType,
-          chainId,
-        );
-
-        return {
-          ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
-          chainId: chainId.toString(),
-          quoteNonce: event.args.quoteNonce,
-          originSender: event.args.originSender,
-          finalRecipient: finalRecipient,
-          destinationHandler: event.args.destinationHandler,
-          quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
-          maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
-          maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
-          finalToken: event.args.finalToken,
-          sig: event.args.sig,
-          finalised: event.blockNumber <= lastFinalisedBlock,
-        };
-      });
-
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const savedEvents = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
-          entities.SponsoredOFTSend,
-          eventsChunk,
-          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),

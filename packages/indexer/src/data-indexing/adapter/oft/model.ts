@@ -18,17 +18,3 @@ export interface OFTReceivedEvent extends ethers.Event {
     amountReceivedLD: BigNumber;
   };
 }
-
-export interface SponsoredOFTSendLog extends ethers.providers.Log {
-  args: [] & {
-    quoteNonce: string;
-    originSender: string;
-    finalRecipient: string;
-    destinationHandler: string;
-    quoteDeadline: ethers.BigNumber;
-    maxBpsToSponsor: ethers.BigNumber;
-    maxUserSlippageBps: ethers.BigNumber;
-    finalToken: string;
-    sig: string;
-  };
-}
