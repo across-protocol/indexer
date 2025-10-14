@@ -311,11 +311,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           await oftTransferRepository.update(
             { id: relatedOftTransfer.id },
             {
-              oftSentEventId: null,
-              originGasFee: null,
-              originGasFeeUsd: null,
-              originGasTokenPriceUsd: null,
-              originTxnRef: null,
+              // forced casting because the migration run command returns a weird error
+              // for string | null types: "DataTypeNotSupportedError: Data type "Object"
+              // in <column_here> is not supported by "postgres" database.
+              oftSentEventId: null as any,
+              originGasFee: null as any,
+              originGasFeeUsd: null as any,
+              originGasTokenPriceUsd: null as any,
+              originTxnRef: null as any,
             },
           );
         }
@@ -345,8 +348,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           await oftTransferRepository.update(
             { id: relatedOftTransfer.id },
             {
-              oftReceivedEventId: null,
-              destinationTxnRef: null,
+              // forced casting because the migration run command returns a weird error
+              // for string | null types: "DataTypeNotSupportedError: Data type "Object"
+              // in <column_here> is not supported by "postgres" database.
+              oftReceivedEventId: null as any,
+              destinationTxnRef: null as any,
               status: RelayStatus.Unfilled,
             },
           );
