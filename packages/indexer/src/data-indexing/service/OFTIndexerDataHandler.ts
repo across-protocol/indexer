@@ -92,6 +92,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const timeToDeleteEvents = performance.now();
 
     const processedEvents = await this.processDatabaseEvents(
+      deletedEvents.oftSentEvents,
+      deletedEvents.oftReceivedEvents,
       storedEvents.oftSentEvents.map((event) => event.data),
       storedEvents.oftReceivedEvents.map((event) => event.data),
     );
@@ -265,17 +267,93 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
   }
 
   private async processDatabaseEvents(
+    deletedOftSentEvents: entities.OFTSent[],
+    deletedOftReceivedEvents: entities.OFTReceived[],
     oftSentEvents: entities.OFTSent[],
     oftReceivedEvents: entities.OFTReceived[],
   ) {
-    // await this.processDeletedEvents()
+    await this.processDeletedEvents(
+      deletedOftSentEvents,
+      deletedOftReceivedEvents,
+    );
     await this.assignOftEventsToOftTransfer(oftSentEvents, oftReceivedEvents);
   }
 
   private async processDeletedEvents(
     deletedOftSentEvents: entities.OFTSent[],
     deletedOftReceivedEvents: entities.OFTReceived[],
-  ) {}
+  ) {
+    await Promise.all([
+      this.processDeletedOftSentEvents(deletedOftSentEvents),
+      this.processDeletedOftReceivedEvents(deletedOftReceivedEvents),
+    ]);
+  }
+
+  private async processDeletedOftSentEvents(
+    deletedOftSentEvents: entities.OFTSent[],
+  ) {
+    for (const oftSentEvent of deletedOftSentEvents) {
+      await this.postgres.transaction(async (tem) => {
+        const oftTransferRepository = tem.getRepository(entities.OftTransfer);
+        const lockKey = getDbLockKeyForOftEvent(oftSentEvent);
+        await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
+        const relatedOftTransfer = await oftTransferRepository.findOne({
+          where: { oftSentEventId: oftSentEvent.id },
+        });
+
+        if (!relatedOftTransfer) return;
+
+        if (!relatedOftTransfer.oftReceivedEventId) {
+          // There is no related OFTReceivedEvent, so we can delete the OFTTransfer row
+          await oftTransferRepository.delete({ id: relatedOftTransfer.id });
+        } else {
+          // There is a related OFTReceivedEvent, so we must update the OFTTransfer row
+          await oftTransferRepository.update(
+            { id: relatedOftTransfer.id },
+            {
+              oftSentEventId: null,
+              originGasFee: null,
+              originGasFeeUsd: null,
+              originGasTokenPriceUsd: null,
+              originTxnRef: null,
+            },
+          );
+        }
+      });
+    }
+  }
+
+  private async processDeletedOftReceivedEvents(
+    deletedOftReceivedEvents: entities.OFTReceived[],
+  ) {
+    for (const oftReceivedEvent of deletedOftReceivedEvents) {
+      await this.postgres.transaction(async (tem) => {
+        const oftTransferRepository = tem.getRepository(entities.OftTransfer);
+        const lockKey = getDbLockKeyForOftEvent(oftReceivedEvent);
+        await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
+        const relatedOftTransfer = await oftTransferRepository.findOne({
+          where: { oftReceivedEventId: oftReceivedEvent.id },
+        });
+
+        if (!relatedOftTransfer) return;
+
+        if (!relatedOftTransfer.oftSentEventId) {
+          // There is no related OFTSentEvent, so we can delete the OFTTransfer row
+          await oftTransferRepository.delete({ id: relatedOftTransfer.id });
+        } else {
+          // There is a related OFTSentEvent, so we must update the OFTTransfer row
+          await oftTransferRepository.update(
+            { id: relatedOftTransfer.id },
+            {
+              oftReceivedEventId: null,
+              destinationTxnRef: null,
+              status: RelayStatus.Unfilled,
+            },
+          );
+        }
+      });
+    }
+  }
 
   private async assignOftEventsToOftTransfer(
     oftSentEvents: entities.OFTSent[],
@@ -396,7 +474,6 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       guid: oftReceivedEvent.guid,
       oftReceivedEventId: oftReceivedEvent.id,
       originChainId: originChainId.toString(),
-      // TODO
       originTokenAddress: getCorrespondingTokenAddress(
         this.chainId,
         oftReceivedEvent.token,

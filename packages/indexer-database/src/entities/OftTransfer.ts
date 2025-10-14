@@ -38,20 +38,20 @@ export class OftTransfer {
   destinationTokenAmount?: string;
 
   @Column({ nullable: true })
-  originTxnRef?: string;
+  originTxnRef?: string | null;
 
   @Column({ nullable: true })
-  destinationTxnRef?: string;
+  destinationTxnRef?: string | null;
 
   @Column({ nullable: true })
-  oftSentEventId?: number;
+  oftSentEventId?: number | null;
 
   @OneToOne(() => OFTSent, (oftSentEvent) => oftSentEvent.id)
   @JoinColumn({ name: "oftSentEventId" })
   oftSentEvent?: OFTSent;
 
   @Column({ nullable: true })
-  oftReceivedEventId?: number;
+  oftReceivedEventId?: number | null;
 
   @OneToOne(() => OFTReceived, (oftReceivedEvent) => oftReceivedEvent.id)
   @JoinColumn({ name: "oftReceivedEventId" })
@@ -68,13 +68,13 @@ export class OftTransfer {
   bridgeFeeUsd?: string;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasFee?: string;
+  originGasFee?: string | null;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasFeeUsd?: string;
+  originGasFeeUsd?: string | null;
 
   @Column({ nullable: true, type: "decimal" })
-  originGasTokenPriceUsd?: string;
+  originGasTokenPriceUsd?: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
