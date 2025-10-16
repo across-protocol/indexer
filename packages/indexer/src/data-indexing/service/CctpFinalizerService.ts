@@ -1,0 +1,204 @@
+import winston, { Logger } from "winston";
+import axios from "axios";
+
+import { RepeatableTask } from "../../generics";
+import { DataSource } from "@repo/indexer-database";
+import {
+  CctpFinalizerJob,
+  DepositForBurn,
+} from "../../../../indexer-database/dist/src/entities";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { PubSubService } from "../../pubsub/service";
+import { Config } from "../../parseEnv";
+
+export const CCTP_FINALIZER_DELAY_SECONDS = 10;
+
+export class CctpFinalizerServiceManager {
+  private service: RepeatableTask;
+  private pubSubService: PubSubService;
+
+  constructor(
+    private logger: Logger,
+    private config: Config,
+    private postgres: DataSource,
+  ) {}
+
+  public async start() {
+    try {
+      if (!this.config.enableCctpFinalizer) {
+        this.logger.warn({
+          at: "Indexer#CctpFinalizerServiceManager#start",
+          message: "CCTP finalizer is disabled",
+        });
+        return;
+      }
+
+      this.pubSubService = new PubSubService(this.config);
+      this.service = new CctpFinalizerService(
+        this.logger,
+        this.postgres,
+        this.pubSubService,
+      );
+      await this.service.start(CCTP_FINALIZER_DELAY_SECONDS);
+    } catch (error) {
+      this.logger.error({
+        at: "Indexer#CctpFinalizerServiceManager#start",
+        message: "Error starting CCTP finalizer",
+        error,
+        errorJson: JSON.stringify(error),
+      });
+      throw error;
+    }
+  }
+
+  public async stopGracefully() {
+    this.service?.stop();
+  }
+}
+
+/**
+ * @description This service is designed to run on an interval basis similar to a cron job.
+ * It publishes CCTP burn events info to the pubsub topic so that the finalization bot can
+ * finalize the burn events indexed by the indexer. This service doesn't deal with
+ * submitting the finalization transaction onchain, it just publishes the messages
+ * to the the pubsub topic.
+ */
+class CctpFinalizerService extends RepeatableTask {
+  constructor(
+    logger: winston.Logger,
+    private readonly postgres: DataSource,
+    private readonly pubSubService: PubSubService,
+  ) {
+    super(logger, "cctp-finalizer-service");
+  }
+
+  protected async taskLogic(): Promise<void> {
+    try {
+      //#region devnote
+      // Steps:
+      // 1. Get the burn events from the database that were not published to the pubsub topic yet.
+      // 2. Publish the burn events info to the pubsub topic. As an optimization, publish only
+      // the burn events for which the attestation is available.
+      // 3. Create a new CctpFinalizJob row in the database for each burn event that was published
+      // to the pubsub topic, so that they are picked up again.
+      //#endregion
+      const qb = this.postgres
+        .createQueryBuilder(DepositForBurn, "burnEvent")
+        .leftJoinAndSelect("burnEvent.finalizerJob", "job")
+        .where("job.id IS NULL")
+        // Filter out the burn events that have been deleted due to re-orgs.
+        .andWhere("burnEvent.deletedAt IS NULL");
+      const burnEvents = await qb.getMany();
+
+      for (const burnEvent of burnEvents) {
+        await this.publishBurnEvent(burnEvent);
+      }
+    } catch (error) {
+      this.logger.error({
+        at: "CctpFinalizerService#taskLogic",
+        message: "Error in CctpFinalizerService",
+        notificationPath: "across-indexer-error",
+        errorJson: JSON.stringify(error),
+        error,
+      });
+    }
+  }
+
+  protected initialize(): Promise<void> {
+    // Empty because there's no need to initialize dependencies for now.
+    return Promise.resolve();
+  }
+
+  private async publishBurnEvent(burnEvent: DepositForBurn) {
+    try {
+      const { chainId, transactionHash, minFinalityThreshold, blockTimestamp } =
+        burnEvent;
+      // Skip the event if the attestation time has not passed yet. Attestation times are
+      // taken from here: https://developers.circle.com/cctp/required-block-confirmations
+      const attestationTimeSeconds = getAttestationTime(
+        Number(chainId),
+        minFinalityThreshold,
+      );
+      const elapsedSeconds =
+        new Date().getTime() / 1000 - blockTimestamp.getTime() / 1000;
+
+      if (elapsedSeconds < attestationTimeSeconds * 1000) {
+        this.logger.debug({
+          at: "CctpFinalizerService#publishBurnEvent",
+          message:
+            "Skipping burn event because the attestation time has not passed yet",
+          chainId,
+          transactionHash,
+          minFinalityThreshold,
+          blockTimestamp,
+          attestationTimeSeconds,
+          elapsedSeconds,
+        });
+        return;
+      }
+      this.logger.debug({
+        at: "CctpFinalizerService#publishBurnEvent",
+        message: "Publishing burn event to pubsub",
+        chainId,
+        transactionHash,
+        minFinalityThreshold,
+        blockTimestamp,
+        attestationTimeSeconds,
+        elapsedSeconds,
+      });
+      await this.pubSubService.publishCctpFinalizerMessage(
+        transactionHash,
+        Number(chainId),
+      );
+
+      await this.postgres
+        .createQueryBuilder(CctpFinalizerJob, "j")
+        .insert()
+        .values({
+          attestation: "",
+          burnEventId: burnEvent.id,
+        })
+        .orUpdate(["attestation"], ["burnEventId"])
+        .execute();
+    } catch (error) {
+      this.logger.error({
+        at: "CctpFinalizerService#publishBurnEvent",
+        message: "Error in CctpFinalizerService",
+        notificationPath: "across-indexer-error",
+        errorJson: JSON.stringify(error),
+        error,
+      });
+    }
+  }
+}
+
+const ATTESTATION_TIMES = {
+  [CHAIN_IDs.MAINNET]: { standard: 13 * 60, fast: 20 },
+  [CHAIN_IDs.ARBITRUM]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.BASE]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.BSC]: { standard: 2, fast: 8 },
+  [CHAIN_IDs.HYPEREVM]: { standard: 5, fast: 8 },
+  [CHAIN_IDs.INK]: { standard: 30 * 60, fast: 8 },
+  [CHAIN_IDs.LINEA]: { standard: 6 * 60 * 60, fast: 8 },
+  [CHAIN_IDs.OPTIMISM]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.POLYGON]: { standard: 8, fast: 8 },
+  [CHAIN_IDs.SOLANA]: { standard: 25, fast: 8 },
+  [CHAIN_IDs.UNICHAIN]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.WORLD_CHAIN]: { standard: 13 * 60, fast: 8 },
+};
+
+function getAttestationTime(chainId: number, finalityThreshold: number) {
+  let finalityKey: keyof (typeof ATTESTATION_TIMES)[typeof chainId];
+  if (finalityThreshold <= 1000) {
+    finalityKey = "fast";
+  } else {
+    finalityKey = "standard";
+  }
+  const attestationTime = ATTESTATION_TIMES[chainId]?.[finalityKey];
+  if (!attestationTime) {
+    throw new Error(
+      `CCTP attestation time not defined for chainId: ${chainId}`,
+    );
+  }
+  return attestationTime;
+}

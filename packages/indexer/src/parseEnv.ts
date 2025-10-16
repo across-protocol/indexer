@@ -20,6 +20,8 @@ export type Config = {
   enableHotfixServices: boolean;
   enableBundleBuilder: boolean;
   enableCctpIndexer: boolean;
+  enableCctpFinalizer: boolean;
+  finalizerPubSubTopic: string;
   enableOftIndexer: boolean;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -221,6 +223,10 @@ export function envToConfig(env: Env): Config {
   const enableOftIndexer = env.ENABLE_OFT_INDEXER
     ? env.ENABLE_OFT_INDEXER === "true"
     : false;
+  const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
+    ? env.ENABLE_CCTP_FINALIZER === "true"
+    : false;
+  const finalizerPubSubTopic = env.CCTP_FINALIZER_PUBSUB_TOPIC ?? "";
   const enableBundleIncludedEventsService =
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
       ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
@@ -279,6 +285,8 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     enableCctpIndexer,
     enableOftIndexer,
+    enableCctpFinalizer,
+    finalizerPubSubTopic,
     webhookConfig,
     maxBlockRangeSize,
     coingeckoApiKey,
