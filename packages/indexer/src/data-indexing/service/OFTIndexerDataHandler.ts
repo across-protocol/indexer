@@ -2,27 +2,18 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 
-import {
-  DataSource,
-  entities,
-  InsertResult,
-  SaveQueryResult,
-  UpdateResult,
-} from "@repo/indexer-database";
+import { DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
 import { OFTReceivedEvent, OFTSentEvent } from "../adapter/oft/model";
 import { OftRepository } from "../../database/OftRepository";
-import { getDbLockKeyForOftEvent } from "../../utils/spokePoolUtils";
 import {
-  getChainIdForEndpointId,
-  getCorrespondingTokenAddress,
   getOftChainConfiguration,
   isEndpointIdSupported,
 } from "../adapter/oft/service";
-import { RelayStatus } from "../../../../indexer-database/dist/src/entities";
+import { OftTransferAggregator } from "./OftTransferAggregator";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -38,6 +29,7 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
+  private oftTransferAggregator: OftTransferAggregator;
 
   constructor(
     private logger: Logger,
@@ -47,6 +39,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     private postgres: DataSource,
   ) {
     this.isInitialized = false;
+    this.oftTransferAggregator = new OftTransferAggregator(postgres);
   }
 
   private initialize() {}
@@ -91,12 +84,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     );
     const timeToDeleteEvents = performance.now();
 
-    const processedEvents = await this.processDatabaseEvents(
-      deletedEvents.oftSentEvents,
-      deletedEvents.oftReceivedEvents,
-      storedEvents.oftSentEvents.map((event) => event.data),
-      storedEvents.oftReceivedEvents.map((event) => event.data),
-    );
+    const processedEvents =
+      await this.oftTransferAggregator.processDatabaseEvents(
+        deletedEvents.oftSentEvents,
+        deletedEvents.oftReceivedEvents,
+        storedEvents.oftSentEvents.map((event) => event.data),
+        storedEvents.oftReceivedEvents.map((event) => event.data),
+        this.chainId,
+      );
     const timeToProcessEvents = performance.now();
     const finalPerfTime = performance.now();
 
@@ -264,229 +259,5 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       },
       {} as Record<string, Date>,
     );
-  }
-
-  private async processDatabaseEvents(
-    deletedOftSentEvents: entities.OFTSent[],
-    deletedOftReceivedEvents: entities.OFTReceived[],
-    oftSentEvents: entities.OFTSent[],
-    oftReceivedEvents: entities.OFTReceived[],
-  ) {
-    await this.processDeletedEvents(
-      deletedOftSentEvents,
-      deletedOftReceivedEvents,
-    );
-    await this.assignOftEventsToOftTransfer(oftSentEvents, oftReceivedEvents);
-  }
-
-  private async processDeletedEvents(
-    deletedOftSentEvents: entities.OFTSent[],
-    deletedOftReceivedEvents: entities.OFTReceived[],
-  ) {
-    await Promise.all([
-      this.processDeletedOftSentEvents(deletedOftSentEvents),
-      this.processDeletedOftReceivedEvents(deletedOftReceivedEvents),
-    ]);
-  }
-
-  private async processDeletedOftSentEvents(
-    deletedOftSentEvents: entities.OFTSent[],
-  ) {
-    for (const oftSentEvent of deletedOftSentEvents) {
-      await this.postgres.transaction(async (tem) => {
-        const oftTransferRepository = tem.getRepository(entities.OftTransfer);
-        const lockKey = getDbLockKeyForOftEvent(oftSentEvent);
-        await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
-        const relatedOftTransfer = await oftTransferRepository.findOne({
-          where: { oftSentEventId: oftSentEvent.id },
-        });
-
-        if (!relatedOftTransfer) return;
-
-        if (!relatedOftTransfer.oftReceivedEventId) {
-          // There is no related OFTReceivedEvent, so we can delete the OFTTransfer row
-          await oftTransferRepository.delete({ id: relatedOftTransfer.id });
-        } else {
-          // There is a related OFTReceivedEvent, so we must update the OFTTransfer row
-          await oftTransferRepository.update(
-            { id: relatedOftTransfer.id },
-            {
-              // forced casting because the migration run command returns a weird error
-              // for string | null types: "DataTypeNotSupportedError: Data type "Object"
-              // in <column_here> is not supported by "postgres" database.
-              oftSentEventId: null as any,
-              originGasFee: null as any,
-              originGasFeeUsd: null as any,
-              originGasTokenPriceUsd: null as any,
-              originTxnRef: null as any,
-            },
-          );
-        }
-      });
-    }
-  }
-
-  private async processDeletedOftReceivedEvents(
-    deletedOftReceivedEvents: entities.OFTReceived[],
-  ) {
-    for (const oftReceivedEvent of deletedOftReceivedEvents) {
-      await this.postgres.transaction(async (tem) => {
-        const oftTransferRepository = tem.getRepository(entities.OftTransfer);
-        const lockKey = getDbLockKeyForOftEvent(oftReceivedEvent);
-        await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
-        const relatedOftTransfer = await oftTransferRepository.findOne({
-          where: { oftReceivedEventId: oftReceivedEvent.id },
-        });
-
-        if (!relatedOftTransfer) return;
-
-        if (!relatedOftTransfer.oftSentEventId) {
-          // There is no related OFTSentEvent, so we can delete the OFTTransfer row
-          await oftTransferRepository.delete({ id: relatedOftTransfer.id });
-        } else {
-          // There is a related OFTSentEvent, so we must update the OFTTransfer row
-          await oftTransferRepository.update(
-            { id: relatedOftTransfer.id },
-            {
-              // forced casting because the migration run command returns a weird error
-              // for string | null types: "DataTypeNotSupportedError: Data type "Object"
-              // in <column_here> is not supported by "postgres" database.
-              oftReceivedEventId: null as any,
-              destinationTxnRef: null as any,
-              status: RelayStatus.Unfilled,
-            },
-          );
-        }
-      });
-    }
-  }
-
-  private async assignOftEventsToOftTransfer(
-    oftSentEvents: entities.OFTSent[],
-    oftReceivedEvents: entities.OFTReceived[],
-  ) {
-    await Promise.all([
-      this.assignOftSentEventsToOftTransfer(oftSentEvents),
-      this.assignOftReceivedEventsToOftTransfer(oftReceivedEvents),
-    ]);
-  }
-
-  private async assignOftSentEventsToOftTransfer(
-    oftSentEvents: entities.OFTSent[],
-  ) {
-    const insertResults: InsertResult[] = [];
-    const updateResults: UpdateResult[] = [];
-
-    await Promise.all(
-      oftSentEvents.map(async (oftSentEvent) => {
-        // start a transaction
-        await this.postgres.transaction(async (tem) => {
-          const oftTransferRepository = tem.getRepository(entities.OftTransfer);
-          const lockKey = getDbLockKeyForOftEvent(oftSentEvent);
-          // Acquire a lock to prevent concurrent modifications on the same guid.
-          // The lock is automatically released when the transaction commits or rolls back.
-          await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
-          const existingRow = await oftTransferRepository
-            .createQueryBuilder()
-            .where('"guid" = :guid', { guid: oftSentEvent.guid })
-            .getOne();
-          if (!existingRow) {
-            const insertedRow = await oftTransferRepository.insert({
-              ...this.formatOftSentEventToOftTransfer(oftSentEvent),
-            });
-            insertResults.push(insertedRow);
-          } else if (
-            existingRow &&
-            existingRow.oftSentEventId !== oftSentEvent.id
-          ) {
-            const updatedRow = await oftTransferRepository.update(
-              { id: existingRow.id },
-              this.formatOftSentEventToOftTransfer(oftSentEvent),
-            );
-            updateResults.push(updatedRow);
-          }
-        });
-      }),
-    );
-  }
-
-  private async assignOftReceivedEventsToOftTransfer(
-    oftReceivedEvents: entities.OFTReceived[],
-  ) {
-    await Promise.all(
-      oftReceivedEvents.map(async (oftReceivedEvent) => {
-        await this.postgres.transaction(async (tem) => {
-          const oftTransferRepository = tem.getRepository(entities.OftTransfer);
-          const lockKey = getDbLockKeyForOftEvent(oftReceivedEvent);
-          await tem.query(`SELECT pg_advisory_xact_lock($1)`, lockKey);
-          const existingRow = await oftTransferRepository
-            .createQueryBuilder()
-            .where('"guid" = :guid', { guid: oftReceivedEvent.guid })
-            .getOne();
-          if (!existingRow) {
-            await oftTransferRepository.insert({
-              ...this.formatOftReceivedEventToOftTransfer(oftReceivedEvent),
-            });
-          } else if (
-            existingRow &&
-            existingRow.oftReceivedEventId !== oftReceivedEvent.id
-          ) {
-            await oftTransferRepository.update(
-              { id: existingRow.id },
-              this.formatOftReceivedEventToOftTransfer(oftReceivedEvent),
-            );
-          }
-        });
-      }),
-    );
-  }
-
-  private formatOftSentEventToOftTransfer(
-    oftSentEvent: entities.OFTSent,
-  ): Partial<entities.OftTransfer> {
-    const destinationChainId = getChainIdForEndpointId(oftSentEvent.dstEid);
-    return {
-      bridgeFeeUsd: "0",
-      destinationChainId: destinationChainId.toString(),
-      destinationTokenAddress: getCorrespondingTokenAddress(
-        this.chainId,
-        getOftChainConfiguration(this.chainId).tokens[0]!.address,
-        destinationChainId,
-      ),
-      destinationTokenAmount: oftSentEvent.amountReceivedLD,
-      guid: oftSentEvent.guid,
-      oftSentEventId: oftSentEvent.id,
-      originChainId: this.chainId.toString(),
-      originGasFee: "0", // TODO
-      originGasFeeUsd: "0", // TODO
-      originGasTokenPriceUsd: "0", // TODO
-      originTokenAddress: oftSentEvent.token,
-      originTokenAmount: oftSentEvent.amountSentLD,
-      originTxnRef: oftSentEvent.transactionHash,
-    };
-  }
-
-  private formatOftReceivedEventToOftTransfer(
-    oftReceivedEvent: entities.OFTReceived,
-  ): Partial<entities.OftTransfer> {
-    const originChainId = getChainIdForEndpointId(oftReceivedEvent.srcEid);
-    return {
-      bridgeFeeUsd: "0",
-      destinationChainId: this.chainId.toString(),
-      destinationTokenAddress: getOftChainConfiguration(this.chainId).tokens[0]!
-        .address,
-      destinationTokenAmount: oftReceivedEvent.amountReceivedLD,
-      destinationTxnRef: oftReceivedEvent.transactionHash,
-      guid: oftReceivedEvent.guid,
-      oftReceivedEventId: oftReceivedEvent.id,
-      originChainId: originChainId.toString(),
-      originTokenAddress: getCorrespondingTokenAddress(
-        this.chainId,
-        oftReceivedEvent.token,
-        originChainId,
-      ),
-      originTokenAmount: oftReceivedEvent.amountReceivedLD,
-      status: RelayStatus.Filled,
-    };
   }
 }
