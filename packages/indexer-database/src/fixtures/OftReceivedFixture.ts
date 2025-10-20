@@ -1,10 +1,10 @@
+import { DataSource, DeleteResult, Repository } from "typeorm";
+import { utils } from "@across-protocol/sdk";
 import { OFTReceived } from "../entities";
 import {
-  getMockedEvmAddress,
   getMockedEvmTransactionHash,
   getRandomInt,
 } from "../utils/FixtureUtils";
-import { DataSource, DeleteResult, Repository } from "typeorm";
 
 export class OftReceivedFixture {
   private repository: Repository<OFTReceived>;
@@ -19,11 +19,11 @@ export class OftReceivedFixture {
    */
   public mockOftReceived(overrides: Partial<OFTReceived>) {
     return {
-      guid: getMockedEvmAddress(),
+      guid: utils.randomAddress(),
       srcEid: 30101, // Default source endpoint ID (e.g., Arbitrum)
-      toAddress: getMockedEvmAddress(),
+      toAddress: utils.randomAddress(),
       amountReceivedLD: "990000",
-      token: getMockedEvmAddress(),
+      token: utils.randomAddress(),
       chainId: "10",
       blockHash: getMockedEvmTransactionHash(),
       blockNumber: getRandomInt(1000000, 20000000),
