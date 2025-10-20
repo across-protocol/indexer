@@ -188,6 +188,8 @@ export class OftTransferAggregator {
             existingRow &&
             existingRow.oftSentEventId !== oftSentEvent.id
           ) {
+            // If oftSentEventId is undefined or has a different value because of a bug
+            // in the logic for handling deleted events, we need to update the OftTransfer row.
             const updatedRow = await oftTransferRepository.update(
               { id: existingRow.id },
               this.formatOftSentEventToOftTransfer(oftSentEvent, chainId),
