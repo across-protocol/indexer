@@ -1,10 +1,9 @@
 import { DataSource, DeleteResult, Repository } from "typeorm";
 import { utils } from "@across-protocol/sdk";
+import { ethers } from "ethers";
+
 import { OFTReceived } from "../entities";
-import {
-  getMockedEvmTransactionHash,
-  getRandomInt,
-} from "../utils/FixtureUtils";
+import { getRandomInt } from "../utils/FixtureUtils";
 
 export class OftReceivedFixture {
   private repository: Repository<OFTReceived>;
@@ -25,9 +24,9 @@ export class OftReceivedFixture {
       amountReceivedLD: "990000",
       token: utils.randomAddress(),
       chainId: "10",
-      blockHash: getMockedEvmTransactionHash(),
+      blockHash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
       blockNumber: getRandomInt(1000000, 20000000),
-      transactionHash: getMockedEvmTransactionHash(),
+      transactionHash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
       transactionIndex: getRandomInt(0, 100),
       logIndex: getRandomInt(0, 200),
       finalised: true,
