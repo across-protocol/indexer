@@ -130,9 +130,9 @@ export function getDbLockKeyForDeposit(
 }
 
 /**
- * Generates a lock key for the deposit
- * @param deposit - The deposit event
- * @returns A tuple of the origin chain id and the internal hash as a 32-bit integer
+ * Generates a lock key for oft events
+ * @param event - The oft event
+ * @returns The event's gui identifier hashed as a 32-bit integer
  */
 export function getDbLockKeyForOftEvent(
   event: entities.OFTSent | entities.OFTReceived,
