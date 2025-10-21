@@ -411,9 +411,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
-  /**
-   * Converts EVM DepositForBurn event to chain-agnostic format
-   */
   private convertDepositForBurnToChainAgnostic(
     event: DepositForBurnEvent,
   ): DepositForBurnWithBlock {
@@ -435,10 +432,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  /**
-   * Converts EVM MessageSent event to chain-agnostic format
-   * Decodes the message hex into individual fields
-   */
   private convertMessageSentToChainAgnostic(
     event: MessageSentLog,
   ): MessageSentWithBlock {
@@ -463,9 +456,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     };
   }
 
-  /**
-   * Converts EVM burn events pair to chain-agnostic format
-   */
   private convertBurnEventsPairToChainAgnostic(
     pair: EvmBurnEventsPair,
   ): BurnEventsPair {

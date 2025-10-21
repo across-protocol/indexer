@@ -47,73 +47,15 @@ export interface MintAndWithdrawLog extends providers.Log {
 }
 
 // ============================================================================
-// Chain-Agnostic CCTP Event Types (works for both EVM and SVM)
+// SVM Event Types
 // ============================================================================
 
-/**
- * Chain-agnostic DepositForBurn event
- * Can be created from either EVM or SVM events
- */
-export interface DepositForBurnWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
-
-  // Event data
-  burnToken: string;
-  amount: string; // As string to handle BigInt
-  depositor: string;
-  mintRecipient: string; // bytes32 format
-  destinationDomain: number;
-  destinationTokenMessenger: string; // bytes32 format
-  destinationCaller: string; // bytes32 format
-  maxFee: string;
-  minFinalityThreshold: number;
-  hookData: string;
-}
-
-/**
- * Chain-agnostic MessageSent event
- * Can be created from either EVM or SVM events
- * Message is already decoded by the handler (EVM or SVM specific)
- */
-export interface MessageSentWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
-
-  // Decoded message data (pre-decoded by handler)
-  message: string; // Raw message hex (kept for compatibility)
-  version: number;
-  sourceDomain: number;
-  destinationDomain: number;
-  nonce: string;
-  sender: string;
-  recipient: string;
-  destinationCaller: string;
-  minFinalityThreshold: number;
-  finalityThresholdExecuted: number;
-  messageBody: string;
-}
-
-// ============================================================================
-// SVM Event Types (raw from SvmCpiEventsClient)
-// ============================================================================
-
-/**
- * Solana CCTP DepositForBurn event structure
- * Returned by SvmCpiEventsClient.queryEvents("DepositForBurn")
- */
 export interface SolanaDepositForBurnEvent {
   name: string;
   slot: bigint;
   signature: Signature;
   program: Address;
-  blockTime: UnixTimestamp | null; // Unix timestamp - already available!
+  blockTime: UnixTimestamp | null;
   confirmationStatus: string | null;
   data: {
     nonce: string;
@@ -128,4 +70,48 @@ export interface SolanaDepositForBurnEvent {
     minFinalityThreshold: number;
     hookData: string;
   };
+}
+
+// ============================================================================
+// Chain-Agnostic CCTP Event Types (works for both EVM and SVM)
+// ============================================================================
+
+export interface DepositForBurnWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  // Event data
+  burnToken: string;
+  amount: string;
+  depositor: string;
+  mintRecipient: string;
+  destinationDomain: number;
+  destinationTokenMessenger: string;
+  destinationCaller: string;
+  maxFee: string;
+  minFinalityThreshold: number;
+  hookData: string;
+}
+
+export interface MessageSentWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  message: string;
+  version: number;
+  sourceDomain: number;
+  destinationDomain: number;
+  nonce: string;
+  sender: string;
+  recipient: string;
+  destinationCaller: string;
+  minFinalityThreshold: number;
+  finalityThresholdExecuted: number;
+  messageBody: string;
 }

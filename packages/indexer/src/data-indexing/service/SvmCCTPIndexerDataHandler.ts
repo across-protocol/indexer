@@ -33,7 +33,6 @@ const MESSAGE_TRANSMITTER_V2_ADDRESS =
 const TOKEN_MESSENGER_MINTER_V2_ADDRESS =
   "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe";
 
-// Swap API filtering - we filter by marker in the memo program
 const SWAP_API_CALLDATA_MARKER = "0x73c0de";
 
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
@@ -121,7 +120,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
 
   /**
    * Checks if a Solana transaction contains the Swap API marker in its logs
-   * Similar to getSvmIntegratorId but checking for the 73c0de marker
    */
   private async isSwapApiTransaction(sig: string): Promise<boolean> {
     try {
@@ -141,7 +139,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         return false;
       }
 
-      // Check if any log contains the Swap API marker
       const hasMarker = txnLogs.some((log) =>
         log.includes(SWAP_API_CALLDATA_MARKER),
       );
@@ -168,7 +165,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       ...new Set(depositForBurnEvents.map((e) => e.signature)),
     ];
 
-    // Check which signatures are from Swap API
     const swapApiSignatures = new Set<string>();
     let checkedCount = 0;
     await across.utils.forEachAsync(uniqueSignatures, async (sig) => {
@@ -180,7 +176,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       }
     });
 
-    // Filter events to only those with Swap API signatures
     const filtered = depositForBurnEvents.filter((event) =>
       swapApiSignatures.has(event.signature),
     );
@@ -188,18 +183,14 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     return filtered;
   }
 
-  /**
-   * Converts Solana DepositForBurn event to chain-agnostic format
-   */
   private convertSolanaDepositForBurnToChainAgnostic(
     event: SolanaDepositForBurnEvent,
-    logIndex: number,
   ): DepositForBurnWithBlock {
     return {
       blockNumber: Number(event.slot),
       transactionHash: event.signature,
-      transactionIndex: 0, // Solana doesn't have transaction index in same way
-      logIndex,
+      transactionIndex: 0,
+      logIndex: 0,
       burnToken: event.data.burnToken,
       amount: event.data.amount,
       depositor: event.data.depositor,
@@ -240,8 +231,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         depositForBurnEvents as SolanaDepositForBurnEvent[],
       );
 
-    // Match DepositForBurn with MessageSent events by signature (transaction hash)
-    // Since MessageSent events aren't captured as events, we'll fetch them from transactions
+    // Look for MessageSent account in the transaction
     const burnEvents =
       await this.matchDepositForBurnWithMessageSentFromTransactions(
         filteredDepositForBurnEvents,
@@ -290,103 +280,93 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   }
 
   /**
-   * Fetches MessageSent data from transactions and pairs with DepositForBurn events
-   * Since MessageSent events aren't captured as events, we extract the message data
-   * from the transaction itself (it's in the same transaction via CPI)
+   * Fetches MessageSent data and pairs with DepositForBurn events
+   * In Solana, MessageSent data is stored in an account.
    */
   private async matchDepositForBurnWithMessageSentFromTransactions(
     depositForBurnEvents: SolanaDepositForBurnEvent[],
   ): Promise<BurnEventsPair[]> {
     const burnEventsPairs: BurnEventsPair[] = [];
 
-    await across.utils.forEachAsync(
-      depositForBurnEvents,
-      async (deposit, index) => {
-        try {
-          // Fetch the transaction to extract MessageSent data
-          const txn = await this.provider
-            .getTransaction(signature(deposit.signature), {
-              maxSupportedTransactionVersion: 0,
-            })
-            .send();
+    await across.utils.forEachAsync(depositForBurnEvents, async (deposit) => {
+      try {
+        const txn = await this.provider
+          .getTransaction(signature(deposit.signature), {
+            maxSupportedTransactionVersion: 0,
+          })
+          .send();
 
-          // Extract the MessageSent account address from the transaction
-          // The MessageSent account is the second signer (index 1) in the transaction
-          // First signer (index 0) is the payer, second signer is the message_sent_event_data account
-          const messageSentAccountAddress =
-            txn?.transaction?.message?.accountKeys?.[1];
+        // Extract the MessageSent account address from the transaction
+        // The MessageSent account is the second signer (index 1) in the transaction
+        // First signer (index 0) is the payer, second signer is the message_sent_event_data account
+        const messageSentAccountAddress =
+          txn?.transaction?.message?.accountKeys?.[1];
 
-          if (!messageSentAccountAddress) {
-            this.logger.warn({
-              at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
-              message:
-                "⚠️ Could not find MessageSent account address in transaction",
-              signature: deposit.signature,
-              accountKeysLength: txn?.transaction?.message?.accountKeys?.length,
-            });
-            throw new Error("MessageSent account not found in transaction");
-          }
-
-          // Fetch and decode the MessageSent account using the V2 client
-          const messageSentAccount =
-            await MessageTransmitterV2Client.fetchMessageSent(
-              this.provider,
-              address(messageSentAccountAddress.toString()),
-            );
-          if (!messageSentAccount?.data?.message) {
-            this.logger.error({
-              at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
-              message: "⚠️ Could not fetch or decode MessageSent account data",
-              signature: deposit.signature,
-              messageSentAccountAddress: messageSentAccountAddress.toString(),
-            });
-            throw new Error("MessageSent account data not found");
-          }
-
-          // Extract the message bytes from the decoded account
-          const messageBytes = Buffer.from(messageSentAccount.data.message);
-          const messageHex = "0x" + messageBytes.toString("hex");
-
-          // Decode the CCTP V2 message
-          const decodedMessage = decodeMessage(new Uint8Array(messageBytes));
-          // Create the MessageSent event with all decoded fields
-          const messageSent: MessageSentWithBlock = {
-            blockNumber: Number(deposit.slot),
-            transactionHash: deposit.signature,
-            transactionIndex: 0,
-            logIndex: index,
-            // Store the raw message as hex (for compatibility with EVM)
-            message: messageHex,
-            // All decoded fields
-            version: decodedMessage.version,
-            sourceDomain: decodedMessage.sourceDomain,
-            destinationDomain: decodedMessage.destinationDomain,
-            nonce: decodedMessage.nonce,
-            sender: decodedMessage.sender,
-            recipient: decodedMessage.recipient,
-            destinationCaller: decodedMessage.destinationCaller,
-            minFinalityThreshold: decodedMessage.minFinalityThreshold,
-            finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
-            messageBody: decodedMessage.messageBody,
-          };
-
-          burnEventsPairs.push({
-            depositForBurn: this.convertSolanaDepositForBurnToChainAgnostic(
-              deposit,
-              index,
-            ),
-            messageSent,
+        if (!messageSentAccountAddress) {
+          this.logger.warn({
+            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
+            message:
+              "Could not find MessageSent account address in transaction",
+            signature: deposit.signature,
           });
-        } catch (error) {
+          throw new Error("MessageSent account not found in transaction");
+        }
+
+        // Fetch and decode the MessageSent account using the V2 client
+        const messageSentAccount =
+          await MessageTransmitterV2Client.fetchMessageSent(
+            this.provider,
+            address(messageSentAccountAddress.toString()),
+          );
+        if (!messageSentAccount?.data?.message) {
           this.logger.error({
             at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
-            message: "Failed to fetch transaction for MessageSent extraction",
+            message: "Could not fetch or decode MessageSent account data",
             signature: deposit.signature,
-            error: error instanceof Error ? error.message : String(error),
+            messageSentAccountAddress: messageSentAccountAddress.toString(),
           });
+          throw new Error("MessageSent account data not found");
         }
-      },
-    );
+
+        // Extract the message bytes from the decoded account
+        const messageBytes = Buffer.from(messageSentAccount.data.message);
+        const messageHex = "0x" + messageBytes.toString("hex");
+
+        // Decode the CCTP V2 message
+        const decodedMessage = decodeMessage(new Uint8Array(messageBytes));
+        // Create the MessageSent event with all decoded fields
+        const messageSent: MessageSentWithBlock = {
+          blockNumber: Number(deposit.slot),
+          transactionHash: deposit.signature,
+          transactionIndex: 0,
+          logIndex: 0,
+          message: messageHex,
+          version: decodedMessage.version,
+          sourceDomain: decodedMessage.sourceDomain,
+          destinationDomain: decodedMessage.destinationDomain,
+          nonce: decodedMessage.nonce,
+          sender: decodedMessage.sender,
+          recipient: decodedMessage.recipient,
+          destinationCaller: decodedMessage.destinationCaller,
+          minFinalityThreshold: decodedMessage.minFinalityThreshold,
+          finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
+          messageBody: decodedMessage.messageBody,
+        };
+
+        burnEventsPairs.push({
+          depositForBurn:
+            this.convertSolanaDepositForBurnToChainAgnostic(deposit),
+          messageSent,
+        });
+      } catch (error) {
+        this.logger.error({
+          at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
+          message: "Failed to fetch transaction for MessageSent extraction",
+          signature: deposit.signature,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 
     return burnEventsPairs;
   }
@@ -397,8 +377,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   ): Promise<StoreEventsResult> {
     const { burnEvents, slotTimes } = events;
 
-    // Convert slotTimes to blockDates format expected by repository
-    // For Solana, we key blockDates by slot number (blockNumber)
     const blockDates: Record<number, Date> = {};
     for (const event of burnEvents) {
       const slot = event.depositForBurn.blockNumber;
