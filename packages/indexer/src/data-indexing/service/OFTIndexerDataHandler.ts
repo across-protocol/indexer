@@ -84,8 +84,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     );
     const timeToDeleteEvents = performance.now();
 
-    const processedEvents =
-      await this.oftTransferAggregator.processDatabaseEvents(
+    await this.oftTransferAggregator.processDatabaseEvents(
         deletedEvents.oftSentEvents,
         deletedEvents.oftReceivedEvents,
         storedEvents.oftSentEvents.map((event) => event.data),
