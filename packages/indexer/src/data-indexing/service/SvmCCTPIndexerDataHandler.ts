@@ -68,7 +68,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   }
 
   public getDataIdentifier() {
-    return `cctp:v2:svm:${this.chainId}`;
+    return `cctp:v2:${this.chainId}`;
   }
 
   public getStartIndexingBlockNumber() {
