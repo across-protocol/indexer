@@ -8,6 +8,7 @@ export class CctpFinalizerJob1760541259411 implements MigrationInterface {
       CREATE TABLE "cctp_finalizer_job" (
         "id" SERIAL NOT NULL,
         "attestation" character varying NOT NULL,
+        "message" character varying NOT NULL,
         "burnEventId" integer NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),

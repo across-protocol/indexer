@@ -1,34 +1,43 @@
-import axios from "axios";
+import { PubSub, Topic } from "@google-cloud/pubsub";
 import { Config } from "../parseEnv";
 
 /**
  * Helper class to publish messages to a GCP pubsub topic.
  */
 export class PubSubService {
-  constructor(private readonly config: Config) {}
+  private readonly pubSub: PubSub;
+  private cctpFinalizerTopic: Topic;
+
+  constructor(private readonly config: Config) {
+    this.pubSub = new PubSub({
+      projectId: this.config.pubSubGcpProjectId,
+    });
+  }
 
   async publishCctpFinalizerMessage(
     burnTransactionHash: string,
     sourceChainId: number,
+    message: string,
+    attestation: string,
+    destinationChainId: number,
   ) {
+    if (!this.cctpFinalizerTopic) {
+      const topic = await this.pubSub.topic(
+        this.config.pubSubCctpFinalizerTopic,
+      );
+      this.cctpFinalizerTopic = topic;
+    }
     // the published payload is a base64 encoded JSON string. The JSON is
     // validated by the Avro schema defined in GCP
     const payload = Buffer.from(
       JSON.stringify({
         burnTransactionHash: burnTransactionHash,
         sourceChainId,
+        message,
+        attestation,
+        destinationChainId,
       }),
-    ).toString("base64");
-    const body = { messages: [{ data: payload }] };
-    const response = await axios.post(this.config.finalizerPubSubTopic, body, {
-      headers: {
-        "Content-Type": "application/json",
-        // TODO: this authorization method is temporary for local testing.
-        // It must be replaced with a proper authentication method.
-        Authorization: `Bearer <AUTH_TOKEN>`,
-      },
-    });
-
-    return response.data;
+    );
+    await this.cctpFinalizerTopic.publishMessage({ data: payload });
   }
 }

@@ -2,7 +2,7 @@ import winston, { Logger } from "winston";
 import axios from "axios";
 
 import { RepeatableTask } from "../../generics";
-import { DataSource } from "@repo/indexer-database";
+import { DataSource, entities } from "@repo/indexer-database";
 import {
   CctpFinalizerJob,
   DepositForBurn,
@@ -10,6 +10,11 @@ import {
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { PubSubService } from "../../pubsub/service";
 import { Config } from "../../parseEnv";
+import {
+  fetchAttestationsForTxn,
+  getCctpDestinationChainFromDomain,
+  getCctpDomainForChainId,
+} from "../adapter/cctp-v2/service";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
 
@@ -136,6 +141,43 @@ class CctpFinalizerService extends RepeatableTask {
         });
         return;
       }
+      const attestations = await fetchAttestationsForTxn(
+        getCctpDomainForChainId(Number(burnEvent.chainId)),
+        transactionHash,
+        true,
+      );
+      if (attestations.messages.length === 0) {
+        this.logger.debug({
+          at: "CctpFinalizerService#publishBurnEvent",
+          message: "No attestations found for burn event",
+          chainId,
+          transactionHash,
+          burnEvent,
+        });
+        return;
+      }
+      const { attestation, eventNonce, message, status } =
+        attestations.messages[0]!;
+      if (status !== "complete") {
+        this.logger.debug({
+          at: "CctpFinalizerService#publishBurnEvent",
+          message: "Attestation is not complete",
+          chainId,
+          transactionHash,
+          burnEvent,
+          attestations,
+        });
+        return;
+      }
+
+      await this.postgres
+        .createQueryBuilder(entities.MessageSent, "ms")
+        .update()
+        .set({
+          nonce: eventNonce,
+        })
+        .where("id = :id", { id: burnEvent.id })
+        .execute();
       this.logger.debug({
         at: "CctpFinalizerService#publishBurnEvent",
         message: "Publishing burn event to pubsub",
@@ -146,16 +188,23 @@ class CctpFinalizerService extends RepeatableTask {
         attestationTimeSeconds,
         elapsedSeconds,
       });
+      const destinationChainId = getCctpDestinationChainFromDomain(
+        burnEvent.destinationDomain,
+      );
       await this.pubSubService.publishCctpFinalizerMessage(
         transactionHash,
         Number(chainId),
+        message,
+        attestation,
+        destinationChainId,
       );
 
       await this.postgres
         .createQueryBuilder(CctpFinalizerJob, "j")
         .insert()
         .values({
-          attestation: "",
+          attestation,
+          message,
           burnEventId: burnEvent.id,
         })
         .orUpdate(["attestation"], ["burnEventId"])

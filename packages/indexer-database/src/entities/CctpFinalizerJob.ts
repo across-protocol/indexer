@@ -25,6 +25,9 @@ export class CctpFinalizerJob {
   attestation: string;
 
   @Column()
+  message: string;
+
+  @Column()
   burnEventId: number;
 
   @OneToOne(() => DepositForBurn, (burnEvent) => burnEvent.id)
