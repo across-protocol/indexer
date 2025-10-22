@@ -2,34 +2,44 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 
-import { entities } from "@repo/indexer-database";
+import { DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
-import { OFT_SUPPORTED_CHAINS } from "./OFTIndexerManager";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
 import { OFTReceivedEvent, OFTSentEvent } from "../adapter/oft/model";
 import { OftRepository } from "../../database/OftRepository";
+import {
+  getOftChainConfiguration,
+  isEndpointIdSupported,
+} from "../adapter/oft/service";
+import { OftTransferAggregator } from "./OftTransferAggregator";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
   oftReceivedEvents: OFTReceivedEvent[];
   blocks: Record<string, providers.Block>;
 };
-export type StoreEventsResult = {};
+export type StoreEventsResult = {
+  oftSentEvents: SaveQueryResult<entities.OFTSent>[];
+  oftReceivedEvents: SaveQueryResult<entities.OFTReceived>[];
+};
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
+  private oftTransferAggregator: OftTransferAggregator;
 
   constructor(
     private logger: Logger,
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private oftRepository: OftRepository,
+    private postgres: DataSource,
   ) {
     this.isInitialized = false;
+    this.oftTransferAggregator = new OftTransferAggregator(postgres);
   }
 
   private initialize() {}
@@ -38,7 +48,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     return `oft:${this.chainId}`;
   }
   public getStartIndexingBlockNumber() {
-    return OFT_SUPPORTED_CHAINS[this.chainId]!.startBlockNumber;
+    return getOftChainConfiguration(this.chainId).tokens[0]!.startBlockNumber;
   }
 
   public async processBlockRange(
@@ -65,10 +75,23 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const storedEvents = await this.storeEvents(
       events,
       lastFinalisedBlock,
-      OFT_SUPPORTED_CHAINS[this.chainId]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.address,
     );
     const timeToStoreEvents = performance.now();
+    const deletedEvents = await this.oftRepository.deleteUnfinalisedOFTEvents(
+      this.chainId,
+      lastFinalisedBlock,
+    );
     const timeToDeleteEvents = performance.now();
+
+    await this.oftTransferAggregator.processDatabaseEvents(
+      deletedEvents.oftSentEvents,
+      deletedEvents.oftReceivedEvents,
+      storedEvents.oftSentEvents.map((event) => event.data),
+      storedEvents.oftReceivedEvents.map((event) => event.data),
+      this.chainId,
+    );
+    const timeToProcessEvents = performance.now();
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -77,9 +100,10 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       spokeChainId: this.chainId,
       blockRange: blockRange,
       finalTime: finalPerfTime - startPerfTime,
-      timeToStoreEvents: timeToStoreEvents - startPerfTime,
+      timeToStoreEvents: timeToStoreEvents - timeToFetchEvents,
       timeToDeleteEvents: timeToDeleteEvents - timeToStoreEvents,
       timeToFetchEvents: timeToFetchEvents - startPerfTime,
+      timeToProcessEvents: timeToProcessEvents - timeToDeleteEvents,
     });
   }
 
@@ -87,7 +111,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const oftAdapterContract = new ethers.Contract(
-      OFT_SUPPORTED_CHAINS[this.chainId]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.address,
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
@@ -110,10 +134,12 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       transactions,
       oftSentEvents,
     );
+    const filteredOftReceivedEvents =
+      await this.filterTransactionsForSupportedEndpointIds(oftReceivedEvents);
     const blocks = await this.getBlocks([
       ...new Set([
         ...filteredOftSentEvents.map((event) => event.blockHash),
-        ...oftReceivedEvents.map((event) => event.blockHash),
+        ...filteredOftReceivedEvents.map((event) => event.blockHash),
       ]),
     ]);
     if (oftSentEvents.length > 0) {
@@ -130,7 +156,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     }
     return {
       oftSentEvents: filteredOftSentEvents,
-      oftReceivedEvents,
+      oftReceivedEvents: filteredOftReceivedEvents,
       blocks,
     };
   }
@@ -160,8 +186,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     ]);
 
     return {
-      savedOftSentEvents,
-      savedOftReceivedEvents,
+      oftSentEvents: savedOftSentEvents,
+      oftReceivedEvents: savedOftReceivedEvents,
     };
   }
 
@@ -181,6 +207,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     return transactionReceiptsMap;
   }
 
+  private async filterTransactionsForSupportedEndpointIds(
+    oftReceivedEvents: OFTReceivedEvent[],
+  ) {
+    return oftReceivedEvents.filter((event) => {
+      return isEndpointIdSupported(event.args.srcEid);
+    });
+  }
+
   private async filterTransactionsFromSwapApi(
     transactions: Record<string, Transaction>,
     oftSentEvents: OFTSentEvent[],
@@ -192,7 +226,10 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       .map((transaction) => transaction.hash);
 
     return oftSentEvents.filter((event) => {
-      return transactionHashes.includes(event.transactionHash);
+      return (
+        transactionHashes.includes(event.transactionHash) &&
+        isEndpointIdSupported(event.args.dstEid)
+      );
     });
   }
 
