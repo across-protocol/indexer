@@ -40,3 +40,4 @@ export * from "./evm/MessageReceived";
 // OFT
 export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
+export * from "./OftTransfer";
