@@ -9,9 +9,10 @@ import {
   getFinalisedBlockBufferDistance,
   getIndexingDelaySeconds,
 } from "./constants";
-import { Indexer, EvmIndexer } from "./Indexer";
+import { Indexer, EvmIndexer, SvmIndexer } from "./Indexer";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
+import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
 
 const MAX_BLOCK_RANGE_SIZE = 10000;
@@ -38,7 +39,7 @@ export class CCTPIndexerManager {
         return;
       }
 
-      return Promise.all([this.startEvmIndexer()]);
+      return Promise.all([this.startEvmIndexer(), this.startSvmIndexer()]);
     } catch (error) {
       this.logger.error({
         at: "Indexer#CCTPIndexerManager#start",
@@ -56,7 +57,11 @@ export class CCTPIndexerManager {
   }
 
   private async startEvmIndexer() {
-    const indexers = CCTP_SUPPORTED_CHAINS.map((chainId) => {
+    const evmChains = CCTP_SUPPORTED_CHAINS.filter((chainId) =>
+      across.utils.chainIsEvm(chainId),
+    );
+
+    const indexers = evmChains.map((chainId) => {
       const provider = this.retryProvidersFactory.getCustomEvmProvider({
         chainId,
         enableCaching: false,
@@ -93,12 +98,55 @@ export class CCTPIndexerManager {
     this.logger.debug({
       at: "Indexer#CCTPIndexerManager#startEvmIndexer",
       message: "Starting EVM CCTP indexers",
+      chainIds: evmChains,
     });
     return Promise.all(indexers.map((indexer) => indexer.start()));
   }
 
-  private startSvmIndexer() {
-    return Promise.resolve();
+  private async startSvmIndexer() {
+    const svmChains = CCTP_SUPPORTED_CHAINS.filter((chainId) =>
+      across.utils.chainIsSvm(chainId),
+    );
+
+    const indexers = svmChains.map((chainId) => {
+      const provider = this.retryProvidersFactory.getProviderForChainId(
+        chainId,
+      ) as across.arch.svm.SVMProvider;
+      const svmCctpIndexerDataHandler = new SvmCCTPIndexerDataHandler(
+        this.logger,
+        chainId,
+        provider,
+        this.cctpRepository,
+      );
+      const indexer = new SvmIndexer(
+        {
+          indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
+          finalisedBlockBufferDistance:
+            getFinalisedBlockBufferDistance(chainId),
+          maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
+        },
+        svmCctpIndexerDataHandler,
+        this.logger,
+        this.postgres,
+        provider,
+      );
+      return indexer;
+    });
+
+    if (indexers.length === 0) {
+      this.logger.warn({
+        at: "Indexer#CCTPIndexerManager#startSvmIndexer",
+        message: "No SVM CCTP indexers to start",
+      });
+      return;
+    }
+
+    this.logger.debug({
+      at: "Indexer#CCTPIndexerManager#startSvmIndexer",
+      message: "Starting SVM CCTP indexers",
+      chainIds: svmChains,
+    });
+    return Promise.all(indexers.map((indexer) => indexer.start()));
   }
 }
 
@@ -112,4 +160,5 @@ export const CCTP_SUPPORTED_CHAINS = [
   CHAIN_IDs.POLYGON,
   CHAIN_IDs.UNICHAIN,
   CHAIN_IDs.WORLD_CHAIN,
+  CHAIN_IDs.SOLANA,
 ];

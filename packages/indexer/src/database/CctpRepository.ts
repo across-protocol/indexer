@@ -10,20 +10,23 @@ import {
 } from "@repo/indexer-database";
 
 import {
-  DepositForBurnEvent,
   MessageReceivedEvent,
-  MessageSentLog,
   MintAndWithdrawLog,
+  DepositForBurnWithBlock,
+  MessageSentWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
 import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
 } from "../data-indexing/adapter/cctp-v2/service";
-import {
-  BurnEventsPair,
-  MintEventsPair,
-} from "../data-indexing/service/CCTPIndexerDataHandler";
+import { MintEventsPair } from "../data-indexing/service/CCTPIndexerDataHandler";
 import { formatFromAddressToChainFormat } from "../utils";
+
+// Chain-agnostic types - both EVM and SVM handlers must convert to these
+export type BurnEventsPair = {
+  depositForBurn: DepositForBurnWithBlock;
+  messageSent: MessageSentWithBlock;
+};
 
 export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -83,7 +86,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     burnEvents: BurnEventsPair[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const savedEvents: {
       depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
@@ -110,7 +113,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     mintEvents: MintEventsPair[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const savedEvents: {
       messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
@@ -137,7 +140,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     burnEventsPair: BurnEventsPair,
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const { depositForBurn, messageSent } = burnEventsPair;
     const [depositForBurnEvents, messageSentEvents] = await Promise.all([
@@ -166,7 +169,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     mintEventsPair: MintEventsPair,
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const { messageReceived, mintAndWithdraw } = mintEventsPair;
     const [messageReceivedEvents, mintAndWithdrawEvents] = await Promise.all([
@@ -192,67 +195,74 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveDepositForBurnEvents(
-    depositForBurnEvents: DepositForBurnEvent[],
+    depositForBurnEvents: DepositForBurnWithBlock[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.DepositForBurn>[] =
-      depositForBurnEvents.map((event) => {
+      depositForBurnEvents.map((event, index) => {
         const destinationChainId = getCctpDestinationChainFromDomain(
-          event.args.destinationDomain,
+          event.destinationDomain,
         );
+
         const mintRecipientAddressType = across.utils.toAddressType(
-          event.args.mintRecipient,
+          event.mintRecipient,
           destinationChainId,
         );
         const mintRecipient = formatFromAddressToChainFormat(
           mintRecipientAddressType,
           destinationChainId,
         );
+
         const tokenMessengerAddressType = across.utils.toAddressType(
-          event.args.destinationTokenMessenger,
+          event.destinationTokenMessenger,
           destinationChainId,
         );
         const tokenMessenger = formatFromAddressToChainFormat(
           tokenMessengerAddressType,
           destinationChainId,
         );
+
         const destinationCallerAddressType = across.utils.toAddressType(
-          event.args.destinationCaller,
+          event.destinationCaller,
           destinationChainId,
         );
         const destinationCaller = formatFromAddressToChainFormat(
           destinationCallerAddressType,
           destinationChainId,
         );
-        return {
-          ...this.formatTransactionData(event),
 
-          blockTimestamp: blockDates[event.blockHash]!,
+        return {
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
 
-          amount: event.args.amount.toString(),
-          burnToken: event.args.burnToken,
-          depositor: event.args.depositor,
+          amount: event.amount,
+          burnToken: event.burnToken,
+          depositor: event.depositor,
           destinationCaller,
-          destinationDomain: event.args.destinationDomain,
+          maxFee: event.maxFee,
+          destinationDomain: event.destinationDomain,
           destinationTokenMessenger: tokenMessenger,
-          hookData: event.args.hookData,
-          maxFee: event.args.maxFee.toString(),
-          minFinalityThreshold: event.args.minFinalityThreshold,
           mintRecipient,
-
+          minFinalityThreshold: event.minFinalityThreshold,
+          hookData: event.hookData,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
+
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
           entities.DepositForBurn,
           eventsChunk,
-          ["chainId", "blockHash", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
@@ -262,29 +272,62 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveMessageSentEvents(
-    messageSentEvents: MessageSentLog[],
+    messageSentEvents: MessageSentWithBlock[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.MessageSent>[] =
       messageSentEvents.map((event) => {
-        const decodedMessage = decodeMessage(event.args.message);
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          event.destinationDomain,
+        );
+
+        const senderAddressType = across.utils.toAddressType(
+          event.sender,
+          chainId,
+        );
+        const sender = formatFromAddressToChainFormat(
+          senderAddressType,
+          chainId,
+        );
+
+        const recipientAddressType = across.utils.toAddressType(
+          event.recipient,
+          destinationChainId,
+        );
+        const recipient = formatFromAddressToChainFormat(
+          recipientAddressType,
+          destinationChainId,
+        );
+
+        const destinationCallerAddressType = across.utils.toAddressType(
+          event.destinationCaller,
+          destinationChainId,
+        );
+        const destinationCaller = formatFromAddressToChainFormat(
+          destinationCallerAddressType,
+          destinationChainId,
+        );
+
         return {
-          ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-          message: event.args.message,
-          version: decodedMessage.version,
-          sourceDomain: decodedMessage.sourceDomain,
-          destinationDomain: decodedMessage.destinationDomain,
-          nonce: decodedMessage.nonce,
-          sender: decodedMessage.sender,
-          recipient: decodedMessage.recipient,
-          destinationCaller: decodedMessage.destinationCaller,
-          minFinalityThreshold: decodedMessage.minFinalityThreshold,
-          finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
-          messageBody: decodedMessage.messageBody,
+          message: event.message,
+          version: event.version,
+          sourceDomain: event.sourceDomain,
+          destinationDomain: event.destinationDomain,
+          nonce: event.nonce,
+          sender,
+          recipient,
+          destinationCaller,
+          minFinalityThreshold: event.minFinalityThreshold,
+          finalityThresholdExecuted: event.finalityThresholdExecuted,
+          messageBody: event.messageBody,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
@@ -294,7 +337,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.MessageSent>(
           entities.MessageSent,
           eventsChunk,
-          ["blockHash", "chainId", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
@@ -307,7 +350,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     messageReceivedEvents: MessageReceivedEvent[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.MessageReceived>[] =
       messageReceivedEvents.map((event) => {
@@ -324,7 +367,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         );
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
           caller: event.args.caller,
           sourceDomain: event.args.sourceDomain,
@@ -341,7 +384,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.MessageReceived>(
           entities.MessageReceived,
           eventsChunk,
-          ["chainId", "blockHash", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
@@ -354,13 +397,13 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     mintAndWithdrawEvents: MintAndWithdrawLog[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.MintAndWithdraw>[] =
       mintAndWithdrawEvents.map((event) => {
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
           mintRecipient: event.args.mintRecipient,
           amount: event.args.amount.toString(),
@@ -375,7 +418,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.MintAndWithdraw>(
           entities.MintAndWithdraw,
           eventsChunk,
-          ["chainId", "blockHash", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
@@ -386,7 +429,6 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
 
   private formatTransactionData(event: ethers.providers.Log | ethers.Event) {
     return {
-      blockHash: event.blockHash,
       blockNumber: event.blockNumber,
       logIndex: event.logIndex,
       transactionHash: event.transactionHash,
