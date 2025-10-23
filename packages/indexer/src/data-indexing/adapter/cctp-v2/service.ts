@@ -19,6 +19,7 @@ const STARTING_BLOCK_NUMBERS = {
   [CHAIN_IDs.POLYGON]: 77089546,
   [CHAIN_IDs.UNICHAIN]: 28500000,
   [CHAIN_IDs.WORLD_CHAIN]: 19873068,
+  [CHAIN_IDs.SOLANA]: 370390000,
 };
 
 export function getIndexingStartBlockNumber(chainId: number) {
@@ -41,9 +42,8 @@ export function cctpBytes32ToAddress(bytes32: string): string {
   return ethers.utils.getAddress(ethers.utils.hexDataSlice(bytes32, 12));
 }
 
-export function decodeMessage(message: string, isSvm = false) {
+export function decodeMessage(messageBytesArray: Uint8Array) {
   // Source: https://developers.circle.com/stablecoins/message-format
-  const messageBytesArray = ethers.utils.arrayify(message);
   const version = Number(ethers.utils.hexlify(messageBytesArray.slice(0, 4)));
   const sourceDomain = Number(
     ethers.utils.hexlify(messageBytesArray.slice(4, 8)),

@@ -12,7 +12,6 @@ export class MintAndWithdraw1759512728138 implements MigrationInterface {
         "mintToken" character varying NOT NULL,
         "feeCollected" decimal NOT NULL,
         "chainId" bigint NOT NULL,
-        "blockHash" character varying NOT NULL,
         "blockNumber" integer NOT NULL,
         "transactionHash" character varying NOT NULL,
         "transactionIndex" integer NOT NULL,
@@ -21,7 +20,7 @@ export class MintAndWithdraw1759512728138 implements MigrationInterface {
         "blockTimestamp" TIMESTAMP NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "deletedAt" TIMESTAMP,
-        CONSTRAINT "UK_mintAndWithdraw_chainId_blockHash_logIndex" UNIQUE ("chainId", "blockHash", "logIndex"),
+        CONSTRAINT "UK_mintAndWithdraw_chain_block_txn_log" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
         CONSTRAINT "PK_2af62c40bf853fe4063706d2034" PRIMARY KEY ("id")
       )`,
     );

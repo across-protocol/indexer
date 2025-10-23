@@ -18,7 +18,6 @@ export class DepositForBurn1759512728136 implements MigrationInterface {
         "minFinalityThreshold" integer NOT NULL,
         "hookData" character varying NOT NULL,
         "chainId" bigint NOT NULL,
-        "blockHash" character varying NOT NULL,
         "blockNumber" integer NOT NULL,
         "transactionHash" character varying NOT NULL,
         "transactionIndex" integer NOT NULL,
@@ -27,7 +26,7 @@ export class DepositForBurn1759512728136 implements MigrationInterface {
         "blockTimestamp" TIMESTAMP NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "deletedAt" TIMESTAMP,
-        CONSTRAINT "UK_depositForBurn_chainId_blockHash_logIndex" UNIQUE ("chainId", "blockHash", "logIndex"),
+        CONSTRAINT "UK_depositForBurn_chain_block_txn_log" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
         CONSTRAINT "PK_c10070e785ad9de4c63e4e420ee" PRIMARY KEY ("id")
       )`,
     );
