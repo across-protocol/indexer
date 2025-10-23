@@ -14,7 +14,6 @@ export class MessageReceived1759512728139 implements MigrationInterface {
         "finalityThresholdExecuted" integer NOT NULL,
         "messageBody" character varying NOT NULL,
         "chainId" bigint NOT NULL,
-        "blockHash" character varying NOT NULL,
         "blockNumber" integer NOT NULL,
         "transactionHash" character varying NOT NULL,
         "transactionIndex" integer NOT NULL,
@@ -23,7 +22,7 @@ export class MessageReceived1759512728139 implements MigrationInterface {
         "blockTimestamp" TIMESTAMP NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "deletedAt" TIMESTAMP,
-        CONSTRAINT "UK_messageReceived_chainId_blockHash_logIndex" UNIQUE ("chainId", "blockHash", "logIndex"),
+        CONSTRAINT "UK_messageReceived_chain_block_txn_log" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
         CONSTRAINT "PK_de337d8e9174f97ff01ac04fbaa" PRIMARY KEY ("id")
       )`,
     );

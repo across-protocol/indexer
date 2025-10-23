@@ -1,9 +1,6 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { getDeployedBlockNumber } from "@across-protocol/contracts";
-
-import { entities } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -17,11 +14,16 @@ import {
   MessageReceivedEvent,
   MessageSentLog,
   MintAndWithdrawLog,
+  DepositForBurnWithBlock,
+  MessageSentWithBlock,
 } from "../adapter/cctp-v2/model";
-import { CCTPRepository } from "../../database/CctpRepository";
-import { getIndexingStartBlockNumber } from "../adapter/cctp-v2/service";
+import { CCTPRepository, BurnEventsPair } from "../../database/CctpRepository";
+import {
+  getIndexingStartBlockNumber,
+  decodeMessage,
+} from "../adapter/cctp-v2/service";
 
-export type BurnEventsPair = {
+export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
   messageSent: MessageSentLog;
 };
@@ -30,7 +32,7 @@ export type MintEventsPair = {
   mintAndWithdraw: MintAndWithdrawLog;
 };
 export type FetchEventsResult = {
-  burnEvents: BurnEventsPair[];
+  burnEvents: EvmBurnEventsPair[];
   mintEvents: MintEventsPair[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
@@ -247,7 +249,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   }
 
   private runChecks(
-    burnEvents: BurnEventsPair[],
+    burnEvents: EvmBurnEventsPair[],
     mintEvents: MintEventsPair[],
   ) {
     for (const burnEventsPair of burnEvents) {
@@ -369,18 +371,17 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     events: FetchEventsResult,
     lastFinalisedBlock: number,
   ): Promise<StoreEventsResult> {
-    const {
-      burnEvents,
-      mintEvents,
-      blocks,
-      transactionReceipts,
-      transactions,
-    } = events;
+    const { burnEvents, mintEvents, blocks } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
+
+    // Convert EVM events to chain-agnostic format
+    const chainAgnosticBurnEvents = burnEvents.map((pair) =>
+      this.convertBurnEventsPairToChainAgnostic(pair),
+    );
 
     const [savedBurnEvents, savedMintEvents] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
-        burnEvents,
+        chainAgnosticBurnEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
@@ -400,14 +401,70 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
   private getBlocksTimestamps(
     blocks: Record<string, providers.Block>,
-  ): Record<string, Date> {
+  ): Record<number, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
-        acc[blockHash] = new Date(block.timestamp * 1000);
+        acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },
-      {} as Record<string, Date>,
+      {} as Record<number, Date>,
     );
+  }
+
+  private convertDepositForBurnToChainAgnostic(
+    event: DepositForBurnEvent,
+  ): DepositForBurnWithBlock {
+    return {
+      blockNumber: event.blockNumber,
+      transactionHash: event.transactionHash,
+      transactionIndex: event.transactionIndex,
+      logIndex: event.logIndex,
+      burnToken: event.args.burnToken,
+      amount: event.args.amount.toString(),
+      depositor: event.args.depositor,
+      mintRecipient: event.args.mintRecipient,
+      destinationDomain: event.args.destinationDomain,
+      destinationTokenMessenger: event.args.destinationTokenMessenger,
+      destinationCaller: event.args.destinationCaller,
+      maxFee: event.args.maxFee.toString(),
+      minFinalityThreshold: event.args.minFinalityThreshold,
+      hookData: event.args.hookData,
+    };
+  }
+
+  private convertMessageSentToChainAgnostic(
+    event: MessageSentLog,
+  ): MessageSentWithBlock {
+    const messageBytes = ethers.utils.arrayify(event.args.message);
+    const decodedMessage = decodeMessage(messageBytes);
+    return {
+      blockNumber: event.blockNumber,
+      transactionHash: event.transactionHash,
+      transactionIndex: event.transactionIndex,
+      logIndex: event.logIndex,
+      message: event.args.message,
+      version: decodedMessage.version,
+      sourceDomain: decodedMessage.sourceDomain,
+      destinationDomain: decodedMessage.destinationDomain,
+      nonce: decodedMessage.nonce,
+      sender: decodedMessage.sender,
+      recipient: decodedMessage.recipient,
+      destinationCaller: decodedMessage.destinationCaller,
+      minFinalityThreshold: decodedMessage.minFinalityThreshold,
+      finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
+      messageBody: decodedMessage.messageBody,
+    };
+  }
+
+  private convertBurnEventsPairToChainAgnostic(
+    pair: EvmBurnEventsPair,
+  ): BurnEventsPair {
+    return {
+      depositForBurn: this.convertDepositForBurnToChainAgnostic(
+        pair.depositForBurn,
+      ),
+      messageSent: this.convertMessageSentToChainAgnostic(pair.messageSent),
+    };
   }
 
   private async matchDepositForBurnWithMessageSentEvents(
@@ -443,7 +500,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         const sortedMessageSent = (
           messageSentEventsMap[txHash] as MessageSentLog[]
         ).sort((a, b) => a.logIndex - b.logIndex);
-        const matchedPairs: BurnEventsPair[] = [];
+        const matchedPairs: EvmBurnEventsPair[] = [];
         const matchedMessageSentLogIndexes = new Set<number>();
 
         sortedDepositForBurn.forEach((depositForBurn) => {
@@ -464,7 +521,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         acc[txHash] = matchedPairs;
         return acc;
       },
-      {} as Record<string, BurnEventsPair[]>,
+      {} as Record<string, EvmBurnEventsPair[]>,
     );
     return Object.values(burnEvents).flat();
   }
