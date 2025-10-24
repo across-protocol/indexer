@@ -22,9 +22,7 @@ export class PubSubService {
     destinationChainId: number,
   ) {
     if (!this.cctpFinalizerTopic) {
-      const topic = await this.pubSub.topic(
-        this.config.pubSubCctpFinalizerTopic,
-      );
+      const topic = this.pubSub.topic(this.config.pubSubCctpFinalizerTopic);
       this.cctpFinalizerTopic = topic;
     }
     // the published payload is a base64 encoded JSON string. The JSON is
