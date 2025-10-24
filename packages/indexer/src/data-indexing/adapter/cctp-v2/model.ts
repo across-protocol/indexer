@@ -72,6 +72,45 @@ export interface SolanaDepositForBurnEvent {
   };
 }
 
+export interface SolanaMessageSentEvent {
+  slot: bigint;
+  signature: Signature;
+  blockTime: UnixTimestamp | null;
+  message: string;
+  version: number;
+  sourceDomain: number;
+  destinationDomain: number;
+  nonce: string;
+  sender: string;
+  recipient: string;
+  destinationCaller: string;
+  minFinalityThreshold: number;
+  finalityThresholdExecuted: number;
+  messageBody: string;
+}
+
+export interface SolanaMessageReceivedEvent {
+  slot: bigint;
+  signature: Signature;
+  blockTime: UnixTimestamp | null;
+  caller: string;
+  sourceDomain: number;
+  nonce: string;
+  sender: string;
+  finalityThresholdExecuted: number;
+  messageBody: string;
+}
+
+export interface SolanaMintAndWithdrawEvent {
+  slot: bigint;
+  signature: Signature;
+  blockTime: UnixTimestamp | null;
+  mintRecipient: string;
+  amount: string;
+  mintToken: string;
+  feeCollected: string;
+}
+
 // ============================================================================
 // Chain-Agnostic CCTP Event Types (works for both EVM and SVM)
 // ============================================================================
@@ -114,4 +153,32 @@ export interface MessageSentWithBlock {
   minFinalityThreshold: number;
   finalityThresholdExecuted: number;
   messageBody: string;
+}
+
+export interface MessageReceivedWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  caller: string;
+  sourceDomain: number;
+  nonce: string;
+  sender: string;
+  finalityThresholdExecuted: number;
+  messageBody: string;
+}
+
+export interface MintAndWithdrawWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  mintRecipient: string;
+  amount: string;
+  mintToken: string;
+  feeCollected: string;
 }
