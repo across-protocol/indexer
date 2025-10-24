@@ -16,8 +16,14 @@ import {
   MintAndWithdrawLog,
   DepositForBurnWithBlock,
   MessageSentWithBlock,
+  MessageReceivedWithBlock,
+  MintAndWithdrawWithBlock,
 } from "../adapter/cctp-v2/model";
-import { CCTPRepository, BurnEventsPair } from "../../database/CctpRepository";
+import {
+  CCTPRepository,
+  BurnEventsPair,
+  MintEventsPair,
+} from "../../database/CctpRepository";
 import {
   getIndexingStartBlockNumber,
   decodeMessage,
@@ -27,13 +33,13 @@ export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
   messageSent: MessageSentLog;
 };
-export type MintEventsPair = {
+export type EvmMintEventsPair = {
   messageReceived: MessageReceivedEvent;
   mintAndWithdraw: MintAndWithdrawLog;
 };
 export type FetchEventsResult = {
   burnEvents: EvmBurnEventsPair[];
-  mintEvents: MintEventsPair[];
+  mintEvents: EvmMintEventsPair[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
@@ -191,14 +197,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.logger.debug({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: `Found ${burnEvents.length} burn events from Swap API on chain ${this.chainId}`,
-        // burnEvents,
       });
     }
     if (mintEvents.length > 0) {
       this.logger.debug({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
-        // mintEvents,
       });
     }
     return {
@@ -250,7 +254,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
   private runChecks(
     burnEvents: EvmBurnEventsPair[],
-    mintEvents: MintEventsPair[],
+    mintEvents: EvmMintEventsPair[],
   ) {
     for (const burnEventsPair of burnEvents) {
       if (!burnEventsPair.depositForBurn || !burnEventsPair.messageSent) {
@@ -379,6 +383,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.convertBurnEventsPairToChainAgnostic(pair),
     );
 
+    const chainAgnosticMintEvents = mintEvents.map((pair) =>
+      this.convertMintEventsPairToChainAgnostic(pair),
+    );
+
     const [savedBurnEvents, savedMintEvents] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
         chainAgnosticBurnEvents,
@@ -387,12 +395,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
       ),
       this.cctpRepository.formatAndSaveMintEvents(
-        mintEvents,
+        chainAgnosticMintEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
       ),
     ]);
+
     return {
       savedBurnEvents,
       savedMintEvents,
@@ -464,6 +473,51 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         pair.depositForBurn,
       ),
       messageSent: this.convertMessageSentToChainAgnostic(pair.messageSent),
+    };
+  }
+
+  private convertMessageReceivedToChainAgnostic(
+    event: MessageReceivedEvent,
+  ): MessageReceivedWithBlock {
+    return {
+      blockNumber: event.blockNumber,
+      transactionHash: event.transactionHash,
+      transactionIndex: event.transactionIndex,
+      logIndex: event.logIndex,
+      caller: event.args.caller,
+      sourceDomain: event.args.sourceDomain,
+      nonce: event.args.nonce,
+      sender: event.args.sender,
+      finalityThresholdExecuted: event.args.finalityThresholdExecuted,
+      messageBody: event.args.messageBody,
+    };
+  }
+
+  private convertMintAndWithdrawToChainAgnostic(
+    event: MintAndWithdrawLog,
+  ): MintAndWithdrawWithBlock {
+    return {
+      blockNumber: event.blockNumber,
+      transactionHash: event.transactionHash,
+      transactionIndex: event.transactionIndex,
+      logIndex: event.logIndex,
+      mintRecipient: event.args.mintRecipient,
+      amount: event.args.amount.toString(),
+      mintToken: event.args.mintToken,
+      feeCollected: event.args.feeCollected.toString(),
+    };
+  }
+
+  private convertMintEventsPairToChainAgnostic(
+    pair: EvmMintEventsPair,
+  ): MintEventsPair {
+    return {
+      messageReceived: this.convertMessageReceivedToChainAgnostic(
+        pair.messageReceived,
+      ),
+      mintAndWithdraw: this.convertMintAndWithdrawToChainAgnostic(
+        pair.mintAndWithdraw,
+      ),
     };
   }
 
@@ -559,7 +613,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         const sortedMintAndWithdraw = (
           mintAndWithdrawEventsMap[txHash] as MintAndWithdrawLog[]
         ).sort((a, b) => a.logIndex - b.logIndex);
-        const matchedPairs: MintEventsPair[] = [];
+        const matchedPairs: EvmMintEventsPair[] = [];
         const matchedMintAndWithdrawLogIndexes = new Set<number>();
 
         sortedMessageReceived.forEach((messageReceived) => {
@@ -582,7 +636,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         acc[txHash] = matchedPairs;
         return acc;
       },
-      {} as Record<string, MintEventsPair[]>,
+      {} as Record<string, EvmMintEventsPair[]>,
     );
     return Object.values(mintEvents).flat();
   }
