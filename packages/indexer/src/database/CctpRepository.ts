@@ -10,22 +10,23 @@ import {
 } from "@repo/indexer-database";
 
 import {
-  MessageReceivedEvent,
-  MintAndWithdrawLog,
   DepositForBurnWithBlock,
   MessageSentWithBlock,
+  MessageReceivedWithBlock,
+  MintAndWithdrawWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
-import {
-  decodeMessage,
-  getCctpDestinationChainFromDomain,
-} from "../data-indexing/adapter/cctp-v2/service";
-import { MintEventsPair } from "../data-indexing/service/CCTPIndexerDataHandler";
+import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
 export type BurnEventsPair = {
   depositForBurn: DepositForBurnWithBlock;
   messageSent: MessageSentWithBlock;
+};
+
+export type MintEventsPair = {
+  messageReceived: MessageReceivedWithBlock;
+  mintAndWithdraw: MintAndWithdrawWithBlock;
 };
 
 export class CCTPRepository extends dbUtils.BlockchainEventRepository {
@@ -347,7 +348,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveMessageReceivedEvents(
-    messageReceivedEvents: MessageReceivedEvent[],
+    messageReceivedEvents: MessageReceivedWithBlock[],
     lastFinalisedBlock: number,
     chainId: number,
     blockDates: Record<number, Date>,
@@ -355,10 +356,10 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents: Partial<entities.MessageReceived>[] =
       messageReceivedEvents.map((event) => {
         const sourceChainId = getCctpDestinationChainFromDomain(
-          event.args.sourceDomain,
+          event.sourceDomain,
         );
         const senderAddressType = across.utils.toAddressType(
-          event.args.sender,
+          event.sender,
           sourceChainId,
         );
         const sender = formatFromAddressToChainFormat(
@@ -366,15 +367,18 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           sourceChainId,
         );
         return {
-          ...this.formatTransactionData(event),
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
           blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-          caller: event.args.caller,
-          sourceDomain: event.args.sourceDomain,
-          nonce: event.args.nonce,
+          caller: event.caller,
+          sourceDomain: event.sourceDomain,
+          nonce: event.nonce,
           sender,
-          finalityThresholdExecuted: event.args.finalityThresholdExecuted,
-          messageBody: event.args.messageBody,
+          finalityThresholdExecuted: event.finalityThresholdExecuted,
+          messageBody: event.messageBody,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
@@ -394,7 +398,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveMintAndWithdrawEvents(
-    mintAndWithdrawEvents: MintAndWithdrawLog[],
+    mintAndWithdrawEvents: MintAndWithdrawWithBlock[],
     lastFinalisedBlock: number,
     chainId: number,
     blockDates: Record<number, Date>,
@@ -402,13 +406,16 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     const formattedEvents: Partial<entities.MintAndWithdraw>[] =
       mintAndWithdrawEvents.map((event) => {
         return {
-          ...this.formatTransactionData(event),
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
           blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-          mintRecipient: event.args.mintRecipient,
-          amount: event.args.amount.toString(),
-          mintToken: event.args.mintToken,
-          feeCollected: event.args.feeCollected.toString(),
+          mintRecipient: event.mintRecipient,
+          amount: event.amount,
+          mintToken: event.mintToken,
+          feeCollected: event.feeCollected,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
