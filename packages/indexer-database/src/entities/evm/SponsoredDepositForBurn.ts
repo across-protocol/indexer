@@ -1,67 +1,83 @@
 import {
   Column,
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Index,
   CreateDateColumn,
   DeleteDateColumn,
+  Unique,
 } from "typeorm";
 
-@Entity()
+@Entity({ schema: "evm" })
+@Unique("UK_sponsoredDepositForBurn_chainId_blockHash_logIndex", [
+  "chainId",
+  "blockHash",
+  "logIndex",
+])
 export class SponsoredDepositForBurn {
-  @PrimaryColumn("varchar")
-  id!: string; // txHash:logIndex
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Index()
-  @Column("varchar")
+  @Column()
+  chainId!: string;
+
+  @Index()
+  @Column()
   quoteNonce!: string;
 
   @Index()
-  @Column("varchar")
+  @Column()
   originSender!: string;
 
   @Index()
-  @Column("varchar")
+  @Column({ name: "final_recipient" })
   finalRecipient!: string;
 
-  @Column("varchar")
+  @Column({ name: "quote_deadline" })
   quoteDeadline!: string;
 
-  @Column("varchar")
+  @Column({ name: "max_bps_to_sponsor" })
   maxBpsToSponsor!: string;
 
-  @Column("varchar")
+  @Column({ name: "max_user_slippage_bps" })
   maxUserSlippageBps!: string;
 
-  @Column("varchar")
+  @Column({ name: "final_token" })
   finalToken!: string;
 
-  @Column("varchar")
+  @Column()
   signature!: string;
 
   @Index()
-  @Column("int")
+  @Column({ name: "block_number" })
   blockNumber!: number;
 
-  @Column("varchar")
+  @Column({ name: "block_hash" })
+  blockHash!: string;
+
+  @Column({ name: "transaction_hash" })
   transactionHash!: string;
 
-  @Column("int")
+  @Column({ name: "transaction_index" })
   transactionIndex!: number;
 
-  @Column("int")
+  @Column({ name: "log_index" })
   logIndex!: number;
 
+  @Index()
   @Column("boolean", { default: false })
   finalised!: boolean;
 
-  @Column("timestamp")
+  @Column({ name: "block_timestamp" })
   blockTimestamp!: Date;
 
-  @CreateDateColumn()
+  @Index()
+  @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
-  @DeleteDateColumn({ nullable: true })
+  @Index()
+  @DeleteDateColumn({ nullable: true, name: "deleted_at" })
   deletedAt?: Date;
 
   constructor(init: Partial<SponsoredDepositForBurn>) {

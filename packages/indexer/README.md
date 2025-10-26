@@ -1,13 +1,15 @@
 # Indexer
+
 This package is meant to read data from an rpc provider, modify it as necessary and insert into a database.
 
 ## Run
+
 Using Docker:
 
 From the root folder, run:
+
 - `pnpm run dev-env:up`
 - `pnpm run dev-env:run-app:indexer` this command will execute migrations if needed and run the indexer.
-
 
 Without docker:
 
@@ -16,9 +18,11 @@ Without docker:
 3. Go to apps/node and run `APP=indexer pnpm start` or from the root folder run `pnpm run start:indexer`
 
 ## Test
+
 In this package run `pnpm test`
 
 ## ENV
+
 ```
 DATABASE_HOST=localhost
 DATABASE_PORT=5432

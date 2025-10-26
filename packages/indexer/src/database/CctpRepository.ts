@@ -14,6 +14,7 @@ import {
   MessageSentWithBlock,
   MessageReceivedWithBlock,
   MintAndWithdrawWithBlock,
+  SponsoredDepositForBurnWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
 import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
@@ -48,6 +49,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       messageSentEvents,
       mintAndWithdrawEvents,
       messageReceivedEvents,
+      sponsoredDepositForBurnEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -73,6 +75,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.MessageReceived,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SponsoredDepositForBurn,
+      ),
     ]);
 
     return {
@@ -80,6 +88,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       messageSentEvents,
       mintAndWithdrawEvents,
       messageReceivedEvents,
+      sponsoredDepositForBurnEvents,
     };
   }
 
@@ -108,6 +117,50 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       savedEvents.push(...savedEventsChunk);
     }
     return savedEvents;
+  }
+
+  public async formatAndSaveSponsoredBurnEvents(
+    sponsoredBurnEvents: SponsoredDepositForBurnWithBlock[],
+    lastFinalisedBlock: number,
+    chainId: number,
+    blockDates: Record<number, Date>,
+  ) {
+    const formattedEvents: Partial<entities.SponsoredDepositForBurn>[] =
+      sponsoredBurnEvents.map((event) => {
+        return {
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+
+          blockTimestamp: blockDates[event.blockNumber]!,
+          chainId: chainId.toString(),
+
+          nonce: event.nonce,
+          depositor: event.depositor,
+          finalRecipient: event.finalRecipient,
+          deadline: event.deadline,
+          maxBpsToSponsor: event.maxBpsToSponsor,
+          maxUserSlippageBps: event.maxUserSlippageBps,
+          finalToken: event.finalToken,
+          signature: event.signature,
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      });
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
+          entities.SponsoredDepositForBurn,
+          eventsChunk,
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+    const result = savedEvents.flat();
+    return result;
   }
 
   public async formatAndSaveMintEvents(
