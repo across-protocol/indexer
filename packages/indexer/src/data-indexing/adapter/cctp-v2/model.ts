@@ -46,6 +46,19 @@ export interface MintAndWithdrawLog extends providers.Log {
   };
 }
 
+export interface SponsoredDepositForBurnEvent extends ethers.Event {
+  args: [] & {
+    nonce: string;
+    depositor: string;
+    finalRecipient: string;
+    deadline: BigNumber;
+    maxBpsToSponsor: BigNumber;
+    maxUserSlippageBps: BigNumber;
+    finalToken: string;
+    signature: string;
+  };
+}
+
 // ============================================================================
 // SVM Event Types
 // ============================================================================
@@ -181,4 +194,22 @@ export interface MintAndWithdrawWithBlock {
   amount: string;
   mintToken: string;
   feeCollected: string;
+}
+
+export interface SponsoredDepositForBurnWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  // Event data
+  nonce: string;
+  depositor: string;
+  finalRecipient: string;
+  deadline: string;
+  maxBpsToSponsor: string;
+  maxUserSlippageBps: string;
+  finalToken: string;
+  signature: string;
 }
