@@ -31,6 +31,7 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
 } from "../adapter/cctp-v2/service";
+import { CHAIN_IDs } from "@across-protocol/sdk/dist/cjs/constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -54,7 +55,9 @@ const TOKEN_MESSENGER_ADDRESS = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
 const MESSAGE_TRANSMITTER_ADDRESS =
   "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS = ethers.constants.AddressZero;
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: Record<number, string> = {
+  [CHAIN_IDs.ARBITRUM]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+};
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
 
@@ -133,11 +136,22 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
+
+    if (!SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]) {
+      const message = `Sponsored CCTP Src Periphery contract address is not defined for chain ${this.chainId}`;
+      this.logger.error({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message,
+      });
+      throw new Error(message);
+    }
+
     const sponsoredCCTPContract = new ethers.Contract(
-      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS,
+      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]!,
       SponsoredCCTPSrcPeripheryABI,
       this.provider,
     );
+
     const [depositForBurnEvents, messageReceivedEvents, sponsoredBurnEvents] =
       await Promise.all([
         tokenMessengerContract.queryFilter(
