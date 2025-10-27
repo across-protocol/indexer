@@ -37,6 +37,7 @@ export * from "./evm/MessageSent";
 export * from "./evm/MintAndWithdraw";
 export * from "./evm/MessageReceived";
 export * from "./evm/SponsoredDepositForBurn";
+export * from "./evm/ArbitraryActionsExecuted";
 
 // OFT
 export * from "./evm/OftSent";

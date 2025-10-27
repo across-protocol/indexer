@@ -15,6 +15,7 @@ import {
   MessageReceivedWithBlock,
   MintAndWithdrawWithBlock,
   SponsoredDepositForBurnWithBlock,
+  ArbitraryActionsExecutedWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
 import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
@@ -50,6 +51,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       mintAndWithdrawEvents,
       messageReceivedEvents,
       sponsoredDepositForBurnEvents,
+      arbitraryActionsExecutedEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -81,6 +83,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.SponsoredDepositForBurn,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.ArbitraryActionsExecuted,
+      ),
     ]);
 
     return {
@@ -89,6 +97,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       mintAndWithdrawEvents,
       messageReceivedEvents,
       sponsoredDepositForBurnEvents,
+      arbitraryActionsExecutedEvents,
     };
   }
 
@@ -188,6 +197,46 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       savedEvents.push(...savedEventsChunk);
     }
     return savedEvents;
+  }
+
+  public async formatAndSaveArbitraryActionsExecutedEvents(
+    arbitraryActionsExecutedEvents: ArbitraryActionsExecutedWithBlock[],
+    lastFinalisedBlock: number,
+    chainId: number,
+    blockDates: Record<number, Date>,
+  ) {
+    const formattedEvents: Partial<entities.ArbitraryActionsExecuted>[] =
+      arbitraryActionsExecutedEvents.map((event) => {
+        return {
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+          blockTimestamp: blockDates[event.blockNumber]!,
+          chainId: chainId.toString(),
+          quoteNonce: event.quoteNonce,
+          initialToken: event.initialToken,
+          initialAmount: event.initialAmount,
+          finalToken: event.finalToken,
+          finalAmount: event.finalAmount,
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      });
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
+          entities.ArbitraryActionsExecuted,
+          eventsChunk,
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+
+    const result = savedEvents.flat();
+    return result;
   }
 
   public async formatAndSaveBurnEventsPair(
