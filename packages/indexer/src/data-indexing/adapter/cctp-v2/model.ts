@@ -213,3 +213,28 @@ export interface SponsoredDepositForBurnWithBlock {
   finalToken: string;
   signature: string;
 }
+
+export interface ArbitraryActionsExecutedEvent extends ethers.Event {
+  args: [] & {
+    quoteNonce: string;
+    initialToken: string;
+    initialAmount: BigNumber;
+    finalToken: string;
+    finalAmount: BigNumber;
+  };
+}
+
+export interface ArbitraryActionsExecutedWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  // Event data
+  quoteNonce: string;
+  initialToken: string;
+  initialAmount: string;
+  finalToken: string;
+  finalAmount: string;
+}
