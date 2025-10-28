@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 
-import { DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
+import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -13,7 +13,6 @@ import {
   getOftChainConfiguration,
   isEndpointIdSupported,
 } from "../adapter/oft/service";
-import { OftTransferAggregator } from "./OftTransferAggregator";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -29,17 +28,14 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
-  private oftTransferAggregator: OftTransferAggregator;
 
   constructor(
     private logger: Logger,
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private oftRepository: OftRepository,
-    private postgres: DataSource,
   ) {
     this.isInitialized = false;
-    this.oftTransferAggregator = new OftTransferAggregator(postgres);
   }
 
   private initialize() {}
@@ -78,19 +74,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       getOftChainConfiguration(this.chainId).tokens[0]!.address,
     );
     const timeToStoreEvents = performance.now();
-    const deletedEvents = await this.oftRepository.deleteUnfinalisedOFTEvents(
+    await this.oftRepository.deleteUnfinalisedOFTEvents(
       this.chainId,
       lastFinalisedBlock,
     );
     const timeToDeleteEvents = performance.now();
-
-    await this.oftTransferAggregator.processDatabaseEvents(
-      deletedEvents.oftSentEvents,
-      deletedEvents.oftReceivedEvents,
-      storedEvents.oftSentEvents.map((event) => event.data),
-      storedEvents.oftReceivedEvents.map((event) => event.data),
-      this.chainId,
-    );
     const timeToProcessEvents = performance.now();
     const finalPerfTime = performance.now();
 
