@@ -15,7 +15,7 @@ import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
 
-const MAX_BLOCK_RANGE_SIZE = 10000;
+const MAX_BLOCK_RANGE_SIZE = 30_000;
 
 export class CCTPIndexerManager {
   private evmIndexer?: Indexer;
