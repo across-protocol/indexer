@@ -15,7 +15,7 @@ import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
 import { OftRepository } from "../../database/OftRepository";
 import { getSupportOftChainIds } from "../adapter/oft/service";
 
-const MAX_BLOCK_RANGE_SIZE = 10_000;
+const MAX_BLOCK_RANGE_SIZE = 30_000;
 
 export class OFTIndexerManager {
   private indexers: Indexer[] = [];
