@@ -46,7 +46,7 @@ export interface MintAndWithdrawLog extends providers.Log {
   };
 }
 
-export interface SponsoredDepositForBurnEvent extends ethers.Event {
+export interface SponsoredDepositForBurnLog extends providers.Log {
   args: [] & {
     nonce: string;
     depositor: string;
