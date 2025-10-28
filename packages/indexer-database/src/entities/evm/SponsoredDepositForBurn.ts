@@ -9,72 +9,78 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_sponsoredDepositForBurn_chain_block_tx_log", [
+@Unique("UK_sponsoredDepositForBurn_chainId_blockHash_logIndex", [
   "chainId",
-  "blockNumber",
-  "transactionHash",
+  "blockHash",
   "logIndex",
 ])
-@Index("IX_SponsoredDepositForBurn_chainId", ["chainId"])
-@Index("IX_SponsoredDepositForBurn_quoteNonce", ["quoteNonce"])
-@Index("IX_SponsoredDepositForBurn_originSender", ["originSender"])
-@Index("IX_SponsoredDepositForBurn_finalRecipient", ["finalRecipient"])
-@Index("IX_SponsoredDepositForBurn_blockNumber", ["blockNumber"])
-@Index("IX_SponsoredDepositForBurn_finalised", ["finalised"])
-@Index("IX_SponsoredDepositForBurn_createdAt", ["createdAt"])
-@Index("IX_SponsoredDepositForBurn_deletedAt", ["deletedAt"])
 export class SponsoredDepositForBurn {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column()
-  chainId: string;
+  chainId!: string;
+
+  @Index()
+  @Column()
+  quoteNonce!: string;
+
+  @Index()
+  @Column()
+  originSender!: string;
+
+  @Index()
+  @Column({ name: "final_recipient" })
+  finalRecipient!: string;
+
+  @Column({ name: "quote_deadline" })
+  quoteDeadline!: string;
+
+  @Column({ name: "max_bps_to_sponsor" })
+  maxBpsToSponsor!: string;
+
+  @Column({ name: "max_user_slippage_bps" })
+  maxUserSlippageBps!: string;
+
+  @Column({ name: "final_token" })
+  finalToken!: string;
 
   @Column()
-  quoteNonce: string;
+  signature!: string;
 
-  @Column()
-  originSender: string;
+  @Index()
+  @Column({ name: "block_number" })
+  blockNumber!: number;
 
-  @Column()
-  finalRecipient: string;
+  @Column({ name: "block_hash" })
+  blockHash!: string;
 
-  @Column()
-  quoteDeadline: string;
+  @Column({ name: "transaction_hash" })
+  transactionHash!: string;
 
-  @Column()
-  maxBpsToSponsor: string;
+  @Column({ name: "transaction_index" })
+  transactionIndex!: number;
 
-  @Column()
-  maxUserSlippageBps: string;
+  @Column({ name: "log_index" })
+  logIndex!: number;
 
-  @Column()
-  finalToken: string;
-
-  @Column()
-  signature: string;
-
-  @Column()
-  blockNumber: number;
-
-  @Column()
-  transactionHash: string;
-
-  @Column()
-  transactionIndex: number;
-
-  @Column()
-  logIndex: number;
-
+  @Index()
   @Column("boolean", { default: false })
-  finalised: boolean;
+  finalised!: boolean;
 
-  @Column()
-  blockTimestamp: Date;
+  @Column({ name: "block_timestamp" })
+  blockTimestamp!: Date;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @Index()
+  @CreateDateColumn({ name: "created_at" })
+  createdAt!: Date;
 
-  @DeleteDateColumn({ nullable: true })
+  @Index()
+  @DeleteDateColumn({ nullable: true, name: "deleted_at" })
   deletedAt?: Date;
+
+  constructor(init: Partial<SponsoredDepositForBurn>) {
+    Object.assign(this, init);
+  }
 }

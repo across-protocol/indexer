@@ -9,11 +9,9 @@ import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
 } from "./model/abis";
-import { SponsoredCCTPSrcPeripheryABI } from "../data-indexing/adapter/cctp-v2/abis/SponsoredCCTPSrcPeriphery";
 import {
   MessageSentLog,
   MintAndWithdrawLog,
-  SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
 
 export class EventDecoder {
@@ -111,30 +109,6 @@ export class EventDecoder {
       eventTopic,
       eventAbi,
     );
-    if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
-    }
-
-    return events;
-  }
-
-  static decodeCCTPSponsoredDepositForBurnEvents(
-    receipt: ethers.providers.TransactionReceipt,
-    contractAddress?: string,
-  ) {
-    // Topic hash for:
-    // SponsoredDepositForBurn(bytes32,address,address,uint256,uint256,uint256,address,bytes)
-    const iface = new ethers.utils.Interface(SponsoredCCTPSrcPeripheryABI);
-    const eventTopic = iface.getEventTopic("SponsoredDepositForBurn");
-
-    // ABI fragment for the event
-    const eventAbi = [
-      "event SponsoredDepositForBurn(bytes32 nonce, address indexed depositor, address indexed finalRecipient, uint256 deadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, address finalToken, bytes signature)",
-    ];
-
-    let events: SponsoredDepositForBurnLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
-
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }

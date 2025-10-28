@@ -7,6 +7,7 @@ import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
 import {
   MESSAGE_TRANSMITTER_V2_ABI,
+  SponsoredCCTPSrcPeripheryABI,
   TOKEN_MESSENGER_V2_ABI,
 } from "../adapter/cctp-v2/abis";
 import {
@@ -18,7 +19,7 @@ import {
   MessageSentWithBlock,
   MessageReceivedWithBlock,
   MintAndWithdrawWithBlock,
-  SponsoredDepositForBurnLog,
+  SponsoredDepositForBurnEvent,
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
 import {
@@ -30,7 +31,7 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
 } from "../adapter/cctp-v2/service";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs } from "@across-protocol/sdk/dist/cjs/constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -43,7 +44,7 @@ export type EvmMintEventsPair = {
 export type FetchEventsResult = {
   burnEvents: EvmBurnEventsPair[];
   mintEvents: EvmMintEventsPair[];
-  sponsoredBurnEvents: SponsoredDepositForBurnLog[];
+  sponsoredBurnEvents: SponsoredDepositForBurnEvent[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
@@ -54,8 +55,9 @@ const TOKEN_MESSENGER_ADDRESS = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
 const MESSAGE_TRANSMITTER_ADDRESS =
   "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS =
-  "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85";
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: Record<number, string> = {
+  [CHAIN_IDs.ARBITRUM]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+};
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
 
@@ -135,18 +137,39 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.provider,
     );
 
-    const [depositForBurnEvents, messageReceivedEvents] = await Promise.all([
-      tokenMessengerContract.queryFilter(
-        "DepositForBurn",
-        blockRange.from,
-        blockRange.to,
-      ) as Promise<DepositForBurnEvent[]>,
-      messageTransmitterContract.queryFilter(
-        "MessageReceived",
-        blockRange.from,
-        blockRange.to,
-      ) as Promise<MessageReceivedEvent[]>,
-    ]);
+    if (!SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]) {
+      const message = `Sponsored CCTP Src Periphery contract address is not defined for chain ${this.chainId}`;
+      this.logger.error({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message,
+      });
+      throw new Error(message);
+    }
+
+    const sponsoredCCTPContract = new ethers.Contract(
+      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]!,
+      SponsoredCCTPSrcPeripheryABI,
+      this.provider,
+    );
+
+    const [depositForBurnEvents, messageReceivedEvents, sponsoredBurnEvents] =
+      await Promise.all([
+        tokenMessengerContract.queryFilter(
+          "DepositForBurn",
+          blockRange.from,
+          blockRange.to,
+        ) as Promise<DepositForBurnEvent[]>,
+        messageTransmitterContract.queryFilter(
+          "MessageReceived",
+          blockRange.from,
+          blockRange.to,
+        ) as Promise<MessageReceivedEvent[]>,
+        sponsoredCCTPContract.queryFilter(
+          "SponsoredDepositForBurn",
+          blockRange.from,
+          blockRange.to,
+        ) as Promise<SponsoredDepositForBurnEvent[]>,
+      ]);
     const transactions = await this.getTransactions([
       ...new Set(depositForBurnEvents.map((event) => event.transactionHash)),
     ]);
@@ -173,15 +196,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         ]),
       ]),
     ]);
-    const depositForBurnTxReceipts =
+    const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
       this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
         ...new Set(
           filteredDepositForBurnEvents.map((event) => event.transactionHash),
         ),
-      ]);
-
-    const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
-      depositForBurnTxReceipts,
+      ]),
       MESSAGE_TRANSMITTER_ADDRESS,
     );
     const mintAndWithdrawEvents =
@@ -202,13 +222,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintAndWithdrawEvents,
     );
 
-    const sponsoredBurnEvents =
-      this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
-        // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
-        depositForBurnTxReceipts,
-        SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]!,
-      );
-
     this.runChecks(burnEvents, mintEvents);
 
     if (burnEvents.length > 0) {
@@ -223,11 +236,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
       });
     }
-
     return {
       burnEvents,
       mintEvents,
-      sponsoredBurnEvents: sponsoredBurnEvents || [],
+      sponsoredBurnEvents,
       blocks,
       transactionReceipts,
       transactions,
@@ -344,29 +356,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return events;
   }
 
-  private getSponsoredDepositForBurnEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    sponsoredCCTPSrcPeripheryAddress: string,
-  ) {
-    const events: SponsoredDepositForBurnLog[] = [];
-
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const sponsoredDepositForBurnEvents: SponsoredDepositForBurnLog[] =
-        EventDecoder.decodeCCTPSponsoredDepositForBurnEvents(
-          transactionReceipt,
-          sponsoredCCTPSrcPeripheryAddress,
-        );
-      if (sponsoredDepositForBurnEvents.length > 0) {
-        events.push(...sponsoredDepositForBurnEvents);
-      }
-    }
-
-    return events;
-  }
-
   private async getTransactionsReceipts(uniqueTransactionHashes: string[]) {
     const transactionReceipts = await Promise.all(
       uniqueTransactionHashes.map(async (txHash) => {
@@ -476,7 +465,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   }
 
   private convertSponsoredDepositForBurnToChainAgnostic(
-    event: SponsoredDepositForBurnLog,
+    event: SponsoredDepositForBurnEvent,
   ): SponsoredDepositForBurnWithBlock {
     return {
       blockNumber: event.blockNumber,
