@@ -50,12 +50,19 @@ export type FetchEventsResult = {
 };
 export type StoreEventsResult = {};
 
-const TOKEN_MESSENGER_ADDRESS = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
-const MESSAGE_TRANSMITTER_ADDRESS =
-  "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM]: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+};
+const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM]: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+};
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS =
-  "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85";
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x027823Dc987A29A0492A9c85629aeFb522fF3bdE",
+};
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
 
@@ -121,16 +128,30 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private async fetchEventsByRange(
+  public async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
+    const tokenMessengerAddress = TOKEN_MESSENGER_ADDRESS[this.chainId];
+    const messageTransmitterAddress = MESSAGE_TRANSMITTER_ADDRESS[this.chainId];
+    const sponsoredCCTPSrcPeripheryAddress =
+      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
+    if (
+      !tokenMessengerAddress ||
+      !messageTransmitterAddress ||
+      !sponsoredCCTPSrcPeripheryAddress
+    ) {
+      throw new Error(
+        `CCTP contracts not configured for chain ID ${this.chainId}`,
+      );
+    }
+
     const tokenMessengerContract = new ethers.Contract(
-      TOKEN_MESSENGER_ADDRESS,
+      tokenMessengerAddress,
       TOKEN_MESSENGER_V2_ABI,
       this.provider,
     );
     const messageTransmitterContract = new ethers.Contract(
-      MESSAGE_TRANSMITTER_ADDRESS,
+      messageTransmitterAddress,
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
@@ -173,7 +194,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         ]),
       ]),
     ]);
-    const depositForBurnTxReceipts =
+    const filteredDepositForBurnTxReceipts =
       this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
         ...new Set(
           filteredDepositForBurnEvents.map((event) => event.transactionHash),
@@ -181,8 +202,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       ]);
 
     const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
-      depositForBurnTxReceipts,
-      MESSAGE_TRANSMITTER_ADDRESS,
+      filteredDepositForBurnTxReceipts,
+      messageTransmitterAddress,
     );
     const mintAndWithdrawEvents =
       this.getMintAndWithdrawEventsFromTransactionReceipts(
@@ -191,7 +212,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
             filteredMessageReceivedEvents.map((event) => event.transactionHash),
           ),
         ]),
-        TOKEN_MESSENGER_ADDRESS,
+        tokenMessengerAddress,
       );
     const burnEvents = await this.matchDepositForBurnWithMessageSentEvents(
       filteredDepositForBurnEvents,
@@ -205,8 +226,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const sponsoredBurnEvents =
       this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
         // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
-        depositForBurnTxReceipts,
-        SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS,
+        filteredDepositForBurnTxReceipts,
+        sponsoredCCTPSrcPeripheryAddress,
       );
 
     this.runChecks(burnEvents, mintEvents);
@@ -349,7 +370,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     sponsoredCCTPSrcPeripheryAddress: string,
   ) {
     const events: SponsoredDepositForBurnLog[] = [];
-
     for (const txHash of Object.keys(transactionReceipts)) {
       const transactionReceipt = transactionReceipts[
         txHash
