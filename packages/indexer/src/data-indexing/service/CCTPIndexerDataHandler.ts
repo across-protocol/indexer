@@ -206,7 +206,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
         // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
         depositForBurnTxReceipts,
-        SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId]!,
+        SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS,
       );
 
     this.runChecks(burnEvents, mintEvents);
@@ -484,9 +484,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       transactionIndex: event.transactionIndex,
       logIndex: event.logIndex,
       nonce: event.args.nonce,
-      depositor: event.args.depositor,
+      originSender: event.args.originSender,
       finalRecipient: event.args.finalRecipient,
-      deadline: event.args.deadline.toString(),
+      quoteDeadline: event.args.quoteDeadline.toString(),
       maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
       maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
       finalToken: event.args.finalToken,

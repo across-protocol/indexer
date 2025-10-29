@@ -132,14 +132,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           logIndex: event.logIndex,
           transactionHash: event.transactionHash,
           transactionIndex: event.transactionIndex,
-
           blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-
           nonce: event.nonce,
-          depositor: event.depositor,
+          originSender: event.originSender,
           finalRecipient: event.finalRecipient,
-          deadline: event.deadline,
+          quoteDeadline: event.quoteDeadline,
           maxBpsToSponsor: event.maxBpsToSponsor,
           maxUserSlippageBps: event.maxUserSlippageBps,
           finalToken: event.finalToken,
