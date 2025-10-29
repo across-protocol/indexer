@@ -41,3 +41,6 @@ export * from "./evm/SponsoredDepositForBurn";
 export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
 export * from "./OftTransfer";
+
+// HyperEVM
+export * from "./evm/SimpleTransferFlowCompleted";
