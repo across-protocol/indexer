@@ -49,6 +49,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.TokensBridged,
       entities.V3FundsDeposited,
       entities.SwapBeforeBridge,
+      entities.SwapMetadata,
       // Bundle
       entities.Bundle,
       entities.BundleBlockRange,

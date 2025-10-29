@@ -96,6 +96,7 @@ export type DepositReturnType = {
   inputToken: string;
   inputAmount: string;
   outputToken: string;
+  swapOutputToken?: string; // Token address from destination swap metadata
   outputAmount: string;
   message: string;
   messageHash?: string;

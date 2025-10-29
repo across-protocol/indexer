@@ -27,3 +27,9 @@ export interface TransferEvent extends providers.Log {
     value: BigNumber;
   };
 }
+
+export interface SwapMetadataEvent extends providers.Log {
+  args: {
+    data: string; // bytes data containing encoded swap metadata
+  };
+}

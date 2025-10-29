@@ -29,6 +29,7 @@ const DepositFields = [
   `deposit.inputToken as "inputToken"`,
   `deposit.inputAmount as "inputAmount"`,
   `deposit.outputToken as "outputToken"`,
+  `CASE WHEN swapMetadata.side = '1' THEN swapMetadata.address ELSE NULL END as "swapOutputToken"`,
   `deposit.outputAmount as "outputAmount"`,
   `deposit.message as "message"`,
   `deposit.messageHash as "messageHash"`,
@@ -70,6 +71,21 @@ const SwapBeforeBridgeFields = [
   `swap.swapToken as "swapToken"`,
   `swap.swapTokenAmount as "swapTokenAmount"`,
 ];
+
+const SwapMetadataFields = [
+  `swapMetadata.address as "swapMetadataAddress"`,
+  `swapMetadata.type as "swapMetadataType"`,
+  `swapMetadata.side as "swapMetadataSide"`,
+  `swapMetadata.maximumAmountIn as "swapMetadataMaximumAmountIn"`,
+  `swapMetadata.minAmountOut as "swapMetadataMinAmountOut"`,
+  `swapMetadata.expectedAmountOut as "swapMetadataExpectedAmountOut"`,
+  `swapMetadata.expectedAmountIn as "swapMetadataExpectedAmountIn"`,
+  `swapMetadata.swapProvider as "swapMetadataSwapProvider"`,
+  `swapMetadata.slippage as "swapMetadataSlippage"`,
+  `swapMetadata.autoSlippage as "swapMetadataAutoSlippage"`,
+  `swapMetadata.recipient as "swapMetadataRecipient"`,
+  `swapMetadata.appFeeRecipient as "swapMetadataAppFeeRecipient"`,
+];
 export class DepositsService {
   constructor(
     private db: DataSource,
@@ -97,12 +113,18 @@ export class DepositsService {
         "fill",
         "fill.id = rhi.fillEventId",
       )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        "swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '1'",
+      )
       .orderBy("deposit.blockTimestamp", "DESC")
       .select([
         ...DepositFields,
         ...RelayHashInfoFields,
         ...SwapBeforeBridgeFields,
         ...FilledRelayFields,
+        ...SwapMetadataFields,
       ]);
 
     if (params.address) {
@@ -356,6 +378,11 @@ export class DepositsService {
       "fill",
       "fill.id = rhi.fillEventId",
     );
+    queryBuilder.leftJoinAndSelect(
+      entities.SwapMetadata,
+      "swapMetadata",
+      "swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '1'",
+    );
 
     if (params.depositId && params.originChainId) {
       queryBuilder.andWhere(
@@ -390,6 +417,7 @@ export class DepositsService {
         ...RelayHashInfoFields,
         ...SwapBeforeBridgeFields,
         ...FilledRelayFields,
+        ...SwapMetadataFields,
       ])
       .execute();
     const numberMatchingRelays = matchingRelays.length;
@@ -448,6 +476,11 @@ export class DepositsService {
         "rhi",
         "rhi.depositEventId = deposit.id",
       )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        "swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '1'",
+      )
       .where("rhi.status IN (:...unfilledStatuses)", {
         unfilledStatuses: [
           entities.RelayStatus.Unfilled,
@@ -459,7 +492,11 @@ export class DepositsService {
         endDate,
       })
       .orderBy("deposit.blockTimestamp", "DESC")
-      .select([...DepositFields, ...RelayHashInfoFields]);
+      .select([
+        ...DepositFields,
+        ...RelayHashInfoFields,
+        ...SwapMetadataFields,
+      ]);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
@@ -544,13 +581,23 @@ export class DepositsService {
         "fill",
         "fill.id = rhi.fillEventId",
       )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        "swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '1'",
+      )
       .where("rhi.status = :status", { status: entities.RelayStatus.Filled })
       .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
         startDate,
         endDate,
       })
       .orderBy("deposit.blockTimestamp", "DESC")
-      .select([...DepositFields, ...RelayHashInfoFields, ...FilledRelayFields]);
+      .select([
+        ...DepositFields,
+        ...RelayHashInfoFields,
+        ...FilledRelayFields,
+        ...SwapMetadataFields,
+      ]);
 
     if (originChainId) {
       queryBuilder.andWhere("deposit.originChainId = :originChainId", {
