@@ -36,7 +36,7 @@ RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 **Running Tests**:
 Navigate to the `packages/indexer` directory to run the following commands:
 
-*   **Run all non-Docker tests (Unit, Integration, and E2E)**:
+*   **Run all tests (Unit, Integration, and E2E)**:
     ```bash
     pnpm test
     ```
@@ -48,7 +48,7 @@ Navigate to the `packages/indexer` directory to run the following commands:
     ```bash
     pnpm test:integration
     ```
-*   **Run only Non-Docker E2E Tests**:
+*   **Run only E2E Tests**:
     ```bash
     pnpm test:e2e
     ```
