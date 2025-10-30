@@ -207,7 +207,7 @@ export interface SponsoredDepositForBurnWithBlock {
   nonce: string;
   originSender: string;
   finalRecipient: string;
-  quoteDeadline: string;
+  quoteDeadline: Date;
   maxBpsToSponsor: string;
   maxUserSlippageBps: string;
   finalToken: string;

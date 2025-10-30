@@ -39,8 +39,8 @@ export class SponsoredDepositForBurn {
   @Column()
   finalRecipient: string;
 
-  @Column({ type: "bigint" })
-  quoteDeadline: string;
+  @Column()
+  quoteDeadline: Date;
 
   @Column({ type: "bigint" })
   maxBpsToSponsor: string;

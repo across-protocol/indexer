@@ -13,7 +13,7 @@ export class SponsoredDepositForBurn1761511159902
         "quoteNonce" character varying NOT NULL,
         "originSender" character varying NOT NULL,
         "finalRecipient" character varying NOT NULL,
-        "quoteDeadline" character varying NOT NULL,
+        "quoteDeadline" TIMESTAMP NOT NULL,
         "maxBpsToSponsor" character varying NOT NULL,
         "maxUserSlippageBps" character varying NOT NULL,
         "finalToken" character varying NOT NULL,

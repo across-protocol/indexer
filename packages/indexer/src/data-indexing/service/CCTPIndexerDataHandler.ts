@@ -486,7 +486,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       nonce: event.args.nonce,
       originSender: event.args.originSender,
       finalRecipient: event.args.finalRecipient,
-      quoteDeadline: event.args.quoteDeadline.toString(),
+      quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
       maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
       maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
       finalToken: event.args.finalToken,
