@@ -30,12 +30,6 @@ jobs:
         env:
           RPC_PROVIDER_URLS_421614: ${{ secrets.RPC_PROVIDER_URLS_421614 }}
         run: |
-          # Check if the secret is empty.
-          if [ -z "$RPC_PROVIDER_URLS_421614" ]; then
-            echo "::error:: RPC_PROVIDER_URLS_421614 secret is not set. Failing build."
-            exit 1
-          fi
-          
           # Safely append the secret, prefixed with a newline.
           # This prevents file corruption.
           printf '\n%s\n' "RPC_PROVIDER_URLS_421614=$RPC_PROVIDER_URLS_421614" >> .env.test
