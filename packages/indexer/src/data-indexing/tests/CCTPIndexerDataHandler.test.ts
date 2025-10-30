@@ -16,6 +16,13 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "../../../../indexer-database/dist/src";
 import { SponsoredDepositForBurn } from "../../../../indexer-database/dist/src/entities";
 
+/**
+ * Test suite for the CCTPIndexerDataHandler.
+ *
+ * This suite covers the functionality of the CCTPIndexerDataHandler, ensuring that it
+ * can correctly fetch and process CCTP events within specified block ranges. It uses
+ * a test database and stubs to isolate the data handler's logic for verification.
+ */
 describe("CCTPIndexerDataHandler", () => {
   let dataSource: DataSource;
   let cctpRepository: CCTPRepository;
@@ -27,30 +34,14 @@ describe("CCTPIndexerDataHandler", () => {
     dataSource = await getTestDataSource();
 
     logger = {
-      debug: console.log,
-      info: console.log,
-      warn: console.log,
-      error: console.log,
+      debug: sinon.spy(),
+      info: sinon.spy(),
+      warn: sinon.spy(),
+      error: sinon.spy(),
     } as unknown as Logger;
 
     cctpRepository = new CCTPRepository(dataSource, logger);
-
-    const providerUrls = parseProvidersUrls().get(CHAIN_IDs.ARBITRUM_SEPOLIA);
-    if (!providerUrls || providerUrls.length === 0) {
-      throw new Error(
-        `No RPC provider URL found for chain ID ${CHAIN_IDs.ARBITRUM_SEPOLIA}`,
-      );
-    }
-    const ARBITRUM_SEPOLIA_RPC_URL = providerUrls[0];
-    assert(
-      ARBITRUM_SEPOLIA_RPC_URL,
-      `RPC URL for chain ID ${CHAIN_IDs.ARBITRUM_SEPOLIA} is undefined`,
-    );
-    provider = createTestRetryProvider(
-      ARBITRUM_SEPOLIA_RPC_URL,
-      CHAIN_IDs.ARBITRUM_SEPOLIA,
-      logger,
-    );
+    provider = createTestRetryProvider(CHAIN_IDs.ARBITRUM_SEPOLIA, logger);
 
     handler = new CCTPIndexerDataHandler(
       logger,
@@ -67,6 +58,11 @@ describe("CCTPIndexerDataHandler", () => {
     }
   });
 
+  /**
+   * This test verifies that the CCTPIndexerDataHandler can correctly fetch events
+   * for a given block range. It focuses on a specific sample transaction to ensure
+   * that the event fetching logic is working as expected.
+   */
   it("should fetch events for a given block range including a sample transaction", async () => {
     const transactionHash =
       "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
@@ -87,6 +83,11 @@ describe("CCTPIndexerDataHandler", () => {
     );
   }).timeout(10000); // Increase timeout for network requests
 
+  /**
+   * This test ensures that the CCTPIndexerDataHandler can correctly process and store
+   * a SponsoredDepositForBurn event in the database. It simulates the processing of a
+   * block range containing a specific transaction and verifies that the event is persisted.
+   */
   it("should store sponsoredDepositForBurn event in the database", async () => {
     const transactionHash =
       "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";

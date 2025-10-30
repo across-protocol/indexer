@@ -6,6 +6,7 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ALEPH_ZERO]: 691200,
   [CHAIN_IDs.ARBITRUM]: 691200,
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 691200,
   [CHAIN_IDs.BASE]: 86400,
   [CHAIN_IDs.BLAST]: 86400,
   [CHAIN_IDs.BOBA]: 86400,
@@ -47,6 +48,7 @@ export function getNoTtlBlockDistance(chainId: number) {
 export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ALEPH_ZERO]: 32,
   [CHAIN_IDs.ARBITRUM]: 32,
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 32,
   [CHAIN_IDs.BASE]: 120,
   [CHAIN_IDs.BLAST]: 120,
   [CHAIN_IDs.BOBA]: 0,

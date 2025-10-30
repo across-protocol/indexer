@@ -6,13 +6,11 @@ import sinon from "sinon";
 import { getTestDataSource } from "../../tests/setup";
 import { CCTPRepository } from "../../database/CctpRepository";
 import { parseProvidersUrls, Config } from "../../parseEnv";
-import { assert } from "@repo/error-handling";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "../../../../indexer-database/dist/src";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";
-import { EvmIndexer } from "../service/Indexer";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { RedisCache } from "../../redis/redisCache";
 import * as Web3Constants from "../../web3/constants";
@@ -33,10 +31,10 @@ describe("CCTPIndexerManager", () => {
     dataSource = await getTestDataSource();
 
     logger = {
-      debug: sinon.stub(),
-      info: sinon.stub(),
-      warn: sinon.stub(),
-      error: sinon.stub(),
+      debug: sinon.spy(),
+      info: sinon.spy(),
+      warn: sinon.spy(),
+      error: sinon.spy(),
     } as unknown as Logger;
 
     cctpRepository = new CCTPRepository(dataSource, logger);
@@ -79,16 +77,24 @@ describe("CCTPIndexerManager", () => {
     }
   });
 
+  /**
+   * This test verifies that the CCTPIndexerManager can correctly process and store
+   * a SponsoredDepositForBurn event. It is an integration test that lets the real indexer run
+   * for a short period and then checks for the expected side-effects in the database.
+   */
   it("should store sponsoredDepositForBurn event in the database", async () => {
+    // Stub to prevent the data handler from filtering out the transaction used in the test.
     const filterStub = sinon
       .stub(
         CCTPIndexerDataHandler.prototype,
         "filterTransactionsFromSwapApi" as any,
       )
       .resolvesArg(1);
+    // Stub to force the indexer to start processing from the block number of the test transaction.
     const startIndexingStub = sinon
       .stub(CCTPIndexerDataHandler.prototype, "getStartIndexingBlockNumber")
       .returns(blockNumber);
+    // Stub constants to prevent errors due to missing configuration for the test chain.
     const noTtlStub = sinon
       .stub(Web3Constants, "getNoTtlBlockDistance")
       .returns(0);
@@ -103,12 +109,14 @@ describe("CCTPIndexerManager", () => {
       chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
       enableCaching: false,
     }) as across.providers.RetryProvider;
+    // Stub to control the block range and ensure the indexer processes the target block.
     const getBlockNumberStub = sinon
       .stub(provider, "getBlockNumber")
       .resolves(blockNumber);
+
     const indexerPromise = manager.start();
 
-    // Wait for the indexer to process the block
+    // Wait a moment for the indexer to run and process the block.
     await across.utils.delay(2);
 
     const sponsoredDepositForBurnRepository = dataSource.getRepository(
@@ -118,18 +126,20 @@ describe("CCTPIndexerManager", () => {
       where: { transactionHash: transactionHash },
     });
 
+    // Gracefully stop the indexer and wait for it to shut down.
     await manager.stopGracefully();
-    console.log("Stopping indexer...");
     await indexerPromise;
-    console.log("Saved Event:", savedEvent);
+
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
 
+    // Clean up the provider to close any open connections.
     if ((provider as any).destroy) {
       (provider as any).destroy();
     }
 
+    // Restore all stubs.
     filterStub.restore();
     startIndexingStub.restore();
     getBlockNumberStub.restore();

@@ -6,6 +6,14 @@ import path from "path";
 import { getTestDataSource } from "./setup";
 import { entities } from "../../../indexer-database/dist/src";
 
+/**
+ * Test suite for the test database setup.
+ *
+ * This suite verifies that the `getTestDataSource` function correctly sets up an
+ * in-memory database for testing. It checks for the successful creation of the
+ * data source, the presence of expected tables, and the ability to perform basic
+ * CRUD (Create, Read, Update, Delete) operations.
+ */
 describe("Test Database Setup", () => {
   let dataSource: DataSource;
 
@@ -19,11 +27,17 @@ describe("Test Database Setup", () => {
     }
   });
 
+  /**
+   * Verifies that the `getTestDataSource` function returns a valid and initialized DataSource instance.
+   */
   it("should create a data source", () => {
     expect(dataSource).to.be.an.instanceOf(DataSource);
     expect(dataSource.isInitialized).to.be.true;
   });
 
+  /**
+   * Checks if the database schema is created correctly by looking for the existence of key tables.
+   */
   it("should have all tables created", async () => {
     const tables = await dataSource.query(`
       SELECT table_name
@@ -38,6 +52,10 @@ describe("Test Database Setup", () => {
     expect(tableNames).to.include("tokens_bridged");
   });
 
+  /**
+   * Tests the basic functionality of the database by performing insert, update, and delete operations
+   * on the `IndexerProgressInfo` entity.
+   */
   it("should allow basic insert and delete operations", async () => {
     const repository = dataSource.getRepository(entities.IndexerProgressInfo);
     const id = "test-indexer-progress";
