@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 import { getTestDataSource } from "./setup";
-import { entities } from "../../../indexer-database/dist/src";
+import { entities } from "@repo/indexer-database";
 
 /**
  * Test suite for the test database setup.

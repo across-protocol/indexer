@@ -75,7 +75,7 @@ describe("CCTPIndexerDataHandler", () => {
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
 
-    const events = await handler.fetchEventsByRange(blockRange);
+    const events = await (handler as any).fetchEventsByRange(blockRange);
 
     expect(events.sponsoredBurnEvents).to.have.lengthOf(1);
     expect(events.sponsoredBurnEvents[0]!.transactionHash).to.equal(

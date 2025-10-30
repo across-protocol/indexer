@@ -16,11 +16,13 @@ Without docker:
 
 ## Testing
 
-This package includes both unit/integration tests and end-to-end (E2E) tests.
+This package includes unit, integration, and non-Docker end-to-end (E2E) tests.
 
-### Unit & Integration Tests
-
-These tests cover the core logic and interactions within the `indexer` package. They utilize Mocha for the test runner and an in-memory database for fast, isolated execution.
+**Test File Naming Conventions**:
+To ensure proper test execution with the new commands, please adhere to the following naming conventions for your test files:
+*   **Unit Tests**: Files should end with `*.unit.test.ts`
+*   **Integration Tests**: Files should end with `*.integration.test.ts`
+*   **Non-Docker E2E Tests**: Files should end with `*.e2e.test.ts`
 
 **Configuration**:
 For these tests to run correctly, you need to provide RPC URLs for the testnet chains. Create a `.env.test` file at the **root of the repository** (if it doesn't already exist) and add the necessary RPC provider URLs.
@@ -31,12 +33,25 @@ For example, if running CCTP tests that interact with Arbitrum Sepolia (chain ID
 RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 ```
 
-**Running the tests**:
-Navigate to the `packages/indexer` directory and run:
+**Running Tests**:
+Navigate to the `packages/indexer` directory to run the following commands:
 
-```bash
-pnpm test
-```
+*   **Run all non-Docker tests (Unit, Integration, and E2E)**:
+    ```bash
+    pnpm test
+    ```
+*   **Run only Unit Tests**:
+    ```bash
+    pnpm test:unit
+    ```
+*   **Run only Integration Tests**:
+    ```bash
+    pnpm test:integration
+    ```
+*   **Run only Non-Docker E2E Tests**:
+    ```bash
+    pnpm test:e2e
+    ```
 
 ## ENV
 ```

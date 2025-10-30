@@ -7,7 +7,7 @@ import { getTestDataSource } from "../../tests/setup";
 import { CCTPRepository } from "../../database/CctpRepository";
 import { parseProvidersUrls, Config } from "../../parseEnv";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { entities } from "../../../../indexer-database/dist/src";
+import { entities } from "@repo/indexer-database";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";

@@ -128,7 +128,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  public async fetchEventsByRange(
+  private async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const tokenMessengerAddress = TOKEN_MESSENGER_ADDRESS[this.chainId];
