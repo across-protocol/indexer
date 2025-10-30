@@ -27,10 +27,10 @@ export class SponsoredDepositForBurn {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "bigint" })
   chainId: string;
 
-  @Column()
+  @Column({ nullable: true })
   quoteNonce: string;
 
   @Column()
@@ -39,13 +39,13 @@ export class SponsoredDepositForBurn {
   @Column()
   finalRecipient: string;
 
-  @Column()
+  @Column({ type: "bigint" })
   quoteDeadline: string;
 
-  @Column()
+  @Column({ type: "bigint" })
   maxBpsToSponsor: string;
 
-  @Column()
+  @Column({ type: "bigint" })
   maxUserSlippageBps: string;
 
   @Column()
@@ -66,7 +66,7 @@ export class SponsoredDepositForBurn {
   @Column()
   logIndex: number;
 
-  @Column("boolean", { default: false })
+  @Column("boolean")
   finalised: boolean;
 
   @Column()

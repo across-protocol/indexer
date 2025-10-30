@@ -13,7 +13,10 @@
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
-    "test": "DOTENV_CONFIG_PATH=./../../.env.test mocha",
+    "test:unit": "mocha --spec 'src/**/*.unit.test.ts'",
+    "test:integration": "DOTENV_CONFIG_PATH=./../../.env.test mocha --spec 'src/**/*.integration.test.ts'",
+    "test:e2e": "DOTENV_CONFIG_PATH=./../../.env.test mocha --spec 'src/**/*.e2e.test.ts'",
+    "test": "pnpm test:e2e && pnpm test:integration && pnpm test:unit",
     "coverage": "nyc mocha",
     "test:watch": "mocha --watch"
   },
@@ -51,14 +54,18 @@
     "@repo/typescript-config": "workspace:*",
     "@types/chai": "^4.3.17",
     "@types/mocha": "^10.0.7",
+    "@types/sinon": "^17.0.4",
     "chai": "^4.5.0",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",
     "mocha": "^10.7.0",
     "nyc": "^17.0.0",
+    "pg-mem": "^3.0.5",
     "prettier": "^3.3.3",
+    "sinon": "^21.0.0",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.2",
+    "typeorm": "^0.3.20",
     "typescript": "^5.5.4"
   }
 }

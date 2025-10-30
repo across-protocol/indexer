@@ -122,19 +122,15 @@ export class EventDecoder {
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
   ) {
-    // Topic hash for:
-    // SponsoredDepositForBurn(bytes32,address,address,uint256,uint256,uint256,address,bytes)
-    const iface = new ethers.utils.Interface(SponsoredCCTPSrcPeripheryABI);
-    const eventTopic = iface.getEventTopic("SponsoredDepositForBurn");
-
+    const eventTopic =
+      "0x42d1b5f3692944aee65b659fda3e120f817f17d8f2ac9a256f6fc5d642a591fe";
     // ABI fragment for the event
     const eventAbi = [
-      "event SponsoredDepositForBurn(bytes32 nonce, address indexed depositor, address indexed finalRecipient, uint256 deadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, address finalToken, bytes signature)",
+      "event SponsoredDepositForBurn(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes signature)",
     ];
 
     let events: SponsoredDepositForBurnLog[] =
       this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
-
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
