@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 import { getTestDataSource } from "./setup";
-import { entities } from "@repo/indexer-database";
+import { entities } from "../../../indexer-database/dist/src";
 
 describe("Test Database Setup", () => {
   let dataSource: DataSource;
@@ -14,7 +14,7 @@ describe("Test Database Setup", () => {
   });
 
   after(async () => {
-    if (dataSource.isInitialized) {
+    if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
   });
@@ -59,7 +59,10 @@ describe("Test Database Setup", () => {
 
     // Update
     const newLatestBlockNumber = 150;
-    await repository.update({ id }, { latestBlockNumber: newLatestBlockNumber });
+    await repository.update(
+      { id },
+      { latestBlockNumber: newLatestBlockNumber },
+    );
     savedEntry = await repository.findOneBy({ id });
     expect(savedEntry?.latestBlockNumber).to.equal(newLatestBlockNumber);
 

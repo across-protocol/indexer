@@ -13,6 +13,8 @@ import { RetryProviderConfig, parseProvidersUrls } from "../../parseEnv";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { assert } from "@repo/error-handling";
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { entities } from "../../../../indexer-database/dist/src";
+import { SponsoredDepositForBurn } from "../../../../indexer-database/dist/src/entities";
 
 describe("CCTPIndexerDataHandler", () => {
   let dataSource: DataSource;
@@ -25,10 +27,10 @@ describe("CCTPIndexerDataHandler", () => {
     dataSource = await getTestDataSource();
 
     logger = {
-      debug: () => {},
-      info: () => {},
-      warn: () => {},
-      error: () => {},
+      debug: console.log,
+      info: console.log,
+      warn: console.log,
+      error: console.log,
     } as unknown as Logger;
 
     cctpRepository = new CCTPRepository(dataSource, logger);
@@ -60,7 +62,7 @@ describe("CCTPIndexerDataHandler", () => {
 
   afterEach(async () => {
     sinon.restore();
-    if (dataSource.isInitialized) {
+    if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
   });
@@ -84,4 +86,30 @@ describe("CCTPIndexerDataHandler", () => {
       transactionHash,
     );
   }).timeout(10000); // Increase timeout for network requests
+
+  it("should store sponsoredDepositForBurn event in the database", async () => {
+    const transactionHash =
+      "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
+    const blockNumber = 209540538;
+
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const sponsoredDepositForBurnRepository = dataSource.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const savedEvent = await sponsoredDepositForBurnRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+  }).timeout(10000);
 });

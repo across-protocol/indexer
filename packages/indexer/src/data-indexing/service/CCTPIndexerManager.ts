@@ -18,7 +18,7 @@ import { CCTPRepository } from "../../database/CctpRepository";
 const MAX_BLOCK_RANGE_SIZE = 10000;
 
 export class CCTPIndexerManager {
-  private evmIndexer?: Indexer;
+  private evmIndexer?: Indexer[];
   private svmIndexer?: Indexer;
 
   constructor(
@@ -52,7 +52,7 @@ export class CCTPIndexerManager {
   }
 
   public async stopGracefully() {
-    this.evmIndexer?.stopGracefully();
+    this.evmIndexer?.map((indexer) => indexer.stopGracefully());
     this.svmIndexer?.stopGracefully();
   }
 
@@ -78,6 +78,7 @@ export class CCTPIndexerManager {
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
+          indexingDelaySecondsOnError: this.config.indexingDelaySecondsOnError,
         },
         cctpIndexerDataHandler,
         this.logger,
@@ -100,7 +101,10 @@ export class CCTPIndexerManager {
       message: "Starting EVM CCTP indexers",
       chainIds: evmChains,
     });
-    return Promise.all(indexers.map((indexer) => indexer.start()));
+    this.evmIndexer = indexers;
+    await Promise.all(indexers.map((indexer) => indexer.start()));
+
+    return Promise.resolve();
   }
 
   private async startSvmIndexer() {
