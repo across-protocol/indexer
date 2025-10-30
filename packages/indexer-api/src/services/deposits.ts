@@ -30,6 +30,7 @@ const DepositFields = [
   `deposit.inputAmount as "inputAmount"`,
   `deposit.outputToken as "outputToken"`,
   `CASE WHEN swapMetadata.side = '1' THEN swapMetadata.address ELSE NULL END as "swapOutputToken"`,
+  `CASE WHEN swapMetadata.side = '1' THEN swapMetadata.minAmountOut ELSE NULL END as "swapOutputTokenAmount"`,
   `deposit.outputAmount as "outputAmount"`,
   `deposit.message as "message"`,
   `deposit.messageHash as "messageHash"`,

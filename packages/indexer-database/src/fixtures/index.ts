@@ -4,3 +4,4 @@ export * from "./FundsDepositedFixture";
 export * from "./RequestedSlowFillFixture";
 export * from "./RelayHashInfoFixture";
 export * from "./SwapBeforeBridgeFixture";
+export * from "./SwapMetadataFixture";
