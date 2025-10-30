@@ -13,7 +13,7 @@
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "check": "pnpm format:check && pnpm lint:check && pnpm build:check",
-    "test:unit": "DOTENV_CONFIG_PATH=./../../.env.test mocha --spec 'src/**/*.unit.test.ts'",
+    "test:unit": "mocha --spec 'src/**/*.unit.test.ts'",
     "test:integration": "DOTENV_CONFIG_PATH=./../../.env.test mocha --spec 'src/**/*.integration.test.ts'",
     "test:e2e": "DOTENV_CONFIG_PATH=./../../.env.test mocha --spec 'src/**/*.e2e.test.ts'",
     "test": "pnpm test:e2e && pnpm test:integration && pnpm test:unit",

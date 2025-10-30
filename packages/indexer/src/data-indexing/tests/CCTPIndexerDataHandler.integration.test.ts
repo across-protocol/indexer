@@ -1,20 +1,15 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
-import Redis from "ioredis";
 import * as sinon from "sinon";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { getTestDataSource } from "../../tests/setup";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
 import { BlockRange } from "../model";
-import { RetryProviderConfig, parseProvidersUrls } from "../../parseEnv";
 import { createTestRetryProvider } from "../../tests/testProvider";
-import { assert } from "@repo/error-handling";
-import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "../../../../indexer-database/dist/src";
-import { SponsoredDepositForBurn } from "../../../../indexer-database/dist/src/entities";
 
 /**
  * Test suite for the CCTPIndexerDataHandler.
