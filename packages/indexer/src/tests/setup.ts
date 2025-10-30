@@ -1,4 +1,4 @@
-import { newDb, IMemoryDb } from "pg-mem";
+import { newDb } from "pg-mem";
 import { DataSource } from "typeorm";
 import { createDataSource as createRealDataSource } from "@repo/indexer-database";
 

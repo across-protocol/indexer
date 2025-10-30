@@ -1,11 +1,8 @@
-import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import { Logger } from "winston";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-
 import { RedisCache } from "../redis/redisCache";
-import { RetryProviderConfig } from "../parseEnv";
 
 /**
  * Creates a test instance of a RetryProvider.

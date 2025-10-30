@@ -1,10 +1,7 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
-import fs from "fs";
-import path from "path";
-
-import { getTestDataSource } from "./setup";
 import { entities } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 
 /**
  * Test suite for the test database setup.

@@ -3,9 +3,6 @@ import { DataSource } from "typeorm";
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
 import sinon from "sinon";
-import { getTestDataSource } from "../../tests/setup";
-import { CCTPRepository } from "../../database/CctpRepository";
-import { parseProvidersUrls, Config } from "../../parseEnv";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "@repo/indexer-database";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
@@ -14,7 +11,10 @@ import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { RedisCache } from "../../redis/redisCache";
 import * as Web3Constants from "../../web3/constants";
+import { parseProvidersUrls, Config } from "../../parseEnv";
 import * as Constants from "../service/constants";
+import { getTestDataSource } from "../../tests/setup";
+import { CCTPRepository } from "../../database/CctpRepository";
 
 describe("CCTPIndexerManager", () => {
   let dataSource: DataSource;
