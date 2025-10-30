@@ -8,15 +8,35 @@ From the root folder, run:
 - `pnpm run dev-env:up`
 - `pnpm run dev-env:run-app:indexer` this command will execute migrations if needed and run the indexer.
 
-
 Without docker:
 
 1. Set the database connection environment variables in packages/indexer-database/.env
 2. From packages/indexer-database run `pnpm run db:migration:run` or from the root folder run `pnpm run db:indexer-database:migrate:run`.
 3. Go to apps/node and run `APP=indexer pnpm start` or from the root folder run `pnpm run start:indexer`
 
-## Test
-In this package run `pnpm test`
+## Testing
+
+This package includes both unit/integration tests and end-to-end (E2E) tests.
+
+### Unit & Integration Tests
+
+These tests cover the core logic and interactions within the `indexer` package. They utilize Mocha for the test runner and an in-memory database for fast, isolated execution.
+
+**Configuration**:
+For these tests to run correctly, you need to provide RPC URLs for the testnet chains. Create a `.env.test` file at the **root of the repository** (if it doesn't already exist) and add the necessary RPC provider URLs.
+
+For example, if running CCTP tests that interact with Arbitrum Sepolia (chain ID 421614), you must include:
+
+```
+RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
+```
+
+**Running the tests**:
+Navigate to the `packages/indexer` directory and run:
+
+```bash
+pnpm test
+```
 
 ## ENV
 ```

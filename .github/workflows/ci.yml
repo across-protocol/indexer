@@ -27,6 +27,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run tests using docker
+        env:
+          RPC_PROVIDER_URLS_421614: ${{ secrets.RPC_PROVIDER_URLS_421614 }}
         run: pnpm test:e2e:docker
   build:
     name: Build
