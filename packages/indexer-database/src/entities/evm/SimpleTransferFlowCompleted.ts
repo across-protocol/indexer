@@ -28,7 +28,7 @@ export class SimpleTransferFlowCompleted {
   @Column()
   chainId: string;
 
-  @Column()
+  @Column({ nullable: true })
   quoteNonce: string;
 
   @Column()
@@ -57,6 +57,9 @@ export class SimpleTransferFlowCompleted {
 
   @Column()
   logIndex: number;
+
+  @Column()
+  finalised: boolean;
 
   @Column()
   blockTimestamp: Date;

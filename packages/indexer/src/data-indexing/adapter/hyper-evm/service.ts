@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { CHAIN_IDs } from "@across-protocol/constants";
-
+import { createMapWithDefault } from "../../../utils/map";
 import {
   SimpleTransferFlowCompleted,
   SimpleTransferFlowCompletedABI,
@@ -11,6 +11,16 @@ import {
 // roughly starting with date of Oct 1st, 2025
 const STARTING_BLOCK_NUMBER = 15083577;
 
+export const HYPERCORE_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } =
+  createMapWithDefault(
+    {
+      [CHAIN_IDs.HYPEREVM_TESTNET]:
+        "0x06C61D54958a0772Ee8aF41789466d39FfeaeB13",
+    },
+    // TODO: Replace with actual address when available
+    "0x06C61D54958a0772Ee8aF41789466d39FfeaeB13",
+  );
+
 export function getIndexingStartBlockNumber(chainId: number) {
   if (chainId !== CHAIN_IDs.HYPEREVM) {
     throw new Error(
@@ -18,16 +28,6 @@ export function getIndexingStartBlockNumber(chainId: number) {
     );
   }
   return STARTING_BLOCK_NUMBER;
-}
-
-export function getHyperCoreFlowExecutorAddress(chainId: number): string {
-  if (chainId !== CHAIN_IDs.HYPEREVM) {
-    throw new Error(
-      `HyperCoreFlowExecutor is only deployed on HyperEVM. ChainId: ${chainId}`,
-    );
-  }
-  // TODO: Replace with actual address when available
-  return "0x0000000000000000000000000000000000000000";
 }
 
 export function parseSimpleTransferFlowCompleted(

@@ -8,7 +8,7 @@ import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTran
 import {
   getIndexingStartBlockNumber,
   getSimpleTransferFlowCompletedEvents,
-  getHyperCoreFlowExecutorAddress,
+  HYPERCORE_FLOW_EXECUTOR_ADDRESS,
 } from "../adapter/hyper-evm/service";
 import { SimpleTransferFlowCompletedWithBlock } from "../adapter/hyper-evm/model";
 
@@ -84,7 +84,17 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
   private async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
-    const address = getHyperCoreFlowExecutorAddress(this.chainId);
+    const address = HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
+    if (!address) {
+      this.logger.warn({
+        at: "Indexer#HyperEVMIndexerDataHandler#fetchEventsByRange",
+        message: `No HyperCoreFlowExecutor address found for chainId ${this.chainId}`,
+      });
+      return {
+        simpleTransferFlowCompletedEvents: [],
+        blocks: {},
+      };
+    }
     const simpleTransferFlowCompletedEvents =
       await getSimpleTransferFlowCompletedEvents(
         this.provider,

@@ -66,7 +66,7 @@ export class SponsoredDepositForBurn {
   @Column()
   logIndex: number;
 
-  @Column("boolean")
+  @Column()
   finalised: boolean;
 
   @Column()

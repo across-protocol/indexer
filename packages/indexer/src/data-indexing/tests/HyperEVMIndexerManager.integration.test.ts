@@ -5,27 +5,25 @@ import * as across from "@across-protocol/sdk";
 import sinon from "sinon";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "@repo/indexer-database";
-import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
+import { HyperEVMIndexerManager } from "../service/HyperEVMIndexerManager";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";
-import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
+import { HyperEVMIndexerDataHandler } from "../service/HyperEVMIndexerDataHandler";
 import { RedisCache } from "../../redis/redisCache";
-import * as Web3Constants from "../../web3/constants";
 import { parseProvidersUrls, Config } from "../../parseEnv";
-import * as Constants from "../service/constants";
 import { getTestDataSource } from "../../tests/setup";
-import { CCTPRepository } from "../../database/CctpRepository";
+import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
 
-describe("CCTPIndexerManager", () => {
+describe("HyperEVMIndexerManager", () => {
   let dataSource: DataSource;
-  let cctpRepository: CCTPRepository;
+  let simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository;
   let logger: Logger;
-  let manager: CCTPIndexerManager;
+  let manager: HyperEVMIndexerManager;
   let retryProvidersFactory: RetryProvidersFactory;
 
   const transactionHash =
-    "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
-  const blockNumber = 209540538;
+    "0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9";
+  const blockNumber = 36200188;
+  const chainId = CHAIN_IDs.HYPEREVM_TESTNET;
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
@@ -37,11 +35,12 @@ describe("CCTPIndexerManager", () => {
       error: sinon.spy(),
     } as unknown as Logger;
 
-    cctpRepository = new CCTPRepository(dataSource, logger);
+    simpleTransferFlowCompletedRepository =
+      new SimpleTransferFlowCompletedRepository(dataSource, logger);
 
     const providerUrls = parseProvidersUrls();
     const config = {
-      enableCctpIndexer: true,
+      enableHyperEVMIndexer: true,
       providerUrls,
       indexingDelaySecondsOnError: 2,
     } as unknown as Config;
@@ -56,17 +55,13 @@ describe("CCTPIndexerManager", () => {
 
     retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
 
-    // Mock to only use ARBITRUM_SEPOLIA for this test
-    sinon
-      .stub(CCTPIndexerManagerModule, "CCTP_SUPPORTED_CHAINS")
-      .value([CHAIN_IDs.ARBITRUM_SEPOLIA]);
-
-    manager = new CCTPIndexerManager(
+    manager = new HyperEVMIndexerManager(
       logger,
       config,
       dataSource,
       retryProvidersFactory,
-      cctpRepository,
+      simpleTransferFlowCompletedRepository,
+      true,
     );
   });
 
@@ -77,26 +72,14 @@ describe("CCTPIndexerManager", () => {
     }
   });
 
-  /**
-   * This test verifies that the CCTPIndexerManager can correctly process and store
-   * a SponsoredDepositForBurn event. It is an integration test that lets the real indexer run
-   * for a short period and then checks for the expected side-effects in the database.
-   */
-  it("should store sponsoredDepositForBurn event in the database", async () => {
-    // Stub to prevent the data handler from filtering out the transaction used in the test.
-    const filterStub = sinon
-      .stub(
-        CCTPIndexerDataHandler.prototype,
-        "filterTransactionsFromSwapApi" as any,
-      )
-      .resolvesArg(1);
+  it("should store SimpleTransferFlowCompleted event in the database", async () => {
     // Stub to force the indexer to start processing from the block number of the test transaction.
     const startIndexingStub = sinon
-      .stub(CCTPIndexerDataHandler.prototype, "getStartIndexingBlockNumber")
+      .stub(HyperEVMIndexerDataHandler.prototype, "getStartIndexingBlockNumber")
       .returns(blockNumber);
 
     const provider = retryProvidersFactory.getCustomEvmProvider({
-      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
+      chainId: chainId,
       enableCaching: false,
     }) as across.providers.RetryProvider;
     // Stub to control the block range and ensure the indexer processes the target block.
@@ -105,21 +88,20 @@ describe("CCTPIndexerManager", () => {
       .resolves(blockNumber);
 
     const indexerPromise = manager.start();
-
     // Wait a moment for the indexer to run and process the block.
     await across.utils.delay(2);
 
-    const sponsoredDepositForBurnRepository = dataSource.getRepository(
-      entities.SponsoredDepositForBurn,
+    const simpleTransferFlowCompletedRepository = dataSource.getRepository(
+      entities.SimpleTransferFlowCompleted,
     );
-    const savedEvent = await sponsoredDepositForBurnRepository.findOne({
-      where: { transactionHash: transactionHash },
-    });
+    const savedEvent =
+      await simpleTransferFlowCompletedRepository.findOneOrFail({
+        where: { transactionHash: transactionHash },
+      });
 
     // Gracefully stop the indexer and wait for it to shut down.
     await manager.stopGracefully();
     await indexerPromise;
-
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
@@ -130,7 +112,6 @@ describe("CCTPIndexerManager", () => {
     }
 
     // Restore all stubs.
-    filterStub.restore();
     startIndexingStub.restore();
     getBlockNumberStub.restore();
   }).timeout(20000);

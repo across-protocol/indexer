@@ -31,6 +31,7 @@ import {
   decodeMessage,
 } from "../adapter/cctp-v2/service";
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { createMapWithDefault } from "../../utils/map";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -49,31 +50,6 @@ export type FetchEventsResult = {
   transactions: Record<string, Transaction>;
 };
 export type StoreEventsResult = {};
-
-/**
- * Creates a Proxy that returns a default value for any key not
- * present in the original object.
- * @param {object} target - The original object (your mapping).
- * @param {*} defaultValue - The value to return for missing keys.
- * @returns {Proxy} A new proxy-wrapped object.
- */
-function createMapWithDefault(target: any, defaultValue: any) {
-  // This handler "closes over" the defaultValue,
-  // so it remembers it.
-  const handler = {
-    get: function (obj: any, prop: any) {
-      // Check if the property exists on the original object
-      if (prop in obj) {
-        return obj[prop];
-      }
-
-      // If not, return the default value provided
-      return defaultValue;
-    },
-  };
-
-  return new Proxy(target, handler);
-}
 
 const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
   {

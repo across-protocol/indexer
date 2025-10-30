@@ -14,7 +14,7 @@ import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { HyperEVMIndexerDataHandler } from "./HyperEVMIndexerDataHandler";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
 
-const MAX_BLOCK_RANGE_SIZE = 10000;
+const MAX_BLOCK_RANGE_SIZE = 1000;
 
 export class HyperEVMIndexerManager {
   private evmIndexer?: Indexer;
@@ -25,6 +25,7 @@ export class HyperEVMIndexerManager {
     private postgres: DataSource,
     private retryProvidersFactory: RetryProvidersFactory,
     private simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository,
+    private testNet: boolean = false,
   ) {}
 
   public async start() {
@@ -54,7 +55,9 @@ export class HyperEVMIndexerManager {
   }
 
   private async startEvmIndexer() {
-    const chainId = CHAIN_IDs.HYPEREVM;
+    const chainId = this.testNet
+      ? CHAIN_IDs.HYPEREVM_TESTNET
+      : CHAIN_IDs.HYPEREVM;
     const provider = this.retryProvidersFactory.getCustomEvmProvider({
       chainId,
       enableCaching: false,
@@ -70,6 +73,7 @@ export class HyperEVMIndexerManager {
         indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
         finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(chainId),
         maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
+        indexingDelaySecondsOnError: this.config.indexingDelaySecondsOnError,
       },
       hyperEVMIndexerDataHandler,
       this.logger,
@@ -82,6 +86,7 @@ export class HyperEVMIndexerManager {
       message: "Starting Hyper EVM indexer",
       chainId,
     });
+    this.evmIndexer = indexer;
     return indexer.start();
   }
 }
