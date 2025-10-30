@@ -94,16 +94,6 @@ describe("CCTPIndexerManager", () => {
     const startIndexingStub = sinon
       .stub(CCTPIndexerDataHandler.prototype, "getStartIndexingBlockNumber")
       .returns(blockNumber);
-    // Stub constants to prevent errors due to missing configuration for the test chain.
-    const noTtlStub = sinon
-      .stub(Web3Constants, "getNoTtlBlockDistance")
-      .returns(0);
-    const delayStub = sinon
-      .stub(Constants, "getIndexingDelaySeconds")
-      .returns(0);
-    const bufferStub = sinon
-      .stub(Constants, "getFinalisedBlockBufferDistance")
-      .returns(0);
 
     const provider = retryProvidersFactory.getCustomEvmProvider({
       chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
@@ -143,8 +133,5 @@ describe("CCTPIndexerManager", () => {
     filterStub.restore();
     startIndexingStub.restore();
     getBlockNumberStub.restore();
-    noTtlStub.restore();
-    delayStub.restore();
-    bufferStub.restore();
   }).timeout(20000);
 });
