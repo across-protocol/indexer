@@ -1,8 +1,6 @@
 import winston from "winston";
 import * as across from "@across-protocol/sdk";
-
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
-
 import { SimpleTransferFlowCompletedWithBlock } from "../data-indexing/adapter/hyper-evm/model";
 
 export class SimpleTransferFlowCompletedRepository extends dbUtils.BlockchainEventRepository {

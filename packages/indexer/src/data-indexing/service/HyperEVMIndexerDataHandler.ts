@@ -1,7 +1,6 @@
 import { Logger } from "winston";
 import { providers } from "ethers";
 import * as across from "@across-protocol/sdk";
-
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";

@@ -30,28 +30,6 @@ export function getIndexingStartBlockNumber(chainId: number) {
   return STARTING_BLOCK_NUMBER;
 }
 
-export function parseSimpleTransferFlowCompleted(
-  decodedLog: ethers.utils.LogDescription,
-): SimpleTransferFlowCompleted {
-  const {
-    quoteNonce,
-    finalRecipient,
-    finalToken,
-    evmAmountIn,
-    bridgingFeesIncurred,
-    evmAmountSponsored,
-  } = decodedLog.args;
-
-  return {
-    quoteNonce,
-    finalRecipient,
-    finalToken,
-    evmAmountIn: evmAmountIn.toString(),
-    bridgingFeesIncurred: bridgingFeesIncurred.toString(),
-    evmAmountSponsored: evmAmountSponsored.toString(),
-  };
-}
-
 export async function getSimpleTransferFlowCompletedEvents(
   provider: ethers.providers.JsonRpcProvider,
   address: string,
@@ -75,7 +53,12 @@ export async function getSimpleTransferFlowCompletedEvents(
   return logs.map((log) => {
     const decodedLog = SimpleTransferFlowCompletedABI.parseLog(log);
     return {
-      ...parseSimpleTransferFlowCompleted(decodedLog),
+      quoteNonce: decodedLog.args.quoteNonce,
+      finalRecipient: decodedLog.args.finalRecipient,
+      finalToken: decodedLog.args.finalToken,
+      evmAmountIn: decodedLog.args.evmAmountIn.toString(),
+      bridgingFeesIncurred: decodedLog.args.bridgingFeesIncurred.toString(),
+      evmAmountSponsored: decodedLog.args.evmAmountSponsored.toString(),
       blockNumber: log.blockNumber,
       logIndex: log.logIndex,
       transactionIndex: log.transactionIndex,
