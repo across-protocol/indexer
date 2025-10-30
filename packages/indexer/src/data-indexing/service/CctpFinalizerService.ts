@@ -84,7 +84,7 @@ class CctpFinalizerService extends RepeatableTask {
       // 1. Get the burn events from the database that were not published to the pubsub topic yet.
       // 2. Publish the burn events info to the pubsub topic. As an optimization, publish only
       // the burn events for which the attestation is available.
-      // 3. Create a new CctpFinalizJob row in the database for each burn event that was published
+      // 3. Create a new CctpFinalizerJob row in the database for each burn event that was published
       // to the pubsub topic, so that they are picked up again.
       //#endregion
       const qb = this.postgres
