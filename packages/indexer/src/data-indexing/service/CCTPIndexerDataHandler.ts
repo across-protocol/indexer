@@ -30,7 +30,6 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
 } from "../adapter/cctp-v2/service";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -134,7 +133,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
-
     const [depositForBurnEvents, messageReceivedEvents] = await Promise.all([
       tokenMessengerContract.queryFilter(
         "DepositForBurn",
