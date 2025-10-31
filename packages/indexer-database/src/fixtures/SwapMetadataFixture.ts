@@ -1,5 +1,4 @@
-import { SwapMetadata } from "../entities";
-import { getRandomInt } from "../utils/FixtureUtils";
+import { SwapMetadata, SwapSide, SwapType } from "../entities";
 import { DataSource, DeleteResult, Repository } from "typeorm";
 
 export class SwapMetadataFixture {
@@ -18,8 +17,8 @@ export class SwapMetadataFixture {
   ): Partial<SwapMetadata> {
     return {
       version: "1",
-      type: "0", // origin
-      side: "0", // buy
+      type: SwapType.EXACT_INPUT,
+      side: SwapSide.ORIGIN_SWAP,
       address: "0x1234567890123456789012345678901234567890",
       maximumAmountIn: "1000000000000000000",
       minAmountOut: "950000000000000000",

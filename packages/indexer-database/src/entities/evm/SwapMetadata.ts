@@ -11,10 +11,22 @@ import {
 } from "typeorm";
 import { RelayHashInfo } from "../RelayHashInfo";
 
+export enum SwapSide {
+  ORIGIN_SWAP = 0,
+  DESTINATION_SWAP = 1,
+}
+
+export enum SwapType {
+  EXACT_INPUT = 0,
+  MIN_OUTPUT = 1,
+  EXACT_OUTPUT = 2,
+}
+
 @Entity({ schema: "evm" })
-@Unique("UK_swapMetadata_blockNumber_chainId_logIndex", [
+@Unique("UK_swapMetadata_blockNumber_chainId_transactionHash_logIndex", [
   "blockNumber",
   "chainId",
+  "transactionHash",
   "logIndex",
 ])
 @Index("IX_swapMetadata_finalised", ["finalised"])
@@ -29,11 +41,11 @@ export class SwapMetadata {
   @Column()
   version: string;
 
-  @Column()
-  type: string;
+  @Column({ type: "enum", enum: SwapType })
+  type: SwapType;
 
-  @Column()
-  side: string;
+  @Column({ type: "enum", enum: SwapSide })
+  side: SwapSide;
 
   @Column()
   address: string;

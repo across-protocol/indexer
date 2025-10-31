@@ -25,8 +25,8 @@ export class SwapMetadataRepository extends dbUtils.BlockchainEventRepository {
       const decodedData = this.decodeSwapMetadata(event.args.data);
 
       entity.version = decodedData.version.toString();
-      entity.type = decodedData.type.toString();
-      entity.side = decodedData.side.toString();
+      entity.type = decodedData.type as entities.SwapType;
+      entity.side = decodedData.side as entities.SwapSide;
       entity.address = decodedData.address;
       entity.maximumAmountIn = decodedData.maximumAmountIn.toString();
       entity.minAmountOut = decodedData.minAmountOut.toString();
@@ -55,7 +55,7 @@ export class SwapMetadataRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<any>(
           entities.SwapMetadata,
           eventsChunk,
-          ["blockNumber", "chainId", "logIndex"],
+          ["blockNumber", "chainId", "transactionHash", "logIndex"],
           [],
         ),
       ),

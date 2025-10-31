@@ -349,11 +349,11 @@ describe("Deposits Service Tests", () => {
       destinationChainId: depositData.destinationChainId,
     };
 
-    // Create destination swap metadata (side = '1' for output token)
+    // Create destination swap metadata (side = DESTINATION_SWAP for output token)
     const swapMetadataData = {
       relayHashInfoId: 1,
-      type: "1", // destination
-      side: "1", // sell/output
+      type: entities.SwapType.MIN_OUTPUT, // destination
+      side: entities.SwapSide.DESTINATION_SWAP, // sell/output
       address: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
       minAmountOut: "950000000000000000",
       swapProvider: "UniswapV3",
@@ -448,11 +448,11 @@ describe("Deposits Service Tests", () => {
       destinationChainId: depositData.destinationChainId,
     };
 
-    // Create origin swap metadata (side = '0' for input token)
+    // Create origin swap metadata (side = ORIGIN_SWAP for input token)
     const swapMetadataData = {
       relayHashInfoId: 3,
-      type: "0", // origin
-      side: "0", // buy/input
+      type: entities.SwapType.EXACT_INPUT, // origin
+      side: entities.SwapSide.ORIGIN_SWAP, // buy/input
       address: "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
       minAmountOut: "500000000000000000",
       swapProvider: "UniswapV3",
