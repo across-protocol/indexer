@@ -11,6 +11,7 @@ import { Indexer, EvmIndexer } from "./Indexer";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { HyperEVMIndexerDataHandler } from "./HyperEVMIndexerDataHandler";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
+import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
 
 const MAX_BLOCK_RANGE_SIZE = 1000;
 
@@ -23,6 +24,7 @@ export class HyperEVMIndexerManager {
     private postgres: DataSource,
     private retryProvidersFactory: RetryProvidersFactory,
     private simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository,
+    private swapFlowInitializedRepository: SwapFlowInitializedRepository,
     private testNet: boolean = false,
   ) {}
 
@@ -65,6 +67,7 @@ export class HyperEVMIndexerManager {
       chainId,
       provider,
       this.simpleTransferFlowCompletedRepository,
+      this.swapFlowInitializedRepository,
     );
     const indexer = new EvmIndexer(
       {

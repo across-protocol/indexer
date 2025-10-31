@@ -34,6 +34,7 @@ import { HyperEVMIndexerManager } from "./data-indexing/service/HyperEVMIndexerM
 import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
 import { SimpleTransferFlowCompletedRepository } from "./database/SimpleTransferFlowCompletedRepository";
+import { SwapFlowInitializedRepository } from "./database/SwapFlowInitializedRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -134,6 +135,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
     retryProvidersFactory,
     new SimpleTransferFlowCompletedRepository(postgres, logger),
+    new SwapFlowInitializedRepository(postgres, logger),
   );
   const bundleServicesManager = new BundleServicesManager(
     config,

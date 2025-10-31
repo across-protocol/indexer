@@ -5,6 +5,9 @@ import {
   SimpleTransferFlowCompleted,
   SimpleTransferFlowCompletedABI,
   SimpleTransferFlowCompletedWithBlock,
+  SwapFlowInitialized,
+  SwapFlowInitializedABI,
+  SwapFlowInitializedWithBlock,
 } from "./model";
 
 // we need to fetch only recent events, so
@@ -59,6 +62,41 @@ export async function getSimpleTransferFlowCompletedEvents(
       evmAmountIn: decodedLog.args.evmAmountIn.toString(),
       bridgingFeesIncurred: decodedLog.args.bridgingFeesIncurred.toString(),
       evmAmountSponsored: decodedLog.args.evmAmountSponsored.toString(),
+      blockNumber: log.blockNumber,
+      logIndex: log.logIndex,
+      transactionIndex: log.transactionIndex,
+      transactionHash: log.transactionHash,
+    };
+  });
+}
+
+export async function getSwapFlowInitializedEvents(
+  provider: ethers.providers.JsonRpcProvider,
+  address: string,
+  fromBlock: number,
+  toBlock: number,
+): Promise<SwapFlowInitializedWithBlock[]> {
+  const eventFilter = {
+    address,
+    topics: [SwapFlowInitializedABI.getEventTopic("SwapFlowInitialized")],
+  };
+  const logs = await provider.getLogs({
+    ...eventFilter,
+    fromBlock,
+    toBlock,
+  });
+
+  return logs.map((log) => {
+    const decodedLog = SwapFlowInitializedABI.parseLog(log);
+    return {
+      quoteNonce: decodedLog.args.quoteNonce,
+      finalRecipient: decodedLog.args.finalRecipient,
+      finalToken: decodedLog.args.finalToken,
+      evmAmountIn: decodedLog.args.evmAmountIn.toString(),
+      bridgingFeesIncurred: decodedLog.args.bridgingFeesIncurred.toString(),
+      coreAmountIn: decodedLog.args.coreAmountIn.toString(),
+      minAmountToSend: decodedLog.args.minAmountToSend.toString(),
+      maxAmountToSend: decodedLog.args.maxAmountToSend.toString(),
       blockNumber: log.blockNumber,
       logIndex: log.logIndex,
       transactionIndex: log.transactionIndex,
