@@ -30,7 +30,7 @@ export class SponsoredDepositForBurn {
   @Column({ type: "bigint" })
   chainId: string;
 
-  @Column()
+  @Column({ nullable: true })
   quoteNonce: string;
 
   @Column()
@@ -39,8 +39,8 @@ export class SponsoredDepositForBurn {
   @Column()
   finalRecipient: string;
 
-  @Column()
-  quoteDeadline: Date;
+  @Column({ type: "bigint" })
+  quoteDeadline: string;
 
   @Column({ type: "bigint" })
   maxBpsToSponsor: string;

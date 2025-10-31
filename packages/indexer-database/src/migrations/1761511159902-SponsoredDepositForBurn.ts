@@ -10,10 +10,10 @@ export class SponsoredDepositForBurn1761511159902
       `CREATE TABLE "evm"."sponsored_deposit_for_burn" (
         "id" SERIAL NOT NULL,
         "chainId" character varying NOT NULL,
-        "quoteNonce" character varying NOT NULL,
+        "quoteNonce" character varying,
         "originSender" character varying NOT NULL,
         "finalRecipient" character varying NOT NULL,
-        "quoteDeadline" TIMESTAMP NOT NULL,
+        "quoteDeadline" character varying NOT NULL,
         "maxBpsToSponsor" character varying NOT NULL,
         "maxUserSlippageBps" character varying NOT NULL,
         "finalToken" character varying NOT NULL,
