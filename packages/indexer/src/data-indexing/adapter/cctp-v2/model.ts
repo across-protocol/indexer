@@ -47,6 +47,7 @@ export interface MintAndWithdrawLog extends providers.Log {
 }
 
 export interface SponsoredDepositForBurnLog extends providers.Log {
+  destinationChainId?: number;
   args: [] & {
     nonce: string;
     originSender: string;
