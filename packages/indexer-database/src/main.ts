@@ -76,6 +76,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // HyperEVM
       entities.SimpleTransferFlowCompleted,
       entities.SwapFlowInitialized,
+      entities.SwapFlowFinalized,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

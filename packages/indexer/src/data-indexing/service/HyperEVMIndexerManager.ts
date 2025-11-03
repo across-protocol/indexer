@@ -12,6 +12,7 @@ import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { HyperEVMIndexerDataHandler } from "./HyperEVMIndexerDataHandler";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
 import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
+import { SwapFlowFinalizedRepository } from "../../database/SwapFlowFinalizedRepository";
 
 const MAX_BLOCK_RANGE_SIZE = 1000;
 
@@ -25,6 +26,7 @@ export class HyperEVMIndexerManager {
     private retryProvidersFactory: RetryProvidersFactory,
     private simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository,
     private swapFlowInitializedRepository: SwapFlowInitializedRepository,
+    private swapFlowFinalizedRepository: SwapFlowFinalizedRepository,
     private testNet: boolean = false,
   ) {}
 
@@ -68,6 +70,7 @@ export class HyperEVMIndexerManager {
       provider,
       this.simpleTransferFlowCompletedRepository,
       this.swapFlowInitializedRepository,
+      this.swapFlowFinalizedRepository,
     );
     const indexer = new EvmIndexer(
       {

@@ -32,6 +32,26 @@ export type SwapFlowInitialized = {
 
 export type SwapFlowInitializedWithBlock = SwapFlowInitialized & Block;
 
+export type SwapFlowFinalized = {
+  quoteNonce: string;
+  finalRecipient: string;
+  finalToken: string;
+  totalSent: string;
+  evmAmountSponsored: string;
+};
+
+export type SwapFlowFinalizedWithBlock = SwapFlowFinalized & Block;
+
+export const SwapFlowFinalizedABI = new utils.Interface([
+  `event SwapFlowFinalized(
+    bytes32 indexed quoteNonce,
+    address indexed finalRecipient,
+    address indexed finalToken,
+    uint64 totalSent,
+    uint256 evmAmountSponsored
+  )`,
+]);
+
 export const SimpleTransferFlowCompletedABI = new utils.Interface([
   `event SimpleTransferFlowCompleted(
     bytes32 indexed quoteNonce,

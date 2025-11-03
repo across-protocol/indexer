@@ -35,6 +35,7 @@ import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
 import { SimpleTransferFlowCompletedRepository } from "./database/SimpleTransferFlowCompletedRepository";
 import { SwapFlowInitializedRepository } from "./database/SwapFlowInitializedRepository";
+import { SwapFlowFinalizedRepository } from "./database/SwapFlowFinalizedRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -136,6 +137,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     new SimpleTransferFlowCompletedRepository(postgres, logger),
     new SwapFlowInitializedRepository(postgres, logger),
+    new SwapFlowFinalizedRepository(postgres, logger),
   );
   const bundleServicesManager = new BundleServicesManager(
     config,
