@@ -1,6 +1,7 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -30,7 +31,6 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
 } from "../adapter/cctp-v2/service";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -193,7 +193,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
-
     const [depositForBurnEvents, messageReceivedEvents] = await Promise.all([
       tokenMessengerContract.queryFilter(
         "DepositForBurn",
@@ -544,7 +543,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       nonce: event.args.nonce,
       originSender: event.args.originSender,
       finalRecipient: event.args.finalRecipient,
-      quoteDeadline: event.args.quoteDeadline.toString(),
+      quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
       maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
       maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
       finalToken: event.args.finalToken,

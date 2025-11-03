@@ -36,10 +36,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private oftRepository: OftRepository,
-    private postgres: DataSource,
   ) {
     this.isInitialized = false;
-    this.oftTransferAggregator = new OftTransferAggregator(postgres);
   }
 
   private initialize() {}
@@ -78,19 +76,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       getOftChainConfiguration(this.chainId).tokens[0]!.address,
     );
     const timeToStoreEvents = performance.now();
-    const deletedEvents = await this.oftRepository.deleteUnfinalisedOFTEvents(
+    await this.oftRepository.deleteUnfinalisedOFTEvents(
       this.chainId,
       lastFinalisedBlock,
     );
     const timeToDeleteEvents = performance.now();
-
-    await this.oftTransferAggregator.processDatabaseEvents(
-      deletedEvents.oftSentEvents,
-      deletedEvents.oftReceivedEvents,
-      storedEvents.oftSentEvents.map((event) => event.data),
-      storedEvents.oftReceivedEvents.map((event) => event.data),
-      this.chainId,
-    );
     const timeToProcessEvents = performance.now();
     const finalPerfTime = performance.now();
 
