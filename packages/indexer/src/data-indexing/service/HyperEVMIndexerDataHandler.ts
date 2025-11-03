@@ -8,17 +8,21 @@ import {
   getIndexingStartBlockNumber,
   getSimpleTransferFlowCompletedEvents,
   getSwapFlowInitializedEvents,
+  getSwapFlowFinalizedEvents,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
 } from "../adapter/hyper-evm/service";
 import {
   SimpleTransferFlowCompletedWithBlock,
   SwapFlowInitializedWithBlock,
+  SwapFlowFinalizedWithBlock,
 } from "../adapter/hyper-evm/model";
 import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
+import { SwapFlowFinalizedRepository } from "../../database/SwapFlowFinalizedRepository";
 
 export type FetchEventsResult = {
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedWithBlock[];
   swapFlowInitializedEvents: SwapFlowInitializedWithBlock[];
+  swapFlowFinalizedEvents: SwapFlowFinalizedWithBlock[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {};
@@ -32,6 +36,7 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
     private provider: across.providers.RetryProvider,
     private simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository,
     private swapFlowInitializedRepository: SwapFlowInitializedRepository,
+    private swapFlowFinalizedRepository: SwapFlowFinalizedRepository,
   ) {
     this.isInitialized = false;
   }
@@ -77,6 +82,10 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         lastFinalisedBlock,
       ),
+      this.swapFlowFinalizedRepository.deleteUnfinalisedSwapFlowFinalizedEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
     ]);
     const timeToDeleteEvents = performance.now();
     const finalPerfTime = performance.now();
@@ -105,24 +114,34 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
       return {
         simpleTransferFlowCompletedEvents: [],
         swapFlowInitializedEvents: [],
+        swapFlowFinalizedEvents: [],
         blocks: {},
       };
     }
-    const [simpleTransferFlowCompletedEvents, swapFlowInitializedEvents] =
-      await Promise.all([
-        getSimpleTransferFlowCompletedEvents(
-          this.provider,
-          address,
-          blockRange.from,
-          blockRange.to,
-        ),
-        getSwapFlowInitializedEvents(
-          this.provider,
-          address,
-          blockRange.from,
-          blockRange.to,
-        ),
-      ]);
+    const [
+      simpleTransferFlowCompletedEvents,
+      swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
+    ] = await Promise.all([
+      getSimpleTransferFlowCompletedEvents(
+        this.provider,
+        address,
+        blockRange.from,
+        blockRange.to,
+      ),
+      getSwapFlowInitializedEvents(
+        this.provider,
+        address,
+        blockRange.from,
+        blockRange.to,
+      ),
+      getSwapFlowFinalizedEvents(
+        this.provider,
+        address,
+        blockRange.from,
+        blockRange.to,
+      ),
+    ]);
 
     const blocks = await this.getBlocks([
       ...new Set([
@@ -132,12 +151,14 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
         ...swapFlowInitializedEvents.map((event) =>
           event.blockNumber.toString(),
         ),
+        ...swapFlowFinalizedEvents.map((event) => event.blockNumber.toString()),
       ]),
     ]);
 
     return {
       simpleTransferFlowCompletedEvents,
       swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
       blocks,
     };
   }
@@ -164,6 +185,7 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
     const {
       simpleTransferFlowCompletedEvents,
       swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
       blocks,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
@@ -177,6 +199,12 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
       ),
       this.swapFlowInitializedRepository.formatAndSaveSwapFlowInitializedEvents(
         swapFlowInitializedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+      ),
+      this.swapFlowFinalizedRepository.formatAndSaveSwapFlowFinalizedEvents(
+        swapFlowFinalizedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,

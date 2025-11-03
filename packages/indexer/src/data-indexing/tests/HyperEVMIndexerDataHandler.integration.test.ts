@@ -7,6 +7,7 @@ import { getTestDataSource } from "../../tests/setup";
 import { HyperEVMIndexerDataHandler } from "../service/HyperEVMIndexerDataHandler";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
 import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
+import { SwapFlowFinalizedRepository } from "../../database/SwapFlowFinalizedRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { entities } from "../../../../indexer-database/dist/src";
@@ -16,6 +17,7 @@ describe("HyperEVMIndexerDataHandler", () => {
   let dataSource: DataSource;
   let simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository;
   let swapFlowInitializedRepository: SwapFlowInitializedRepository;
+  let swapFlowFinalizedRepository: SwapFlowFinalizedRepository;
   let logger: Logger;
   let provider: across.providers.RetryProvider;
   let handler: HyperEVMIndexerDataHandler;
@@ -36,6 +38,10 @@ describe("HyperEVMIndexerDataHandler", () => {
       dataSource,
       logger,
     );
+    swapFlowFinalizedRepository = new SwapFlowFinalizedRepository(
+      dataSource,
+      logger,
+    );
     provider = createTestRetryProvider(CHAIN_IDs.HYPEREVM_TESTNET, logger);
 
     handler = new HyperEVMIndexerDataHandler(
@@ -44,6 +50,7 @@ describe("HyperEVMIndexerDataHandler", () => {
       provider,
       simpleTransferFlowCompletedRepository,
       swapFlowInitializedRepository,
+      swapFlowFinalizedRepository,
     );
   });
 
