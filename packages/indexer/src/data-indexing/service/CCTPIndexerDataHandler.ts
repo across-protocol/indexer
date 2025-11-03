@@ -349,6 +349,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     depositForBurnEvents: DepositForBurnEvent[],
   ) {
     const events: SponsoredDepositForBurnLog[] = [];
+    // DepositForBurn events and SponsoredDepositForBurn events are emitted in the same transaction
     const depositForBurnEventsByTxHash = depositForBurnEvents.reduce(
       (acc, event) => {
         if (!acc[event.transactionHash]) {
@@ -375,7 +376,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
           depositForBurnEventsByTxHash[txHash] || []
         ).sort((a, b) => a.logIndex - b.logIndex);
         for (const sponsoredDepositForBurnEvent of sponsoredDepositForBurnEvents) {
-          // Find the matching DepositForBurn event to get the destination chain id
+          // If a SponsoredDepositForBurn event is found, we need to find the corresponding DepositForBurn event to get the destination chain id
+          // The correct DepositForBurn event that matches a SponsoredDepositForBurn event is the one with the highest log index that is still lower than the SponsoredDepositForBurn event's log index
           const matchingDepositForBurnEvent = depositForBurnEvents.find(
             (depositForBurnEvent) =>
               depositForBurnEvent.logIndex <
