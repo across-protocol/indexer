@@ -52,10 +52,10 @@ export class SwapMetadataRepository extends dbUtils.BlockchainEventRepository {
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
-        this.saveAndHandleFinalisationBatch<any>(
+        this.saveAndHandleFinalisationBatch<entities.SwapMetadata>(
           entities.SwapMetadata,
           eventsChunk,
-          ["blockNumber", "chainId", "transactionHash", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),

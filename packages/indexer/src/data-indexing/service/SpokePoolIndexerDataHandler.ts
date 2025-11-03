@@ -455,13 +455,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       );
 
-    const insertedSwapMetadataEvents =
-      indexerDatabaseUtils.filterSaveQueryResults(
-        saveResult,
-        SaveQueryResultType.Inserted,
-      );
+    const savedSwapMetadataEvents = saveResult
+      .map((result) => result.data)
+      .filter((data) => data !== undefined);
 
-    const fillsAndSwapMetadataByTxHash = insertedSwapMetadataEvents.reduce(
+    const fillsAndSwapMetadataByTxHash = savedSwapMetadataEvents.reduce(
       (acc, swapMetadata) => {
         acc[swapMetadata.transactionHash] = {
           fills: fills.filter(
@@ -469,7 +467,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
               f.transactionHash.toLowerCase() ===
               swapMetadata.transactionHash.toLowerCase(),
           ),
-          swapMetadataEvents: insertedSwapMetadataEvents.filter(
+          swapMetadataEvents: savedSwapMetadataEvents.filter(
             (s) =>
               s.transactionHash.toLowerCase() ===
               swapMetadata.transactionHash.toLowerCase(),

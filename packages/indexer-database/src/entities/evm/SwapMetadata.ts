@@ -23,9 +23,9 @@ export enum SwapType {
 }
 
 @Entity({ schema: "evm" })
-@Unique("UK_swapMetadata_blockNumber_chainId_transactionHash_logIndex", [
-  "blockNumber",
+@Unique("UK_swapMetadata_chainId_blockNumber_transactionHash_logIndex", [
   "chainId",
+  "blockNumber",
   "transactionHash",
   "logIndex",
 ])

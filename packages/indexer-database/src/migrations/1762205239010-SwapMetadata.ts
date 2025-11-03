@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class SwapMetadata1761944389755 implements MigrationInterface {
-  name = "SwapMetadata1761944389755";
+export class SwapMetadata1762205239010 implements MigrationInterface {
+  name = "SwapMetadata1762205239010";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -12,33 +12,33 @@ export class SwapMetadata1761944389755 implements MigrationInterface {
     );
     await queryRunner.query(
       `CREATE TABLE "evm"."swap_metadata" (
-            "id" SERIAL NOT NULL,
-            "version" character varying NOT NULL,
-            "type" "evm"."swap_metadata_type_enum" NOT NULL,
-            "side" "evm"."swap_metadata_side_enum" NOT NULL,
-            "address" character varying NOT NULL,
-            "maximumAmountIn" numeric NOT NULL,
-            "minAmountOut" numeric NOT NULL,
-            "expectedAmountOut" numeric NOT NULL,
-            "expectedAmountIn" numeric NOT NULL,
-            "swapProvider" character varying NOT NULL,
-            "slippage" numeric NOT NULL,
-            "autoSlippage" boolean NOT NULL,
-            "recipient" character varying NOT NULL,
-            "appFeeRecipient" character varying,
-            "blockHash" character varying NOT NULL,
-            "blockNumber" integer NOT NULL,
-            "transactionHash" character varying NOT NULL,
-            "logIndex" integer NOT NULL,
-            "chainId" integer NOT NULL,
-            "finalised" boolean NOT NULL,
-            "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-            "blockTimestamp" TIMESTAMP,
-            "deletedAt" TIMESTAMP,
-            "relayHashInfoId" integer,
-            CONSTRAINT "UK_swapMetadata_blockNumber_chainId_transactionHash_logIndex" UNIQUE ("blockNumber", "chainId", "transactionHash", "logIndex"),
-            CONSTRAINT "PK_fc1feb55bb87c274f0bb676fb5c" PRIMARY KEY ("id")
-          )`,
+        "id" SERIAL NOT NULL,
+        "version" character varying NOT NULL,
+        "type" "evm"."swap_metadata_type_enum" NOT NULL,
+        "side" "evm"."swap_metadata_side_enum" NOT NULL,
+        "address" character varying NOT NULL,
+        "maximumAmountIn" numeric NOT NULL,
+        "minAmountOut" numeric NOT NULL,
+        "expectedAmountOut" numeric NOT NULL,
+        "expectedAmountIn" numeric NOT NULL,
+        "swapProvider" character varying NOT NULL,
+        "slippage" numeric NOT NULL,
+        "autoSlippage" boolean NOT NULL,
+        "recipient" character varying NOT NULL,
+        "appFeeRecipient" character varying,
+        "blockHash" character varying NOT NULL,
+        "blockNumber" integer NOT NULL,
+        "transactionHash" character varying NOT NULL,
+        "logIndex" integer NOT NULL,
+        "chainId" integer NOT NULL,
+        "finalised" boolean NOT NULL,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+        "blockTimestamp" TIMESTAMP,
+        "deletedAt" TIMESTAMP,
+        "relayHashInfoId" integer,
+        CONSTRAINT "UK_swapMetadata_chainId_blockNumber_transactionHash_logIndex" UNIQUE ("chainId", "blockNumber", "transactionHash", "logIndex"),
+        CONSTRAINT "PK_fc1feb55bb87c274f0bb676fb5c" PRIMARY KEY ("id")
+      )`,
     );
     await queryRunner.query(
       `CREATE INDEX "IX_swapMetadata_address" ON "evm"."swap_metadata" ("address") `,
