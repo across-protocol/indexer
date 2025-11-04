@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 
-import { entities, SaveQueryResult } from "@repo/indexer-database";
+import { DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
 
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
