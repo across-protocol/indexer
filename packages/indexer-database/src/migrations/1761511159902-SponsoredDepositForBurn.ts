@@ -13,7 +13,7 @@ export class SponsoredDepositForBurn1761511159902
         "quoteNonce" character varying,
         "originSender" character varying NOT NULL,
         "finalRecipient" character varying NOT NULL,
-        "quoteDeadline" character varying NOT NULL,
+        "quoteDeadline" TIMESTAMP NOT NULL,
         "maxBpsToSponsor" character varying NOT NULL,
         "maxUserSlippageBps" character varying NOT NULL,
         "finalToken" character varying NOT NULL,
@@ -49,9 +49,6 @@ export class SponsoredDepositForBurn1761511159902
       `CREATE INDEX "IX_SponsoredDepositForBurn_finalised" ON "evm"."sponsored_deposit_for_burn" ("finalised") `,
     );
     await queryRunner.query(
-      `CREATE INDEX "IX_SponsoredDepositForBurn_createdAt" ON "evm"."sponsored_deposit_for_burn" ("createdAt") `,
-    );
-    await queryRunner.query(
       `CREATE INDEX "IX_SponsoredDepositForBurn_deletedAt" ON "evm"."sponsored_deposit_for_burn" ("deletedAt") `,
     );
   }
@@ -59,9 +56,6 @@ export class SponsoredDepositForBurn1761511159902
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `DROP INDEX "evm"."IX_SponsoredDepositForBurn_deletedAt"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "evm"."IX_SponsoredDepositForBurn_createdAt"`,
     );
     await queryRunner.query(
       `DROP INDEX "evm"."IX_SponsoredDepositForBurn_finalised"`,
