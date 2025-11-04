@@ -46,6 +46,21 @@ export interface MintAndWithdrawLog extends providers.Log {
   };
 }
 
+export interface SponsoredDepositForBurnLog extends providers.Log {
+  // Destination Chain Id is needed to be able to correctly format the finalRecipient address
+  destinationChainId?: number;
+  args: [] & {
+    nonce: string;
+    originSender: string;
+    finalRecipient: string;
+    quoteDeadline: BigNumber;
+    maxBpsToSponsor: BigNumber;
+    maxUserSlippageBps: BigNumber;
+    finalToken: string;
+    signature: string;
+  };
+}
+
 // ============================================================================
 // SVM Event Types
 // ============================================================================
@@ -181,4 +196,22 @@ export interface MintAndWithdrawWithBlock {
   amount: string;
   mintToken: string;
   feeCollected: string;
+}
+
+export interface SponsoredDepositForBurnWithBlock {
+  // Transaction metadata
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  logIndex: number;
+
+  // Event data
+  nonce: string;
+  originSender: string;
+  finalRecipient: string;
+  quoteDeadline: Date;
+  maxBpsToSponsor: string;
+  maxUserSlippageBps: string;
+  finalToken: string;
+  signature: string;
 }

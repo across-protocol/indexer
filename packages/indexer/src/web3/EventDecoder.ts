@@ -14,6 +14,7 @@ import {
 import {
   MessageSentLog,
   MintAndWithdrawLog,
+  SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
 
 export class EventDecoder {
@@ -125,6 +126,27 @@ export class EventDecoder {
       eventTopic,
       eventAbi,
     );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeCCTPSponsoredDepositForBurnEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://sepolia.arbiscan.io/tx/0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576#eventlog
+    const eventTopic =
+      "0x42d1b5f3692944aee65b659fda3e120f817f17d8f2ac9a256f6fc5d642a591fe";
+    // ABI fragment for the event
+    const eventAbi = [
+      "event SponsoredDepositForBurn(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes signature)",
+    ];
+
+    let events: SponsoredDepositForBurnLog[] =
+      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
