@@ -1,5 +1,5 @@
 import winston from "winston";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 import * as across from "@across-protocol/sdk";
 
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
@@ -7,7 +7,9 @@ import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 import {
   OFTReceivedEvent,
   OFTSentEvent,
+  SponsoredOFTSendLog,
 } from "../data-indexing/adapter/oft/model";
+import { formatFromAddressToChainFormat } from "../utils";
 
 export class OftRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -86,7 +88,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
 
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
 
           guid: event.args.guid,
@@ -115,6 +117,76 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     return result;
   }
 
+  public async deleteUnfinalisedSponsoredOFTSendEvents(
+    chainId: number,
+    lastFinalisedBlock: number,
+  ) {
+    const chainIdColumn = "chainId";
+    const [sponsoredOFTSendEvents] = await Promise.all([
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SponsoredOFTSend,
+      ),
+    ]);
+
+    return {
+      sponsoredOFTSendEvents,
+    };
+  }
+
+  public async formatAndSaveSponsoredOFTSendEvents(
+    sponsoredOFTSendEvents: SponsoredOFTSendLog[],
+    lastFinalisedBlock: number,
+    chainId: number,
+    blockDates: Record<number, Date>,
+  ) {
+    const formattedEvents: Partial<entities.SponsoredOFTSend>[] =
+      sponsoredOFTSendEvents.map((event) => {
+        const finalRecipientAddressType = across.utils.toAddressType(
+          event.args.finalRecipient,
+          chainId,
+        );
+        const finalRecipient = formatFromAddressToChainFormat(
+          finalRecipientAddressType,
+          chainId,
+        );
+
+        return {
+          ...this.formatTransactionData(event),
+          blockTimestamp: blockDates[event.blockNumber]!,
+          chainId: chainId.toString(),
+          quoteNonce: event.args.quoteNonce,
+          originSender: event.args.originSender,
+          finalRecipient: finalRecipient,
+          destinationHandler: event.args.destinationHandler,
+          quoteDeadline: new Date(
+            event.args.quoteDeadline.mul(BigNumber.from(1000)).toNumber(),
+          ),
+          maxBpsToSponsor: event.args.maxBpsToSponsor.toBigInt(),
+          maxUserSlippageBps: event.args.maxUserSlippageBps.toBigInt(),
+          finalToken: event.args.finalToken,
+          sig: event.args.sig,
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      });
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
+          entities.SponsoredOFTSend,
+          eventsChunk,
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+    const result = savedEvents.flat();
+    return result;
+  }
+
   public async formatAndSaveOftReceivedEvents(
     oftReceivedEvents: OFTReceivedEvent[],
     lastFinalisedBlock: number,
@@ -126,7 +198,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
       oftReceivedEvents.map((event) => {
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
           guid: event.args.guid,
           srcEid: event.args.srcEid,

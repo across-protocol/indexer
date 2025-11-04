@@ -1,4 +1,13 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { createMapWithDefault } from "../../../utils/map";
+
+export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
+  createMapWithDefault(
+    {
+      [CHAIN_IDs.ARBITRUM]: "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+    },
+    "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+  );
 
 export type OftTokenKey = "usdt0";
 

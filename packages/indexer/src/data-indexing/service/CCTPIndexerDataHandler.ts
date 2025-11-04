@@ -50,30 +50,7 @@ export type FetchEventsResult = {
 };
 export type StoreEventsResult = {};
 
-/**
- * Creates a Proxy that returns a default value for any key not
- * present in the original object.
- * @param {object} target - The original object (your mapping).
- * @param {*} defaultValue - The value to return for missing keys.
- * @returns {Proxy} A new proxy-wrapped object.
- */
-function createMapWithDefault(target: any, defaultValue: any) {
-  // This handler "closes over" the defaultValue,
-  // so it remembers it.
-  const handler = {
-    get: function (obj: any, prop: any) {
-      // Check if the property exists on the original object
-      if (prop in obj) {
-        return obj[prop];
-      }
-
-      // If not, return the default value provided
-      return defaultValue;
-    },
-  };
-
-  return new Proxy(target, handler);
-}
+import { createMapWithDefault } from "../../utils/map";
 
 const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
   {

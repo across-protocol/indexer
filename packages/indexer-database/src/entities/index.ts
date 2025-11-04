@@ -41,3 +41,4 @@ export * from "./evm/SponsoredDepositForBurn";
 export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
 export * from "./OftTransfer";
+export * from "./evm/SponsoredOFTSend";

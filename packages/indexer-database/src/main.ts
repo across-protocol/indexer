@@ -72,6 +72,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // OFT
       entities.OFTSent,
       entities.OFTReceived,
+      entities.SponsoredOFTSend,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

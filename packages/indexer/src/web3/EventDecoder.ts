@@ -14,6 +14,7 @@ import {
   MintAndWithdrawLog,
   SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
+import { SponsoredOFTSendLog } from "../data-indexing/adapter/oft/model";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -130,6 +131,28 @@ export class EventDecoder {
 
     let events: SponsoredDepositForBurnLog[] =
       this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeOFTSponsoredSendEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    const eventTopic =
+      "0x8a3a662083991439c9f0749584c485572c61b8483a81953b4a6378afc25f180a";
+    const eventAbi = [
+      "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
+    ];
+
+    let events: SponsoredOFTSendLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }

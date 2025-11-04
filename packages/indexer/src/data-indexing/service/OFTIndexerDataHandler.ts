@@ -7,22 +7,30 @@ import { DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
-import { OFTReceivedEvent, OFTSentEvent } from "../adapter/oft/model";
+import {
+  OFTReceivedEvent,
+  OFTSentEvent,
+  SponsoredOFTSendLog,
+} from "../adapter/oft/model";
 import { OftRepository } from "../../database/OftRepository";
 import {
   getOftChainConfiguration,
   isEndpointIdSupported,
+  SPONSORED_OFT_SRC_PERIPHERY_ADDRESS,
 } from "../adapter/oft/service";
 import { OftTransferAggregator } from "./OftTransferAggregator";
+import { EventDecoder } from "../../web3/EventDecoder";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
   oftReceivedEvents: OFTReceivedEvent[];
+  sponsoredOFTSendEvents: SponsoredOFTSendLog[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {
   oftSentEvents: SaveQueryResult<entities.OFTSent>[];
   oftReceivedEvents: SaveQueryResult<entities.OFTReceived>[];
+  sponsoredOFTSendEvents: SaveQueryResult<entities.SponsoredOFTSend>[];
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
@@ -80,6 +88,10 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       this.chainId,
       lastFinalisedBlock,
     );
+    await this.oftRepository.deleteUnfinalisedSponsoredOFTSendEvents(
+      this.chainId,
+      lastFinalisedBlock,
+    );
     const timeToDeleteEvents = performance.now();
     const timeToProcessEvents = performance.now();
     const finalPerfTime = performance.now();
@@ -126,6 +138,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     );
     const filteredOftReceivedEvents =
       await this.filterTransactionsForSupportedEndpointIds(oftReceivedEvents);
+    const transactionReceipts = await this.getTransactionsReceipts([
+      ...new Set(filteredOftSentEvents.map((event) => event.transactionHash)),
+    ]);
+    const sponsoredOFTSendEvents =
+      this.getSponsoredOFTSendEventsFromTransactionReceipts(
+        transactionReceipts,
+      );
+
     const blocks = await this.getBlocks([
       ...new Set([
         ...filteredOftSentEvents.map((event) => event.blockHash),
@@ -147,6 +167,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     return {
       oftSentEvents: filteredOftSentEvents,
       oftReceivedEvents: filteredOftReceivedEvents,
+      sponsoredOFTSendEvents,
       blocks,
     };
   }
@@ -156,9 +177,14 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     lastFinalisedBlock: number,
     tokenAddress: string,
   ): Promise<StoreEventsResult> {
-    const { blocks, oftReceivedEvents, oftSentEvents } = events;
+    const { blocks, oftReceivedEvents, oftSentEvents, sponsoredOFTSendEvents } =
+      events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
-    const [savedOftSentEvents, savedOftReceivedEvents] = await Promise.all([
+    const [
+      savedOftSentEvents,
+      savedOftReceivedEvents,
+      savedSponsoredOFTSendEvents,
+    ] = await Promise.all([
       this.oftRepository.formatAndSaveOftSentEvents(
         oftSentEvents,
         lastFinalisedBlock,
@@ -173,11 +199,18 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
         tokenAddress,
       ),
+      this.oftRepository.formatAndSaveSponsoredOFTSendEvents(
+        sponsoredOFTSendEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+      ),
     ]);
 
     return {
       oftSentEvents: savedOftSentEvents,
       oftReceivedEvents: savedOftReceivedEvents,
+      sponsoredOFTSendEvents: savedSponsoredOFTSendEvents,
     };
   }
 
@@ -195,6 +228,41 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       {} as Record<string, Transaction>,
     );
     return transactionReceiptsMap;
+  }
+
+  private async getTransactionsReceipts(uniqueTransactionHashes: string[]) {
+    const transactionReceipts = await Promise.all(
+      uniqueTransactionHashes.map(async (txHash) => {
+        return this.provider.getTransactionReceipt(txHash);
+      }),
+    );
+    const transactionReceiptsMap = transactionReceipts.reduce(
+      (acc, receipt) => {
+        acc[receipt.transactionHash] = receipt;
+        return acc;
+      },
+      {} as Record<string, providers.TransactionReceipt>,
+    );
+    return transactionReceiptsMap;
+  }
+
+  private getSponsoredOFTSendEventsFromTransactionReceipts(
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
+  ) {
+    const events: SponsoredOFTSendLog[] = [];
+    for (const txHash of Object.keys(transactionReceipts)) {
+      const transactionReceipt = transactionReceipts[
+        txHash
+      ] as providers.TransactionReceipt;
+      const sponsoredOFTSendEvents = EventDecoder.decodeOFTSponsoredSendEvents(
+        transactionReceipt,
+        SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId],
+      );
+      if (sponsoredOFTSendEvents.length > 0) {
+        events.push(...sponsoredOFTSendEvents);
+      }
+    }
+    return events;
   }
 
   private async filterTransactionsForSupportedEndpointIds(
@@ -243,7 +311,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
   ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
-        acc[blockHash] = new Date(block.timestamp * 1000);
+        acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },
       {} as Record<string, Date>,
