@@ -13,9 +13,9 @@ export class SimpleTransferFlowCompleted1761511159903
         "quoteNonce" character varying,
         "finalRecipient" character varying NOT NULL,
         "finalToken" character varying NOT NULL,
-        "evmAmountIn" character varying NOT NULL,
-        "bridgingFeesIncurred" character varying NOT NULL,
-        "evmAmountSponsored" character varying NOT NULL,
+        "evmAmountIn" bigint NOT NULL,
+        "bridgingFeesIncurred" bigint NOT NULL,
+        "evmAmountSponsored" bigint NOT NULL,
         "blockNumber" integer NOT NULL,
         "transactionHash" character varying NOT NULL,
         "transactionIndex" integer NOT NULL,
@@ -44,7 +44,7 @@ export class SimpleTransferFlowCompleted1761511159903
       `CREATE INDEX "IX_SimpleTransferFlowCompleted_finalised" ON "evm"."simple_transfer_flow_completed" ("finalised") `,
     );
     await queryRunner.query(
-      `CREATE INDEX "IX_SimpleTransferFlowCompleted_createdAt" ON "evm"."simple_transfer_flow_completed" ("createdAt") `,
+      `CREATE INDEX "IX_SimpleTransferFlowCompleted_blockTimestamp" ON "evm"."simple_transfer_flow_completed" ("blockTimestamp") `,
     );
     await queryRunner.query(
       `CREATE INDEX "IX_SimpleTransferFlowCompleted_deletedAt" ON "evm"."simple_transfer_flow_completed" ("deletedAt") `,
@@ -56,7 +56,7 @@ export class SimpleTransferFlowCompleted1761511159903
       `DROP INDEX "evm"."IX_SimpleTransferFlowCompleted_deletedAt"`,
     );
     await queryRunner.query(
-      `DROP INDEX "evm"."IX_SimpleTransferFlowCompleted_createdAt"`,
+      `DROP INDEX "evm"."IX_SimpleTransferFlowCompleted_blockTimestamp"`,
     );
     await queryRunner.query(
       `DROP INDEX "evm"."IX_SimpleTransferFlowCompleted_blockNumber"`,

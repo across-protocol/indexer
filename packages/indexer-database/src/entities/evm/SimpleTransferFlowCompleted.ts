@@ -19,7 +19,7 @@ import {
 @Index("IX_SimpleTransferFlowCompleted_quoteNonce", ["quoteNonce"])
 @Index("IX_SimpleTransferFlowCompleted_finalRecipient", ["finalRecipient"])
 @Index("IX_SimpleTransferFlowCompleted_blockNumber", ["blockNumber"])
-@Index("IX_SimpleTransferFlowCompleted_createdAt", ["createdAt"])
+@Index("IX_SimpleTransferFlowCompleted_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_SimpleTransferFlowCompleted_deletedAt", ["deletedAt"])
 export class SimpleTransferFlowCompleted {
   @PrimaryGeneratedColumn()
@@ -37,14 +37,14 @@ export class SimpleTransferFlowCompleted {
   @Column()
   finalToken: string;
 
-  @Column()
-  evmAmountIn: string;
+  @Column({ type: "bigint" })
+  evmAmountIn: number;
 
-  @Column()
-  bridgingFeesIncurred: string;
+  @Column({ type: "bigint" })
+  bridgingFeesIncurred: number;
 
-  @Column()
-  evmAmountSponsored: string;
+  @Column({ type: "bigint" })
+  evmAmountSponsored: number;
 
   @Column()
   blockNumber: number;

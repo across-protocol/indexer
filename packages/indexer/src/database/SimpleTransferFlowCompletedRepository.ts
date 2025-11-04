@@ -51,9 +51,9 @@ export class SimpleTransferFlowCompletedRepository extends dbUtils.BlockchainEve
           quoteNonce: event.quoteNonce,
           finalRecipient: event.finalRecipient,
           finalToken: event.finalToken,
-          evmAmountIn: event.evmAmountIn,
-          bridgingFeesIncurred: event.bridgingFeesIncurred,
-          evmAmountSponsored: event.evmAmountSponsored,
+          evmAmountIn: Number(event.evmAmountIn),
+          bridgingFeesIncurred: Number(event.bridgingFeesIncurred),
+          evmAmountSponsored: Number(event.evmAmountSponsored),
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
