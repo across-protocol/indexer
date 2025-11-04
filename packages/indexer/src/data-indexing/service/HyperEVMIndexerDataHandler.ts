@@ -7,12 +7,18 @@ import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTran
 import {
   getIndexingStartBlockNumber,
   getSimpleTransferFlowCompletedEvents,
+  getSwapFlowInitializedEvents,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
 } from "../adapter/hyper-evm/service";
-import { SimpleTransferFlowCompletedWithBlock } from "../adapter/hyper-evm/model";
+import {
+  SimpleTransferFlowCompletedWithBlock,
+  SwapFlowInitializedWithBlock,
+} from "../adapter/hyper-evm/model";
+import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
 
 export type FetchEventsResult = {
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedWithBlock[];
+  swapFlowInitializedEvents: SwapFlowInitializedWithBlock[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {};
@@ -25,6 +31,7 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository,
+    private swapFlowInitializedRepository: SwapFlowInitializedRepository,
   ) {
     this.isInitialized = false;
   }
@@ -61,10 +68,16 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
     const events = await this.fetchEventsByRange(blockRange);
     await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
-    await this.simpleTransferFlowCompletedRepository.deleteUnfinalisedSimpleTransferFlowCompletedEvents(
-      this.chainId,
-      lastFinalisedBlock,
-    );
+    await Promise.all([
+      this.simpleTransferFlowCompletedRepository.deleteUnfinalisedSimpleTransferFlowCompletedEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      this.swapFlowInitializedRepository.deleteUnfinalisedSwapFlowInitializedEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+    ]);
     const timeToDeleteEvents = performance.now();
     const finalPerfTime = performance.now();
 
@@ -91,27 +104,40 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
       });
       return {
         simpleTransferFlowCompletedEvents: [],
+        swapFlowInitializedEvents: [],
         blocks: {},
       };
     }
-    const simpleTransferFlowCompletedEvents =
-      await getSimpleTransferFlowCompletedEvents(
-        this.provider,
-        address,
-        blockRange.from,
-        blockRange.to,
-      );
+    const [simpleTransferFlowCompletedEvents, swapFlowInitializedEvents] =
+      await Promise.all([
+        getSimpleTransferFlowCompletedEvents(
+          this.provider,
+          address,
+          blockRange.from,
+          blockRange.to,
+        ),
+        getSwapFlowInitializedEvents(
+          this.provider,
+          address,
+          blockRange.from,
+          blockRange.to,
+        ),
+      ]);
 
     const blocks = await this.getBlocks([
-      ...new Set(
-        simpleTransferFlowCompletedEvents.map((event) =>
+      ...new Set([
+        ...simpleTransferFlowCompletedEvents.map((event) =>
           event.blockNumber.toString(),
         ),
-      ),
+        ...swapFlowInitializedEvents.map((event) =>
+          event.blockNumber.toString(),
+        ),
+      ]),
     ]);
 
     return {
       simpleTransferFlowCompletedEvents,
+      swapFlowInitializedEvents,
       blocks,
     };
   }
@@ -135,15 +161,27 @@ export class HyperEVMIndexerDataHandler implements IndexerDataHandler {
     events: FetchEventsResult,
     lastFinalisedBlock: number,
   ): Promise<StoreEventsResult> {
-    const { simpleTransferFlowCompletedEvents, blocks } = events;
+    const {
+      simpleTransferFlowCompletedEvents,
+      swapFlowInitializedEvents,
+      blocks,
+    } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
 
-    await this.simpleTransferFlowCompletedRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
-      simpleTransferFlowCompletedEvents,
-      lastFinalisedBlock,
-      this.chainId,
-      blocksTimestamps,
-    );
+    await Promise.all([
+      this.simpleTransferFlowCompletedRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
+        simpleTransferFlowCompletedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+      ),
+      this.swapFlowInitializedRepository.formatAndSaveSwapFlowInitializedEvents(
+        swapFlowInitializedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+      ),
+    ]);
 
     return {};
   }

@@ -44,3 +44,4 @@ export * from "./OftTransfer";
 
 // HyperEVM
 export * from "./evm/SimpleTransferFlowCompleted";
+export * from "./evm/SwapFlowInitialized";

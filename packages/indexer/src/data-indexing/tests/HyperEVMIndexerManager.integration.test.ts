@@ -12,10 +12,12 @@ import { RedisCache } from "../../redis/redisCache";
 import { parseProvidersUrls, Config } from "../../parseEnv";
 import { getTestDataSource } from "../../tests/setup";
 import { SimpleTransferFlowCompletedRepository } from "../../database/SimpleTransferFlowCompletedRepository";
+import { SwapFlowInitializedRepository } from "../../database/SwapFlowInitializedRepository";
 
 describe("HyperEVMIndexerManager", () => {
   let dataSource: DataSource;
   let simpleTransferFlowCompletedRepository: SimpleTransferFlowCompletedRepository;
+  let swapFlowInitializedRepository: SwapFlowInitializedRepository;
   let logger: Logger;
   let manager: HyperEVMIndexerManager;
   let retryProvidersFactory: RetryProvidersFactory;
@@ -37,6 +39,10 @@ describe("HyperEVMIndexerManager", () => {
 
     simpleTransferFlowCompletedRepository =
       new SimpleTransferFlowCompletedRepository(dataSource, logger);
+    swapFlowInitializedRepository = new SwapFlowInitializedRepository(
+      dataSource,
+      logger,
+    );
 
     const providerUrls = parseProvidersUrls();
     const config = {
@@ -61,6 +67,7 @@ describe("HyperEVMIndexerManager", () => {
       dataSource,
       retryProvidersFactory,
       simpleTransferFlowCompletedRepository,
+      swapFlowInitializedRepository,
       true,
     );
   });
