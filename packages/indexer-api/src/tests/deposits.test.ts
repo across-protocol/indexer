@@ -28,6 +28,7 @@ describe("Deposits Service Tests", () => {
   let slowFillsFixture: fixtures.RequestedSlowFillFixture;
   let swapBeforeBridgeFixture: fixtures.SwapBeforeBridgeFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
+  let swapMetadataFixture: fixtures.SwapMetadataFixture;
 
   // Events
   let deposit: entities.V3FundsDeposited;
@@ -51,6 +52,7 @@ describe("Deposits Service Tests", () => {
     slowFillsFixture = new fixtures.RequestedSlowFillFixture(dataSource);
     swapBeforeBridgeFixture = new fixtures.SwapBeforeBridgeFixture(dataSource);
     relayHashInfoFixture = new fixtures.RelayHashInfoFixture(dataSource);
+    swapMetadataFixture = new fixtures.SwapMetadataFixture(dataSource);
 
     // Store events to use across tests
     [deposit] = await depositsFixture.insertDeposits([
@@ -69,6 +71,7 @@ describe("Deposits Service Tests", () => {
     await slowFillsFixture.deleteAllRequestedSlowFills();
     await swapBeforeBridgeFixture.deleteAllSwaps();
     await relayHashInfoFixture.deleteAllRelayHashInfoRows();
+    await swapMetadataFixture.deleteAllSwapMetadata();
   });
 
   after(async () => {
@@ -316,5 +319,160 @@ describe("Deposits Service Tests", () => {
     expect(depositStatus.status).to.equal("pending");
     expect(depositStatus.pagination.currentIndex).to.equal(0);
     expect(depositStatus.pagination.maxIndex).to.equal(0);
+  });
+
+  it("should return swapOutputToken and swapOutputTokenAmount when destination swap metadata exists", async () => {
+    // Create deposit and relay hash info
+    const depositData = {
+      id: 1,
+      depositor: "0xdepositor",
+      relayHash: "0xrelayhash",
+      depositId: "123",
+      originChainId: "1",
+      destinationChainId: "10",
+      internalHash: "0xinternal",
+      transactionHash: "0xtransaction",
+      transactionIndex: 1,
+      logIndex: 1,
+      blockNumber: 1000,
+      finalised: true,
+      createdAt: new Date(),
+      blockTimestamp: new Date(),
+    };
+
+    const relayHashInfoData = {
+      id: 1,
+      depositId: depositData.depositId,
+      depositEventId: depositData.id,
+      status: entities.RelayStatus.Filled,
+      originChainId: depositData.originChainId,
+      destinationChainId: depositData.destinationChainId,
+    };
+
+    // Create destination swap metadata (side = DESTINATION_SWAP for output token)
+    const swapMetadataData = {
+      relayHashInfoId: 1,
+      type: entities.SwapType.MIN_OUTPUT, // destination
+      side: entities.SwapSide.DESTINATION_SWAP, // sell/output
+      address: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+      minAmountOut: "950000000000000000",
+      swapProvider: "UniswapV3",
+    };
+
+    await depositsFixture.insertDeposits([depositData]);
+    const [insertedRhi1] = await relayHashInfoFixture.insertRelayHashInfos([
+      relayHashInfoData,
+    ]);
+    await swapMetadataFixture.insertSwapMetadata([
+      { ...swapMetadataData, relayHashInfoId: insertedRhi1.id },
+    ]);
+
+    // Query the deposit
+    const deposits = await depositsService.getDeposits({ limit: 1 });
+
+    // Verify swap metadata fields
+    expect(deposits).to.be.an("array").that.has.lengthOf(1);
+    const deposit = deposits[0];
+    expect(deposit?.swapOutputToken).to.equal(swapMetadataData.address);
+    expect(deposit?.swapOutputTokenAmount).to.equal(
+      swapMetadataData.minAmountOut,
+    );
+  });
+
+  it("should return null swapOutputToken and swapOutputTokenAmount when no destination swap metadata exists", async () => {
+    // Create deposit and relay hash info without swap metadata
+    const depositData = {
+      id: 1,
+      depositor: "0xdepositor",
+      relayHash: "0xrelayhash",
+      depositId: "456",
+      originChainId: "1",
+      destinationChainId: "10",
+      internalHash: "0xinternal2",
+      transactionHash: "0xtransaction2",
+      transactionIndex: 2,
+      logIndex: 2,
+      blockNumber: 1001,
+      finalised: true,
+      createdAt: new Date(),
+      blockTimestamp: new Date(),
+    };
+
+    const relayHashInfoData = {
+      id: 2,
+      depositId: depositData.depositId,
+      depositEventId: depositData.id,
+      status: entities.RelayStatus.Filled,
+      originChainId: depositData.originChainId,
+      destinationChainId: depositData.destinationChainId,
+    };
+
+    await depositsFixture.insertDeposits([depositData]);
+    await relayHashInfoFixture.insertRelayHashInfos([relayHashInfoData]);
+
+    // Query the deposit
+    const deposits = await depositsService.getDeposits({ limit: 1 });
+
+    // Verify swap metadata fields are null
+    expect(deposits).to.be.an("array").that.has.lengthOf(1);
+    const deposit = deposits[0];
+    expect(deposit?.swapOutputToken).to.be.null;
+    expect(deposit?.swapOutputTokenAmount).to.be.null;
+  });
+
+  it("should return null swapOutputToken when only origin swap metadata exists (side = '0')", async () => {
+    // Create deposit and relay hash info
+    const depositData = {
+      id: 1,
+      depositor: "0xdepositor",
+      relayHash: "0xrelayhash",
+      depositId: "789",
+      originChainId: "1",
+      destinationChainId: "10",
+      internalHash: "0xinternal3",
+      transactionHash: "0xtransaction3",
+      transactionIndex: 3,
+      logIndex: 3,
+      blockNumber: 1002,
+      finalised: true,
+      createdAt: new Date(),
+      blockTimestamp: new Date(),
+    };
+
+    const relayHashInfoData = {
+      id: 3,
+      depositId: depositData.depositId,
+      depositEventId: depositData.id,
+      status: entities.RelayStatus.Filled,
+      originChainId: depositData.originChainId,
+      destinationChainId: depositData.destinationChainId,
+    };
+
+    // Create origin swap metadata (side = ORIGIN_SWAP for input token)
+    const swapMetadataData = {
+      relayHashInfoId: 3,
+      type: entities.SwapType.EXACT_INPUT, // origin
+      side: entities.SwapSide.ORIGIN_SWAP, // buy/input
+      address: "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+      minAmountOut: "500000000000000000",
+      swapProvider: "UniswapV3",
+    };
+
+    await depositsFixture.insertDeposits([depositData]);
+    const [insertedRhiOrigin] = await relayHashInfoFixture.insertRelayHashInfos(
+      [relayHashInfoData],
+    );
+    await swapMetadataFixture.insertSwapMetadata([
+      { ...swapMetadataData, relayHashInfoId: insertedRhiOrigin.id },
+    ]);
+
+    // Query the deposit
+    const deposits = await depositsService.getDeposits({ limit: 1 });
+
+    // Verify swap metadata fields are null (since we only have input side)
+    expect(deposits).to.be.an("array").that.has.lengthOf(1);
+    const deposit = deposits[0];
+    expect(deposit?.swapOutputToken).to.be.null;
+    expect(deposit?.swapOutputTokenAmount).to.be.null;
   });
 });

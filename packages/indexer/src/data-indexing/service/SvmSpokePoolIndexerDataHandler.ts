@@ -143,6 +143,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       [], // swapBeforeBridge events
       [], // callsFailed events
       [], // targetChainAction pairs
+      [], // swap metadata pairs
       fillsGasFee,
     );
 
