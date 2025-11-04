@@ -150,18 +150,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const sponsoredCCTPSrcPeripheryAddress =
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     if (!tokenMessengerAddress || !messageTransmitterAddress) {
+      const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
       this.logger.warn({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
-        message: `CCTP contracts addresses not configured for chain ${this.chainId}`,
+        message: errorMessage,
       });
-      return {
-        burnEvents: [],
-        mintEvents: [],
-        sponsoredBurnEvents: [],
-        blocks: {},
-        transactionReceipts: {},
-        transactions: {},
-      };
+      throw new Error(errorMessage);
     }
 
     const tokenMessengerContract = new ethers.Contract(
