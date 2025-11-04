@@ -72,7 +72,6 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // OFT
       entities.OFTSent,
       entities.OFTReceived,
-      entities.OftTransfer,
       // HyperEVM
       entities.SimpleTransferFlowCompleted,
     ],

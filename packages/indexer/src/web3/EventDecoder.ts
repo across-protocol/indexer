@@ -9,7 +9,6 @@ import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
 } from "./model/abis";
-import { SponsoredCCTPSrcPeripheryABI } from "../data-indexing/adapter/cctp-v2/abis/SponsoredCCTPSrcPeriphery";
 import {
   MessageSentLog,
   MintAndWithdrawLog,

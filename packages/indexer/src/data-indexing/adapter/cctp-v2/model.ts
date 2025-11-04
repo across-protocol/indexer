@@ -47,6 +47,7 @@ export interface MintAndWithdrawLog extends providers.Log {
 }
 
 export interface SponsoredDepositForBurnLog extends providers.Log {
+  destinationChainId?: number;
   args: [] & {
     nonce: string;
     originSender: string;
@@ -207,7 +208,7 @@ export interface SponsoredDepositForBurnWithBlock {
   nonce: string;
   originSender: string;
   finalRecipient: string;
-  quoteDeadline: string;
+  quoteDeadline: Date;
   maxBpsToSponsor: string;
   maxUserSlippageBps: string;
   finalToken: string;
