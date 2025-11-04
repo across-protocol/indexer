@@ -9,7 +9,10 @@ import {
 
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
-const STARTING_BLOCK_NUMBER = 15083577;
+const STARTING_BLOCK_NUMBER = {
+  [CHAIN_IDs.HYPEREVM]: 15083577,
+  [CHAIN_IDs.HYPEREVM_TESTNET]: 36200188,
+};
 
 export const HYPERCORE_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } =
   createMapWithDefault(
@@ -22,12 +25,12 @@ export const HYPERCORE_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } =
   );
 
 export function getIndexingStartBlockNumber(chainId: number) {
-  if (chainId !== CHAIN_IDs.HYPEREVM) {
+  if (STARTING_BLOCK_NUMBER[chainId] === undefined) {
     throw new Error(
-      `HyperCoreFlowExecutor is only deployed on HyperEVM. ChainId: ${chainId}`,
+      `HyperCoreFlowExecutor is only deployed on ${Object.keys(STARTING_BLOCK_NUMBER).join(", ")}. ChainId: ${chainId}`,
     );
   }
-  return STARTING_BLOCK_NUMBER;
+  return STARTING_BLOCK_NUMBER[chainId];
 }
 
 export async function getSimpleTransferFlowCompletedEvents(

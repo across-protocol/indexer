@@ -73,11 +73,6 @@ describe("HyperEVMIndexerManager", () => {
   });
 
   it("should store SimpleTransferFlowCompleted event in the database", async () => {
-    // Stub to force the indexer to start processing from the block number of the test transaction.
-    const startIndexingStub = sinon
-      .stub(HyperEVMIndexerDataHandler.prototype, "getStartIndexingBlockNumber")
-      .returns(blockNumber);
-
     const provider = retryProvidersFactory.getCustomEvmProvider({
       chainId: chainId,
       enableCaching: false,
@@ -112,7 +107,6 @@ describe("HyperEVMIndexerManager", () => {
     }
 
     // Restore all stubs.
-    startIndexingStub.restore();
     getBlockNumberStub.restore();
   }).timeout(20000);
 });

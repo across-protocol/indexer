@@ -21,11 +21,12 @@ import {
 @Index("IX_SimpleTransferFlowCompleted_blockNumber", ["blockNumber"])
 @Index("IX_SimpleTransferFlowCompleted_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_SimpleTransferFlowCompleted_deletedAt", ["deletedAt"])
+@Index("IX_SimpleTransferFlowCompleted_finalised", ["finalised"])
 export class SimpleTransferFlowCompleted {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "bigint" })
   chainId: string;
 
   @Column({ nullable: true })

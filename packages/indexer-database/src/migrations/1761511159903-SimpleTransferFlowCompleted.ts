@@ -9,7 +9,7 @@ export class SimpleTransferFlowCompleted1761511159903
     await queryRunner.query(
       `CREATE TABLE "evm"."simple_transfer_flow_completed" (
         "id" SERIAL NOT NULL,
-        "chainId" character varying NOT NULL,
+        "chainId" bigint NOT NULL,
         "quoteNonce" character varying,
         "finalRecipient" character varying NOT NULL,
         "finalToken" character varying NOT NULL,
