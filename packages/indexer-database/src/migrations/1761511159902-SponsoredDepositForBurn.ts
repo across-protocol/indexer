@@ -9,11 +9,11 @@ export class SponsoredDepositForBurn1761511159902
     await queryRunner.query(
       `CREATE TABLE "evm"."sponsored_deposit_for_burn" (
         "id" SERIAL NOT NULL,
-        "chainId" character varying NOT NULL,
+        "chainId" bigint NOT NULL,
         "quoteNonce" character varying,
         "originSender" character varying NOT NULL,
         "finalRecipient" character varying NOT NULL,
-        "quoteDeadline" character varying NOT NULL,
+        "quoteDeadline" TIMESTAMP NOT NULL,
         "maxBpsToSponsor" character varying NOT NULL,
         "maxUserSlippageBps" character varying NOT NULL,
         "finalToken" character varying NOT NULL,
@@ -49,7 +49,7 @@ export class SponsoredDepositForBurn1761511159902
       `CREATE INDEX "IX_SponsoredDepositForBurn_finalised" ON "evm"."sponsored_deposit_for_burn" ("finalised") `,
     );
     await queryRunner.query(
-      `CREATE INDEX "IX_SponsoredDepositForBurn_createdAt" ON "evm"."sponsored_deposit_for_burn" ("createdAt") `,
+      `CREATE INDEX "IX_SponsoredDepositForBurn_blockTimestamp" ON "evm"."sponsored_deposit_for_burn" ("blockTimestamp") `,
     );
     await queryRunner.query(
       `CREATE INDEX "IX_SponsoredDepositForBurn_deletedAt" ON "evm"."sponsored_deposit_for_burn" ("deletedAt") `,
@@ -61,7 +61,7 @@ export class SponsoredDepositForBurn1761511159902
       `DROP INDEX "evm"."IX_SponsoredDepositForBurn_deletedAt"`,
     );
     await queryRunner.query(
-      `DROP INDEX "evm"."IX_SponsoredDepositForBurn_createdAt"`,
+      `DROP INDEX "evm"."IX_SponsoredDepositForBurn_blockTimestamp"`,
     );
     await queryRunner.query(
       `DROP INDEX "evm"."IX_SponsoredDepositForBurn_finalised"`,
