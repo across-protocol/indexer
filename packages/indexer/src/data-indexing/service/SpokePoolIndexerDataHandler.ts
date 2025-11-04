@@ -20,6 +20,7 @@ import {
 } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
+import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { IntegratorIdMessage } from "../../messaging/IntegratorIdWorker";
@@ -59,6 +60,11 @@ export type FillCallsFailedPair = {
   callsFailed: entities.CallsFailed;
 };
 
+export type FillSwapMetadataPair = {
+  fill: entities.FilledV3Relay;
+  swapMetadata: entities.SwapMetadata;
+};
+
 export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private configStoreClient: across.clients.AcrossConfigStoreClient;
@@ -75,6 +81,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private spokePoolClientRepository: SpokePoolRepository,
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private callsFailedRepository: CallsFailedRepository,
+    private swapMetadataRepository: SwapMetadataRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
   ) {
@@ -167,6 +174,13 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       );
 
+    const fillSwapMetadataPairs =
+      await this.matchFillEventsWithSwapMetadataEvents(
+        storedEvents.fills.map((f) => f.data),
+        transactionReceipts,
+        lastFinalisedBlock,
+      );
+
     // Match fill events with target chain action events
     const fillTargetChainActionPairs = matchFillEventsWithTargetChainActions(
       storedEvents.fills.map((f) => f.data),
@@ -218,6 +232,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       deletedDeposits,
       depositSwapPairs,
       fillCallsFailedPairs,
+      fillSwapMetadataPairs,
       fillTargetChainActionPairs,
       fillsGasFee,
     );
@@ -419,6 +434,95 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       })
       .flat();
     return fillCallsFailedMap;
+  }
+
+  private async matchFillEventsWithSwapMetadataEvents(
+    fills: entities.FilledV3Relay[],
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
+    lastFinalisedBlock: number,
+  ) {
+    const transactionReceiptsList = Object.values(transactionReceipts);
+    const swapMetadataEvents = transactionReceiptsList
+      .map((transactionReceipt) =>
+        EventDecoder.decodeSwapMetadataEvents(transactionReceipt),
+      )
+      .flat();
+
+    const saveResult =
+      await this.swapMetadataRepository.formatAndSaveSwapMetadataEvents(
+        swapMetadataEvents,
+        this.chainId,
+        lastFinalisedBlock,
+      );
+
+    const savedSwapMetadataEvents = saveResult
+      .map((result) => result.data)
+      .filter((data) => data !== undefined);
+
+    const fillsAndSwapMetadataByTxHash = savedSwapMetadataEvents.reduce(
+      (acc, swapMetadata) => {
+        acc[swapMetadata.transactionHash] = {
+          fills: fills.filter(
+            (f) =>
+              f.transactionHash.toLowerCase() ===
+              swapMetadata.transactionHash.toLowerCase(),
+          ),
+          swapMetadataEvents: savedSwapMetadataEvents.filter(
+            (s) =>
+              s.transactionHash.toLowerCase() ===
+              swapMetadata.transactionHash.toLowerCase(),
+          ),
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          fills: entities.FilledV3Relay[];
+          swapMetadataEvents: entities.SwapMetadata[];
+        }
+      >,
+    );
+
+    // match the fill with the SwapMetadata event
+    const fillSwapMetadataMap = (
+      Object.values(fillsAndSwapMetadataByTxHash) as {
+        fills: entities.FilledV3Relay[];
+        swapMetadataEvents: entities.SwapMetadata[];
+      }[]
+    )
+      .map((fillAndSwapMetadata) => {
+        const { fills, swapMetadataEvents } = fillAndSwapMetadata;
+        const sortedFills = fills.sort(
+          (a: entities.FilledV3Relay, b: entities.FilledV3Relay) =>
+            a.logIndex - b.logIndex,
+        );
+        const sortedSwapMetadataEvents = swapMetadataEvents.sort(
+          (a: entities.SwapMetadata, b: entities.SwapMetadata) =>
+            a.logIndex - b.logIndex,
+        );
+        const matchedPairs: FillSwapMetadataPair[] = [];
+        const usedSwapMetadata = new Set<number>(); // Track used SwapMetadata by their log index
+
+        sortedFills.forEach((fill: entities.FilledV3Relay) => {
+          // Find all SwapMetadata events that come after this fill
+          const matchingSwapMetadataEvents = sortedSwapMetadataEvents.filter(
+            (swapMetadata: entities.SwapMetadata) =>
+              swapMetadata.logIndex > fill.logIndex &&
+              !usedSwapMetadata.has(swapMetadata.logIndex),
+          );
+
+          // Match each SwapMetadata with this fill
+          matchingSwapMetadataEvents.forEach((swapMetadata) => {
+            matchedPairs.push({ fill, swapMetadata });
+            usedSwapMetadata.add(swapMetadata.logIndex); // Mark this SwapMetadata as used
+          });
+        });
+
+        return matchedPairs;
+      })
+      .flat();
+    return fillSwapMetadataMap;
   }
 
   /**

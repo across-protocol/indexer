@@ -16,6 +16,7 @@ import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import {
   DepositSwapPair,
   FillCallsFailedPair,
+  FillSwapMetadataPair,
 } from "../data-indexing/service/SpokePoolIndexerDataHandler";
 import { FillTargetChainActionPair } from "../utils/targetChainActionsUtils";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
@@ -40,6 +41,7 @@ export class SpokePoolProcessor {
     deletedDeposits: entities.V3FundsDeposited[],
     depositSwapPairs: DepositSwapPair[],
     fillCallsFailedPairs: FillCallsFailedPair[],
+    fillSwapMetadataPairs: FillSwapMetadataPair[],
     fillTargetChainActionPairs: FillTargetChainActionPair[],
     fillsGasFee?: Record<string, bigint | undefined>,
   ) {
@@ -56,6 +58,7 @@ export class SpokePoolProcessor {
     });
     await this.assignSwapEventToRelayHashInfo(depositSwapPairs);
     await this.assignCallsFailedEventToRelayHashInfo(fillCallsFailedPairs);
+    await this.assignSwapMetadataEventToRelayHashInfo(fillSwapMetadataPairs);
     await this.assignTargetChainActionEventToRelayHashInfo(
       fillTargetChainActionPairs,
     );
@@ -550,6 +553,46 @@ export class SpokePoolProcessor {
           },
         ),
       ),
+    );
+  }
+
+  /**
+   * Assigns the SwapMetadata events to the relay hash info
+   * Updates each swap metadata record with the corresponding relay hash info ID
+   */
+  private async assignSwapMetadataEventToRelayHashInfo(
+    fillSwapMetadataPairs: FillSwapMetadataPair[],
+  ) {
+    const swapMetadataRepository = this.postgres.getRepository(
+      entities.SwapMetadata,
+    );
+    const relayHashInfoRepository = this.postgres.getRepository(
+      entities.RelayHashInfo,
+    );
+
+    // Get relay hash info IDs for each fill
+    const fillToRelayHashInfoId = await Promise.all(
+      fillSwapMetadataPairs.map(async (pair) => {
+        const relayHashInfo = await relayHashInfoRepository.findOne({
+          where: { fillEventId: pair.fill.id },
+        });
+        return {
+          swapMetadataId: pair.swapMetadata.id,
+          relayHashInfoId: relayHashInfo?.id,
+        };
+      }),
+    );
+
+    // Update swap metadata records with relay hash info IDs
+    await Promise.all(
+      fillToRelayHashInfoId
+        .filter((item) => item.relayHashInfoId !== undefined)
+        .map((item) =>
+          swapMetadataRepository.update(
+            { id: item.swapMetadataId },
+            { relayHashInfoId: item.relayHashInfoId },
+          ),
+        ),
     );
   }
 

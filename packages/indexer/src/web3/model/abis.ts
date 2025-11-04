@@ -110,3 +110,19 @@ export const SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI = [
     type: "event",
   },
 ];
+
+export const METADATA_EMITTED_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "bytes",
+        name: "data",
+        type: "bytes",
+      },
+    ],
+    name: "MetadataEmitted",
+    type: "event",
+  },
+];
