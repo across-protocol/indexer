@@ -21,6 +21,7 @@ import {
 @Index("IX_SponsoredDepositForBurn_finalRecipient", ["finalRecipient"])
 @Index("IX_SponsoredDepositForBurn_blockNumber", ["blockNumber"])
 @Index("IX_SponsoredDepositForBurn_finalised", ["finalised"])
+@Index("IX_SponsoredDepositForBurn_blockTimestamp", ["blockTimestamp"])
 @Index("IX_SponsoredDepositForBurn_deletedAt", ["deletedAt"])
 export class SponsoredDepositForBurn {
   @PrimaryGeneratedColumn()

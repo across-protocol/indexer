@@ -22,7 +22,7 @@ This package includes unit, integration, and non-Docker end-to-end (E2E) tests.
 To ensure proper test execution with the new commands, please adhere to the following naming conventions for your test files:
 *   **Unit Tests**: Files should end with `*.unit.test.ts`
 *   **Integration Tests**: Files should end with `*.integration.test.ts`
-*   **Non-Docker E2E Tests**: Files should end with `*.e2e.test.ts`
+*   **Docker E2E Tests**: Files should end with `*.e2e.test.ts`
 
 **Configuration**:
 For these tests to run correctly, you need to provide RPC URLs for the testnet chains. Create a `.env.test` file at the **root of the repository** (if it doesn't already exist) and add the necessary RPC provider URLs.

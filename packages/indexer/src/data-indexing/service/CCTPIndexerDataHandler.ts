@@ -149,14 +149,19 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const messageTransmitterAddress = MESSAGE_TRANSMITTER_ADDRESS[this.chainId];
     const sponsoredCCTPSrcPeripheryAddress =
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
-    if (
-      !tokenMessengerAddress ||
-      !messageTransmitterAddress ||
-      !sponsoredCCTPSrcPeripheryAddress
-    ) {
-      throw new Error(
-        `CCTP contracts not configured for chain ID ${this.chainId}`,
-      );
+    if (!tokenMessengerAddress || !messageTransmitterAddress) {
+      this.logger.warn({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message: `CCTP contracts addresses not configured for chain ${this.chainId}`,
+      });
+      return {
+        burnEvents: [],
+        mintEvents: [],
+        sponsoredBurnEvents: [],
+        blocks: {},
+        transactionReceipts: {},
+        transactions: {},
+      };
     }
 
     const tokenMessengerContract = new ethers.Contract(
@@ -236,14 +241,21 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintAndWithdrawEvents,
     );
 
-    const sponsoredBurnEvents =
-      this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
-        // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
-        filteredDepositForBurnTxReceipts,
-        sponsoredCCTPSrcPeripheryAddress,
-        filteredDepositForBurnEvents,
-      );
-
+    let sponsoredBurnEvents: SponsoredDepositForBurnLog[] = [];
+    if (sponsoredCCTPSrcPeripheryAddress) {
+      sponsoredBurnEvents =
+        this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
+          // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
+          filteredDepositForBurnTxReceipts,
+          sponsoredCCTPSrcPeripheryAddress,
+          filteredDepositForBurnEvents,
+        );
+    } else {
+      this.logger.debug({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message: `Sponsored CCTP Src Periphery address not configured for chain ${this.chainId}, skipping fetching SponsoredDepositForBurn events`,
+      });
+    }
     this.runChecks(burnEvents, mintEvents);
 
     if (burnEvents.length > 0) {
