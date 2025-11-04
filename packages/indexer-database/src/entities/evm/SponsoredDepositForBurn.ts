@@ -39,7 +39,7 @@ export class SponsoredDepositForBurn {
   @Column()
   finalRecipient: string;
 
-  @Column({ type: "bigint" })
+  @Column()
   quoteDeadline: Date;
 
   @Column({ type: "bigint" })
