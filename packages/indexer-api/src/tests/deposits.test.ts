@@ -377,6 +377,11 @@ describe("Deposits Service Tests", () => {
     expect(deposit?.swapOutputTokenAmount).to.equal(
       swapMetadataData.minAmountOut,
     );
+    // Verify only required swap metadata fields are present
+    const swapMetadataFields = Object.keys(deposit || {}).filter((key) =>
+      key.startsWith("swapMetadata"),
+    );
+    expect(swapMetadataFields).to.be.empty;
   });
 
   it("should return null swapOutputToken and swapOutputTokenAmount when no destination swap metadata exists", async () => {
