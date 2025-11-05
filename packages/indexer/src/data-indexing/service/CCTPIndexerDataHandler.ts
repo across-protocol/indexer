@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
-
+import { formatFromAddressToChainFormat } from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -150,14 +150,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const messageTransmitterAddress = MESSAGE_TRANSMITTER_ADDRESS[this.chainId];
     const sponsoredCCTPSrcPeripheryAddress =
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
-    if (
-      !tokenMessengerAddress ||
-      !messageTransmitterAddress ||
-      !sponsoredCCTPSrcPeripheryAddress
-    ) {
-      throw new Error(
-        `CCTP contracts not configured for chain ID ${this.chainId}`,
-      );
+    if (!tokenMessengerAddress || !messageTransmitterAddress) {
+      const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
+      this.logger.warn({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message: errorMessage,
+      });
+      throw new Error(errorMessage);
     }
 
     const tokenMessengerContract = new ethers.Contract(
@@ -237,13 +236,21 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintAndWithdrawEvents,
     );
 
-    const sponsoredBurnEvents =
-      this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
-        // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
-        filteredDepositForBurnTxReceipts,
-        sponsoredCCTPSrcPeripheryAddress,
-      );
-
+    let sponsoredBurnEvents: SponsoredDepositForBurnLog[] = [];
+    if (sponsoredCCTPSrcPeripheryAddress) {
+      sponsoredBurnEvents =
+        this.getSponsoredDepositForBurnEventsFromTransactionReceipts(
+          // The sponsored deposit for burn events are emitted in the same tx as deposit for burn events
+          filteredDepositForBurnTxReceipts,
+          sponsoredCCTPSrcPeripheryAddress,
+          filteredDepositForBurnEvents,
+        );
+    } else {
+      this.logger.debug({
+        at: "CCTPIndexerDataHandler#fetchEventsByRange",
+        message: `Sponsored CCTP Src Periphery address not configured for chain ${this.chainId}, skipping fetching SponsoredDepositForBurn events`,
+      });
+    }
     this.runChecks(burnEvents, mintEvents);
 
     if (burnEvents.length > 0) {
@@ -382,8 +389,21 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private getSponsoredDepositForBurnEventsFromTransactionReceipts(
     transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
     sponsoredCCTPSrcPeripheryAddress: string,
+    depositForBurnEvents: DepositForBurnEvent[],
   ) {
     const events: SponsoredDepositForBurnLog[] = [];
+    // DepositForBurn events and SponsoredDepositForBurn events are emitted in the same transaction
+    const depositForBurnEventsByTxHash = depositForBurnEvents.reduce(
+      (acc, event) => {
+        if (!acc[event.transactionHash]) {
+          acc[event.transactionHash] = [];
+        }
+        acc[event.transactionHash]!.push(event);
+        return acc;
+      },
+      {} as Record<string, DepositForBurnEvent[]>,
+    );
+
     for (const txHash of Object.keys(transactionReceipts)) {
       const transactionReceipt = transactionReceipts[
         txHash
@@ -393,8 +413,29 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
           transactionReceipt,
           sponsoredCCTPSrcPeripheryAddress,
         );
+
       if (sponsoredDepositForBurnEvents.length > 0) {
-        events.push(...sponsoredDepositForBurnEvents);
+        const depositForBurnEvents = (
+          depositForBurnEventsByTxHash[txHash] || []
+        ).sort((a, b) => a.logIndex - b.logIndex);
+        for (const sponsoredDepositForBurnEvent of sponsoredDepositForBurnEvents) {
+          // If a SponsoredDepositForBurn event is found, we need to find the corresponding DepositForBurn event to get the destination chain id
+          // The correct DepositForBurn event that matches a SponsoredDepositForBurn event is the one with the highest log index that is still lower than the SponsoredDepositForBurn event's log index
+          const matchingDepositForBurnEvent = depositForBurnEvents.find(
+            (depositForBurnEvent) =>
+              depositForBurnEvent.logIndex <
+              sponsoredDepositForBurnEvent.logIndex,
+          );
+
+          if (matchingDepositForBurnEvent) {
+            const destinationChainId =
+              matchingDepositForBurnEvent.args.destinationDomain;
+            events.push({
+              ...sponsoredDepositForBurnEvent,
+              destinationChainId,
+            });
+          }
+        }
       }
     }
 
@@ -519,7 +560,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       logIndex: event.logIndex,
       nonce: event.args.nonce,
       originSender: event.args.originSender,
-      finalRecipient: event.args.finalRecipient,
+      finalRecipient: event.destinationChainId
+        ? formatFromAddressToChainFormat(
+            across.utils.toAddressType(
+              event.args.finalRecipient,
+              event.destinationChainId,
+            ),
+            event.destinationChainId,
+          )
+        : event.args.finalRecipient,
       quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
       maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
       maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),

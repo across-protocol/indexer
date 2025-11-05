@@ -47,6 +47,8 @@ export interface MintAndWithdrawLog extends providers.Log {
 }
 
 export interface SponsoredDepositForBurnLog extends providers.Log {
+  // Destination Chain Id is needed to be able to correctly format the finalRecipient address
+  destinationChainId?: number;
   args: [] & {
     nonce: string;
     originSender: string;
