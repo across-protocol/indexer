@@ -36,6 +36,11 @@ export type Config = {
    * If this is not set, defaults to the hardcoded value.
    */
   bundleEventsServiceDelaySeconds?: number;
+  /**
+   * Override the delay between processing block ranges in seconds in the Indexer class when an error occurs.
+   * If this is not set, then the default hardcoded values will be used.
+   */
+  indexingDelaySecondsOnError?: number;
 };
 
 export type RedisConfig = {
