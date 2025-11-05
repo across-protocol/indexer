@@ -33,6 +33,7 @@ jobs:
           # Safely append the secret, prefixed with a newline.
           # This prevents file corruption.
           printf '\n%s\n' "RPC_PROVIDER_URLS_421614=$RPC_PROVIDER_URLS_421614" >> .env.test
+          printf '\n%s\n' "RPC_PROVIDER_URLS_42161=$RPC_PROVIDER_URLS_42161" >> .env.test
       - name: Run tests using docker
         run: pnpm test:e2e:docker
   build:
