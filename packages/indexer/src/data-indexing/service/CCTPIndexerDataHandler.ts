@@ -6,6 +6,7 @@ import { formatFromAddressToChainFormat } from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
+import { createMapWithDefault } from "../../utils/map";
 import {
   MESSAGE_TRANSMITTER_V2_ABI,
   TOKEN_MESSENGER_V2_ABI,
@@ -30,6 +31,7 @@ import {
 import {
   getIndexingStartBlockNumber,
   decodeMessage,
+  getCctpDestinationChainFromDomain,
 } from "../adapter/cctp-v2/service";
 
 export type EvmBurnEventsPair = {
@@ -49,8 +51,6 @@ export type FetchEventsResult = {
   transactions: Record<string, Transaction>;
 };
 export type StoreEventsResult = {};
-
-import { createMapWithDefault } from "../../utils/map";
 
 const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
   {
@@ -428,8 +428,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
           );
 
           if (matchingDepositForBurnEvent) {
-            const destinationChainId =
-              matchingDepositForBurnEvent.args.destinationDomain;
+            const destinationChainId = getCctpDestinationChainFromDomain(
+              matchingDepositForBurnEvent.args.destinationDomain,
+            );
+
             events.push({
               ...sponsoredDepositForBurnEvent,
               destinationChainId,
