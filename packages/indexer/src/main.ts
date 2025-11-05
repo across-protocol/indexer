@@ -32,6 +32,7 @@ import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
+import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -144,6 +145,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     indexerQueuesService,
   );
+  const cctpFinalizerServiceManager = new CctpFinalizerServiceManager(
+    logger,
+    config,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -183,6 +189,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       oftIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
+      cctpFinalizerServiceManager.stopGracefully();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -206,12 +213,14 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     cctpIndexerManagerResult,
     oftIndexerManagerResult,
     hotfixServicesManagerResults,
+    cctpFinalizerServiceManagerResults,
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
     cctpIndexerManager.start(),
     oftIndexerManager.start(),
     hotfixServicesManager.start(),
+    cctpFinalizerServiceManager.start(),
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -227,6 +236,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         cctpIndexerManagerResult.status === "fulfilled",
       oftIndexerManagerRunSuccess:
         oftIndexerManagerResult.status === "fulfilled",
+      cctpFinalizerServiceManagerRunSuccess:
+        cctpFinalizerServiceManagerResults.status === "fulfilled",
     },
   });
   await integratorIdWorker.close();
