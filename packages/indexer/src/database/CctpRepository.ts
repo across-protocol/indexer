@@ -138,9 +138,9 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           quoteNonce: event.quoteNonce,
           finalRecipient: finalRecipient,
           finalToken: event.finalToken,
-          evmAmountIn: Number(event.evmAmountIn),
-          bridgingFeesIncurred: Number(event.bridgingFeesIncurred),
-          evmAmountSponsored: Number(event.evmAmountSponsored),
+          evmAmountIn: event.evmAmountIn,
+          bridgingFeesIncurred: event.bridgingFeesIncurred,
+          evmAmountSponsored: event.evmAmountSponsored,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });

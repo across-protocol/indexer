@@ -39,13 +39,13 @@ export class SimpleTransferFlowCompleted {
   finalToken: string;
 
   @Column({ type: "numeric" })
-  evmAmountIn: number;
+  evmAmountIn: string;
 
   @Column({ type: "numeric" })
-  bridgingFeesIncurred: number;
+  bridgingFeesIncurred: string;
 
   @Column({ type: "numeric" })
-  evmAmountSponsored: number;
+  evmAmountSponsored: string;
 
   @Column()
   blockNumber: number;
