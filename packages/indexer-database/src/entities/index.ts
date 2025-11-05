@@ -42,3 +42,6 @@ export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
 export * from "./OftTransfer";
 export * from "./evm/SponsoredOFTSend";
+
+// HyperEVM
+export * from "./evm/SimpleTransferFlowCompleted";

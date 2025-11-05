@@ -25,8 +25,19 @@ describe("CCTPIndexerDataHandler", () => {
   let provider: across.providers.RetryProvider;
   let handler: CCTPIndexerDataHandler;
 
+  function setupTestForChainId(chainId: number) {
+    provider = createTestRetryProvider(chainId, logger);
+    handler = new CCTPIndexerDataHandler(
+      logger,
+      chainId,
+      provider,
+      cctpRepository,
+    );
+  }
+
   beforeEach(async () => {
     dataSource = await getTestDataSource();
+    cctpRepository = new CCTPRepository(dataSource, logger);
 
     logger = {
       debug: sinon.spy(),
@@ -34,16 +45,6 @@ describe("CCTPIndexerDataHandler", () => {
       warn: sinon.spy(),
       error: sinon.spy(),
     } as unknown as Logger;
-
-    cctpRepository = new CCTPRepository(dataSource, logger);
-    provider = createTestRetryProvider(CHAIN_IDs.ARBITRUM_SEPOLIA, logger);
-
-    handler = new CCTPIndexerDataHandler(
-      logger,
-      CHAIN_IDs.ARBITRUM_SEPOLIA,
-      provider,
-      cctpRepository,
-    );
   });
 
   afterEach(async () => {
@@ -62,6 +63,7 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
     const blockNumber = 209540538;
+    setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 
     const blockRange: BlockRange = {
       from: blockNumber,
@@ -87,6 +89,7 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
     const blockNumber = 209540538;
+    setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -101,6 +104,36 @@ describe("CCTPIndexerDataHandler", () => {
       entities.SponsoredDepositForBurn,
     );
     const savedEvent = await sponsoredDepositForBurnRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+  }).timeout(10000);
+
+  it("should fetch and store SimpleTransferFlowCompleted event in the database", async () => {
+    const transactionHash =
+      "0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9";
+    const blockNumber = 36200188;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM_TESTNET);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterTransactionsFromAcrossFinalizer method to avoid filtering out our test transaction
+    sinon
+      .stub(handler as any, "filterTransactionsFromAcrossFinalizer")
+      .returnsArg(0);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const simpleTransferFlowCompletedRepository = dataSource.getRepository(
+      entities.SimpleTransferFlowCompleted,
+    );
+    const savedEvent = await simpleTransferFlowCompletedRepository.findOne({
       where: { transactionHash: transactionHash },
     });
 

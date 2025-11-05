@@ -15,6 +15,7 @@ import {
   SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
 import { SponsoredOFTSendLog } from "../data-indexing/adapter/oft/model";
+import { SimpleTransferFlowCompletedLog } from "../data-indexing/model/hyperEvmExecutor";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -155,6 +156,25 @@ export class EventDecoder {
       eventTopic,
       eventAbi,
     );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeSimpleTransferFlowCompletedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://testnet.purrsec.com/tx/0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9
+    const eventTopic =
+      "0xb021c853215aadb12b6fa8afa7b3158201517d9abf7f756cdbb67bd66abc5a1c";
+    const eventAbi = [
+      "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
+    ];
+    let events: SimpleTransferFlowCompletedLog[] =
+      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
