@@ -117,6 +117,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
+    const sponsoredOFTSrcPeripheryAddress =
+      SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId];
     const [oftSentEvents, oftReceivedEvents] = await Promise.all([
       oftAdapterContract.queryFilter(
         "OFTSent",
@@ -141,10 +143,15 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const transactionReceipts = await this.getTransactionsReceipts([
       ...new Set(filteredOftSentEvents.map((event) => event.transactionHash)),
     ]);
-    const sponsoredOFTSendEvents =
-      this.getSponsoredOFTSendEventsFromTransactionReceipts(
-        transactionReceipts,
-      );
+
+    let sponsoredOFTSendEvents: SponsoredOFTSendLog[] = [];
+    if (sponsoredOFTSrcPeripheryAddress) {
+      sponsoredOFTSendEvents =
+        this.getSponsoredOFTSendEventsFromTransactionReceipts(
+          transactionReceipts,
+          sponsoredOFTSrcPeripheryAddress,
+        );
+    }
 
     const blocks = await this.getBlocks([
       ...new Set([
@@ -248,6 +255,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
   private getSponsoredOFTSendEventsFromTransactionReceipts(
     transactionReceipts: Record<string, providers.TransactionReceipt>,
+    sponsoredOFTSrcPeripheryAddress: string,
   ) {
     const events: SponsoredOFTSendLog[] = [];
     for (const txHash of Object.keys(transactionReceipts)) {
@@ -256,7 +264,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       ] as providers.TransactionReceipt;
       const sponsoredOFTSendEvents = EventDecoder.decodeOFTSponsoredSendEvents(
         transactionReceipt,
-        SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId],
+        sponsoredOFTSrcPeripheryAddress,
       );
       if (sponsoredOFTSendEvents.length > 0) {
         events.push(...sponsoredOFTSendEvents);

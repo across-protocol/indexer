@@ -32,7 +32,6 @@ import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
-import { SponsoredOFTSendRepository } from "./database/SponsoredOFTSendRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -126,7 +125,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
     retryProvidersFactory,
     new OftRepository(postgres, logger),
-    new SponsoredOFTSendRepository(postgres, logger),
   );
   const bundleServicesManager = new BundleServicesManager(
     config,

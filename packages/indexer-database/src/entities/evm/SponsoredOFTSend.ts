@@ -44,11 +44,11 @@ export class SponsoredOFTSend {
   @Column()
   quoteDeadline: Date;
 
-  @Column({ type: "bigint" })
-  maxBpsToSponsor: bigint;
+  @Column({ type: "numeric" })
+  maxBpsToSponsor: string;
 
-  @Column({ type: "bigint" })
-  maxUserSlippageBps: bigint;
+  @Column({ type: "numeric" })
+  maxUserSlippageBps: string;
 
   @Column()
   finalToken: string;
