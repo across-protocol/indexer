@@ -161,9 +161,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
           originSender: event.args.originSender,
           finalRecipient: finalRecipient,
           destinationHandler: event.args.destinationHandler,
-          quoteDeadline: new Date(
-            event.args.quoteDeadline.mul(BigNumber.from(1000)).toString(),
-          ),
+          quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
           maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
           maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
           finalToken: event.args.finalToken,

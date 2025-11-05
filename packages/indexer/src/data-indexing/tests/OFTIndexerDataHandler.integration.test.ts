@@ -18,9 +18,15 @@ describe("OFTIndexerDataHandler", () => {
   let provider: across.providers.RetryProvider;
   let handler: OFTIndexerDataHandler;
 
-  const transactionHash =
-    "0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a";
-  const blockNumber = 168661609;
+  function setupTestForChainId(chainId: number) {
+    provider = createTestRetryProvider(chainId, logger);
+    handler = new OFTIndexerDataHandler(
+      logger,
+      chainId,
+      provider,
+      oftRepository,
+    );
+  }
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
@@ -33,14 +39,6 @@ describe("OFTIndexerDataHandler", () => {
     } as unknown as Logger;
 
     oftRepository = new OftRepository(dataSource, logger);
-    provider = createTestRetryProvider(CHAIN_IDs.ARBITRUM, logger);
-
-    handler = new OFTIndexerDataHandler(
-      logger,
-      CHAIN_IDs.ARBITRUM,
-      provider,
-      oftRepository,
-    );
   });
 
   afterEach(async () => {
@@ -51,11 +49,17 @@ describe("OFTIndexerDataHandler", () => {
   });
 
   it("should process a block range and store SponsoredOFTSend event", async () => {
+    // Trying to fetch https://arbiscan.io/tx/0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a
+    const transactionHash =
+      "0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a";
+    const blockNumber = 394505590;
     const blockRange: BlockRange = {
       from: blockNumber,
       to: blockNumber,
     };
-
+    setupTestForChainId(CHAIN_IDs.ARBITRUM);
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
     await handler.processBlockRange(blockRange, blockNumber - 1);
 
     const sponsoredOFTSendRepo = dataSource.getRepository(
