@@ -116,7 +116,6 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9";
     const blockNumber = 36200188;
-    // Re-initialize handler for HyperEVM testnet
     setupTestForChainId(CHAIN_IDs.HYPEREVM_TESTNET);
 
     const blockRange: BlockRange = {
