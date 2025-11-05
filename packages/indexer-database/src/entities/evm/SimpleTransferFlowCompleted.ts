@@ -38,13 +38,13 @@ export class SimpleTransferFlowCompleted {
   @Column()
   finalToken: string;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric" })
   evmAmountIn: number;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric" })
   bridgingFeesIncurred: number;
 
-  @Column({ type: "bigint" })
+  @Column({ type: "numeric" })
   evmAmountSponsored: number;
 
   @Column()
