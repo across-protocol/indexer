@@ -30,10 +30,8 @@ import { SwapWorker } from "./messaging/swapWorker";
 import { CallsFailedRepository } from "./database/CallsFailedRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
-import { HyperEVMIndexerManager } from "./data-indexing/service/HyperEVMIndexerManager";
 import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
-import { SimpleTransferFlowCompletedRepository } from "./database/SimpleTransferFlowCompletedRepository";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -128,13 +126,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     retryProvidersFactory,
     new OftRepository(postgres, logger),
   );
-  const hyperEVMIndexerManager = new HyperEVMIndexerManager(
-    logger,
-    config,
-    postgres,
-    retryProvidersFactory,
-    new SimpleTransferFlowCompletedRepository(postgres, logger),
-  );
   const bundleServicesManager = new BundleServicesManager(
     config,
     logger,
@@ -190,7 +181,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       acrossIndexerManager.stopGracefully();
       cctpIndexerManager.stopGracefully();
       oftIndexerManager.stopGracefully();
-      hyperEVMIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
     } else {
@@ -215,14 +205,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     acrossIndexerManagerResult,
     cctpIndexerManagerResult,
     oftIndexerManagerResult,
-    hyperEVMIndexerManagerResult,
     hotfixServicesManagerResults,
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
     cctpIndexerManager.start(),
     oftIndexerManager.start(),
-    hyperEVMIndexerManager.start(),
     hotfixServicesManager.start(),
   ]);
   logger.info({
@@ -239,8 +227,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         cctpIndexerManagerResult.status === "fulfilled",
       oftIndexerManagerRunSuccess:
         oftIndexerManagerResult.status === "fulfilled",
-      hyperEVMIndexerManagerRunSuccess:
-        hyperEVMIndexerManagerResult.status === "fulfilled",
     },
   });
   await integratorIdWorker.close();
