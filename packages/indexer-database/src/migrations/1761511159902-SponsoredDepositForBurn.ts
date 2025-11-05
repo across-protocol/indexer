@@ -9,7 +9,7 @@ export class SponsoredDepositForBurn1761511159902
     await queryRunner.query(
       `CREATE TABLE "evm"."sponsored_deposit_for_burn" (
         "id" SERIAL NOT NULL,
-        "chainId" character varying NOT NULL,
+        "chainId" bigint NOT NULL,
         "quoteNonce" character varying,
         "originSender" character varying NOT NULL,
         "finalRecipient" character varying NOT NULL,
