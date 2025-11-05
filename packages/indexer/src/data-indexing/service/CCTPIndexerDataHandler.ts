@@ -30,6 +30,7 @@ import {
 import {
   getIndexingStartBlockNumber,
   decodeMessage,
+  getCctpDestinationChainFromDomain,
 } from "../adapter/cctp-v2/service";
 
 export type EvmBurnEventsPair = {
@@ -451,8 +452,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
           );
 
           if (matchingDepositForBurnEvent) {
-            const destinationChainId =
-              matchingDepositForBurnEvent.args.destinationDomain;
+            const destinationChainId = getCctpDestinationChainFromDomain(
+              matchingDepositForBurnEvent.args.destinationDomain,
+            );
+
             events.push({
               ...sponsoredDepositForBurnEvent,
               destinationChainId,
