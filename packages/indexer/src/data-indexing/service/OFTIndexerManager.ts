@@ -65,7 +65,6 @@ export class OFTIndexerManager {
         Number(chainId),
         provider,
         this.oftRepository,
-        this.postgres,
       );
       const indexer = new EvmIndexer(
         {

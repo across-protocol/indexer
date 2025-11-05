@@ -28,17 +28,14 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
-  private oftTransferAggregator: OftTransferAggregator;
 
   constructor(
     private logger: Logger,
     private chainId: number,
     private provider: across.providers.RetryProvider,
     private oftRepository: OftRepository,
-    private postgres: DataSource,
   ) {
     this.isInitialized = false;
-    this.oftTransferAggregator = new OftTransferAggregator(postgres);
   }
 
   private initialize() {}
