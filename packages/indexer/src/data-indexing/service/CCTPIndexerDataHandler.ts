@@ -176,7 +176,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     if (!tokenMessengerAddress || !messageTransmitterAddress) {
       const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
-      this.logger.warn({
+      this.logger.error({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: errorMessage,
       });
