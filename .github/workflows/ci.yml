@@ -30,6 +30,7 @@ jobs:
         env:
           RPC_PROVIDER_URLS_421614: ${{ secrets.RPC_PROVIDER_URLS_421614 }}
           RPC_PROVIDER_URLS_998: ${{ secrets.RPC_PROVIDER_URLS_998 }}
+          RPC_PROVIDER_URLS_42161: ${{ secrets.RPC_PROVIDER_URLS_42161 }}
         run: |
           # Safely append the secret, prefixed with a newline.
           # This prevents file corruption.
