@@ -20,6 +20,8 @@ export type ConstructorConfig = {
    * If not set, the max block range size is set to {@link DEFAULT_MAX_BLOCK_RANGE_SIZE}.
    */
   maxBlockRangeSize?: number;
+  /** Additional delay in seconds to wait before next indexing cycle if an error occurred during processing. */
+  indexingDelaySecondsOnError?: number;
 };
 
 type BlockRangeResult = {
@@ -90,7 +92,7 @@ export class Indexer {
         });
         blockRangeProcessedSuccessfully = false;
         // Introduce an additional delay if errors are encountered
-        await across.utils.delay(30);
+        await across.utils.delay(this.config.indexingDelaySecondsOnError ?? 30);
       } finally {
         if (!blockRangeResult?.isBackfilling) {
           await across.utils.delay(this.config.indexingDelaySeconds);
