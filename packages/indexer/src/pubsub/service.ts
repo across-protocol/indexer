@@ -20,7 +20,7 @@ export class PubSubService {
     message: string,
     attestation: string,
     destinationChainId: number,
-    signature: string,
+    signature?: string,
   ) {
     if (!this.cctpFinalizerTopic) {
       const topic = this.pubSub.topic(this.config.pubSubCctpFinalizerTopic);

@@ -168,7 +168,7 @@ class CctpFinalizerService extends RepeatableTask {
 
   private async publishBurnEvent(
     burnEvent: DepositForBurn,
-    signature: string | null = null,
+    signature?: string,
     sponsoredDepositForBurnId?: number,
   ) {
     try {
@@ -253,7 +253,7 @@ class CctpFinalizerService extends RepeatableTask {
         message,
         attestation,
         destinationChainId,
-        signature || "0x",
+        signature,
       );
 
       const jobValues: {
