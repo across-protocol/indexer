@@ -166,7 +166,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     if (!tokenMessengerAddress || !messageTransmitterAddress) {
       const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
-      this.logger.warn({
+      this.logger.error({
         at: "CCTPIndexerDataHandler#fetchEventsByRange",
         message: errorMessage,
       });

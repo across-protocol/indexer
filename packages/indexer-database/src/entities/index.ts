@@ -37,6 +37,8 @@ export * from "./evm/MintAndWithdraw";
 export * from "./evm/MessageReceived";
 export * from "./evm/SponsoredDepositForBurn";
 
+export * from "./CctpFinalizerJob";
+
 // OFT
 export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
