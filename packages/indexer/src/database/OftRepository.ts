@@ -88,7 +88,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
 
-          blockTimestamp: blockDates[event.blockNumber]!,
+          blockTimestamp: blockDates[event.blockHash]!,
           chainId: chainId.toString(),
 
           guid: event.args.guid,
@@ -140,7 +140,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     sponsoredOFTSendEvents: SponsoredOFTSendLog[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<number, Date>,
+    blockDates: Record<string, Date>,
   ) {
     const formattedEvents: Partial<entities.SponsoredOFTSend>[] =
       sponsoredOFTSendEvents.map((event) => {
@@ -155,7 +155,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
 
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockNumber]!,
+          blockTimestamp: blockDates[event.blockHash]!,
           chainId: chainId.toString(),
           quoteNonce: event.args.quoteNonce,
           originSender: event.args.originSender,
@@ -196,7 +196,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
       oftReceivedEvents.map((event) => {
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockNumber]!,
+          blockTimestamp: blockDates[event.blockHash]!,
           chainId: chainId.toString(),
           guid: event.args.guid,
           srcEid: event.args.srcEid,

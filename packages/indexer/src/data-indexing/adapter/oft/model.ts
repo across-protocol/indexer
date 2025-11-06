@@ -20,7 +20,7 @@ export interface OFTReceivedEvent extends ethers.Event {
 }
 
 export interface SponsoredOFTSendLog extends ethers.providers.Log {
-  args: {
+  args: [] & {
     quoteNonce: string;
     originSender: string;
     finalRecipient: string;

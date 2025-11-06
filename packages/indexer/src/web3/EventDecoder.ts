@@ -178,7 +178,6 @@ export class EventDecoder {
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
-
     return events;
   }
 

@@ -131,24 +131,25 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         blockRange.to,
       ) as Promise<OFTReceivedEvent[]>,
     ]);
-    const transactions = await this.getTransactions([
+    const oftSentTransactions = await this.getTransactions([
       ...new Set(oftSentEvents.map((event) => event.transactionHash)),
     ]);
     const filteredOftSentEvents = await this.filterTransactionsFromSwapApi(
-      transactions,
+      oftSentTransactions,
       oftSentEvents,
     );
     const filteredOftReceivedEvents =
       await this.filterTransactionsForSupportedEndpointIds(oftReceivedEvents);
-    const transactionReceipts = await this.getTransactionsReceipts([
-      ...new Set(filteredOftSentEvents.map((event) => event.transactionHash)),
-    ]);
+    const filteredOftSentTransactionReceipts =
+      await this.getTransactionsReceipts([
+        ...new Set(filteredOftSentEvents.map((event) => event.transactionHash)),
+      ]);
 
     let sponsoredOFTSendEvents: SponsoredOFTSendLog[] = [];
     if (sponsoredOFTSrcPeripheryAddress) {
       sponsoredOFTSendEvents =
         this.getSponsoredOFTSendEventsFromTransactionReceipts(
-          transactionReceipts,
+          filteredOftSentTransactionReceipts,
           sponsoredOFTSrcPeripheryAddress,
         );
     }
@@ -319,7 +320,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
   ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
-        acc[block.number] = new Date(block.timestamp * 1000);
+        acc[blockHash] = new Date(block.timestamp * 1000);
         return acc;
       },
       {} as Record<string, Date>,
