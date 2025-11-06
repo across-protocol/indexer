@@ -1,5 +1,6 @@
 import { BigNumber, ethers, providers } from "ethers";
 import { Address, Signature, UnixTimestamp } from "@solana/kit";
+import { Log } from "../../model";
 
 // ============================================================================
 // EVM Event Types
@@ -130,13 +131,7 @@ export interface SolanaMintAndWithdrawEvent {
 // Chain-Agnostic CCTP Event Types (works for both EVM and SVM)
 // ============================================================================
 
-export interface DepositForBurnWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
-
+export interface DepositForBurn {
   // Event data
   burnToken: string;
   amount: string;
@@ -150,13 +145,9 @@ export interface DepositForBurnWithBlock {
   hookData: string;
 }
 
-export interface MessageSentWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
+export type DepositForBurnWithBlock = DepositForBurn & Log;
 
+export interface MessageSent {
   message: string;
   version: number;
   sourceDomain: number;
@@ -170,13 +161,9 @@ export interface MessageSentWithBlock {
   messageBody: string;
 }
 
-export interface MessageReceivedWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
+export type MessageSentWithBlock = MessageSent & Log;
 
+export interface MessageReceived {
   caller: string;
   sourceDomain: number;
   nonce: string;
@@ -185,27 +172,18 @@ export interface MessageReceivedWithBlock {
   messageBody: string;
 }
 
-export interface MintAndWithdrawWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
+export type MessageReceivedWithBlock = MessageReceived & Log;
 
+export interface MintAndWithdraw {
   mintRecipient: string;
   amount: string;
   mintToken: string;
   feeCollected: string;
 }
 
-export interface SponsoredDepositForBurnWithBlock {
-  // Transaction metadata
-  blockNumber: number;
-  transactionHash: string;
-  transactionIndex: number;
-  logIndex: number;
+export type MintAndWithdrawWithBlock = MintAndWithdraw & Log;
 
-  // Event data
+export interface SponsoredDepositForBurn {
   nonce: string;
   originSender: string;
   finalRecipient: string;
@@ -215,3 +193,5 @@ export interface SponsoredDepositForBurnWithBlock {
   finalToken: string;
   signature: string;
 }
+
+export type SponsoredDepositForBurnWithBlock = SponsoredDepositForBurn & Log;
