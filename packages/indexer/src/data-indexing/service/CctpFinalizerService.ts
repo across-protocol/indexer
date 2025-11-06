@@ -98,6 +98,58 @@ class CctpFinalizerService extends RepeatableTask {
       for (const burnEvent of burnEvents) {
         await this.publishBurnEvent(burnEvent);
       }
+
+      // Process SponsoredDepositForBurn events in parallel
+      // Query SponsoredDepositForBurn events that haven't been published yet
+      // We check by looking for events that don't have a matching CctpFinalizerJob
+      // with the same sponsoredDepositForBurnId
+      const sponsoredQb = this.postgres
+        .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
+        .leftJoin(
+          CctpFinalizerJob,
+          "job",
+          "job.sponsoredDepositForBurnId = sponsored.id",
+        )
+        .where("job.id IS NULL")
+        .andWhere("sponsored.deletedAt IS NULL");
+      const sponsoredEvents = await sponsoredQb.getMany();
+
+      for (const sponsored of sponsoredEvents) {
+        // Find the matching DepositForBurn event with the highest logIndex that's still lower
+        // SponsoredDepositForBurn events come after DepositForBurn events in the same transaction.
+        const matchingDepositQb = this.postgres
+          .createQueryBuilder(DepositForBurn, "burn")
+          .where("burn.transactionHash = :transactionHash", {
+            transactionHash: sponsored.transactionHash,
+          })
+          .andWhere("burn.chainId = :chainId", {
+            chainId: sponsored.chainId,
+          })
+          .andWhere("burn.logIndex < :logIndex", {
+            logIndex: sponsored.logIndex,
+          })
+          .andWhere("burn.deletedAt IS NULL")
+          .orderBy("burn.logIndex", "DESC")
+          .limit(1);
+        const matchingDeposit = await matchingDepositQb.getOne();
+
+        if (!matchingDeposit) {
+          this.logger.debug({
+            at: "CctpFinalizerService#taskLogic",
+            message:
+              "Skipping sponsored deposit for burn event - no matching DepositForBurn found",
+            sponsoredId: sponsored.id,
+            transactionHash: sponsored.transactionHash,
+          });
+          continue;
+        }
+
+        await this.publishBurnEvent(
+          matchingDeposit,
+          sponsored.signature,
+          sponsored.id,
+        );
+      }
     } catch (error) {
       this.logger.error({
         at: "CctpFinalizerService#taskLogic",
@@ -114,7 +166,11 @@ class CctpFinalizerService extends RepeatableTask {
     return Promise.resolve();
   }
 
-  private async publishBurnEvent(burnEvent: DepositForBurn) {
+  private async publishBurnEvent(
+    burnEvent: DepositForBurn,
+    signature: string | null = null,
+    sponsoredDepositForBurnId?: number,
+  ) {
     try {
       const { chainId, transactionHash, minFinalityThreshold, blockTimestamp } =
         burnEvent;
@@ -197,16 +253,25 @@ class CctpFinalizerService extends RepeatableTask {
         message,
         attestation,
         destinationChainId,
+        signature || "0x",
       );
+
+      const jobValues: {
+        attestation: string;
+        message: string;
+        burnEventId: number;
+        sponsoredDepositForBurnId?: number;
+      } = {
+        attestation,
+        message,
+        burnEventId: burnEvent.id,
+        ...(sponsoredDepositForBurnId && { sponsoredDepositForBurnId }),
+      };
 
       await this.postgres
         .createQueryBuilder(CctpFinalizerJob, "j")
         .insert()
-        .values({
-          attestation,
-          message,
-          burnEventId: burnEvent.id,
-        })
+        .values(jobValues)
         .orUpdate(["attestation"], ["burnEventId"])
         .execute();
     } catch (error) {
