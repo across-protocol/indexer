@@ -74,7 +74,8 @@ export class CCTPIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
+          indexingDelaySeconds:
+            getIndexingDelaySeconds(chainId, this.config) * 2,
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,

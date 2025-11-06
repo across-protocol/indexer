@@ -1,8 +1,10 @@
 import { ethers } from "ethers";
+import axios from "axios";
 import {
   CCTP_NO_DOMAIN,
   CHAIN_IDs,
   PRODUCTION_NETWORKS,
+  PUBLIC_NETWORKS,
   TEST_NETWORKS,
 } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
@@ -81,6 +83,19 @@ export function decodeMessage(messageBytesArray: Uint8Array) {
   };
 }
 
+/**
+ * @notice Returns the CCTP domain for a given chain ID. Throws if the chain ID is not a CCTP domain.
+ * @param chainId
+ * @returns CCTP Domain ID
+ */
+export function getCctpDomainForChainId(chainId: number): number {
+  const cctpDomain = PUBLIC_NETWORKS[chainId]?.cctpDomain;
+  if (!across.utils.isDefined(cctpDomain) || cctpDomain === CCTP_NO_DOMAIN) {
+    throw new Error(`No CCTP domain found for chainId: ${chainId}`);
+  }
+  return cctpDomain;
+}
+
 export function getCctpDestinationChainFromDomain(
   domain: number,
   productionNetworks: boolean = true,
@@ -110,4 +125,28 @@ export function getCctpDestinationChainFromDomain(
     return parseInt(chainId);
   }
   return parseInt(chainId);
+}
+
+export type CCTPV2APIGetAttestationResponse = {
+  messages: CCTPV2APIAttestation[];
+};
+
+export type CCTPV2APIAttestation = {
+  eventNonce: string;
+  status: string;
+  attestation: string;
+  message: string;
+};
+
+export async function fetchAttestationsForTxn(
+  sourceDomainId: number,
+  transactionHash: string,
+  isMainnet: boolean,
+): Promise<CCTPV2APIGetAttestationResponse> {
+  const httpResponse = await axios.get<CCTPV2APIGetAttestationResponse>(
+    `https://iris-api${
+      isMainnet ? "" : "-sandbox"
+    }.circle.com/v2/messages/${sourceDomainId}?transactionHash=${transactionHash}`,
+  );
+  return httpResponse.data;
 }

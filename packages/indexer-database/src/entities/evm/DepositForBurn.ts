@@ -4,9 +4,11 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  OneToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { CctpFinalizerJob } from "../CctpFinalizerJob";
 
 @Entity({ schema: "evm" })
 @Unique("UK_depositForBurn_chain_block_txn_log", [
@@ -77,4 +79,7 @@ export class DepositForBurn {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  @OneToOne(() => CctpFinalizerJob, (finalizerJob) => finalizerJob.burnEvent)
+  finalizerJob: CctpFinalizerJob;
 }

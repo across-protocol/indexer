@@ -110,33 +110,15 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   ) {
     const formattedEvents: Partial<entities.SimpleTransferFlowCompleted>[] =
       simpleTransferFlowCompletedEvents.map((event) => {
-        let finalRecipient = event.finalRecipient;
-        if (
-          chainId === CHAIN_IDs.HYPEREVM ||
-          chainId === CHAIN_IDs.HYPEREVM_TESTNET
-        ) {
-          finalRecipient = formatFromAddressToChainFormat(
-            across.utils.toAddressType(event.finalRecipient, chainId),
-            chainId,
-          );
-        } else {
-          this.logger.warn({
-            at: "CCTPRepository#formatAndSaveSimpleTransferFlowCompletedEvents",
-            message: `formatting SimpleTransferFlowCompleted event for unsupported chainId ${chainId}, finalRecipient address may be incorrect`,
-          });
-        }
-
         return {
           blockNumber: event.blockNumber,
           logIndex: event.logIndex,
           transactionHash: event.transactionHash,
           transactionIndex: event.transactionIndex,
-
           blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-
           quoteNonce: event.quoteNonce,
-          finalRecipient: finalRecipient,
+          finalRecipient: event.finalRecipient,
           finalToken: event.finalToken,
           evmAmountIn: event.evmAmountIn,
           bridgingFeesIncurred: event.bridgingFeesIncurred,
