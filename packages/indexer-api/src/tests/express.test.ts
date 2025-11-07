@@ -2,10 +2,10 @@ import { expect } from "chai";
 import request from "supertest";
 import { ExpressApp } from "../express-app";
 import express from "express";
-import { createDataSource, DataSource, fixtures } from "@repo/indexer-database";
+import { DataSource, fixtures } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
-import * as utils from "../utils";
 import * as routers from "../routers";
 
 describe("Express App Tests with Deposits Endpoint", () => {
@@ -14,10 +14,8 @@ describe("Express App Tests with Deposits Endpoint", () => {
   let redis: Redis;
   let depositsFixture: fixtures.FundsDepositedFixture;
 
-  before(async () => {
-    // Set up database and Redis
-    const databaseConfig = utils.getPostgresConfig(process.env);
-    dataSource = await createDataSource(databaseConfig).initialize();
+  beforeEach(async () => {
+    dataSource = await getTestDataSource();
 
     const redisConfig = Indexer.parseRedisConfig(process.env);
     redis = new Redis(redisConfig);
@@ -31,9 +29,8 @@ describe("Express App Tests with Deposits Endpoint", () => {
     app = ExpressApp({ deposits: depositsRouter });
   });
 
-  after(async () => {
+  afterEach(async () => {
     // Clean up resources
-    await depositsFixture.deleteAllDeposits();
     await dataSource.destroy();
     await redis.quit();
   });

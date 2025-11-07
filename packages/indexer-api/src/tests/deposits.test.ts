@@ -1,16 +1,11 @@
 import { expect } from "chai";
 import winston from "winston";
-import {
-  createDataSource,
-  DataSource,
-  entities,
-  fixtures,
-} from "@repo/indexer-database";
+import { DataSource, entities, fixtures } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 // import { parsePostgresConfig } from "../parseEnv";
 import { DepositsService } from "../services/deposits"; // Assuming this is the new service file
 import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
-import * as utils from "../utils";
 
 describe("Deposits Service Tests", () => {
   // Set up
@@ -25,7 +20,6 @@ describe("Deposits Service Tests", () => {
   // Fixtures
   let depositsFixture: fixtures.FundsDepositedFixture;
   let fillsFixture: fixtures.FilledRelayFixture;
-  let slowFillsFixture: fixtures.RequestedSlowFillFixture;
   let swapBeforeBridgeFixture: fixtures.SwapBeforeBridgeFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
 
@@ -34,9 +28,8 @@ describe("Deposits Service Tests", () => {
   let fill: entities.FilledV3Relay;
   let slowFill: entities.RequestedV3SlowFill;
 
-  before(async () => {
-    const databaseConfig = utils.getPostgresConfig(process.env);
-    dataSource = await createDataSource(databaseConfig).initialize();
+  beforeEach(async () => {
+    dataSource = await getTestDataSource();
 
     // Initialize Redis
     const redisConfig = Indexer.parseRedisConfig(process.env);
@@ -48,30 +41,11 @@ describe("Deposits Service Tests", () => {
     // Instantiate fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
     fillsFixture = new fixtures.FilledRelayFixture(dataSource);
-    slowFillsFixture = new fixtures.RequestedSlowFillFixture(dataSource);
     swapBeforeBridgeFixture = new fixtures.SwapBeforeBridgeFixture(dataSource);
     relayHashInfoFixture = new fixtures.RelayHashInfoFixture(dataSource);
-
-    // Store events to use across tests
-    [deposit] = await depositsFixture.insertDeposits([
-      { internalHash: "0x123" },
-    ]);
-    [fill] = await fillsFixture.insertFills([{ internalHash: "0x123" }]);
-    [slowFill] = await slowFillsFixture.insertRequestedSlowFills([
-      { internalHash: "0x123" },
-    ]);
   });
 
   afterEach(async () => {
-    // Reset state after each test
-    await depositsFixture.deleteAllDeposits();
-    await fillsFixture.deleteAllFilledRelays();
-    await slowFillsFixture.deleteAllRequestedSlowFills();
-    await swapBeforeBridgeFixture.deleteAllSwaps();
-    await relayHashInfoFixture.deleteAllRelayHashInfoRows();
-  });
-
-  after(async () => {
     // Close connections after all tests
     await dataSource.destroy();
     await redis.quit();
@@ -256,11 +230,15 @@ describe("Deposits Service Tests", () => {
     // Verify that the deposit and related entities exist
     expect(queriedDeposits).to.be.an("array").that.has.lengthOf(1);
     const queriedDeposit = queriedDeposits[0];
-    expect(queriedDeposit?.depositId).to.equal(depositData.depositId);
+    expect(queriedDeposit?.depositId.toString()).to.equal(
+      depositData.depositId,
+    );
     expect(queriedDeposit?.depositor).to.equal(depositData.depositor);
     expect(queriedDeposit?.relayHash).to.equal(depositData.relayHash);
     expect(queriedDeposit?.swapToken).to.equal(swapData.swapToken);
-    expect(queriedDeposit?.swapTokenAmount).to.equal(swapData.swapTokenAmount);
+    expect(queriedDeposit?.swapTokenAmount?.toString()).to.equal(
+      swapData.swapTokenAmount,
+    );
     expect(queriedDeposit?.relayer).to.equal(filledRelayData.relayer);
     expect(queriedDeposit?.status).to.equal(relayHashInfoData.status);
   });
@@ -312,7 +290,7 @@ describe("Deposits Service Tests", () => {
 
     // Assert: Verify the deposit status and related fields
     expect(depositStatus).to.be.an("object");
-    expect(depositStatus.depositId).to.equal(depositData.depositId);
+    expect(depositStatus.depositId.toString()).to.equal(depositData.depositId);
     expect(depositStatus.status).to.equal("pending");
     expect(depositStatus.pagination.currentIndex).to.equal(0);
     expect(depositStatus.pagination.maxIndex).to.equal(0);
