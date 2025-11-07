@@ -43,3 +43,6 @@ export * from "./CctpFinalizerJob";
 export * from "./evm/OftSent";
 export * from "./evm/OftReceived";
 export * from "./OftTransfer";
+
+// HyperEVM
+export * from "./evm/SimpleTransferFlowCompleted";

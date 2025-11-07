@@ -1,6 +1,7 @@
 import winston from "winston";
 import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 import {
   DataSource,
@@ -18,6 +19,7 @@ import {
 } from "../data-indexing/adapter/cctp-v2/model";
 import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
+import { SimpleTransferFlowCompletedLog } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
 export type BurnEventsPair = {
@@ -50,6 +52,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       mintAndWithdrawEvents,
       messageReceivedEvents,
       sponsoredDepositForBurnEvents,
+      simpleTransferFlowCompletedEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -81,6 +84,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.SponsoredDepositForBurn,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SimpleTransferFlowCompleted,
+      ),
     ]);
 
     return {
@@ -89,7 +98,48 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       mintAndWithdrawEvents,
       messageReceivedEvents,
       sponsoredDepositForBurnEvents,
+      simpleTransferFlowCompletedEvents,
     };
+  }
+
+  public async formatAndSaveSimpleTransferFlowCompletedEvents(
+    simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[],
+    lastFinalisedBlock: number,
+    chainId: number,
+    blockDates: Record<number, Date>,
+  ) {
+    const formattedEvents: Partial<entities.SimpleTransferFlowCompleted>[] =
+      simpleTransferFlowCompletedEvents.map((event) => {
+        return {
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+          blockTimestamp: blockDates[event.blockNumber]!,
+          chainId: chainId.toString(),
+          quoteNonce: event.args.quoteNonce,
+          finalRecipient: event.args.finalRecipient,
+          finalToken: event.args.finalToken.toString(),
+          evmAmountIn: event.args.evmAmountIn.toString(),
+          bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
+          evmAmountSponsored: event.args.evmAmountSponsored.toString(),
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      });
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.SimpleTransferFlowCompleted>(
+          entities.SimpleTransferFlowCompleted,
+          eventsChunk,
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+    const result = savedEvents.flat();
+    return result;
   }
 
   public async formatAndSaveBurnEvents(
