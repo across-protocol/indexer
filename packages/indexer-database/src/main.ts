@@ -74,6 +74,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       // OFT
       entities.OFTSent,
       entities.OFTReceived,
+      // HyperEVM
+      entities.SimpleTransferFlowCompleted,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
