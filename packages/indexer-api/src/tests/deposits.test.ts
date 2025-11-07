@@ -1,17 +1,11 @@
 import { expect } from "chai";
 import winston from "winston";
-import {
-  createDataSource,
-  DataSource,
-  entities,
-  fixtures,
-} from "@repo/indexer-database";
+import { DataSource, entities, fixtures } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 // import { parsePostgresConfig } from "../parseEnv";
 import { DepositsService } from "../services/deposits"; // Assuming this is the new service file
 import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
-import * as utils from "../utils";
-import { getTestDataSource } from "./../../../indexer/src/tests/setup";
 
 describe("Deposits Service Tests", () => {
   // Set up

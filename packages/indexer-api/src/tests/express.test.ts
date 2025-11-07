@@ -2,12 +2,11 @@ import { expect } from "chai";
 import request from "supertest";
 import { ExpressApp } from "../express-app";
 import express from "express";
-import { createDataSource, DataSource, fixtures } from "@repo/indexer-database";
+import { DataSource, fixtures } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
-import * as utils from "../utils";
 import * as routers from "../routers";
-import { getTestDataSource } from "./../../../indexer/src/tests/setup";
 
 describe("Express App Tests with Deposits Endpoint", () => {
   let app: express.Express;
