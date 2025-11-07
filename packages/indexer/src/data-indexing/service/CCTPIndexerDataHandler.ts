@@ -11,7 +11,6 @@ import {
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
-import { createMapWithDefault } from "../../utils/map";
 import {
   MESSAGE_TRANSMITTER_V2_ABI,
   TOKEN_MESSENGER_V2_ABI,
@@ -38,6 +37,7 @@ import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
 } from "../adapter/cctp-v2/service";
+import { createMapWithDefault } from "../../utils/map";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -576,11 +576,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.convertSponsoredDepositForBurnToChainAgnostic(event),
     );
 
-    const chainAgnosticSimpleTransferFlowCompletedEvents =
-      simpleTransferFlowCompletedEvents.map((event) =>
-        this.convertSimpleTransferFlowCompletedToChainAgnostic(event),
-      );
-
     const [
       savedBurnEvents,
       savedMintEvents,
@@ -606,7 +601,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
       ),
       this.cctpRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
-        chainAgnosticSimpleTransferFlowCompletedEvents,
+        simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
