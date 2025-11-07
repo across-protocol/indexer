@@ -12,6 +12,7 @@ import Redis from "ioredis";
 import * as Indexer from "@repo/indexer";
 import * as utils from "../utils";
 import * as routers from "../routers";
+import { getTestDataSource } from "./../../../indexer/src/tests/setup";
 
 describe("/deposit", () => {
   let app: express.Express;
@@ -20,10 +21,8 @@ describe("/deposit", () => {
   let depositsFixture: fixtures.FundsDepositedFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
 
-  before(async () => {
-    // Set up database and Redis
-    const databaseConfig = utils.getPostgresConfig(process.env);
-    dataSource = await createDataSource(databaseConfig).initialize();
+  beforeEach(async () => {
+    dataSource = await getTestDataSource();
 
     const redisConfig = Indexer.parseRedisConfig(process.env);
     redis = new Redis(redisConfig);
@@ -39,9 +38,8 @@ describe("/deposit", () => {
     app = ExpressApp({ deposits: depositsRouter });
   });
 
-  after(async () => {
+  afterEach(async () => {
     // Clean up resources
-    await depositsFixture.deleteAllDeposits();
     await dataSource.destroy();
     await redis.quit();
   });

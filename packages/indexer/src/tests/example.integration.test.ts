@@ -6,14 +6,14 @@ import {
   entities,
   fixtures,
 } from "@repo/indexer-database";
+import { getTestDataSource } from "./setup";
 
 describe("example", () => {
   let repository: Repository<entities.V3FundsDeposited>;
   let depositsFixture: fixtures.FundsDepositedFixture;
 
   before(async () => {
-    const databaseConfig = parsePostgresConfig(process.env);
-    const dataSource = await createDataSource(databaseConfig).initialize();
+    const dataSource = await getTestDataSource();
     repository = dataSource.getRepository(entities.V3FundsDeposited);
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
   });
