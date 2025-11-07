@@ -13,6 +13,7 @@ import {
   getOftChainConfiguration,
   isEndpointIdSupported,
 } from "../adapter/oft/service";
+import { OftTransferAggregator } from "./OftTransferAggregator";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -28,6 +29,7 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
+  private oftTransferAggregator: OftTransferAggregator;
 
   constructor(
     private logger: Logger,
