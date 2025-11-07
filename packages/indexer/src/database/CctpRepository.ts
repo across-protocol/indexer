@@ -19,7 +19,7 @@ import {
 } from "../data-indexing/adapter/cctp-v2/model";
 import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
-import { SimpleTransferFlowCompletedWithBlock } from "../data-indexing/model/hyperEvmExecutor";
+import { SimpleTransferFlowCompletedLog } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
 export type BurnEventsPair = {
@@ -103,7 +103,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveSimpleTransferFlowCompletedEvents(
-    simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedWithBlock[],
+    simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[],
     lastFinalisedBlock: number,
     chainId: number,
     blockDates: Record<number, Date>,
@@ -117,12 +117,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           transactionIndex: event.transactionIndex,
           blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
-          quoteNonce: event.quoteNonce,
-          finalRecipient: event.finalRecipient,
-          finalToken: event.finalToken,
-          evmAmountIn: event.evmAmountIn,
-          bridgingFeesIncurred: event.bridgingFeesIncurred,
-          evmAmountSponsored: event.evmAmountSponsored,
+          quoteNonce: event.args.quoteNonce,
+          finalRecipient: event.args.finalRecipient,
+          finalToken: event.args.finalToken.toString(),
+          evmAmountIn: event.args.evmAmountIn.toString(),
+          bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
+          evmAmountSponsored: event.args.evmAmountSponsored.toString(),
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });

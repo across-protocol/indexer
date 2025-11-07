@@ -7,7 +7,6 @@ import {
   BlockRange,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
-  SimpleTransferFlowCompletedWithBlock,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -576,11 +575,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       this.convertSponsoredDepositForBurnToChainAgnostic(event),
     );
 
-    const chainAgnosticSimpleTransferFlowCompletedEvents =
-      simpleTransferFlowCompletedEvents.map((event) =>
-        this.convertSimpleTransferFlowCompletedToChainAgnostic(event),
-      );
-
     const [
       savedBurnEvents,
       savedMintEvents,
@@ -606,7 +600,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
       ),
       this.cctpRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
-        chainAgnosticSimpleTransferFlowCompletedEvents,
+        simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
@@ -758,23 +752,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintAndWithdraw: this.convertMintAndWithdrawToChainAgnostic(
         pair.mintAndWithdraw,
       ),
-    };
-  }
-
-  private convertSimpleTransferFlowCompletedToChainAgnostic(
-    event: SimpleTransferFlowCompletedLog,
-  ): SimpleTransferFlowCompletedWithBlock {
-    return {
-      blockNumber: event.blockNumber,
-      transactionHash: event.transactionHash,
-      transactionIndex: event.transactionIndex,
-      logIndex: event.logIndex,
-      quoteNonce: event.args.quoteNonce,
-      finalRecipient: event.args.finalRecipient,
-      finalToken: event.args.finalToken,
-      evmAmountIn: event.args.evmAmountIn.toString(),
-      bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
-      evmAmountSponsored: event.args.evmAmountSponsored.toString(),
     };
   }
 
