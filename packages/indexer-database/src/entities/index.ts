@@ -30,3 +30,20 @@ export * from "./WebhookClient";
 
 export * from "./IndexerProgressInfo";
 export * from "./HistoricPrice";
+
+// CCTP
+export * from "./evm/DepositForBurn";
+export * from "./evm/MessageSent";
+export * from "./evm/MintAndWithdraw";
+export * from "./evm/MessageReceived";
+export * from "./evm/SponsoredDepositForBurn";
+
+export * from "./CctpFinalizerJob";
+
+// OFT
+export * from "./evm/OftSent";
+export * from "./evm/OftReceived";
+export * from "./OftTransfer";
+
+// HyperEVM
+export * from "./evm/SimpleTransferFlowCompleted";

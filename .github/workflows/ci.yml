@@ -26,6 +26,15 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install
+      - name: Validate and inject secret into .env.test
+        env:
+          RPC_PROVIDER_URLS_421614: ${{ secrets.RPC_PROVIDER_URLS_421614 }}
+          RPC_PROVIDER_URLS_998: ${{ secrets.RPC_PROVIDER_URLS_998 }}
+        run: |
+          # Safely append the secret, prefixed with a newline.
+          # This prevents file corruption.
+          printf '\n%s\n' "RPC_PROVIDER_URLS_421614=$RPC_PROVIDER_URLS_421614" >> .env.test
+          printf '\n%s\n' "RPC_PROVIDER_URLS_998=$RPC_PROVIDER_URLS_998" >> .env.test
       - name: Run tests using docker
         run: pnpm test:e2e:docker
   build:

@@ -64,6 +64,18 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.IndexerProgressInfo,
       // Historic Price
       entities.HistoricPrice,
+      // CCTP
+      entities.MessageSent,
+      entities.DepositForBurn,
+      entities.MessageReceived,
+      entities.MintAndWithdraw,
+      entities.SponsoredDepositForBurn,
+      entities.CctpFinalizerJob,
+      // OFT
+      entities.OFTSent,
+      entities.OFTReceived,
+      // HyperEVM
+      entities.SimpleTransferFlowCompleted,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

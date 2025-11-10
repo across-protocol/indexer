@@ -11,6 +11,13 @@ import {
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
   METADATA_EMITTED_ABI,
 } from "./model/abis";
+import {
+  MessageSentLog,
+  MintAndWithdrawLog,
+  SponsoredDepositForBurnLog,
+} from "../data-indexing/adapter/cctp-v2/model";
+import { SimpleTransferFlowCompleted } from "../../../indexer-database/dist/src/entities";
+import { SimpleTransferFlowCompletedLog } from "../data-indexing/model/hyperEvmExecutor";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -81,6 +88,89 @@ export class EventDecoder {
       METADATA_EMITTED_ABI,
     );
 
+    return events;
+  }
+
+  /**
+   * Decode CCTP MessageSent events and optionally specify the address of
+   * the contract that emitted the event to avoid naming collisions.
+   */
+  static decodeCCTPMessageSentEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    const eventTopic =
+      "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
+    const eventAbi = ["event MessageSent (bytes message)"];
+    let events: MessageSentLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeCCTPMintAndWithdrawEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    const eventTopic =
+      "0x50c55e915134d457debfa58eb6f4342956f8b0616d51a89a3659360178e1ab63";
+    const eventAbi = [
+      "event MintAndWithdraw(address indexed mintRecipient, uint256 amount, address indexed mintToken, uint256 feeCollected)",
+    ];
+    let events: MintAndWithdrawLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeCCTPSponsoredDepositForBurnEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://sepolia.arbiscan.io/tx/0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576#eventlog
+    const eventTopic =
+      "0x42d1b5f3692944aee65b659fda3e120f817f17d8f2ac9a256f6fc5d642a591fe";
+    // ABI fragment for the event
+    const eventAbi = [
+      "event SponsoredDepositForBurn(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes signature)",
+    ];
+
+    let events: SponsoredDepositForBurnLog[] =
+      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeSimpleTransferFlowCompletedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://testnet.purrsec.com/tx/0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9
+    const eventTopic =
+      "0xb021c853215aadb12b6fa8afa7b3158201517d9abf7f756cdbb67bd66abc5a1c";
+    const eventAbi = [
+      "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
+    ];
+    let events: SimpleTransferFlowCompletedLog[] =
+      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
     return events;
   }
 
