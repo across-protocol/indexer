@@ -29,6 +29,8 @@ const DepositFields = [
   `deposit.inputToken as "inputToken"`,
   `deposit.inputAmount as "inputAmount"`,
   `deposit.outputToken as "outputToken"`,
+  `CASE WHEN swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" THEN swapMetadata.address ELSE NULL END as "swapOutputToken"`,
+  `CASE WHEN swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" THEN swapMetadata.minAmountOut ELSE NULL END as "swapOutputTokenAmount"`,
   `deposit.outputAmount as "outputAmount"`,
   `deposit.message as "message"`,
   `deposit.messageHash as "messageHash"`,
@@ -70,6 +72,7 @@ const SwapBeforeBridgeFields = [
   `swap.swapToken as "swapToken"`,
   `swap.swapTokenAmount as "swapTokenAmount"`,
 ];
+
 export class DepositsService {
   constructor(
     private db: DataSource,
@@ -96,6 +99,11 @@ export class DepositsService {
         entities.FilledV3Relay,
         "fill",
         "fill.id = rhi.fillEventId",
+      )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        `swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum"`,
       )
       .orderBy("deposit.blockTimestamp", "DESC")
       .select([
@@ -356,6 +364,11 @@ export class DepositsService {
       "fill",
       "fill.id = rhi.fillEventId",
     );
+    queryBuilder.leftJoinAndSelect(
+      entities.SwapMetadata,
+      "swapMetadata",
+      `swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum"`,
+    );
 
     if (params.depositId && params.originChainId) {
       queryBuilder.andWhere(
@@ -447,6 +460,11 @@ export class DepositsService {
         entities.RelayHashInfo,
         "rhi",
         "rhi.depositEventId = deposit.id",
+      )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        `swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum"`,
       )
       .where("rhi.status IN (:...unfilledStatuses)", {
         unfilledStatuses: [
@@ -543,6 +561,11 @@ export class DepositsService {
         entities.FilledV3Relay,
         "fill",
         "fill.id = rhi.fillEventId",
+      )
+      .leftJoinAndSelect(
+        entities.SwapMetadata,
+        "swapMetadata",
+        `swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum"`,
       )
       .where("rhi.status = :status", { status: entities.RelayStatus.Filled })
       .andWhere("deposit.blockTimestamp BETWEEN :startDate AND :endDate", {
