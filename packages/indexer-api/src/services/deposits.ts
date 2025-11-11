@@ -13,6 +13,7 @@ import {
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
+import { combineQueriesWithUnionAll } from "../utils/query";
 
 type APIHandler = (
   params?: JSON,
@@ -292,94 +293,17 @@ export class DepositsService {
       );
     }
 
-    // Get SQL and parameters from both queries
-    const fundsDepositedSql = fundsDepositedQueryBuilder.getQuery();
-    const fundsDepositedParams = fundsDepositedQueryBuilder.getParameters();
-
-    const depositForBurnSql = depositForBurnQueryBuilder.getQuery();
-    const depositForBurnParams = depositForBurnQueryBuilder.getParameters();
-
-    // Convert named parameters to positional parameters for db.query()
-    // TypeORM's query() expects positional parameters ($1, $2, etc.)
-    const convertToPositional = (
-      sql: string,
-      paramObj: Record<string, any>,
-    ): { sql: string; params: any[] } => {
-      // Extract parameter names in the order they appear in SQL
-      const paramMatches = sql.matchAll(/:(\w+)/g);
-      const paramOrder: string[] = [];
-      const seen = new Set<string>();
-      for (const match of paramMatches) {
-        const paramName = match[1];
-        if (paramName && !seen.has(paramName)) {
-          paramOrder.push(paramName);
-          seen.add(paramName);
-        }
-      }
-
-      // Extract parameter order from SQL (TypeORM should always have matching parameters)
-      const paramKeys =
-        paramOrder.length > 0 ? paramOrder : Object.keys(paramObj);
-      const paramValues: any[] = [];
-      let positionalSql = sql;
-      let paramIndex = 1;
-
-      // Replace named parameters with positional ones in order
-      for (const key of paramKeys) {
-        if (!(key in paramObj)) continue;
-        const namedParam = `:${key}`;
-        const positionalParam = `$${paramIndex}`;
-        // Use word boundary regex to avoid partial matches
-        positionalSql = positionalSql.replace(
-          new RegExp(`\\${namedParam}(?!\\w)`, "g"),
-          positionalParam,
-        );
-        paramValues.push(paramObj[key]);
-        paramIndex++;
-      }
-
-      return { sql: positionalSql, params: paramValues };
-    };
-
-    const fundsDepositedConverted = convertToPositional(
-      fundsDepositedSql,
-      fundsDepositedParams,
+    // Combine queries with UNION ALL using utility function
+    const { sql: paginatedSql, params: allParams } = combineQueriesWithUnionAll(
+      fundsDepositedQueryBuilder,
+      depositForBurnQueryBuilder,
+      {
+        orderBy: "depositBlockTimestamp",
+        orderDirection: "DESC",
+        limit: params.limit || 50,
+        offset: params.skip || 0,
+      },
     );
-    const depositForBurnConverted = convertToPositional(
-      depositForBurnSql,
-      depositForBurnParams,
-    );
-
-    // Offset second query's parameters
-    const offset = fundsDepositedConverted.params.length;
-    const adjustedDepositForBurnSql = depositForBurnConverted.sql.replace(
-      /\$(\d+)/g,
-      (_, num) => `$${parseInt(num, 10) + offset}`,
-    );
-
-    // Combine queries with UNION ALL
-    // Remove ORDER BY from UNION and apply it to the outer query to avoid table reference issues
-    const unionSql = `
-      SELECT * FROM (
-        ${fundsDepositedConverted.sql}
-      ) AS q1
-      UNION ALL
-      SELECT * FROM (
-        ${adjustedDepositForBurnSql}
-      ) AS q2
-    `.trim();
-
-    // Merge parameters in order
-    const allParams = [
-      ...fundsDepositedConverted.params,
-      ...depositForBurnConverted.params,
-    ];
-
-    // Apply ORDER BY and pagination to the outer query
-    // This ensures ORDER BY references output columns, not source table columns
-    const skip = params.skip || 0;
-    const limit = params.limit || 50;
-    const paginatedSql = `SELECT * FROM (${unionSql}) AS combined_results ORDER BY "depositBlockTimestamp" DESC LIMIT ${limit} OFFSET ${skip}`;
 
     // Execute the combined UNION query
     const allDeposits: DepositReturnType[] = await this.db.query(
