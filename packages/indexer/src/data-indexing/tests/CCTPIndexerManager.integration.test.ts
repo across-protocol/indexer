@@ -25,7 +25,7 @@ describe("CCTPIndexerManager", () => {
 
   const transactionHash =
     "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
-  const blockNumber = 209540538;
+  const blockNumber = 214159659;
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();

@@ -62,7 +62,7 @@ describe("CCTPIndexerDataHandler", () => {
   it("should fetch events for a given block range including a sample transaction", async () => {
     const transactionHash =
       "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
-    const blockNumber = 209540538;
+    const blockNumber = 214159659;
     setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 
     const blockRange: BlockRange = {
@@ -88,7 +88,7 @@ describe("CCTPIndexerDataHandler", () => {
   it("should store sponsoredDepositForBurn event in the database", async () => {
     const transactionHash =
       "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
-    const blockNumber = 209540538;
+    const blockNumber = 214159659;
     setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
