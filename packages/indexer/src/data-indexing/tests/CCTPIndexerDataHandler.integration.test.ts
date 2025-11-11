@@ -61,7 +61,7 @@ describe("CCTPIndexerDataHandler", () => {
    */
   it("should fetch events for a given block range including a sample transaction", async () => {
     const transactionHash =
-      "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
+      "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
     const blockNumber = 209540538;
     setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 
@@ -87,7 +87,7 @@ describe("CCTPIndexerDataHandler", () => {
    */
   it("should store sponsoredDepositForBurn event in the database", async () => {
     const transactionHash =
-      "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
+      "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
     const blockNumber = 209540538;
     setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
 

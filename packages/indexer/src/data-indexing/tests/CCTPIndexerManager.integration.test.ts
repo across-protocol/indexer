@@ -24,7 +24,7 @@ describe("CCTPIndexerManager", () => {
   let retryProvidersFactory: RetryProvidersFactory;
 
   const transactionHash =
-    "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
+    "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
   const blockNumber = 209540538;
 
   beforeEach(async () => {
