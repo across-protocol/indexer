@@ -82,10 +82,10 @@ class CctpFinalizerService extends RepeatableTask {
       //#region devnote
       // Steps:
       // 1. Get the burn events from the database that were not published to the pubsub topic yet.
-      // 2. Publish the burn events info to the pubsub topic. As an optimization, publish only
-      // the burn events for which the attestation is available.
-      // 3. Create a new CctpFinalizerJob row in the database for each burn event that was published
-      // to the pubsub topic, so that they are picked up again.
+      // 2. For each burn event, check if there's a matching SponsoredDepositForBurn event.
+      //    If found, publish with signature; otherwise publish without signature.
+      // 3. Create a new CctpFinalizerJob row in the database for each burn event that was
+      //    published to the pubsub topic, so that they are not picked up again.
       //#endregion
       const qb = this.postgres
         .createQueryBuilder(DepositForBurn, "burnEvent")
@@ -96,59 +96,40 @@ class CctpFinalizerService extends RepeatableTask {
       const burnEvents = await qb.getMany();
 
       for (const burnEvent of burnEvents) {
-        await this.publishBurnEvent(burnEvent);
-      }
-
-      // Process SponsoredDepositForBurn events in parallel
-      // Query SponsoredDepositForBurn events that haven't been published yet
-      // We check by looking for events that don't have a matching CctpFinalizerJob
-      // with the same sponsoredDepositForBurnId
-      const sponsoredQb = this.postgres
-        .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
-        .leftJoin(
-          CctpFinalizerJob,
-          "job",
-          "job.sponsoredDepositForBurnId = sponsored.id",
-        )
-        .where("job.id IS NULL")
-        .andWhere("sponsored.deletedAt IS NULL");
-      const sponsoredEvents = await sponsoredQb.getMany();
-
-      for (const sponsored of sponsoredEvents) {
-        // Find the matching DepositForBurn event with the highest logIndex that's still lower
-        // SponsoredDepositForBurn events come after DepositForBurn events in the same transaction.
-        const matchingDepositQb = this.postgres
-          .createQueryBuilder(DepositForBurn, "burn")
-          .where("burn.transactionHash = :transactionHash", {
-            transactionHash: sponsored.transactionHash,
+        // Check if there's a matching SponsoredDepositForBurn event for this deposit
+        const sponsoredEvent = await this.postgres
+          .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
+          .leftJoin(
+            CctpFinalizerJob,
+            "job",
+            "job.sponsoredDepositForBurnId = sponsored.id",
+          )
+          .where("sponsored.transactionHash = :transactionHash", {
+            transactionHash: burnEvent.transactionHash,
           })
-          .andWhere("burn.chainId = :chainId", {
-            chainId: sponsored.chainId,
+          .andWhere("sponsored.chainId = :chainId", {
+            chainId: burnEvent.chainId,
           })
-          .andWhere("burn.logIndex < :logIndex", {
-            logIndex: sponsored.logIndex,
+          .andWhere("sponsored.logIndex > :logIndex", {
+            logIndex: burnEvent.logIndex,
           })
-          .andWhere("burn.deletedAt IS NULL")
-          .orderBy("burn.logIndex", "DESC")
-          .limit(1);
-        const matchingDeposit = await matchingDepositQb.getOne();
+          .andWhere("job.id IS NULL")
+          .andWhere("sponsored.deletedAt IS NULL")
+          .orderBy("sponsored.logIndex", "ASC")
+          .limit(1)
+          .getOne();
 
-        if (!matchingDeposit) {
-          this.logger.debug({
-            at: "CctpFinalizerService#taskLogic",
-            message:
-              "Skipping sponsored deposit for burn event - no matching DepositForBurn found",
-            sponsoredId: sponsored.id,
-            transactionHash: sponsored.transactionHash,
-          });
-          continue;
+        if (sponsoredEvent) {
+          // If there's a matching sponsored event, publish with signature
+          await this.publishBurnEvent(
+            burnEvent,
+            sponsoredEvent.signature,
+            sponsoredEvent.id,
+          );
+        } else {
+          // Otherwise, publish without signature
+          await this.publishBurnEvent(burnEvent);
         }
-
-        await this.publishBurnEvent(
-          matchingDeposit,
-          sponsored.signature,
-          sponsored.id,
-        );
       }
     } catch (error) {
       this.logger.error({
@@ -183,7 +164,7 @@ class CctpFinalizerService extends RepeatableTask {
       const elapsedSeconds =
         new Date().getTime() / 1000 - blockTimestamp.getTime() / 1000;
 
-      if (elapsedSeconds < attestationTimeSeconds * 1000) {
+      if (elapsedSeconds < attestationTimeSeconds) {
         this.logger.debug({
           at: "CctpFinalizerService#publishBurnEvent",
           message:
@@ -272,7 +253,7 @@ class CctpFinalizerService extends RepeatableTask {
         .createQueryBuilder(CctpFinalizerJob, "j")
         .insert()
         .values(jobValues)
-        .orUpdate(["attestation"], ["burnEventId"])
+        .orUpdate(["attestation", "sponsoredDepositForBurnId"], ["burnEventId"])
         .execute();
     } catch (error) {
       this.logger.error({
