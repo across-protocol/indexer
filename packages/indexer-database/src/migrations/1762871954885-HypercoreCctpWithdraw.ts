@@ -20,7 +20,7 @@ export class HypercoreCctpWithdraw1762871954885 implements MigrationInterface {
             "mintEventId" integer,
             "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
             "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
-            CONSTRAINT "UK_hypercoreCctpWithdraw_fromAddress_nonce" UNIQUE ("fromAddress", "hypercoreNonce"),
+            CONSTRAINT "UK_hypercoreCctpWithdraw_fromAddress_hypercoreNonce" UNIQUE ("fromAddress", "hypercoreNonce"),
             CONSTRAINT "REL_9d84ce07f5d7558a64ff2d56e3" UNIQUE ("burnEventId"),
             CONSTRAINT "REL_c36b10bfb54d6b3177c3f9cc9a" UNIQUE ("mintEventId"),
             CONSTRAINT "PK_bbe2eada815e0946e5f0866557b" PRIMARY KEY ("id"))

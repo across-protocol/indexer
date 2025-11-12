@@ -13,7 +13,7 @@ import { DepositForBurn } from "./evm/DepositForBurn";
 import { MessageReceived } from "./evm/MessageReceived";
 
 @Entity()
-@Unique("UK_hypercoreCctpWithdraw_fromAddress_nonce", [
+@Unique("UK_hypercoreCctpWithdraw_fromAddress_hypercoreNonce", [
   "fromAddress",
   "hypercoreNonce",
 ])
