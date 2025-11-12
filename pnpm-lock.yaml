@@ -269,6 +269,9 @@ importers:
 
   packages/indexer-api:
     dependencies:
+      '@across-protocol/constants':
+        specifier: ^3.1.82
+        version: 3.1.83
       '@across-protocol/sdk':
         specifier: ^4.3.75
         version: 4.3.81(@solana/sysvars@2.1.0(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)

@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import type {
   DepositParams,
@@ -7,9 +8,11 @@ import type {
   DepositReturnType,
   ParsedDepositReturnType,
   DepositStatusResponse,
+  DepositStatusParams,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
+  HyperliquidWithdrawalNotFoundException,
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
@@ -222,7 +225,7 @@ export class DepositsService {
   }
 
   public async getDepositStatus(
-    params: DepositParams,
+    params: DepositStatusParams,
   ): Promise<DepositStatusResponse> {
     // in the validation rules each of these params are marked as optional
     // but we need to check that at least one of them is present
@@ -237,12 +240,21 @@ export class DepositsService {
       throw new IncorrectQueryParamsException();
     }
 
+    if ((params.from && !params.nonce) || (!params.from && params.nonce)) {
+      throw new IncorrectQueryParamsException();
+    }
+
     // construct cache key
     const cacheKey = this.getDepositStatusCacheKey(params);
     const cachedData = await this.redis.get(cacheKey);
 
     if (cachedData) {
       return JSON.parse(cachedData);
+    }
+
+    if (params.from && params.nonce) {
+      // Hyperliquid Withdrawal status check
+      return this.getHyperliquidWithdrawalStatus(params);
     }
 
     // no cached data, so we need to query the database
@@ -320,6 +332,46 @@ export class DepositsService {
         this.getDepositStatusCacheTTLSeconds(relay.status),
       );
     }
+    return result;
+  }
+
+  private async getHyperliquidWithdrawalStatus(params: DepositStatusParams) {
+    const cacheKey = this.getDepositStatusCacheKey(params);
+    const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
+    const withdrawal = await repo.findOne({
+      where: {
+        fromAddress: params.from,
+        hypercoreNonce: params.nonce,
+      },
+    });
+
+    if (!withdrawal) {
+      throw new HyperliquidWithdrawalNotFoundException();
+    }
+
+    const result = {
+      status: "filled",
+      originChainId: CHAIN_IDs.HYPERCORE,
+      depositId: null,
+      depositTxnRef: null,
+      fillTxnRef: withdrawal.mintTxnHash,
+      destinationChainId: parseInt(withdrawal.destinationChainId),
+      depositRefundTxnRef: null,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex: 0,
+        maxIndex: 0,
+      },
+    };
+
+    const cacheTtlSeconds = 60 * 60 * 24; // 24 hours
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      cacheTtlSeconds,
+    );
+
     return result;
   }
 
@@ -703,7 +755,7 @@ export class DepositsService {
     return false;
   }
 
-  private getDepositStatusCacheKey(params: DepositParams) {
+  private getDepositStatusCacheKey(params: DepositStatusParams) {
     if (params.depositId && params.originChainId) {
       return `depositStatus-${params.depositId}-${params.originChainId}-${params.index}`;
     }
@@ -714,6 +766,10 @@ export class DepositsService {
     }
     if (params.relayDataHash) {
       return `depositStatus-${params.relayDataHash}-${params.index}`;
+    }
+
+    if (params.from && params.nonce) {
+      return `depositStatus-${params.from}-${params.nonce}`;
     }
 
     // in theory this should never happen because we have already checked
