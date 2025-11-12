@@ -50,48 +50,55 @@ export interface UnionQueryOptions {
   offset?: number;
 }
 
+type QueryBuilder = {
+  getQuery(): string;
+  getParameters(): Record<string, any>;
+};
+
 /**
- * Combines two TypeORM query builders into a single UNION ALL query
- * @param queryBuilder1 First query builder (must have getQuery() and getParameters() methods)
- * @param queryBuilder2 Second query builder (must have getQuery() and getParameters() methods)
+ * Combines multiple TypeORM query builders into a single UNION ALL query
+ * @param queryBuilders Array of query builders (must have getQuery() and getParameters() methods)
  * @param options Options for ordering and pagination
  * @returns Object containing the final SQL query and merged parameters
  */
 export function combineQueriesWithUnionAll(
-  queryBuilder1: { getQuery(): string; getParameters(): Record<string, any> },
-  queryBuilder2: { getQuery(): string; getParameters(): Record<string, any> },
+  queryBuilders: QueryBuilder[],
   options: UnionQueryOptions = {},
 ): { sql: string; params: any[] } {
-  // Get SQL and parameters from both queries
-  const sql1 = queryBuilder1.getQuery();
-  const params1 = queryBuilder1.getParameters();
-  const sql2 = queryBuilder2.getQuery();
-  const params2 = queryBuilder2.getParameters();
+  if (queryBuilders.length < 2) {
+    throw new Error("At least 2 query builders are required");
+  }
 
-  // Convert named parameters to positional parameters
-  const converted1 = convertNamedToPositionalParams(sql1, params1);
-  const converted2 = convertNamedToPositionalParams(sql2, params2);
+  // Convert all queries to positional parameters
+  const convertedQueries = queryBuilders.map((qb) => {
+    const sql = qb.getQuery();
+    const params = qb.getParameters();
+    return convertNamedToPositionalParams(sql, params);
+  });
 
-  // Offset second query's parameters to avoid conflicts
-  const offset = converted1.params.length;
-  const adjustedSql2 = converted2.sql.replace(
-    /\$(\d+)/g,
-    (_, num) => `$${parseInt(num, 10) + offset}`,
+  // Calculate cumulative offsets for each query
+  let cumulativeOffset = 0;
+  const adjustedQueries = convertedQueries.map((converted, index) => {
+    if (index === 0) {
+      cumulativeOffset = converted.params.length;
+      return converted;
+    }
+    const adjustedSql = converted.sql.replace(
+      /\$(\d+)/g,
+      (_, num) => `$${parseInt(num, 10) + cumulativeOffset}`,
+    );
+    cumulativeOffset += converted.params.length;
+    return { sql: adjustedSql, params: converted.params };
+  });
+
+  // Build UNION ALL query
+  const unionParts = adjustedQueries.map(
+    (q, i) => `SELECT * FROM (${q.sql}) AS q${i + 1}`,
   );
+  const unionSql = unionParts.join(" UNION ALL ");
 
-  // Combine queries with UNION ALL
-  const unionSql = `
-    SELECT * FROM (
-      ${converted1.sql}
-    ) AS q1
-    UNION ALL
-    SELECT * FROM (
-      ${adjustedSql2}
-    ) AS q2
-  `.trim();
-
-  // Merge parameters in order
-  const allParams = [...converted1.params, ...converted2.params];
+  // Merge all parameters in order
+  const allParams = adjustedQueries.flatMap((q) => q.params);
 
   // Apply ORDER BY and pagination to the outer query
   const {

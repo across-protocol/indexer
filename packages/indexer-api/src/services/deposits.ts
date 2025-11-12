@@ -126,6 +126,58 @@ const DepositForBurnSwapBeforeBridgeFields = [
   `NULL::varchar as "swapTokenAmount"`,
 ];
 
+const OftSentFields = [
+  `"oftSent".id::integer as "id"`,
+  `NULL::varchar as "relayHash"`,
+  `NULL::decimal as "depositId"`,
+  `"oftSent"."chainId"::bigint as "originChainId"`,
+  `"oftReceived"."chainId"::bigint as "destinationChainId"`,
+  `"oftSent"."fromAddress"::varchar as "depositor"`,
+  `"oftReceived"."toAddress"::varchar as "recipient"`,
+  `"oftSent"."token"::varchar as "inputToken"`,
+  `"oftSent"."amountSentLD"::varchar as "inputAmount"`,
+  `"oftReceived"."token"::varchar as "outputToken"`,
+  `NULL::varchar as "swapOutputToken"`,
+  `NULL::varchar as "swapOutputTokenAmount"`,
+  `"oftReceived"."amountReceivedLD"::varchar as "outputAmount"`,
+  `NULL::varchar as "message"`,
+  `NULL::varchar as "messageHash"`,
+  `NULL::varchar as "exclusiveRelayer"`,
+  `NULL::timestamp as "exclusivityDeadline"`,
+  `NULL::timestamp as "fillDeadline"`,
+  `"oftSent"."blockTimestamp"::timestamp as "quoteTimestamp"`,
+  `"oftSent"."transactionHash"::varchar as "depositTxHash"`,
+  `"oftSent"."blockNumber"::integer as "depositBlockNumber"`,
+  `"oftSent"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
+];
+
+const OftSentRelayHashInfoFields = [
+  `NULL::varchar as "status"`,
+  `NULL::varchar as "depositRefundTxHash"`,
+  `NULL::decimal as "swapTokenPriceUsd"`,
+  `NULL::decimal as "swapFeeUsd"`,
+  `NULL::decimal as "bridgeFeeUsd"`,
+  `NULL::decimal as "inputPriceUsd"`,
+  `NULL::decimal as "outputPriceUsd"`,
+  `NULL::decimal as "fillGasFee"`,
+  `NULL::decimal as "fillGasFeeUsd"`,
+  `NULL::decimal as "fillGasTokenPriceUsd"`,
+  `NULL::boolean as "actionsSucceeded"`,
+  `NULL::bigint as "actionsTargetChainId"`,
+];
+
+const OftSentFilledRelayFields = [
+  `NULL::varchar as "relayer"`,
+  `"oftReceived"."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
+  `"oftReceived"."transactionHash"::varchar as "fillTx"`,
+];
+
+const OftSentSwapBeforeBridgeFields = [
+  `NULL::varchar as "swapTransactionHash"`,
+  `NULL::varchar as "swapToken"`,
+  `NULL::varchar as "swapTokenAmount"`,
+];
+
 export class DepositsService {
   constructor(
     private db: DataSource,
@@ -182,6 +234,21 @@ export class DepositsService {
         ...DepositForBurnFilledRelayFields,
       ]);
 
+    const oftSentRepo = this.db.getRepository(entities.OFTSent);
+    const oftSentQueryBuilder = oftSentRepo
+      .createQueryBuilder("oftSent")
+      .leftJoin(
+        entities.OFTReceived,
+        "oftReceived",
+        "oftReceived.guid = oftSent.guid",
+      )
+      .select([
+        ...OftSentFields,
+        ...OftSentRelayHashInfoFields,
+        ...OftSentSwapBeforeBridgeFields,
+        ...OftSentFilledRelayFields,
+      ]);
+
     if (params.address) {
       fundsDepositedQueryBuilder.andWhere(
         "deposit.depositor = :address OR deposit.recipient = :address",
@@ -191,6 +258,12 @@ export class DepositsService {
       );
       depositForBurnQueryBuilder.andWhere(
         "depositForBurn.depositor = :address OR depositForBurn.mintRecipient = :address",
+        {
+          address: params.address,
+        },
+      );
+      oftSentQueryBuilder.andWhere(
+        "oftSent.fromAddress = :address OR oftReceived.toAddress = :address",
         {
           address: params.address,
         },
@@ -206,6 +279,9 @@ export class DepositsService {
             depositor: params.depositor,
           },
         );
+        oftSentQueryBuilder.andWhere("oftSent.fromAddress = :depositor", {
+          depositor: params.depositor,
+        });
       }
 
       if (params.recipient) {
@@ -218,6 +294,9 @@ export class DepositsService {
             recipient: params.recipient,
           },
         );
+        oftSentQueryBuilder.andWhere("oftReceived.toAddress = :recipient", {
+          recipient: params.recipient,
+        });
       }
     }
 
@@ -231,6 +310,9 @@ export class DepositsService {
           inputToken: params.inputToken,
         },
       );
+      oftSentQueryBuilder.andWhere("oftSent.token = :inputToken", {
+        inputToken: params.inputToken,
+      });
     }
 
     if (params.outputToken) {
@@ -246,6 +328,9 @@ export class DepositsService {
           outputToken: params.outputToken,
         },
       );
+      oftSentQueryBuilder.andWhere("oftReceived.token = :outputToken", {
+        outputToken: params.outputToken,
+      });
     }
 
     if (params.originChainId) {
@@ -261,6 +346,9 @@ export class DepositsService {
           originChainId: params.originChainId,
         },
       );
+      oftSentQueryBuilder.andWhere("oftSent.chainId = :originChainId", {
+        originChainId: params.originChainId.toString(),
+      });
     }
 
     if (params.destinationChainId) {
@@ -272,6 +360,12 @@ export class DepositsService {
       );
       depositForBurnQueryBuilder.andWhere(
         "mintAndWithdraw.chainId = :destinationChainId",
+        {
+          destinationChainId: params.destinationChainId.toString(),
+        },
+      );
+      oftSentQueryBuilder.andWhere(
+        "oftReceived.chainId = :destinationChainId",
         {
           destinationChainId: params.destinationChainId.toString(),
         },
@@ -295,8 +389,11 @@ export class DepositsService {
 
     // Combine queries with UNION ALL using utility function
     const { sql: paginatedSql, params: allParams } = combineQueriesWithUnionAll(
-      fundsDepositedQueryBuilder,
-      depositForBurnQueryBuilder,
+      [
+        fundsDepositedQueryBuilder,
+        depositForBurnQueryBuilder,
+        oftSentQueryBuilder,
+      ],
       {
         orderBy: "depositBlockTimestamp",
         orderDirection: "DESC",
