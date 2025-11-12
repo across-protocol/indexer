@@ -30,6 +30,9 @@ export class CctpFinalizerJob {
   @Column()
   burnEventId: number;
 
+  @Column({ nullable: true })
+  sponsoredDepositForBurnId?: number;
+
   @OneToOne(() => DepositForBurn, (burnEvent) => burnEvent.id)
   @JoinColumn({ name: "burnEventId" })
   burnEvent: DepositForBurn;

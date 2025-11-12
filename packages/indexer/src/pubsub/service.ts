@@ -20,6 +20,7 @@ export class PubSubService {
     message: string,
     attestation: string,
     destinationChainId: number,
+    signature?: string,
   ) {
     if (!this.cctpFinalizerTopic) {
       const topic = this.pubSub.topic(this.config.pubSubCctpFinalizerTopic);
@@ -34,6 +35,7 @@ export class PubSubService {
         message,
         attestation,
         destinationChainId,
+        signature,
       }),
     );
     await this.cctpFinalizerTopic.publishMessage({ data: payload });

@@ -83,7 +83,7 @@ const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
   createMapWithDefault(
     {
       [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0x027823Dc987A29A0492A9c85629aeFb522fF3bdE",
+        "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
     },
     "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
   );

@@ -82,10 +82,10 @@ class CctpFinalizerService extends RepeatableTask {
       //#region devnote
       // Steps:
       // 1. Get the burn events from the database that were not published to the pubsub topic yet.
-      // 2. Publish the burn events info to the pubsub topic. As an optimization, publish only
-      // the burn events for which the attestation is available.
-      // 3. Create a new CctpFinalizerJob row in the database for each burn event that was published
-      // to the pubsub topic, so that they are picked up again.
+      // 2. For each burn event, check if there's a matching SponsoredDepositForBurn event.
+      //    If found, publish with signature; otherwise publish without signature.
+      // 3. Create a new CctpFinalizerJob row in the database for each burn event that was
+      //    published to the pubsub topic, so that they are not picked up again.
       //#endregion
       const qb = this.postgres
         .createQueryBuilder(DepositForBurn, "burnEvent")
@@ -96,7 +96,40 @@ class CctpFinalizerService extends RepeatableTask {
       const burnEvents = await qb.getMany();
 
       for (const burnEvent of burnEvents) {
-        await this.publishBurnEvent(burnEvent);
+        // Check if there's a matching SponsoredDepositForBurn event for this deposit
+        const sponsoredEvent = await this.postgres
+          .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
+          .leftJoin(
+            CctpFinalizerJob,
+            "job",
+            "job.sponsoredDepositForBurnId = sponsored.id",
+          )
+          .where("sponsored.transactionHash = :transactionHash", {
+            transactionHash: burnEvent.transactionHash,
+          })
+          .andWhere("sponsored.chainId = :chainId", {
+            chainId: burnEvent.chainId,
+          })
+          .andWhere("sponsored.logIndex > :logIndex", {
+            logIndex: burnEvent.logIndex,
+          })
+          .andWhere("job.id IS NULL")
+          .andWhere("sponsored.deletedAt IS NULL")
+          .orderBy("sponsored.logIndex", "ASC")
+          .limit(1)
+          .getOne();
+
+        if (sponsoredEvent) {
+          // If there's a matching sponsored event, publish with signature
+          await this.publishBurnEvent(
+            burnEvent,
+            sponsoredEvent.signature,
+            sponsoredEvent.id,
+          );
+        } else {
+          // Otherwise, publish without signature
+          await this.publishBurnEvent(burnEvent);
+        }
       }
     } catch (error) {
       this.logger.error({
@@ -114,7 +147,11 @@ class CctpFinalizerService extends RepeatableTask {
     return Promise.resolve();
   }
 
-  private async publishBurnEvent(burnEvent: DepositForBurn) {
+  private async publishBurnEvent(
+    burnEvent: DepositForBurn,
+    signature?: string,
+    sponsoredDepositForBurnId?: number,
+  ) {
     try {
       const { chainId, transactionHash, minFinalityThreshold, blockTimestamp } =
         burnEvent;
@@ -127,7 +164,7 @@ class CctpFinalizerService extends RepeatableTask {
       const elapsedSeconds =
         new Date().getTime() / 1000 - blockTimestamp.getTime() / 1000;
 
-      if (elapsedSeconds < attestationTimeSeconds * 1000) {
+      if (elapsedSeconds < attestationTimeSeconds) {
         this.logger.debug({
           at: "CctpFinalizerService#publishBurnEvent",
           message:
@@ -197,17 +234,26 @@ class CctpFinalizerService extends RepeatableTask {
         message,
         attestation,
         destinationChainId,
+        signature,
       );
+
+      const jobValues: {
+        attestation: string;
+        message: string;
+        burnEventId: number;
+        sponsoredDepositForBurnId?: number;
+      } = {
+        attestation,
+        message,
+        burnEventId: burnEvent.id,
+        ...(sponsoredDepositForBurnId && { sponsoredDepositForBurnId }),
+      };
 
       await this.postgres
         .createQueryBuilder(CctpFinalizerJob, "j")
         .insert()
-        .values({
-          attestation,
-          message,
-          burnEventId: burnEvent.id,
-        })
-        .orUpdate(["attestation"], ["burnEventId"])
+        .values(jobValues)
+        .orUpdate(["attestation", "sponsoredDepositForBurnId"], ["burnEventId"])
         .execute();
     } catch (error) {
       this.logger.error({
