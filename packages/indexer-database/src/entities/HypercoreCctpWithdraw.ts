@@ -17,7 +17,6 @@ import { MessageReceived } from "./evm/MessageReceived";
   "fromAddress",
   "hypercoreNonce",
 ])
-@Index("IX_hc_cctp_withdraw_burnTxHash", ["burnTxnHash"])
 export class HypercoreCctpWithdraw {
   @PrimaryGeneratedColumn()
   id: number;

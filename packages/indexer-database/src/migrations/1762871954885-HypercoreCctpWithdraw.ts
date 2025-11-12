@@ -26,9 +26,6 @@ export class HypercoreCctpWithdraw1762871954885 implements MigrationInterface {
             CONSTRAINT "PK_bbe2eada815e0946e5f0866557b" PRIMARY KEY ("id"))
         `);
     await queryRunner.query(
-      `CREATE INDEX "IX_hc_cctp_withdraw_burnTxHash" ON "hypercore_cctp_withdraw" ("burnTxnHash") `,
-    );
-    await queryRunner.query(
       `ALTER TABLE "hypercore_cctp_withdraw" ADD CONSTRAINT "FK_hypercoreCctpWithdraw_burnEventId" FOREIGN KEY ("burnEventId") REFERENCES "evm"."deposit_for_burn"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
@@ -42,9 +39,6 @@ export class HypercoreCctpWithdraw1762871954885 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE "hypercore_cctp_withdraw" DROP CONSTRAINT "FK_hypercoreCctpWithdraw_burnEventId"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IX_hc_cctp_withdraw_burnTxHash"`,
     );
     await queryRunner.query(`DROP TABLE "hypercore_cctp_withdraw"`);
   }
