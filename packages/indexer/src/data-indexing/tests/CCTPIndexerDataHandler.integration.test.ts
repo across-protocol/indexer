@@ -125,10 +125,8 @@ describe("CCTPIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    // We need to stub the filterTransactionsFromAcrossFinalizer method to avoid filtering out our test transaction
-    sinon
-      .stub(handler as any, "filterTransactionsFromAcrossFinalizer")
-      .returnsArg(0);
+    // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
 
     await handler.processBlockRange(blockRange, blockNumber);
 
@@ -154,11 +152,6 @@ describe("CCTPIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
-
-    // We need to stub the filterTransactionsFromAcrossFinalizer method to avoid filtering out our test transaction
-    sinon
-      .stub(handler as any, "filterTransactionsFromAcrossFinalizer")
-      .returnsArg(0);
 
     await handler.processBlockRange(blockRange, blockNumber);
 

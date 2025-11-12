@@ -35,6 +35,8 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
   getCctpDestinationChainFromDomain,
+  decodeMessageBody,
+  decodeHookData,
 } from "../adapter/cctp-v2/service";
 import { createMapWithDefault } from "../../utils/map";
 
@@ -203,8 +205,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         depositForBurnEvents,
       );
 
-    const filteredMessageReceivedEvents =
-      this.filterTransactionsFromAcrossFinalizer(messageReceivedEvents);
+    const filteredMessageReceivedEvents = this.filterMintTransactions(
+      messageReceivedEvents,
+    );
     const [transactionReceipts, blocks] = await Promise.all([
       this.getTransactionsReceipts([
         ...new Set([
@@ -342,11 +345,48 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private filterTransactionsFromAcrossFinalizer(
+  private filterMintTransactions(
     messageReceivedEvents: MessageReceivedEvent[],
   ) {
     return messageReceivedEvents.filter((event) => {
-      return WHITELISTED_FINALIZERS.includes(event.args.caller);
+      if (WHITELISTED_FINALIZERS.includes(event.args.caller)) {
+        return true;
+      }
+      const decodedMessage = decodeMessageBody(event.args.messageBody); // Validate message body can be decoded
+
+      // If we cannot decode the hyperCore withdrawal message, we skip the event
+      if (!decodedMessage) {
+        return false;
+      }
+      const isValidMessageBodyVersionId = decodedMessage.version === 1; // We currently only support version 1
+      if (!isValidMessageBodyVersionId) {
+        this.logger.warn({
+          at: "CCTPIndexerDataHandler#filterMintTransactions",
+          message: `Skipping MessageReceived event with unsupported message body version ${decodedMessage.version} on chain ${this.chainId}`,
+          transactionHash: event.transactionHash,
+        });
+        return false;
+      }
+      const decodedHookData = decodeHookData(decodedMessage.hookData); // Validate hook data can be decoded
+
+      // If we cannot decode the hook data with the expected format, we skip the event
+      if (!decodedHookData) {
+        return false;
+      }
+      const isValidHookDataVersionId = decodedHookData.versionId === 0; // We currently only support version 0
+      if (!isValidHookDataVersionId) {
+        this.logger.warn({
+          at: "CCTPIndexerDataHandler#filterMintTransactions",
+          message: `Skipping MessageReceived event with unsupported hook data version ${decodedHookData.versionId} on chain ${this.chainId}`,
+          transactionHash: event.transactionHash,
+        });
+        return false;
+      }
+      // We are only interested in hyperCore withdrawals which have the "cctp-forward" magic bytes
+      const isValidMagicBytes = ethers.utils
+        .toUtf8String(ethers.utils.arrayify(decodedHookData.magicBytes))
+        .includes("cctp-forward");
+      return isValidMagicBytes;
     });
   }
 
