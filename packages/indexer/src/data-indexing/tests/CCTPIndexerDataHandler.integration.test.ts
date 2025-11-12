@@ -189,4 +189,80 @@ describe("CCTPIndexerDataHandler", () => {
     ).to.contain("cctp-forward");
     expect(decodedHookData.versionId).to.equal(0);
   }).timeout(10000);
+
+  /**
+   * This test verifies that the CCTPIndexerDataHandler can correctly store
+   * HyperCore CCTP withdrawal data in the database. It processes a block range
+   * containing a HyperCore withdrawal and verifies that the withdrawal is persisted
+   * with the correct decoded hook data and proper foreign key relation to MessageReceived.
+   */
+  it("should store hypercore withdraw data in HypercoreCctpWithdraw table", async () => {
+    const transactionHash =
+      "0xd2ca74feb6b4c9c3fa517f438efb8879c257593405ac0b757193f3c2c612212e";
+    const blockNumber = 214432121;
+    setupTestForChainId(CHAIN_IDs.ARBITRUM_SEPOLIA);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    // Verify the MessageReceived event was stored
+    const messageReceivedRepository = dataSource.getRepository(
+      entities.MessageReceived,
+    );
+    const savedMessageReceived = await messageReceivedRepository.findOneOrFail({
+      where: { transactionHash: transactionHash },
+    });
+
+    // Decode the message body to get expected values
+    const decodedMessageBody = decodeMessageBody(
+      savedMessageReceived.messageBody,
+    );
+    assert(decodedMessageBody, "Expected to decode messageBody");
+
+    const decodedHookData = decodeHookData(decodedMessageBody.hookData);
+    assert(decodedHookData, "Expected to decode hookData");
+
+    // Verify the HypercoreCctpWithdraw was stored
+    const hypercoreCctpWithdrawRepository = dataSource.getRepository(
+      entities.HypercoreCctpWithdraw,
+    );
+    const savedWithdrawal = await hypercoreCctpWithdrawRepository.findOneOrFail(
+      {
+        where: {
+          fromAddress: decodedHookData.fromAddress,
+          hypercoreNonce: decodedHookData.hyperCoreNonce.toString(),
+        },
+      },
+    );
+
+    // Verify the stored data matches decoded values
+    expect(savedWithdrawal).to.exist;
+    expect(savedWithdrawal.fromAddress).to.equal(decodedHookData.fromAddress);
+    expect(savedWithdrawal.hypercoreNonce).to.equal(
+      decodedHookData.hyperCoreNonce.toNumber(),
+    );
+    expect(savedWithdrawal.originChainId).to.equal(CHAIN_IDs.HYPEREVM_TESTNET);
+    expect(savedWithdrawal.destinationChainId).to.equal(
+      CHAIN_IDs.ARBITRUM_SEPOLIA,
+    );
+    expect(savedWithdrawal.versionId).to.equal(decodedHookData.versionId);
+    expect(savedWithdrawal.declaredLength).to.equal(
+      decodedHookData.declaredLength,
+    );
+    expect(savedWithdrawal.magicBytes).to.equal(decodedHookData.magicBytes);
+    expect(savedWithdrawal.userData).to.equal(decodedHookData.userData);
+    expect(savedWithdrawal.mintTxnHash).to.equal(transactionHash);
+    expect(savedWithdrawal.mintEventId).to.equal(savedMessageReceived.id);
+
+    // Verify the magic bytes contain "cctp-forward"
+    expect(
+      ethers.utils.toUtf8String(
+        ethers.utils.arrayify(savedWithdrawal.magicBytes),
+      ),
+    ).to.contain("cctp-forward");
+  }).timeout(10000);
 });

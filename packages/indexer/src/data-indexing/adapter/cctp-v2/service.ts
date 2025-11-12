@@ -17,6 +17,7 @@ import {
 // roughly starting with date of Oct 1st, 2025
 const STARTING_BLOCK_NUMBERS = {
   [CHAIN_IDs.ARBITRUM]: 384463853,
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 200000000,
   [CHAIN_IDs.BASE]: 36193725,
   [CHAIN_IDs.HYPEREVM]: 15083577,
   [CHAIN_IDs.INK]: 26328532,
@@ -98,6 +99,15 @@ export function getCctpDomainForChainId(chainId: number): number {
     throw new Error(`No CCTP domain found for chainId: ${chainId}`);
   }
   return cctpDomain;
+}
+
+/**
+ * @notice Checks if a given chain ID is a production (mainnet) network.
+ * @param chainId The chain ID to check
+ * @returns true if the chain is a production network, false if it's a test network
+ */
+export function isProductionNetwork(chainId: number): boolean {
+  return chainId in PRODUCTION_NETWORKS;
 }
 
 export function getCctpDestinationChainFromDomain(
@@ -350,4 +360,94 @@ export function decodeMessageBody(
   } catch (error) {
     return null;
   }
+}
+
+export interface IsHypercoreWithdrawOptions {
+  logger?: {
+    warn: (log: {
+      at: string;
+      message: string;
+      transactionHash?: string;
+    }) => void;
+  };
+  chainId?: number;
+  transactionHash?: string;
+}
+
+export interface HypercoreWithdrawResult {
+  isValid: boolean;
+  decodedHookData: DecodedHyperCoreWithdrawalHookData | null;
+}
+
+/**
+ * Validates if a message body represents a valid HyperCore withdrawal.
+ * Checks message body version, hook data version, and magic bytes.
+ *
+ * @param messageBody The raw message body hex string from MessageReceived event
+ * @param options Optional logger, chainId, and transactionHash for warning messages
+ * @returns Object containing validation result and decoded hook data
+ */
+export function isHypercoreWithdraw(
+  messageBody: string,
+  options?: IsHypercoreWithdrawOptions,
+): HypercoreWithdrawResult {
+  const decodedMessage = decodeMessageBody(messageBody);
+
+  // If we cannot decode the hyperCore withdrawal message, we skip the event
+  if (!decodedMessage) {
+    return {
+      isValid: false,
+      decodedHookData: null,
+    };
+  }
+
+  const isValidMessageBodyVersionId = decodedMessage.version === 1; // We currently only support version 1
+  if (!isValidMessageBodyVersionId) {
+    if (options?.logger && options?.chainId && options?.transactionHash) {
+      options.logger.warn({
+        at: "isHypercoreWithdraw",
+        message: `Skipping MessageReceived event with unsupported message body version ${decodedMessage.version} on chain ${options.chainId}`,
+        transactionHash: options.transactionHash,
+      });
+    }
+    return {
+      isValid: false,
+      decodedHookData: null,
+    };
+  }
+
+  const decodedHookData = decodeHookData(decodedMessage.hookData);
+
+  // If we cannot decode the hook data with the expected format, we skip the event
+  if (!decodedHookData) {
+    return {
+      isValid: false,
+      decodedHookData: null,
+    };
+  }
+
+  const isValidHookDataVersionId = decodedHookData.versionId === 0; // We currently only support version 0
+  if (!isValidHookDataVersionId) {
+    if (options?.logger && options?.chainId && options?.transactionHash) {
+      options.logger.warn({
+        at: "isHypercoreWithdraw",
+        message: `Skipping MessageReceived event with unsupported hook data version ${decodedHookData.versionId} on chain ${options.chainId}`,
+        transactionHash: options.transactionHash,
+      });
+    }
+    return {
+      isValid: false,
+      decodedHookData: null,
+    };
+  }
+
+  // We are only interested in hyperCore withdrawals which have the "cctp-forward" magic bytes
+  const isValidMagicBytes = ethers.utils
+    .toUtf8String(ethers.utils.arrayify(decodedHookData.magicBytes))
+    .includes("cctp-forward");
+
+  return {
+    isValid: isValidMagicBytes,
+    decodedHookData,
+  };
 }
