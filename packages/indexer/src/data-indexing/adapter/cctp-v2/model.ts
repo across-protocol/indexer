@@ -220,7 +220,7 @@ export interface SponsoredDepositForBurnWithBlock {
 // HyperCore Withdrawal Hook Data Types
 // ============================================================================
 
-export interface DecodedHookData {
+export interface DecodedHyperCoreWithdrawalHookData {
   /** The 20-byte address of the sender. */
   fromAddress: string;
   /** The 8-byte (uint64) HyperCore nonce. */
