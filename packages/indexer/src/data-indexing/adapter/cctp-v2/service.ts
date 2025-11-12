@@ -8,7 +8,10 @@ import {
   TEST_NETWORKS,
 } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
-import { DecodedHookData, DecodedMessageBody } from "./model";
+import {
+  DecodedHyperCoreWithdrawalHookData,
+  DecodedMessageBody,
+} from "./model";
 
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
@@ -158,7 +161,7 @@ export async function fetchAttestationsForTxn(
  * This function manually parses a concatenated byte string using Ethers.js v5 utilities.
  *
  * @param {string} hookDataHex The raw hook data as a hex string (e.g., from decodeMessageBody).
- * @returns {DecodedHookData | null} A structured object with the decoded data, or null on failure.
+ * @returns {DecodedHyperCoreWithdrawalHookData | null} A structured object with the decoded data, or null on failure.
  *
  * @schema
  * Bytes 0-23:  bytes24 - Magic bytes "cctp-forward" or 0 if not forwarding
@@ -168,7 +171,9 @@ export async function fetchAttestationsForTxn(
  * Bytes 52-59: uint64  - HyperCore nonce (8 bytes)
  * Bytes 60+:   bytes   - The user provided hook data
  */
-export function decodeHookData(hookDataHex: string): DecodedHookData | null {
+export function decodeHookData(
+  hookDataHex: string,
+): DecodedHyperCoreWithdrawalHookData | null {
   try {
     // Convert hex string to a byte array for slicing
     const hookDataBytes = ethers.utils.arrayify(hookDataHex);
