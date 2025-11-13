@@ -41,7 +41,7 @@ describe("CCTPIndexerManager", () => {
 
     const providerUrls = parseProvidersUrls();
     const config = {
-      enableCctpIndexer: true,
+      cctpIndexerChainIds: [CHAIN_IDs.ARBITRUM_SEPOLIA],
       providerUrls,
       indexingDelaySecondsOnError: 2,
     } as unknown as Config;
@@ -55,11 +55,6 @@ describe("CCTPIndexerManager", () => {
     } as unknown as RedisCache;
 
     retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
-
-    // Mock to only use ARBITRUM_SEPOLIA for this test
-    sinon
-      .stub(CCTPIndexerManagerModule, "CCTP_SUPPORTED_CHAINS")
-      .value([CHAIN_IDs.ARBITRUM_SEPOLIA]);
 
     manager = new CCTPIndexerManager(
       logger,
