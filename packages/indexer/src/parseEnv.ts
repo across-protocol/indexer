@@ -19,7 +19,7 @@ export type Config = {
   enableBundleIncludedEventsService: boolean;
   enableHotfixServices: boolean;
   enableBundleBuilder: boolean;
-  enableCctpIndexer: boolean;
+  cctpIndexerChainIds: number[];
   enableCctpFinalizer: boolean;
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
@@ -223,9 +223,9 @@ export function envToConfig(env: Env): Config {
   const enableHubPoolIndexer = env.ENABLE_HUBPOOL_INDEXER
     ? env.ENABLE_HUBPOOL_INDEXER === "true"
     : true;
-  const enableCctpIndexer = env.ENABLE_CCTP_INDEXER
-    ? env.ENABLE_CCTP_INDEXER === "true"
-    : false;
+  const cctpIndexerChainIds = parseArray(env.CCTP_INDEXER_CHAIN_IDS).map(
+    parseNumber,
+  );
   const enableOftIndexer = env.ENABLE_OFT_INDEXER
     ? env.ENABLE_OFT_INDEXER === "true"
     : false;
@@ -290,7 +290,7 @@ export function envToConfig(env: Env): Config {
     enableBundleIncludedEventsService,
     enableHotfixServices,
     enableBundleBuilder,
-    enableCctpIndexer,
+    cctpIndexerChainIds,
     enableOftIndexer,
     enableCctpFinalizer,
     pubSubCctpFinalizerTopic,

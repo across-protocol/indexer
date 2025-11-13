@@ -31,7 +31,7 @@ export class CCTPIndexerManager {
 
   public async start() {
     try {
-      if (!this.config.enableCctpIndexer) {
+      if (this.config.cctpIndexerChainIds.length === 0) {
         this.logger.warn({
           at: "Indexer#CCTPIndexerManager#start",
           message: "CCTP indexer is disabled",
@@ -57,7 +57,7 @@ export class CCTPIndexerManager {
   }
 
   private async startEvmIndexer() {
-    const evmChains = CCTP_SUPPORTED_CHAINS.filter((chainId) =>
+    const evmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsEvm(chainId),
     );
 
@@ -109,7 +109,7 @@ export class CCTPIndexerManager {
   }
 
   private async startSvmIndexer() {
-    const svmChains = CCTP_SUPPORTED_CHAINS.filter((chainId) =>
+    const svmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsSvm(chainId),
     );
 
@@ -154,17 +154,3 @@ export class CCTPIndexerManager {
     return Promise.all(indexers.map((indexer) => indexer.start()));
   }
 }
-
-export const CCTP_SUPPORTED_CHAINS = [
-  CHAIN_IDs.MAINNET,
-  CHAIN_IDs.ARBITRUM,
-  CHAIN_IDs.ARBITRUM_SEPOLIA,
-  CHAIN_IDs.BASE,
-  CHAIN_IDs.HYPEREVM,
-  CHAIN_IDs.INK,
-  CHAIN_IDs.OPTIMISM,
-  CHAIN_IDs.POLYGON,
-  CHAIN_IDs.UNICHAIN,
-  CHAIN_IDs.WORLD_CHAIN,
-  CHAIN_IDs.SOLANA,
-];
