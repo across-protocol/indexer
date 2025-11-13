@@ -29,6 +29,8 @@ describe("Deposits Service Tests", () => {
   let swapBeforeBridgeFixture: fixtures.SwapBeforeBridgeFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
   let swapMetadataFixture: fixtures.SwapMetadataFixture;
+  let oftSentFixture: fixtures.OftSentFixture;
+  let oftReceivedFixture: fixtures.OftReceivedFixture;
 
   // Events
   let deposit: entities.V3FundsDeposited;
@@ -53,6 +55,8 @@ describe("Deposits Service Tests", () => {
     swapBeforeBridgeFixture = new fixtures.SwapBeforeBridgeFixture(dataSource);
     relayHashInfoFixture = new fixtures.RelayHashInfoFixture(dataSource);
     swapMetadataFixture = new fixtures.SwapMetadataFixture(dataSource);
+    oftSentFixture = new fixtures.OftSentFixture(dataSource);
+    oftReceivedFixture = new fixtures.OftReceivedFixture(dataSource);
 
     // Store events to use across tests
     [deposit] = await depositsFixture.insertDeposits([
@@ -72,6 +76,14 @@ describe("Deposits Service Tests", () => {
     await swapBeforeBridgeFixture.deleteAllSwaps();
     await relayHashInfoFixture.deleteAllRelayHashInfoRows();
     await swapMetadataFixture.deleteAllSwapMetadata();
+    await oftSentFixture.deleteAllOftSentEvents();
+    await oftReceivedFixture.deleteAllOftReceivedEvents();
+    // Clean up CCTP entities
+    await dataSource.getRepository(entities.DepositForBurn).delete({});
+    await dataSource.getRepository(entities.SponsoredDepositForBurn).delete({});
+    await dataSource.getRepository(entities.MessageSent).delete({});
+    await dataSource.getRepository(entities.MessageReceived).delete({});
+    await dataSource.getRepository(entities.MintAndWithdraw).delete({});
   });
 
   after(async () => {
@@ -479,5 +491,287 @@ describe("Deposits Service Tests", () => {
     const deposit = deposits[0];
     expect(deposit?.swapOutputToken).to.be.null;
     expect(deposit?.swapOutputTokenAmount).to.be.null;
+  });
+
+  it("should return DepositForBurn deposits with CCTP events", async () => {
+    const depositForBurnRepo = dataSource.getRepository(
+      entities.DepositForBurn,
+    );
+    const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+    const messageReceivedRepo = dataSource.getRepository(
+      entities.MessageReceived,
+    );
+    const mintAndWithdrawRepo = dataSource.getRepository(
+      entities.MintAndWithdraw,
+    );
+
+    const txHash = "0x" + "a".repeat(64);
+    const chainId = "1";
+    const nonce = "0x" + "1".repeat(64);
+    const messageBody = "0x" + "b".repeat(128);
+
+    // Create DepositForBurn
+    await depositForBurnRepo.save({
+      burnToken: "0x123",
+      amount: "1000000",
+      depositor: "0xdepositor",
+      mintRecipient: "0xrecipient",
+      destinationDomain: 2,
+      destinationTokenMessenger: "0xtokenMessenger",
+      destinationCaller: "0xcaller",
+      maxFee: "100",
+      minFinalityThreshold: 1,
+      hookData: "0x",
+      chainId,
+      blockNumber: 1000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 0,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MessageSent
+    await messageSentRepo.save({
+      chainId,
+      blockNumber: 1000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 1,
+      message: "0xmessage",
+      version: 1,
+      sourceDomain: 1,
+      destinationDomain: 2,
+      nonce,
+      sender: "0xsender",
+      recipient: "0xrecipient",
+      destinationCaller: "0xcaller",
+      minFinalityThreshold: 1,
+      finalityThresholdExecuted: 0,
+      messageBody,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MessageReceived
+    await messageReceivedRepo.save({
+      chainId: "2",
+      blockNumber: 2000,
+      transactionHash: "0x" + "c".repeat(64),
+      transactionIndex: 0,
+      logIndex: 0,
+      caller: "0xcaller",
+      sourceDomain: 1,
+      nonce,
+      sender: "0xsender",
+      finalityThresholdExecuted: 1,
+      messageBody,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MintAndWithdraw
+    await mintAndWithdrawRepo.save({
+      chainId: "2",
+      blockNumber: 2000,
+      transactionHash: "0x" + "c".repeat(64),
+      transactionIndex: 0,
+      logIndex: 1,
+      mintRecipient: "0xrecipient",
+      amount: "1000000",
+      mintToken: "0xtoken",
+      feeCollected: "0",
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Query deposits
+    const deposits = await depositsService.getDeposits({ limit: 10 });
+
+    // Verify DepositForBurn is returned (CCTP deposits have burnToken and mintRecipient fields)
+    const cctpDeposit = deposits.find(
+      (d) => d.inputToken === "0x123" && d.recipient === "0xrecipient",
+    );
+    expect(cctpDeposit).to.not.be.undefined;
+    expect(cctpDeposit?.inputToken).to.equal("0x123");
+    expect(cctpDeposit?.inputAmount).to.equal("1000000");
+    expect(cctpDeposit?.depositor).to.equal("0xdepositor");
+    expect(cctpDeposit?.recipient).to.equal("0xrecipient");
+  });
+
+  it("should return SponsoredDepositForBurn deposits with linked CCTP events", async () => {
+    const sponsoredRepo = dataSource.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const depositForBurnRepo = dataSource.getRepository(
+      entities.DepositForBurn,
+    );
+    const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+    const messageReceivedRepo = dataSource.getRepository(
+      entities.MessageReceived,
+    );
+    const mintAndWithdrawRepo = dataSource.getRepository(
+      entities.MintAndWithdraw,
+    );
+
+    const txHash = "0x" + "d".repeat(64);
+    const chainId = "1";
+    const nonce = "0x" + "2".repeat(64);
+    const messageBody = "0x" + "e".repeat(128);
+
+    // Create DepositForBurn first (lower logIndex)
+    await depositForBurnRepo.save({
+      burnToken: "0x456",
+      amount: "2000000",
+      depositor: "0xdepositor2",
+      mintRecipient: "0xrecipient2",
+      destinationDomain: 2,
+      destinationTokenMessenger: "0xtokenMessenger",
+      destinationCaller: "0xcaller",
+      maxFee: "200",
+      minFinalityThreshold: 1,
+      hookData: "0x",
+      chainId,
+      blockNumber: 2000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 0,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create SponsoredDepositForBurn (higher logIndex)
+    await sponsoredRepo.save({
+      chainId,
+      quoteNonce: "0xquote",
+      originSender: "0xoriginSender",
+      finalRecipient: "0xfinalRecipient",
+      quoteDeadline: new Date(Date.now() + 86400000),
+      maxBpsToSponsor: "100",
+      maxUserSlippageBps: "50",
+      finalToken: "0xfinalToken",
+      signature: "0xsig",
+      blockNumber: 2000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 1,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MessageSent
+    await messageSentRepo.save({
+      chainId,
+      blockNumber: 2000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 2,
+      message: "0xmessage2",
+      version: 1,
+      sourceDomain: 1,
+      destinationDomain: 2,
+      nonce,
+      sender: "0xsender",
+      recipient: "0xrecipient2",
+      destinationCaller: "0xcaller",
+      minFinalityThreshold: 1,
+      finalityThresholdExecuted: 0,
+      messageBody,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MessageReceived
+    await messageReceivedRepo.save({
+      chainId: "2",
+      blockNumber: 3000,
+      transactionHash: "0x" + "f".repeat(64),
+      transactionIndex: 0,
+      logIndex: 0,
+      caller: "0xcaller",
+      sourceDomain: 1,
+      nonce,
+      sender: "0xsender",
+      finalityThresholdExecuted: 1,
+      messageBody,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Create MintAndWithdraw
+    await mintAndWithdrawRepo.save({
+      chainId: "2",
+      blockNumber: 3000,
+      transactionHash: "0x" + "f".repeat(64),
+      transactionIndex: 0,
+      logIndex: 1,
+      mintRecipient: "0xrecipient2",
+      amount: "2000000",
+      mintToken: "0xtoken",
+      feeCollected: "0",
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // Query deposits
+    const deposits = await depositsService.getDeposits({ limit: 10 });
+
+    // Verify SponsoredDepositForBurn is returned (has originSender as depositor and finalRecipient as recipient)
+    const sponsoredDeposit = deposits.find(
+      (d) =>
+        d.depositor === "0xoriginSender" && d.recipient === "0xfinalRecipient",
+    );
+    expect(sponsoredDeposit).to.not.be.undefined;
+    expect(sponsoredDeposit?.depositor).to.equal("0xoriginSender");
+    expect(sponsoredDeposit?.recipient).to.equal("0xfinalRecipient");
+    expect(sponsoredDeposit?.inputToken).to.equal("0x456");
+    expect(sponsoredDeposit?.inputAmount).to.equal("2000000");
+  });
+
+  it("should return OFTSent deposits with OFTReceived", async () => {
+    const guid = "0x" + "g".repeat(64);
+
+    // Create OFTSent
+    await oftSentFixture.insertOftSentEvents([
+      {
+        guid,
+        fromAddress: "0xfrom",
+        amountSentLD: "3000000",
+        amountReceivedLD: "2900000",
+        token: "0xtoken",
+        chainId: "1",
+        dstEid: 30110,
+        blockNumber: 3000,
+        transactionHash: "0x" + "h".repeat(64),
+        finalised: true,
+      },
+    ]);
+
+    // Create OFTReceived
+    await oftReceivedFixture.insertOftReceivedEvents([
+      {
+        guid,
+        toAddress: "0xto",
+        amountReceivedLD: "2900000",
+        token: "0xtoken",
+        chainId: "10",
+        srcEid: 30101,
+        blockNumber: 4000,
+        transactionHash: "0x" + "i".repeat(64),
+        finalised: true,
+      },
+    ]);
+
+    // Query deposits
+    const deposits = await depositsService.getDeposits({ limit: 10 });
+
+    // Verify OFTSent is returned (OFT deposits have fromAddress as depositor)
+    const oftDeposit = deposits.find(
+      (d) => d.depositor === "0xfrom" && d.inputAmount === "3000000",
+    );
+    expect(oftDeposit).to.not.be.undefined;
+    expect(oftDeposit?.depositor).to.equal("0xfrom");
+    expect(oftDeposit?.inputAmount).to.equal("3000000");
+    expect(oftDeposit?.outputAmount).to.equal("2900000");
   });
 });

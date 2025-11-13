@@ -90,8 +90,6 @@ export class DepositsService {
       ]);
 
     // Build SponsoredDepositForBurn query with joins to linked CCTP events
-    // SponsoredDepositForBurn events are in the same transaction as DepositForBurn events
-    // We need to find the matching DepositForBurn with the highest logIndex < SponsoredDepositForBurn.logIndex
     const sponsoredDepositForBurnRepo = this.db.getRepository(
       entities.SponsoredDepositForBurn,
     );
@@ -348,7 +346,7 @@ export class DepositsService {
 
     const deposits: DepositReturnType[] = allDeposits;
 
-    // Fetch speedup events for each deposit (only for V3FundsDeposited, not DepositForBurn)
+    // Fetch speedup events for each deposit (only for V3FundsDeposited)
     const speedupRepo = this.db.getRepository(
       entities.RequestedSpeedUpV3Deposit,
     );
