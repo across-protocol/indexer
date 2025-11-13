@@ -361,7 +361,7 @@ export class DepositsService {
       },
     };
 
-    const cacheTtlSeconds = 60 * 60 * 1; // 1 hour
+    const cacheTtlSeconds = 60 * 5; // 5 minutes
     await this.redis.set(
       cacheKey,
       JSON.stringify(result),
