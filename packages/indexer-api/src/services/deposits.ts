@@ -349,7 +349,7 @@ export class DepositsService {
     const result = {
       status: "filled",
       originChainId: CHAIN_IDs.HYPERCORE,
-      depositId: null,
+      depositId: params.hypercoreWithdrawalNonce as string, // it cannot be undefined because of the query validation rules
       depositTxnRef: null,
       fillTxnRef: withdrawal.mintTxnHash,
       destinationChainId: parseInt(withdrawal.destinationChainId),
@@ -361,7 +361,7 @@ export class DepositsService {
       },
     };
 
-    const cacheTtlSeconds = 60 * 60 * 24; // 24 hours
+    const cacheTtlSeconds = 60 * 60 * 1; // 1 hour
     await this.redis.set(
       cacheKey,
       JSON.stringify(result),

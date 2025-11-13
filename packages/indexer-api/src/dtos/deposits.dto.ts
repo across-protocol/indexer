@@ -189,7 +189,7 @@ export type PaginationInfo = {
 export type DepositStatusResponse = {
   status: string | entities.RelayStatus;
   originChainId: number;
-  depositId: string | null;
+  depositId: string;
   depositTxHash?: string | null;
   fillTx?: string | undefined;
   destinationChainId: number;
