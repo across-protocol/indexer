@@ -43,7 +43,7 @@ describe("Hypercore Withdrawal Status", () => {
   });
 
   it("should return 200", async () => {
-    const withdrawals = await hypercoreCctpWithdrawFixture.insert([]);
+    const withdrawals = await hypercoreCctpWithdrawFixture.insert();
     expect(withdrawals.length).to.equal(1);
     const response = await request(app).get("/deposit/status").query({
       from: withdrawals[0]!.fromAddress,
