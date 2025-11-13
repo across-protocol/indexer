@@ -35,8 +35,10 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
   getCctpDestinationChainFromDomain,
+  isHypercoreWithdraw,
 } from "../adapter/cctp-v2/service";
 import { createMapWithDefault } from "../../utils/map";
+import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -55,7 +57,18 @@ export type FetchEventsResult = {
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
 };
-export type StoreEventsResult = {};
+export type StoreEventsResult = {
+  savedBurnEvents: {
+    depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
+    messageSentEvent: SaveQueryResult<entities.MessageSent>;
+  }[];
+  savedMintEvents: {
+    messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
+    mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
+  }[];
+  savedSponsoredBurnEvents: SaveQueryResult<entities.SponsoredDepositForBurn>[];
+  savedSimpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
+};
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
 const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
@@ -140,6 +153,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       lastFinalisedBlock,
     );
     const timeToDeleteEvents = performance.now();
+    await this.processEvents(storedEvents, deletedEvents.messageReceivedEvents);
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -203,8 +217,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         depositForBurnEvents,
       );
 
-    const filteredMessageReceivedEvents =
-      this.filterTransactionsFromAcrossFinalizer(messageReceivedEvents);
+    const filteredMessageReceivedEvents = this.filterMintTransactions(
+      messageReceivedEvents,
+    );
     const [transactionReceipts, blocks] = await Promise.all([
       this.getTransactionsReceipts([
         ...new Set([
@@ -342,11 +357,19 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     });
   }
 
-  private filterTransactionsFromAcrossFinalizer(
+  private filterMintTransactions(
     messageReceivedEvents: MessageReceivedEvent[],
   ) {
     return messageReceivedEvents.filter((event) => {
-      return WHITELISTED_FINALIZERS.includes(event.args.caller);
+      if (WHITELISTED_FINALIZERS.includes(event.args.caller)) {
+        return true;
+      }
+      const result = isHypercoreWithdraw(event.args.messageBody, {
+        logger: this.logger,
+        chainId: this.chainId,
+        transactionHash: event.transactionHash,
+      });
+      return result.isValid;
     });
   }
 
@@ -613,6 +636,31 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedSponsoredBurnEvents,
       savedSimpleTransferFlowCompletedEvents,
     };
+  }
+
+  // TODO: Refactor into an aggregator/processor class
+  private async processEvents(
+    storedEvents: StoreEventsResult,
+    deletedMessageReceivedEvents: entities.MessageReceived[],
+  ) {
+    // Delete HyperCore CCTP withdrawals related to deleted MessageReceived events
+    await this.cctpRepository.deleteHypercoreCctpWithdrawalsForMessageReceived(
+      deletedMessageReceivedEvents,
+    );
+
+    // Save HyperCore CCTP withdrawals
+    const { savedMintEvents } = storedEvents;
+    const savedHypercoreCctpWithdrawals =
+      await this.cctpRepository.formatAndSaveHypercoreCctpWithdrawals(
+        savedMintEvents,
+        this.chainId,
+      );
+
+    this.logger.debug({
+      at: "CCTPIndexerDataHandler#processEvents",
+      message: `Processed ${savedHypercoreCctpWithdrawals.length} HyperCore CCTP withdrawals`,
+      chainId: this.chainId,
+    });
   }
 
   private getBlocksTimestamps(

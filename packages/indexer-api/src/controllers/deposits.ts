@@ -5,6 +5,7 @@ import {
   DepositsParams,
   DepositParams,
   FilterDepositsParams,
+  DepositStatusParams,
 } from "../dtos/deposits.dto";
 
 export class DepositsController {
@@ -30,7 +31,7 @@ export class DepositsController {
     next: NextFunction,
   ) => {
     try {
-      const params = s.create(req.query, DepositParams);
+      const params = s.create(req.query, DepositStatusParams);
       const result = await this.service.getDepositStatus(params);
       return res.json(result);
     } catch (err) {
