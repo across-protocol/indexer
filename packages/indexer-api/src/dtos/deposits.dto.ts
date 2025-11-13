@@ -90,7 +90,7 @@ export const DepositStatusParams = s.object({
    * Hyperliquid Withdrawals
    */
   from: s.optional(s.string()),
-  nonce: s.optional(s.string()),
+  hypercoreWithdrawalNonce: s.optional(s.string()),
 });
 
 export type DepositStatusParams = s.Infer<typeof DepositStatusParams>;

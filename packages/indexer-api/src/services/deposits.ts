@@ -235,7 +235,7 @@ export class DepositsService {
         params.depositTxHash ||
         params.depositTxnRef ||
         params.relayDataHash ||
-        (params.from && params.nonce)
+        (params.from && params.hypercoreWithdrawalNonce)
       )
     ) {
       throw new IncorrectQueryParamsException();
@@ -249,7 +249,7 @@ export class DepositsService {
       return JSON.parse(cachedData);
     }
 
-    if (params.from && params.nonce) {
+    if (params.from && params.hypercoreWithdrawalNonce) {
       // Hyperliquid Withdrawal status check
       return this.getHyperliquidWithdrawalStatus(params);
     }
@@ -338,7 +338,7 @@ export class DepositsService {
     const withdrawal = await repo.findOne({
       where: {
         fromAddress: params.from,
-        hypercoreNonce: params.nonce,
+        hypercoreNonce: params.hypercoreWithdrawalNonce,
       },
     });
 
@@ -765,8 +765,8 @@ export class DepositsService {
       return `depositStatus-${params.relayDataHash}-${params.index}`;
     }
 
-    if (params.from && params.nonce) {
-      return `depositStatus-${params.from}-${params.nonce}`;
+    if (params.from && params.hypercoreWithdrawalNonce) {
+      return `depositStatus-${params.from}-${params.hypercoreWithdrawalNonce}`;
     }
 
     // in theory this should never happen because we have already checked
