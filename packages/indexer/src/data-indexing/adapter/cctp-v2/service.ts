@@ -16,6 +16,7 @@ import {
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
 const STARTING_BLOCK_NUMBERS = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 213803000,
   [CHAIN_IDs.ARBITRUM]: 384463853,
   [CHAIN_IDs.BASE]: 36193725,
   [CHAIN_IDs.HYPEREVM]: 15083577,
