@@ -20,7 +20,7 @@ export class HypercoreCctpWithdrawFixture {
   public mockHypercoreCctpWithdraw(overrides: Partial<HypercoreCctpWithdraw>) {
     return {
       fromAddress: utils.randomAddress(),
-      hypercoreNonce: utils.randomAddress(),
+      hypercoreNonce: utils.getRandomInt(1, 1_000_000).toString(),
       originChainId: CHAIN_IDs.HYPERCORE.toString(),
       destinationChainId: CHAIN_IDs.ARBITRUM.toString(),
       versionId: 0,
