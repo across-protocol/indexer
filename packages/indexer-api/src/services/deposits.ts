@@ -234,13 +234,10 @@ export class DepositsService {
         (params.depositId && params.originChainId) ||
         params.depositTxHash ||
         params.depositTxnRef ||
-        params.relayDataHash
+        params.relayDataHash ||
+        (params.from && params.nonce)
       )
     ) {
-      throw new IncorrectQueryParamsException();
-    }
-
-    if ((params.from && !params.nonce) || (!params.from && params.nonce)) {
       throw new IncorrectQueryParamsException();
     }
 
