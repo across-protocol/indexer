@@ -27,6 +27,10 @@ import {
   OftSentRelayHashInfoFields,
   OftSentFilledRelayFields,
   OftSentSwapBeforeBridgeFields,
+  SponsoredDepositForBurnFields,
+  SponsoredDepositForBurnRelayHashInfoFields,
+  SponsoredDepositForBurnFilledRelayFields,
+  SponsoredDepositForBurnSwapBeforeBridgeFields,
 } from "../utils/fields";
 
 export class DepositsService {
@@ -85,6 +89,46 @@ export class DepositsService {
         ...DepositForBurnFilledRelayFields,
       ]);
 
+    // Build SponsoredDepositForBurn query with joins to linked CCTP events
+    // SponsoredDepositForBurn events are in the same transaction as DepositForBurn events
+    // We need to find the matching DepositForBurn with the highest logIndex < SponsoredDepositForBurn.logIndex
+    const sponsoredDepositForBurnRepo = this.db.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const sponsoredDepositForBurnQueryBuilder = sponsoredDepositForBurnRepo
+      .createQueryBuilder("sponsoredDepositForBurn")
+      .leftJoin(
+        entities.DepositForBurn,
+        "depositForBurn",
+        `depositForBurn.transactionHash = sponsoredDepositForBurn.transactionHash 
+         AND depositForBurn.chainId = sponsoredDepositForBurn.chainId 
+         AND depositForBurn.logIndex < sponsoredDepositForBurn.logIndex`,
+      )
+      .leftJoin(
+        entities.MessageSent,
+        "messageSent",
+        "messageSent.transactionHash = depositForBurn.transactionHash AND messageSent.chainId = depositForBurn.chainId",
+      )
+      .leftJoin(
+        entities.MessageReceived,
+        "messageReceived",
+        "messageReceived.nonce = messageSent.nonce AND messageReceived.messageBody = messageSent.messageBody",
+      )
+      .leftJoin(
+        entities.MintAndWithdraw,
+        "mintAndWithdraw",
+        "mintAndWithdraw.transactionHash = messageReceived.transactionHash AND mintAndWithdraw.chainId = messageReceived.chainId",
+      )
+      .select([
+        ...SponsoredDepositForBurnFields,
+        ...SponsoredDepositForBurnRelayHashInfoFields,
+        ...SponsoredDepositForBurnSwapBeforeBridgeFields,
+        ...SponsoredDepositForBurnFilledRelayFields,
+      ])
+      .distinctOn(["sponsoredDepositForBurn.id"])
+      .orderBy("sponsoredDepositForBurn.id", "ASC")
+      .addOrderBy("depositForBurn.logIndex", "DESC");
+
     const oftSentRepo = this.db.getRepository(entities.OFTSent);
     const oftSentQueryBuilder = oftSentRepo
       .createQueryBuilder("oftSent")
@@ -113,6 +157,12 @@ export class DepositsService {
           address: params.address,
         },
       );
+      sponsoredDepositForBurnQueryBuilder.andWhere(
+        "sponsoredDepositForBurn.originSender = :address OR sponsoredDepositForBurn.finalRecipient = :address",
+        {
+          address: params.address,
+        },
+      );
       oftSentQueryBuilder.andWhere(
         "oftSent.fromAddress = :address OR oftReceived.toAddress = :address",
         {
@@ -126,6 +176,12 @@ export class DepositsService {
         });
         depositForBurnQueryBuilder.andWhere(
           "depositForBurn.depositor = :depositor",
+          {
+            depositor: params.depositor,
+          },
+        );
+        sponsoredDepositForBurnQueryBuilder.andWhere(
+          "sponsoredDepositForBurn.originSender = :depositor",
           {
             depositor: params.depositor,
           },
@@ -145,6 +201,12 @@ export class DepositsService {
             recipient: params.recipient,
           },
         );
+        sponsoredDepositForBurnQueryBuilder.andWhere(
+          "sponsoredDepositForBurn.finalRecipient = :recipient",
+          {
+            recipient: params.recipient,
+          },
+        );
         oftSentQueryBuilder.andWhere("oftReceived.toAddress = :recipient", {
           recipient: params.recipient,
         });
@@ -156,6 +218,12 @@ export class DepositsService {
         inputToken: params.inputToken,
       });
       depositForBurnQueryBuilder.andWhere(
+        "depositForBurn.burnToken = :inputToken",
+        {
+          inputToken: params.inputToken,
+        },
+      );
+      sponsoredDepositForBurnQueryBuilder.andWhere(
         "depositForBurn.burnToken = :inputToken",
         {
           inputToken: params.inputToken,
@@ -179,6 +247,12 @@ export class DepositsService {
           outputToken: params.outputToken,
         },
       );
+      sponsoredDepositForBurnQueryBuilder.andWhere(
+        "mintAndWithdraw.mintToken = :outputToken",
+        {
+          outputToken: params.outputToken,
+        },
+      );
       oftSentQueryBuilder.andWhere("oftReceived.token = :outputToken", {
         outputToken: params.outputToken,
       });
@@ -197,6 +271,12 @@ export class DepositsService {
           originChainId: params.originChainId,
         },
       );
+      sponsoredDepositForBurnQueryBuilder.andWhere(
+        "sponsoredDepositForBurn.chainId = :originChainId",
+        {
+          originChainId: params.originChainId.toString(),
+        },
+      );
       oftSentQueryBuilder.andWhere("oftSent.chainId = :originChainId", {
         originChainId: params.originChainId.toString(),
       });
@@ -210,6 +290,12 @@ export class DepositsService {
         },
       );
       depositForBurnQueryBuilder.andWhere(
+        "mintAndWithdraw.chainId = :destinationChainId",
+        {
+          destinationChainId: params.destinationChainId.toString(),
+        },
+      );
+      sponsoredDepositForBurnQueryBuilder.andWhere(
         "mintAndWithdraw.chainId = :destinationChainId",
         {
           destinationChainId: params.destinationChainId.toString(),
@@ -243,6 +329,7 @@ export class DepositsService {
       [
         fundsDepositedQueryBuilder,
         depositForBurnQueryBuilder,
+        sponsoredDepositForBurnQueryBuilder,
         oftSentQueryBuilder,
       ],
       {

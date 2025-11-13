@@ -158,3 +158,56 @@ export const OftSentSwapBeforeBridgeFields = [
   `NULL::varchar as "swapToken"`,
   `NULL::varchar as "swapTokenAmount"`,
 ];
+
+// SponsoredDepositForBurn fields - links to DepositForBurn via same transaction and log index
+export const SponsoredDepositForBurnFields = [
+  `"sponsoredDepositForBurn".id::integer as "id"`,
+  `NULL::varchar as "relayHash"`,
+  `NULL::decimal as "depositId"`,
+  `"sponsoredDepositForBurn"."chainId"::bigint as "originChainId"`,
+  `"mintAndWithdraw"."chainId"::bigint as "destinationChainId"`,
+  `"sponsoredDepositForBurn"."originSender"::varchar as "depositor"`,
+  `"sponsoredDepositForBurn"."finalRecipient"::varchar as "recipient"`,
+  `"depositForBurn"."burnToken"::varchar as "inputToken"`,
+  `"depositForBurn"."amount"::varchar as "inputAmount"`,
+  `"mintAndWithdraw"."mintToken"::varchar as "outputToken"`,
+  `NULL::varchar as "swapOutputToken"`,
+  `NULL::varchar as "swapOutputTokenAmount"`,
+  `"mintAndWithdraw"."amount"::varchar as "outputAmount"`,
+  `"depositForBurn"."hookData"::varchar as "message"`,
+  `NULL::varchar as "messageHash"`,
+  `NULL::varchar as "exclusiveRelayer"`,
+  `NULL::timestamp as "exclusivityDeadline"`,
+  `NULL::timestamp as "fillDeadline"`,
+  `"sponsoredDepositForBurn"."blockTimestamp"::timestamp as "quoteTimestamp"`,
+  `"sponsoredDepositForBurn"."transactionHash"::varchar as "depositTxHash"`,
+  `"sponsoredDepositForBurn"."blockNumber"::integer as "depositBlockNumber"`,
+  `"sponsoredDepositForBurn"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
+];
+
+export const SponsoredDepositForBurnRelayHashInfoFields = [
+  `NULL::varchar as "status"`,
+  `NULL::varchar as "depositRefundTxHash"`,
+  `NULL::decimal as "swapTokenPriceUsd"`,
+  `NULL::decimal as "swapFeeUsd"`,
+  `NULL::decimal as "bridgeFeeUsd"`,
+  `NULL::decimal as "inputPriceUsd"`,
+  `NULL::decimal as "outputPriceUsd"`,
+  `NULL::decimal as "fillGasFee"`,
+  `NULL::decimal as "fillGasFeeUsd"`,
+  `NULL::decimal as "fillGasTokenPriceUsd"`,
+  `NULL::boolean as "actionsSucceeded"`,
+  `NULL::bigint as "actionsTargetChainId"`,
+];
+
+export const SponsoredDepositForBurnFilledRelayFields = [
+  `NULL::varchar as "relayer"`,
+  `NULL::timestamp as "fillBlockTimestamp"`,
+  `NULL::varchar as "fillTx"`,
+];
+
+export const SponsoredDepositForBurnSwapBeforeBridgeFields = [
+  `NULL::varchar as "swapTransactionHash"`,
+  `NULL::varchar as "swapToken"`,
+  `NULL::varchar as "swapTokenAmount"`,
+];
