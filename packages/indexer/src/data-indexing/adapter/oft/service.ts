@@ -1,4 +1,14 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { createMapWithDefault } from "../../../utils/map";
+
+// Taken from sample tx: https://layerzeroscan.com/tx/0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a
+export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
+  createMapWithDefault(
+    {
+      [CHAIN_IDs.ARBITRUM]: "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+    },
+    "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+  );
 
 export type OftTokenKey = "usdt0";
 
