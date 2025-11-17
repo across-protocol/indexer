@@ -49,6 +49,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.TokensBridged,
       entities.V3FundsDeposited,
       entities.SwapBeforeBridge,
+      entities.SwapMetadata,
       // Bundle
       entities.Bundle,
       entities.BundleBlockRange,
@@ -70,6 +71,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.MintAndWithdraw,
       entities.SponsoredDepositForBurn,
       entities.CctpFinalizerJob,
+      entities.HypercoreCctpWithdraw,
       // OFT
       entities.OFTSent,
       entities.OFTReceived,

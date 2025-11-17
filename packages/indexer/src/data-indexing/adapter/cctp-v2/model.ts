@@ -215,3 +215,43 @@ export interface SponsoredDepositForBurnWithBlock {
   finalToken: string;
   signature: string;
 }
+
+// ============================================================================
+// HyperCore Withdrawal Hook Data Types
+// ============================================================================
+
+export interface DecodedHyperCoreWithdrawalHookData {
+  /** The 20-byte address of the sender. */
+  fromAddress: string;
+  /** The 8-byte (uint64) HyperCore nonce. */
+  hyperCoreNonce: BigNumber;
+  /** The 4-byte (uint32) version ID of the hook data schema. */
+  versionId: number;
+  /** The 4-byte (uint32) declared length of the hook data fields (fromAddress + nonce + userData). */
+  declaredLength: number;
+  /** The 24-byte magic bytes, (e.g., "cctp-forward" or 0). */
+  magicBytes: string;
+  /** The dynamic user-provided hook data as a hex string. */
+  userData: string;
+}
+
+export interface DecodedMessageBody {
+  /** The 4-byte (uint32) version of the message schema. */
+  version: number;
+  /** The 32-byte token address being burned. */
+  burnToken: string;
+  /** The 32-byte address of the recipient on the destination chain. */
+  mintRecipient: string;
+  /** The 32-byte (uint256) amount of tokens to mint. */
+  amount: BigNumber;
+  /** The 32-byte address of the message sender. */
+  messageSender: string;
+  /** The 32-byte (uint256) maximum fee. */
+  maxFee: BigNumber;
+  /** The 32-byte (uint256) fee that was executed. */
+  feeExecuted: BigNumber;
+  /** The 32-byte (uint256) expiration block. */
+  expirationBlock: BigNumber;
+  /** The dynamic, ABI-encoded hook data as a hex string. */
+  hookData: string;
+}

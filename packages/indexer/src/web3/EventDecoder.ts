@@ -4,10 +4,12 @@ import {
   SwapBeforeBridgeEvent,
   CallsFailedEvent,
   TransferEvent,
+  SwapMetadataEvent,
 } from "./model/events";
 import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
+  METADATA_EMITTED_ABI,
 } from "./model/abis";
 import {
   MessageSentLog,
@@ -70,6 +72,20 @@ export class EventDecoder {
       transferEventTopic,
       transferABI,
       true,
+    );
+
+    return events;
+  }
+
+  static decodeSwapMetadataEvents(
+    receipt: ethers.providers.TransactionReceipt,
+  ) {
+    const metadataEmittedEventTopic =
+      "0xc28009f405f9b451f5155492167b1ad5ab376d991bea880cb5049e924e5b823c";
+    const events: SwapMetadataEvent[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      metadataEmittedEventTopic,
+      METADATA_EMITTED_ABI,
     );
 
     return events;

@@ -7,3 +7,5 @@ export * from "./OftTransferFixture";
 export * from "./RequestedSlowFillFixture";
 export * from "./RelayHashInfoFixture";
 export * from "./SwapBeforeBridgeFixture";
+export * from "./SwapMetadataFixture";
+export * from "./HypercoreCctpWithdrawFixture";

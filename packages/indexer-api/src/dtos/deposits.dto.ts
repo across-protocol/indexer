@@ -68,6 +68,33 @@ export const DepositParams = s.object({
 
 export type DepositParams = s.Infer<typeof DepositParams>;
 
+export const DepositStatusParams = s.object({
+  depositId: s.optional(s.string()),
+  originChainId: s.optional(stringToInt),
+  /**
+   * @deprecated Use depositTxnRef instead.
+   * Once with supporting SVM chains, all references
+   * to EVM terminology is being deprecated for more general terms.
+   *
+   */
+  depositTxHash: s.optional(s.string()),
+  depositTxnRef: s.optional(s.string()),
+  relayDataHash: s.optional(s.string()),
+  index: s.refine(
+    s.defaulted(stringToInt, 0),
+    "positiveIndex",
+    (value) => value >= 0,
+  ),
+
+  /**
+   * Hyperliquid Withdrawals
+   */
+  from: s.optional(s.string()),
+  hypercoreWithdrawalNonce: s.optional(s.string()),
+});
+
+export type DepositStatusParams = s.Infer<typeof DepositStatusParams>;
+
 export const FilterDepositsParams = s.object({
   originChainId: s.optional(stringToInt),
   destinationChainId: s.optional(stringToInt),
@@ -96,6 +123,8 @@ export type DepositReturnType = {
   inputToken: string;
   inputAmount: string;
   outputToken: string;
+  swapOutputToken?: string; // Token address from destination swap metadata
+  swapOutputTokenAmount?: string; // Minimum amount out from destination swap metadata
   outputAmount: string;
   message: string;
   messageHash?: string;
@@ -161,10 +190,10 @@ export type DepositStatusResponse = {
   status: string | entities.RelayStatus;
   originChainId: number;
   depositId: string;
-  depositTxHash: string | null;
-  fillTx: string | undefined;
+  depositTxHash?: string | null;
+  fillTx?: string | undefined;
   destinationChainId: number;
-  depositRefundTxHash: string | undefined;
+  depositRefundTxHash?: string | undefined;
   actionsSucceeded: boolean | null;
   pagination: PaginationInfo;
 };

@@ -17,7 +17,11 @@ import {
   MintAndWithdrawWithBlock,
   SponsoredDepositForBurnWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
-import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
+import {
+  getCctpDestinationChainFromDomain,
+  isHypercoreWithdraw,
+  isProductionNetwork,
+} from "../data-indexing/adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../utils";
 import { SimpleTransferFlowCompletedLog } from "../data-indexing/model";
 
@@ -100,6 +104,46 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       sponsoredDepositForBurnEvents,
       simpleTransferFlowCompletedEvents,
     };
+  }
+
+  public async deleteHypercoreCctpWithdrawalsForMessageReceived(
+    deletedMessageReceivedEvents: entities.MessageReceived[],
+  ) {
+    if (deletedMessageReceivedEvents.length === 0) {
+      return 0;
+    }
+
+    const hypercoreCctpWithdrawRepository = this.postgres.getRepository(
+      entities.HypercoreCctpWithdraw,
+    );
+
+    let totalDeleted = 0;
+    for (const deletedEvent of deletedMessageReceivedEvents) {
+      const result = await hypercoreCctpWithdrawRepository.delete({
+        mintEventId: deletedEvent.id,
+      });
+      const deletedCount = result.affected || 0;
+
+      if (deletedCount > 0) {
+        totalDeleted += deletedCount;
+        this.logger.debug({
+          at: "CCTPRepository#deleteHypercoreCctpWithdrawalsForMessageReceived",
+          message: `Deleted ${deletedCount} HyperCore CCTP withdrawal(s) for MessageReceived event`,
+          messageReceivedId: deletedEvent.id,
+          transactionHash: deletedEvent.transactionHash,
+        });
+      }
+    }
+
+    if (totalDeleted > 0) {
+      this.logger.info({
+        at: "CCTPRepository#deleteHypercoreCctpWithdrawalsForMessageReceived",
+        message: `Total deleted HyperCore CCTP withdrawals: ${totalDeleted}`,
+        deletedMessageReceivedCount: deletedMessageReceivedEvents.length,
+      });
+    }
+
+    return totalDeleted;
   }
 
   public async formatAndSaveSimpleTransferFlowCompletedEvents(
@@ -527,6 +571,65 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           entities.MintAndWithdraw,
           eventsChunk,
           ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+    const result = savedEvents.flat();
+    return result;
+  }
+
+  public async formatAndSaveHypercoreCctpWithdrawals(
+    savedMintEvents: {
+      messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
+      mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
+    }[],
+    destinationChainId: number,
+  ) {
+    const hypercoreWithdrawals: Partial<entities.HypercoreCctpWithdraw>[] = [];
+
+    for (const { messageReceivedEvent } of savedMintEvents) {
+      const result = isHypercoreWithdraw(messageReceivedEvent.data.messageBody);
+
+      // Skip if it's not a valid HyperCore withdrawal
+      if (!result.isValid || !result.decodedHookData) {
+        continue;
+      }
+
+      const isProductionChain = isProductionNetwork(destinationChainId);
+      const originChainId = getCctpDestinationChainFromDomain(
+        messageReceivedEvent.data.sourceDomain,
+        isProductionChain,
+      );
+
+      hypercoreWithdrawals.push({
+        fromAddress: result.decodedHookData.fromAddress,
+        hypercoreNonce: result.decodedHookData.hyperCoreNonce.toString(),
+        originChainId: originChainId.toString(),
+        destinationChainId: destinationChainId.toString(),
+        versionId: result.decodedHookData.versionId,
+        declaredLength: result.decodedHookData.declaredLength,
+        magicBytes: result.decodedHookData.magicBytes,
+        userData: result.decodedHookData.userData,
+        mintTxnHash: messageReceivedEvent.data.transactionHash,
+        mintEventId: messageReceivedEvent.data.id,
+      });
+    }
+
+    if (hypercoreWithdrawals.length === 0) {
+      return [];
+    }
+
+    const chunkedEvents = across.utils.chunk(
+      hypercoreWithdrawals,
+      this.chunkSize,
+    );
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.HypercoreCctpWithdraw>(
+          entities.HypercoreCctpWithdraw,
+          eventsChunk,
+          ["fromAddress", "hypercoreNonce"],
           [],
         ),
       ),

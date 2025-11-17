@@ -10,6 +10,16 @@ export class DepositNotFoundException extends IndexerHTTPError {
   }
 }
 
+export class HyperliquidWithdrawalNotFoundException extends IndexerHTTPError {
+  constructor() {
+    super(
+      StatusCodes.NOT_FOUND,
+      HyperliquidWithdrawalNotFoundException.name,
+      "Hyperliquid withdrawal not found given the provided constraints",
+    );
+  }
+}
+
 export class IndexParamOutOfRangeException extends IndexerHTTPError {
   constructor(message: string) {
     super(StatusCodes.BAD_REQUEST, IndexParamOutOfRangeException.name, message);

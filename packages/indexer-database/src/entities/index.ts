@@ -16,6 +16,7 @@ export * from "./evm/SwapBeforeBridge";
 export * from "./evm/CallsFailed";
 export * from "./evm/BridgedToHubPool";
 export * from "./evm/ClaimedRelayerRefunds";
+export * from "./evm/SwapMetadata";
 
 // Others
 export * from "./Bundle";
@@ -38,6 +39,7 @@ export * from "./evm/MessageReceived";
 export * from "./evm/SponsoredDepositForBurn";
 
 export * from "./CctpFinalizerJob";
+export * from "./HypercoreCctpWithdraw";
 
 // OFT
 export * from "./evm/OftSent";

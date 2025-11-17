@@ -24,8 +24,8 @@ describe("CCTPIndexerManager", () => {
   let retryProvidersFactory: RetryProvidersFactory;
 
   const transactionHash =
-    "0xcb92b553ebf00a2fff5ab04d4966b5a1d4a37afec858308e4d87ef12bea63576";
-  const blockNumber = 209540538;
+    "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
+  const blockNumber = 214159659;
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
@@ -41,7 +41,7 @@ describe("CCTPIndexerManager", () => {
 
     const providerUrls = parseProvidersUrls();
     const config = {
-      enableCctpIndexer: true,
+      cctpIndexerChainIds: [CHAIN_IDs.ARBITRUM_SEPOLIA],
       providerUrls,
       indexingDelaySecondsOnError: 2,
     } as unknown as Config;
@@ -55,11 +55,6 @@ describe("CCTPIndexerManager", () => {
     } as unknown as RedisCache;
 
     retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
-
-    // Mock to only use ARBITRUM_SEPOLIA for this test
-    sinon
-      .stub(CCTPIndexerManagerModule, "CCTP_SUPPORTED_CHAINS")
-      .value([CHAIN_IDs.ARBITRUM_SEPOLIA]);
 
     manager = new CCTPIndexerManager(
       logger,

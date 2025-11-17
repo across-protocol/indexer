@@ -28,10 +28,11 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { CallsFailedRepository } from "./database/CallsFailedRepository";
-import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
-import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
+import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
 import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
+import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
+import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 
 async function initializeRedis(
@@ -109,6 +110,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new SpokePoolRepository(postgres, logger),
     new SwapBeforeBridgeRepository(postgres, logger),
     new CallsFailedRepository(postgres, logger),
+    new SwapMetadataRepository(postgres, logger),
     new BundleRepository(postgres, logger, true),
     indexerQueuesService,
     write,
