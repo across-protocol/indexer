@@ -197,6 +197,27 @@ export class EventDecoder {
     return events;
   }
 
+  static decodeArbitraryActionsExecutedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://hyperevmscan.io/tx/0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb#eventlog#13
+    const eventTopic =
+      "0xb88fc27be67e678ffb77faf8f8bb00d39b66b4845e4f7ec1e623b0f15abd5213";
+    const eventAbi = [
+      "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
+    ];
+    let events: any[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+    return events;
+  }
+
   static decodeTransactionReceiptLogs(
     receipt: ethers.providers.TransactionReceipt,
     eventTopic: string,

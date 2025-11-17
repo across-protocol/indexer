@@ -7,6 +7,8 @@ import {
   BlockRange,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
+  ArbitraryActionsExecutedLog,
+  ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -53,6 +55,7 @@ export type FetchEventsResult = {
   mintEvents: EvmMintEventsPair[];
   sponsoredBurnEvents: SponsoredDepositForBurnLog[];
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[];
+  arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
@@ -68,6 +71,7 @@ export type StoreEventsResult = {
   }[];
   savedSponsoredBurnEvents: SaveQueryResult<entities.SponsoredDepositForBurn>[];
   savedSimpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
+  savedArbitraryActionsExecutedEvents: SaveQueryResult<entities.ArbitraryActionsExecuted>[];
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
@@ -176,6 +180,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     const hyperEvmExecutorAddress =
       HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
+    const arbitraryEvmFlowExecutorAddress =
+      ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS[this.chainId];
 
     if (!tokenMessengerAddress || !messageTransmitterAddress) {
       const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
@@ -257,11 +263,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const mintAndWithdrawEvents =
       this.getMintAndWithdrawEventsFromTransactionReceipts(
-        this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
-          ...new Set(
-            filteredMessageReceivedEvents.map((event) => event.transactionHash),
-          ),
-        ]),
+        filteredMessageReceivedTxReceipts,
         tokenMessengerAddress,
       );
 
@@ -301,6 +303,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         );
     }
 
+    let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
+    if (arbitraryEvmFlowExecutorAddress) {
+      arbitraryActionsExecutedEvents =
+        this.getArbitraryActionsExecutedEventsFromTransactionReceipts(
+          filteredMessageReceivedTxReceipts,
+          arbitraryEvmFlowExecutorAddress,
+        );
+    }
+
     this.runChecks(burnEvents, mintEvents);
 
     if (burnEvents.length > 0) {
@@ -321,6 +332,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintEvents,
       sponsoredBurnEvents,
       simpleTransferFlowCompletedEvents,
+      arbitraryActionsExecutedEvents,
       blocks,
       transactionReceipts,
       transactions: depositForBurnTransactions,
@@ -525,6 +537,28 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return events;
   }
 
+  private getArbitraryActionsExecutedEventsFromTransactionReceipts(
+    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
+    arbitraryEvmFlowExecutorAddress: string,
+  ) {
+    const events: ArbitraryActionsExecutedLog[] = [];
+    for (const txHash of Object.keys(transactionReceipts)) {
+      const transactionReceipt = transactionReceipts[
+        txHash
+      ] as providers.TransactionReceipt;
+      const arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] =
+        EventDecoder.decodeArbitraryActionsExecutedEvents(
+          transactionReceipt,
+          arbitraryEvmFlowExecutorAddress,
+        );
+      if (arbitraryActionsExecutedEvents.length > 0) {
+        events.push(...arbitraryActionsExecutedEvents);
+      }
+    }
+
+    return events;
+  }
+
   private async getTransactionsReceipts(uniqueTransactionHashes: string[]) {
     const transactionReceipts = await Promise.all(
       uniqueTransactionHashes.map(async (txHash) => {
@@ -581,6 +615,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       mintEvents,
       sponsoredBurnEvents,
       simpleTransferFlowCompletedEvents,
+      arbitraryActionsExecutedEvents,
       blocks,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
@@ -603,6 +638,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedMintEvents,
       savedSponsoredBurnEvents,
       savedSimpleTransferFlowCompletedEvents,
+      savedArbitraryActionsExecutedEvents,
     ] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
         chainAgnosticBurnEvents,
@@ -628,6 +664,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
+      this.cctpRepository.formatAndSaveArbitraryActionsExecutedEvents(
+        arbitraryActionsExecutedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+      ),
     ]);
 
     return {
@@ -635,6 +677,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedMintEvents,
       savedSponsoredBurnEvents,
       savedSimpleTransferFlowCompletedEvents,
+      savedArbitraryActionsExecutedEvents,
     };
   }
 

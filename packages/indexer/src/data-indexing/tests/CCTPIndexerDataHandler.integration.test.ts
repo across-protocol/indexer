@@ -142,6 +142,45 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
   }).timeout(10000);
 
+  it("should fetch and store ArbitraryActionsExecuted event in the database", async () => {
+    const transactionHash =
+      "0x869d1df5f1e7b6b91a824d8e2b455ac48d1f26f0b5f2823c96df391eb75dff34";
+    const blockNumber = 18510668;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const arbitraryActionsExecutedRepository = dataSource.getRepository(
+      entities.ArbitraryActionsExecuted,
+    );
+    const savedEvent = await arbitraryActionsExecutedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.quoteNonce).to.equal(
+      "0x5f9418447e204674cdbad4ad7c229de63849a63e82f1c698cc0cca8e71143a6e",
+    );
+    expect(savedEvent!.initialToken).to.equal(
+      "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+    );
+    expect(savedEvent!.initialAmount.toString()).to.equal("99990");
+    expect(savedEvent!.finalToken).to.equal(
+      "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+    );
+    expect(savedEvent!.finalAmount.toString()).to.equal("99990");
+  }).timeout(10000);
+
   it("should fetch hypercore withdraw data and be able to decode the hookData", async () => {
     const transactionHash =
       "0x13b9b9dfb7f8804d385db96454d094791b8ab618556fcd37fb17c4b206499871";
