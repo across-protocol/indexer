@@ -181,6 +181,46 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent!.finalAmount.toString()).to.equal("99990");
   }).timeout(10000);
 
+  it("should fetch and store FallbackHyperEVMFlowCompleted event in the database", async () => {
+    const transactionHash =
+      "0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02";
+    const blockNumber = 18913313;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const fallbackHyperEVMFlowCompletedRepository = dataSource.getRepository(
+      entities.FallbackHyperEVMFlowCompleted,
+    );
+    const savedEvent = await fallbackHyperEVMFlowCompletedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.quoteNonce).to.equal(
+      "0xd4731c4ab33b3a364d599940d9ba46df41f6a75233a361e2d312e072540ed184",
+    );
+    expect(savedEvent!.finalRecipient).to.equal(
+      "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    );
+    expect(savedEvent!.finalToken).to.equal(
+      "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+    );
+    expect(savedEvent!.evmAmountIn.toString()).to.equal("999900");
+    expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("100");
+    expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+  }).timeout(10000);
+
   it("should fetch hypercore withdraw data and be able to decode the hookData", async () => {
     const transactionHash =
       "0x13b9b9dfb7f8804d385db96454d094791b8ab618556fcd37fb17c4b206499871";
