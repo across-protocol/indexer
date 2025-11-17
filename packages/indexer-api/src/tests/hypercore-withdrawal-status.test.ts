@@ -2,44 +2,36 @@ import { expect } from "chai";
 import request from "supertest";
 import express from "express";
 import Redis from "ioredis";
-
-import { createDataSource, DataSource, fixtures } from "@repo/indexer-database";
-import * as Indexer from "@repo/indexer";
-
+import { DataSource, fixtures } from "@repo/indexer-database";
 import { ExpressApp } from "../express-app";
-import * as utils from "../utils";
 import * as routers from "../routers";
+import { getTestDataSource, getTestRedisInstance } from "./setup";
 
 describe("Hypercore Withdrawal Status", () => {
   let app: express.Express;
   let dataSource: DataSource;
-  let redis: Redis;
+  let redisClient: Redis;
   let hypercoreCctpWithdrawFixture: fixtures.HypercoreCctpWithdrawFixture;
 
-  before(async () => {
+  beforeEach(async () => {
     // Set up database and Redis
-    const databaseConfig = utils.getPostgresConfig(process.env);
-    dataSource = await createDataSource(databaseConfig).initialize();
+    dataSource = await getTestDataSource();
 
-    const redisConfig = Indexer.parseRedisConfig(process.env);
-    redis = new Redis(redisConfig);
+    redisClient = getTestRedisInstance();
 
     // Initialize fixtures
     hypercoreCctpWithdrawFixture = new fixtures.HypercoreCctpWithdrawFixture(
       dataSource,
     );
-    await hypercoreCctpWithdrawFixture.deleteAll();
 
     // Initialize the Express app with the deposits router
-    const depositsRouter = routers.deposits.getRouter(dataSource, redis);
+    const depositsRouter = routers.deposits.getRouter(dataSource, redisClient);
     app = ExpressApp({ deposits: depositsRouter });
   });
 
-  after(async () => {
-    // Clean up resources
-    await hypercoreCctpWithdrawFixture.deleteAll();
+  afterEach(async () => {
     await dataSource.destroy();
-    await redis.quit();
+    await redisClient.quit();
   });
 
   it("should return 200", async () => {

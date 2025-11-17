@@ -16,7 +16,7 @@ import {
   MintAndWithdrawLog,
   SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
-import { SimpleTransferFlowCompleted } from "../../../indexer-database/dist/src/entities";
+import { SponsoredOFTSendLog } from "../data-indexing/adapter/oft/model";
 import { SimpleTransferFlowCompletedLog } from "../data-indexing/model/hyperEvmExecutor";
 
 export class EventDecoder {
@@ -149,6 +149,29 @@ export class EventDecoder {
 
     let events: SponsoredDepositForBurnLog[] =
       this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+
+    return events;
+  }
+
+  static decodeOFTSponsoredSendEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://arbiscan.io/tx/0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a#eventlog#23
+    const eventTopic =
+      "0x8fb515a2e89f5acfca1124e69e331c2cded0ca216b578ba531720f6841139dbf";
+    const eventAbi = [
+      "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
+    ];
+
+    let events: SponsoredOFTSendLog[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
