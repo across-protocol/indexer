@@ -1,5 +1,4 @@
 import { BigNumber, providers } from "ethers";
-import { createMapWithDefault } from "../../utils/map";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 export interface SimpleTransferFlowCompletedLog extends providers.Log {

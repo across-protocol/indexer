@@ -37,7 +37,6 @@ import {
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
 } from "../adapter/cctp-v2/service";
-import { createMapWithDefault } from "../../utils/map";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 export type EvmBurnEventsPair = {
@@ -71,35 +70,21 @@ export type StoreEventsResult = {
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
-  {
-    [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-    [CHAIN_IDs.HYPEREVM_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-  },
-  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-);
+const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+  [CHAIN_IDs.HYPEREVM_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+};
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-      [CHAIN_IDs.HYPEREVM_TESTNET]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-    },
-    "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
-  );
+const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+  [CHAIN_IDs.HYPEREVM_TESTNET]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+};
 
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-    },
-    "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  );
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+};
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
