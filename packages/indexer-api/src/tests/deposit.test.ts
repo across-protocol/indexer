@@ -4,22 +4,19 @@ import { ExpressApp } from "../express-app";
 import express from "express";
 import { DataSource, entities, fixtures } from "@repo/indexer-database";
 import Redis from "ioredis";
-import * as Indexer from "@repo/indexer";
-import { getTestDataSource } from "./setup";
+import { getTestDataSource, getTestRedisInstance } from "./setup";
 import * as routers from "../routers";
 
 describe("/deposit", () => {
   let app: express.Express;
   let dataSource: DataSource;
-  let redis: Redis;
+  let redisClient: Redis;
   let depositsFixture: fixtures.FundsDepositedFixture;
   let relayHashInfoFixture: fixtures.RelayHashInfoFixture;
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
-
-    const redisConfig = Indexer.parseRedisConfig(process.env);
-    redis = new Redis(redisConfig);
+    redisClient = getTestRedisInstance();
 
     // Initialize fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
@@ -28,14 +25,14 @@ describe("/deposit", () => {
     await relayHashInfoFixture.deleteAllRelayHashInfoRows();
 
     // Initialize the Express app with the deposits router
-    const depositsRouter = routers.deposits.getRouter(dataSource, redis);
+    const depositsRouter = routers.deposits.getRouter(dataSource, redisClient);
     app = ExpressApp({ deposits: depositsRouter });
   });
 
   afterEach(async () => {
     // Clean up resources
     await dataSource.destroy();
-    await redis.quit();
+    await redisClient.quit();
   });
 
   it("should return 200 and one deposit by depositId and originChainId", async () => {

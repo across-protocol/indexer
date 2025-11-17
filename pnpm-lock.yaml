@@ -274,7 +274,7 @@ importers:
         version: 3.1.83
       '@across-protocol/sdk':
         specifier: ^4.3.75
-        version: 4.3.81(@solana/sysvars@2.1.0(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
+        version: 4.3.81(@solana/sysvars@2.1.0(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@repo/error-handling':
         specifier: workspace:*
         version: link:../error-handling
@@ -336,6 +336,9 @@ importers:
       '@types/cors':
         specifier: ^2.8.17
         version: 2.8.17
+      '@types/ioredis-mock':
+        specifier: ^8.2.6
+        version: 8.2.6(ioredis@5.4.1)
       '@types/mocha':
         specifier: ^10.0.7
         version: 10.0.7
@@ -345,6 +348,9 @@ importers:
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
+      ioredis-mock:
+        specifier: ^8.13.1
+        version: 8.13.1(@types/ioredis-mock@8.2.6(ioredis@5.4.1))(ioredis@5.4.1)
       mocha:
         specifier: ^10.7.0
         version: 10.7.0
@@ -1389,8 +1395,14 @@ packages:
     resolution: {integrity: sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA==}
     deprecated: Use @eslint/object-schema instead
 
+  '@ioredis/as-callback@3.0.0':
+    resolution: {integrity: sha512-Kqv1rZ3WbgOrS+hgzJ5xG5WQuhvzzSTRYvNeyPMLOAM78MHSnuKI20JeJGbpuAt//LCuP0vsexZcorqW7kWhJg==}
+
   '@ioredis/commands@1.2.0':
     resolution: {integrity: sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==}
+
+  '@ioredis/commands@1.5.0':
+    resolution: {integrity: sha512-eUgLqrMf8nJkZxT24JvVRrQya1vZkQh8BBeYNwGDqa5I0VUi8ACx7uFvAaLxintokpTenkK6DASvo/bvNbBGow==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -2566,6 +2578,11 @@ packages:
 
   '@types/http-errors@2.0.4':
     resolution: {integrity: sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA==}
+
+  '@types/ioredis-mock@8.2.6':
+    resolution: {integrity: sha512-5heqtZMvQ4nXARY0o8rc8cjkJjct2ScM12yCJ/h731S9He93a2cv+kAhwPCNwTKDfNH9gjRfLG4VpAEYJU0/gQ==}
+    peerDependencies:
+      ioredis: '>=5'
 
   '@types/ioredis@5.0.0':
     resolution: {integrity: sha512-zJbJ3FVE17CNl5KXzdeSPtdltc4tMT3TzC6fxQS0sQngkbFZ6h+0uTafsRqu+eSLIugf6Yb0Ea0SUuRr42Nk9g==}
@@ -4794,6 +4811,14 @@ packages:
   fecha@4.2.3:
     resolution: {integrity: sha512-OP2IUU6HeYKJi3i0z4A19kHMQoLVs4Hc+DPqqxI2h/DPZHTm/vjsfC6P0b4jCMy14XizLBqvndQ+UilD7707Jw==}
 
+  fengari-interop@0.1.3:
+    resolution: {integrity: sha512-EtZ+oTu3kEwVJnoymFPBVLIbQcCoy9uWCVnMA6h3M/RqHkUBsLYp29+RRHf9rKr6GwjubWREU1O7RretFIXjHw==}
+    peerDependencies:
+      fengari: ^0.1.0
+
+  fengari@0.1.4:
+    resolution: {integrity: sha512-6ujqUuiIYmcgkGz8MGAdERU57EIluGGPSUgGPTsco657EHa+srq0S3/YUl/r9kx1+D+d4rGfYObd+m8K22gB1g==}
+
   fetch-blob@3.2.0:
     resolution: {integrity: sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==}
     engines: {node: ^12.20 || >= 14.13}
@@ -5485,6 +5510,13 @@ packages:
 
   io-ts@1.10.4:
     resolution: {integrity: sha512-b23PteSnYXSONJ6JQXRAlvJhuw8KOtkqa87W4wDtvMrud/DTJd5X+NpOOI+O/zZwVq6v0VLAaJ+1EDViKEuN9g==}
+
+  ioredis-mock@8.13.1:
+    resolution: {integrity: sha512-Wsi50AU+cMiI32nAgfwpUaJVBtb4iQdVsOHl9M6R3tePCO/8vGsToCVIG82XWAxN4Se55TZoOzVseu+QngFLyw==}
+    engines: {node: '>=12.22'}
+    peerDependencies:
+      '@types/ioredis-mock': ^8
+      ioredis: ^5
 
   ioredis@5.4.1:
     resolution: {integrity: sha512-2YZsvl7jopIa1gaePkeMtd9rAcSjOOjPtpcLlOeusyO+XH2SK5ZcT+UCrElPP+WVIInh2TzeI4XW9ENaSLVVHA==}
@@ -7345,6 +7377,10 @@ packages:
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
+
+  readline-sync@1.4.10:
+    resolution: {integrity: sha512-gNva8/6UAe8QYepIQH/jQ2qn91Qj0B9sYjMBBs3QOB8F2CXcKgLxQaJRP76sWVRQt+QU+8fAkCbCvjjMFu7Ycw==}
+    engines: {node: '>= 0.8.0'}
 
   rechoir@0.6.2:
     resolution: {integrity: sha512-HFM8rkZ+i3zrV+4LQjwQ0W+ez98pApMGM3HUrN04j3CqzPOzl9nmP15Y8YXNm8QHGv/eacOVEjqhmWpkRV0NAw==}
@@ -9239,7 +9275,7 @@ snapshots:
   '@across-protocol/across-token@1.0.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)':
     dependencies:
       '@openzeppelin/contracts': 4.9.6
-      '@uma/common': 2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@uma/common': 2.37.3(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
       hardhat: 2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@babel/core'
@@ -9259,68 +9295,11 @@ snapshots:
 
   '@across-protocol/constants@3.1.83': {}
 
-  '@across-protocol/contracts@0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@openzeppelin/contracts': 4.1.0
-      '@uma/core': 2.61.0(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
-  '@across-protocol/contracts@0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@openzeppelin/contracts': 4.1.0
-      '@uma/core': 2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
   '@across-protocol/contracts@0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
       '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@openzeppelin/contracts': 4.1.0
       '@uma/core': 2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
-  '@across-protocol/contracts@0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@openzeppelin/contracts': 4.1.0
-      '@uma/core': 2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@babel/core'
       - '@codechecks/client'
@@ -9350,8 +9329,8 @@ snapshots:
       '@safe-global/protocol-kit': 6.1.1(bufferutil@4.0.8)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@scroll-tech/contracts': 0.1.0
       '@solana-developers/helpers': 2.8.1(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
-      '@solana-program/address-lookup-table': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4))
-      '@solana-program/token': 0.5.1(@solana/kit@2.1.0(typescript@5.5.4))
+      '@solana-program/address-lookup-table': 0.7.0(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
+      '@solana-program/token': 0.5.1(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
       '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/spl-token': 0.4.13(@solana/web3.js@1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
@@ -9405,7 +9384,60 @@ snapshots:
       '@solana-developers/helpers': 2.8.1(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@solana-program/address-lookup-table': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4))
       '@solana-program/token': 0.5.1(@solana/kit@2.1.0(typescript@5.5.4))
-      '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/kit': 2.1.0(typescript@5.5.4)
+      '@solana/spl-token': 0.4.13(@solana/web3.js@1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@types/yargs': 17.0.33
+      '@uma/common': 2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@uma/contracts-node': 0.4.26
+      '@uma/core': 2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      axios: 1.12.2
+      bs58: 6.0.0
+      buffer-layout: 1.2.2
+      prettier-plugin-rust: 0.1.9
+      yargs: 17.7.2
+      zksync-web3: 0.14.4(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/abi'
+      - '@ethersproject/hardware-wallets'
+      - '@nomiclabs/hardhat-ethers'
+      - '@openzeppelin/defender-deploy-client-cli'
+      - '@openzeppelin/upgrades-core'
+      - bufferutil
+      - c-kzg
+      - debug
+      - encoding
+      - ethers
+      - fastestsmallesttextencoderdecoder
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - typescript
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@across-protocol/contracts@4.1.11(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@across-protocol/constants': 3.1.83
+      '@coral-xyz/anchor': 0.31.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@defi-wonderland/smock': 2.4.0(@ethersproject/abi@5.8.0)(@ethersproject/abstract-provider@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@nomiclabs/hardhat-ethers@2.2.3(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)))(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
+      '@eth-optimism/contracts': 0.5.40(bufferutil@4.0.8)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@ethersproject/abstract-provider': 5.7.0
+      '@ethersproject/abstract-signer': 5.7.0
+      '@ethersproject/bignumber': 5.7.0
+      '@openzeppelin/contracts': 4.9.6
+      '@openzeppelin/contracts-upgradeable': 4.9.6
+      '@openzeppelin/foundry-upgrades': 0.4.0(@openzeppelin/defender-deploy-client-cli@0.0.1-alpha.10(encoding@0.1.13))(@openzeppelin/upgrades-core@1.44.1)
+      '@safe-global/protocol-kit': 6.1.1(bufferutil@4.0.8)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@scroll-tech/contracts': 0.1.0
+      '@solana-developers/helpers': 2.8.1(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@solana-program/address-lookup-table': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
+      '@solana-program/token': 0.5.1(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/spl-token': 0.4.13(@solana/web3.js@1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@types/yargs': 17.0.33
@@ -9450,8 +9482,8 @@ snapshots:
       '@eth-optimism/sdk': 3.3.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@ethersproject/bignumber': 5.8.0
       '@pinata/sdk': 2.1.0
-      '@solana-program/system': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4))
-      '@solana-program/token-2022': 0.4.1(@solana/kit@2.1.0(typescript@5.5.4))(@solana/sysvars@2.1.0(typescript@5.5.4))
+      '@solana-program/system': 0.7.0(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
+      '@solana-program/token-2022': 0.4.1(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))
       '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@types/mocha': 10.0.7
@@ -9506,7 +9538,7 @@ snapshots:
       '@pinata/sdk': 2.1.0
       '@solana-program/system': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4))
       '@solana-program/token-2022': 0.4.1(@solana/kit@2.1.0(typescript@5.5.4))(@solana/sysvars@2.1.0(typescript@5.5.4))
-      '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/kit': 2.1.0(typescript@5.5.4)
       '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@types/mocha': 10.0.7
       '@types/node': 24.3.1
@@ -9549,18 +9581,18 @@ snapshots:
       - ws
       - zod
 
-  '@across-protocol/sdk@4.3.81(@solana/sysvars@2.1.0(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)':
+  '@across-protocol/sdk@4.3.81(@solana/sysvars@2.1.0(typescript@5.5.4))(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
       '@across-protocol/across-token': 1.0.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@across-protocol/constants': 3.1.83
-      '@across-protocol/contracts': 4.1.11(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typescript@5.5.4)(utf-8-validate@5.0.10)
+      '@across-protocol/contracts': 4.1.11(buffer-layout@1.2.2)(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(typescript@5.5.4)(utf-8-validate@5.0.10)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@coral-xyz/anchor': 0.30.1(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@eth-optimism/sdk': 3.3.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@ethersproject/bignumber': 5.8.0
       '@pinata/sdk': 2.1.0
-      '@solana-program/system': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4))
-      '@solana-program/token-2022': 0.4.1(@solana/kit@2.1.0(typescript@5.5.4))(@solana/sysvars@2.1.0(typescript@5.5.4))
-      '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana-program/system': 0.7.0(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))
+      '@solana-program/token-2022': 0.4.1(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))(@solana/sysvars@2.1.0(typescript@5.5.4))
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.98.2(bufferutil@4.0.8)(encoding@0.1.13)(typescript@5.5.4)(utf-8-validate@5.0.10)
       '@types/mocha': 10.0.7
       '@types/node': 24.3.1
@@ -10280,7 +10312,7 @@ snapshots:
       lodash.isequal: 4.5.0
       lodash.isequalwith: 4.4.0
       rxjs: 7.8.2
-      semver: 7.6.3
+      semver: 7.7.3
     transitivePeerDependencies:
       - c-kzg
 
@@ -11166,7 +11198,7 @@ snapshots:
       is: 3.3.0
       methods: 1.1.2
       require-in-the-middle: 5.2.0
-      semver: 7.6.3
+      semver: 7.7.3
       shimmer: 1.2.1
       source-map-support: 0.5.21
       uuid: 8.3.2
@@ -11223,7 +11255,11 @@ snapshots:
 
   '@humanwhocodes/object-schema@2.0.3': {}
 
+  '@ioredis/as-callback@3.0.0': {}
+
   '@ioredis/commands@1.2.0': {}
+
+  '@ioredis/commands@1.5.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -11562,7 +11598,7 @@ snapshots:
     dependencies:
       continuation-local-storage: 3.2.1
       log-driver: 1.2.7
-      semver: 7.6.3
+      semver: 7.7.3
       shimmer: 1.2.1
       uuid: 8.3.2
 
@@ -12200,22 +12236,56 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@solana-program/address-lookup-table@0.7.0(@solana/kit@2.1.0(typescript@5.5.4))':
+  '@solana-program/address-lookup-table@0.7.0(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
     dependencies:
       '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+
+  '@solana-program/address-lookup-table@0.7.0(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+
+  '@solana-program/address-lookup-table@0.7.0(@solana/kit@2.1.0(typescript@5.5.4))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)
+
+  '@solana-program/system@0.7.0(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
+    dependencies:
+      '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+
+  '@solana-program/system@0.7.0(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
 
   '@solana-program/system@0.7.0(@solana/kit@2.1.0(typescript@5.5.4))':
     dependencies:
-      '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/kit': 2.1.0(typescript@5.5.4)
 
-  '@solana-program/token-2022@0.4.1(@solana/kit@2.1.0(typescript@5.5.4))(@solana/sysvars@2.1.0(typescript@5.5.4))':
+  '@solana-program/token-2022@0.4.1(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))(@solana/sysvars@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4))':
     dependencies:
       '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/sysvars': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
 
-  '@solana-program/token@0.5.1(@solana/kit@2.1.0(typescript@5.5.4))':
+  '@solana-program/token-2022@0.4.1(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))(@solana/sysvars@2.1.0(typescript@5.5.4))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/sysvars': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+
+  '@solana-program/token-2022@0.4.1(@solana/kit@2.1.0(typescript@5.5.4))(@solana/sysvars@2.1.0(typescript@5.5.4))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)
+      '@solana/sysvars': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+
+  '@solana-program/token@0.5.1(@solana/kit@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
     dependencies:
       '@solana/kit': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+
+  '@solana-program/token@0.5.1(@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+
+  '@solana-program/token@0.5.1(@solana/kit@2.1.0(typescript@5.5.4))':
+    dependencies:
+      '@solana/kit': 2.1.0(typescript@5.5.4)
 
   '@solana/accounts@2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)':
     dependencies:
@@ -12395,6 +12465,56 @@ snapshots:
       - fastestsmallesttextencoderdecoder
       - ws
 
+  '@solana/kit@2.1.0(typescript@5.5.4)':
+    dependencies:
+      '@solana/accounts': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/addresses': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/codecs': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/functional': 2.1.0(typescript@5.5.4)
+      '@solana/instructions': 2.1.0(typescript@5.5.4)
+      '@solana/keys': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/programs': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-parsed-types': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-spec-types': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-subscriptions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/signers': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/sysvars': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transaction-confirmation': 2.1.0(typescript@5.5.4)
+      '@solana/transaction-messages': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transactions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      typescript: 5.5.4
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - ws
+
+  '@solana/kit@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@solana/accounts': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/addresses': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/codecs': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/functional': 2.1.0(typescript@5.5.4)
+      '@solana/instructions': 2.1.0(typescript@5.5.4)
+      '@solana/keys': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/programs': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-parsed-types': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-spec-types': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-subscriptions': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/signers': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/sysvars': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transaction-confirmation': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/transaction-messages': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transactions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      typescript: 5.5.4
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - ws
+
   '@solana/options@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)':
     dependencies:
       '@solana/codecs-core': 2.0.0-rc.1(typescript@5.5.4)
@@ -12473,6 +12593,15 @@ snapshots:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
+  '@solana/rpc-subscriptions-channel-websocket@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/functional': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-subscriptions-spec': 2.1.0(typescript@5.5.4)
+      '@solana/subscribable': 2.1.0(typescript@5.5.4)
+      typescript: 5.5.4
+      ws: 7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+
   '@solana/rpc-subscriptions-channel-websocket@2.1.0(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
     dependencies:
       '@solana/errors': 2.1.0(typescript@5.5.4)
@@ -12499,6 +12628,24 @@ snapshots:
       '@solana/rpc-spec-types': 2.1.0(typescript@5.5.4)
       '@solana/rpc-subscriptions-api': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
       '@solana/rpc-subscriptions-channel-websocket': 2.1.0(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/rpc-subscriptions-spec': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-transformers': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/subscribable': 2.1.0(typescript@5.5.4)
+      typescript: 5.5.4
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - ws
+
+  '@solana/rpc-subscriptions@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/fast-stable-stringify': 2.1.0(typescript@5.5.4)
+      '@solana/functional': 2.1.0(typescript@5.5.4)
+      '@solana/promises': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-spec-types': 2.1.0(typescript@5.5.4)
+      '@solana/rpc-subscriptions-api': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-subscriptions-channel-websocket': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/rpc-subscriptions-spec': 2.1.0(typescript@5.5.4)
       '@solana/rpc-transformers': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
       '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
@@ -12620,6 +12767,40 @@ snapshots:
       '@solana/promises': 2.1.0(typescript@5.5.4)
       '@solana/rpc': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
       '@solana/rpc-subscriptions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transaction-messages': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transactions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      typescript: 5.5.4
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - ws
+
+  '@solana/transaction-confirmation@2.1.0(typescript@5.5.4)':
+    dependencies:
+      '@solana/addresses': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/codecs-strings': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/keys': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/promises': 2.1.0(typescript@5.5.4)
+      '@solana/rpc': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-subscriptions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transaction-messages': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/transactions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      typescript: 5.5.4
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - ws
+
+  '@solana/transaction-confirmation@2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@solana/addresses': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/codecs-strings': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/errors': 2.1.0(typescript@5.5.4)
+      '@solana/keys': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/promises': 2.1.0(typescript@5.5.4)
+      '@solana/rpc': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
+      '@solana/rpc-subscriptions': 2.1.0(typescript@5.5.4)(ws@7.5.10(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@solana/rpc-types': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
       '@solana/transaction-messages': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
       '@solana/transactions': 2.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.5.4)
@@ -12984,6 +13165,10 @@ snapshots:
 
   '@types/http-errors@2.0.4': {}
 
+  '@types/ioredis-mock@8.2.6(ioredis@5.4.1)':
+    dependencies:
+      ioredis: 5.4.1
+
   '@types/ioredis@5.0.0':
     dependencies:
       ioredis: 5.4.1
@@ -13138,7 +13323,7 @@ snapshots:
       graphemer: 1.4.0
       ignore: 5.3.1
       natural-compare: 1.4.0
-      semver: 7.6.3
+      semver: 7.7.3
       ts-api-utils: 1.3.0(typescript@5.5.4)
     optionalDependencies:
       typescript: 5.5.4
@@ -13241,7 +13426,7 @@ snapshots:
       debug: 4.3.7
       globby: 11.1.0
       is-glob: 4.0.3
-      semver: 7.6.3
+      semver: 7.7.3
       tsutils: 3.21.0(typescript@5.5.4)
     optionalDependencies:
       typescript: 5.5.4
@@ -13256,7 +13441,7 @@ snapshots:
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
-      semver: 7.6.3
+      semver: 7.7.3
       ts-api-utils: 1.3.0(typescript@5.5.4)
     optionalDependencies:
       typescript: 5.5.4
@@ -13271,7 +13456,7 @@ snapshots:
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.5
-      semver: 7.6.3
+      semver: 7.7.3
       ts-api-utils: 1.3.0(typescript@5.5.4)
     optionalDependencies:
       typescript: 5.5.4
@@ -13288,7 +13473,7 @@ snapshots:
       '@typescript-eslint/typescript-estree': 5.62.0(typescript@5.5.4)
       eslint: 8.57.0
       eslint-scope: 5.1.1
-      semver: 7.6.3
+      semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -13302,7 +13487,7 @@ snapshots:
       '@typescript-eslint/types': 6.21.0
       '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.5.4)
       eslint: 8.57.0
-      semver: 7.6.3
+      semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -13334,108 +13519,6 @@ snapshots:
       eslint-visitor-keys: 3.4.3
 
   '@uma/common@2.37.3(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@across-protocol/contracts': 0.1.4(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
-      '@ethersproject/address': 5.8.0
-      '@ethersproject/bignumber': 5.8.0
-      '@ethersproject/bytes': 5.8.0
-      '@ethersproject/constants': 5.8.0
-      '@google-cloud/kms': 3.8.0(encoding@0.1.13)
-      '@google-cloud/storage': 6.12.0(encoding@0.1.13)
-      '@nomicfoundation/hardhat-verify': 1.1.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
-      '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
-      '@nomiclabs/hardhat-web3': 2.0.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(web3@1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10))
-      '@truffle/contract': 4.6.17(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      '@truffle/hdwallet-provider': 1.5.1-alpha.1(@babel/core@7.25.2)(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      '@types/ethereum-protocol': 1.0.5
-      '@uniswap/v3-core': 1.0.1
-      abi-decoder: https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb
-      async-retry: 1.3.3
-      axios: 1.12.2
-      bignumber.js: 8.1.1
-      chalk-pipe: 3.0.0
-      decimal.js: 10.5.0
-      dotenv: 9.0.2
-      eth-crypto: 2.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-      hardhat-deploy: 0.9.1(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      hardhat-gas-reporter: 1.0.10(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      hardhat-typechain: 0.3.5(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))
-      lodash.uniqby: 4.7.0
-      minimist: 1.2.8
-      moment: 2.30.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-      node-metamask: https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-      require-context: 1.1.0
-      solidity-coverage: 0.7.22(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      truffle-deploy-registry: 0.5.1
-      web3: 1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      winston: 3.13.1
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
-  '@uma/common@2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@ethersproject/address': 5.8.0
-      '@ethersproject/bignumber': 5.8.0
-      '@ethersproject/bytes': 5.8.0
-      '@ethersproject/constants': 5.8.0
-      '@google-cloud/kms': 3.8.0(encoding@0.1.13)
-      '@google-cloud/storage': 6.12.0(encoding@0.1.13)
-      '@nomicfoundation/hardhat-verify': 1.1.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
-      '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
-      '@nomiclabs/hardhat-web3': 2.0.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(web3@1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10))
-      '@truffle/contract': 4.6.17(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      '@truffle/hdwallet-provider': 1.5.1-alpha.1(@babel/core@7.25.2)(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      '@types/ethereum-protocol': 1.0.5
-      '@uniswap/v3-core': 1.0.1
-      abi-decoder: https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb
-      async-retry: 1.3.3
-      axios: 1.12.2
-      bignumber.js: 8.1.1
-      chalk-pipe: 3.0.0
-      decimal.js: 10.5.0
-      dotenv: 9.0.2
-      eth-crypto: 2.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-      hardhat-deploy: 0.9.1(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      hardhat-gas-reporter: 1.0.10(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      hardhat-typechain: 0.3.5(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
-      lodash.uniqby: 4.7.0
-      minimist: 1.2.8
-      moment: 2.30.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-      node-metamask: https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584(bufferutil@4.0.8)(utf-8-validate@5.0.10)
-      require-context: 1.1.0
-      solidity-coverage: 0.7.22(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      truffle-deploy-registry: 0.5.1
-      web3: 1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      winston: 3.13.1
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
-  '@uma/common@2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
       '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@ethersproject/address': 5.8.0
@@ -13486,9 +13569,60 @@ snapshots:
       - typechain
       - utf-8-validate
 
+  '@uma/common@2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@ethersproject/address': 5.8.0
+      '@ethersproject/bignumber': 5.8.0
+      '@ethersproject/bytes': 5.8.0
+      '@ethersproject/constants': 5.8.0
+      '@google-cloud/kms': 3.8.0(encoding@0.1.13)
+      '@google-cloud/storage': 6.12.0(encoding@0.1.13)
+      '@nomicfoundation/hardhat-verify': 1.1.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
+      '@nomiclabs/hardhat-ethers': 2.2.3(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
+      '@nomiclabs/hardhat-web3': 2.0.1(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(web3@1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10))
+      '@truffle/contract': 4.6.17(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@truffle/hdwallet-provider': 1.5.1-alpha.1(@babel/core@7.25.2)(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      '@types/ethereum-protocol': 1.0.5
+      '@uniswap/v3-core': 1.0.1
+      abi-decoder: https://codeload.github.com/UMAprotocol/abi-decoder/tar.gz/1f18b7037985bf9b8960a6dc39dc52579ef274bb
+      async-retry: 1.3.3
+      axios: 1.12.2
+      bignumber.js: 8.1.1
+      chalk-pipe: 3.0.0
+      decimal.js: 10.5.0
+      dotenv: 9.0.2
+      eth-crypto: 2.7.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      hardhat-deploy: 0.9.1(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      hardhat-gas-reporter: 1.0.10(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      hardhat-typechain: 0.3.5(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))
+      lodash.uniqby: 4.7.0
+      minimist: 1.2.8
+      moment: 2.30.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+      node-metamask: https://codeload.github.com/UMAprotocol/node-metamask/tar.gz/36b33cb82558bafcd3ab0dcfbd35b26c2c0a2584(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      require-context: 1.1.0
+      solidity-coverage: 0.7.22(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      truffle-deploy-registry: 0.5.1
+      web3: 1.10.4(bufferutil@4.0.8)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      winston: 3.13.1
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@codechecks/client'
+      - '@ethersproject/hardware-wallets'
+      - bufferutil
+      - debug
+      - encoding
+      - ethers
+      - hardhat
+      - supports-color
+      - ts-generator
+      - typechain
+      - utf-8-validate
+
   '@uma/common@2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
-      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@across-protocol/contracts': 0.1.4(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@ethersproject/address': 5.8.0
       '@ethersproject/bignumber': 5.8.0
       '@ethersproject/bytes': 5.8.0
@@ -13565,39 +13699,13 @@ snapshots:
       - typechain
       - utf-8-validate
 
-  '@uma/core@2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
-    dependencies:
-      '@gnosis.pm/safe-contracts': 1.3.0(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      '@gnosis.pm/zodiac': 3.2.0(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      '@maticnetwork/fx-portal': 1.0.5
-      '@openzeppelin/contracts': 4.9.6
-      '@uma/common': 2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@16.18.104)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@uniswap/lib': 4.0.1-alpha
-      '@uniswap/v2-core': 1.0.0
-      '@uniswap/v2-periphery': 1.1.0-beta.0
-      '@uniswap/v3-core': 1.0.1
-      '@uniswap/v3-periphery': 1.4.4
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@codechecks/client'
-      - '@ethersproject/hardware-wallets'
-      - bufferutil
-      - debug
-      - encoding
-      - ethers
-      - hardhat
-      - supports-color
-      - ts-generator
-      - typechain
-      - utf-8-validate
-
   '@uma/core@2.61.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
       '@gnosis.pm/safe-contracts': 1.3.0(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@gnosis.pm/zodiac': 3.2.0(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       '@maticnetwork/fx-portal': 1.0.5
       '@openzeppelin/contracts': 4.9.6
-      '@uma/common': 2.37.3(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@uma/common': 2.37.3(@babel/core@7.25.2)(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(bufferutil@4.0.8)(encoding@0.1.13)(ethers@5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@24.3.1)(typescript@5.5.4))(typescript@5.5.4)(utf-8-validate@5.0.10))(ts-generator@0.1.1)(typechain@4.0.3(typescript@5.5.4))(utf-8-validate@5.0.10)
       '@uniswap/lib': 4.0.1-alpha
       '@uniswap/v2-core': 1.0.0
       '@uniswap/v2-periphery': 1.1.0-beta.0
@@ -15632,7 +15740,7 @@ snapshots:
       read-pkg-up: 7.0.1
       regexp-tree: 0.1.27
       regjsparser: 0.10.0
-      semver: 7.6.3
+      semver: 7.7.3
       strip-indent: 3.0.0
 
   eslint-scope@5.1.1:
@@ -16215,6 +16323,16 @@ snapshots:
       picomatch: 4.0.2
 
   fecha@4.2.3: {}
+
+  fengari-interop@0.1.3(fengari@0.1.4):
+    dependencies:
+      fengari: 0.1.4
+
+  fengari@0.1.4:
+    dependencies:
+      readline-sync: 1.4.10
+      sprintf-js: 1.1.3
+      tmp: 0.0.33
 
   fetch-blob@3.2.0:
     dependencies:
@@ -17307,6 +17425,16 @@ snapshots:
     dependencies:
       fp-ts: 1.19.3
 
+  ioredis-mock@8.13.1(@types/ioredis-mock@8.2.6(ioredis@5.4.1))(ioredis@5.4.1):
+    dependencies:
+      '@ioredis/as-callback': 3.0.0
+      '@ioredis/commands': 1.5.0
+      '@types/ioredis-mock': 8.2.6(ioredis@5.4.1)
+      fengari: 0.1.4
+      fengari-interop: 0.1.3(fengari@0.1.4)
+      ioredis: 5.4.1
+      semver: 7.7.3
+
   ioredis@5.4.1:
     dependencies:
       '@ioredis/commands': 1.2.0
@@ -17949,7 +18077,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.6.3
+      semver: 7.7.3
 
   make-error@1.3.6: {}
 
@@ -19252,6 +19380,8 @@ snapshots:
 
   readdirp@4.1.2: {}
 
+  readline-sync@1.4.10: {}
+
   rechoir@0.6.2:
     dependencies:
       resolve: 1.22.8
@@ -19859,7 +19989,7 @@ snapshots:
       git-hooks-list: 3.1.0
       globby: 13.2.2
       is-plain-obj: 4.1.0
-      semver: 7.6.3
+      semver: 7.7.3
       sort-object-keys: 1.1.3
 
   source-map-support@0.5.21:
