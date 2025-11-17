@@ -78,6 +78,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.SponsoredOFTSend,
       // HyperEVM
       entities.SimpleTransferFlowCompleted,
+      entities.ArbitraryActionsExecuted,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],
