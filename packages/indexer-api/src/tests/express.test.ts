@@ -3,36 +3,33 @@ import request from "supertest";
 import { ExpressApp } from "../express-app";
 import express from "express";
 import { DataSource, fixtures } from "@repo/indexer-database";
-import { getTestDataSource } from "./setup";
+import { getTestDataSource, getTestRedisInstance } from "./setup";
 import Redis from "ioredis";
-import * as Indexer from "@repo/indexer";
 import * as routers from "../routers";
 
 describe("Express App Tests with Deposits Endpoint", () => {
   let app: express.Express;
   let dataSource: DataSource;
-  let redis: Redis;
+  let redisClient: Redis;
   let depositsFixture: fixtures.FundsDepositedFixture;
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
-
-    const redisConfig = Indexer.parseRedisConfig(process.env);
-    redis = new Redis(redisConfig);
+    redisClient = getTestRedisInstance();
 
     // Initialize fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
     await depositsFixture.deleteAllDeposits();
 
     // Initialize the Express app with the deposits router
-    const depositsRouter = routers.deposits.getRouter(dataSource, redis);
+    const depositsRouter = routers.deposits.getRouter(dataSource, redisClient);
     app = ExpressApp({ deposits: depositsRouter });
   });
 
   afterEach(async () => {
     // Clean up resources
     await dataSource.destroy();
-    await redis.quit();
+    await redisClient.quit();
   });
 
   it("should return 200 and a success message for the /deposits route", async () => {

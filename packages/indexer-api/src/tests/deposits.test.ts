@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import winston from "winston";
 import { DataSource, entities, fixtures } from "@repo/indexer-database";
-import { getTestDataSource } from "./setup";
+import { getTestDataSource, getTestRedisInstance } from "./setup";
 // import { parsePostgresConfig } from "../parseEnv";
 import { DepositsService } from "../services/deposits"; // Assuming this is the new service file
 import Redis from "ioredis";
-import * as Indexer from "@repo/indexer";
 
 describe("Deposits Service Tests", () => {
   // Set up
@@ -15,7 +14,7 @@ describe("Deposits Service Tests", () => {
 
   let dataSource: DataSource;
   let depositsService: DepositsService;
-  let redis: Redis;
+  let redisClient: Redis;
 
   // Fixtures
   let depositsFixture: fixtures.FundsDepositedFixture;
@@ -32,11 +31,10 @@ describe("Deposits Service Tests", () => {
     dataSource = await getTestDataSource();
 
     // Initialize Redis
-    const redisConfig = Indexer.parseRedisConfig(process.env);
-    redis = new Redis(redisConfig);
+    redisClient = getTestRedisInstance();
 
     // Instantiate service
-    depositsService = new DepositsService(dataSource, redis);
+    depositsService = new DepositsService(dataSource, redisClient);
 
     // Instantiate fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
@@ -44,33 +42,15 @@ describe("Deposits Service Tests", () => {
     swapBeforeBridgeFixture = new fixtures.SwapBeforeBridgeFixture(dataSource);
     relayHashInfoFixture = new fixtures.RelayHashInfoFixture(dataSource);
     swapMetadataFixture = new fixtures.SwapMetadataFixture(dataSource);
-
-    // Store events to use across tests
-    [deposit] = await depositsFixture.insertDeposits([
-      { internalHash: "0x123" },
-    ]);
-    [fill] = await fillsFixture.insertFills([{ internalHash: "0x123" }]);
   });
 
   afterEach(async () => {
-    // Reset state after each test
-    await depositsFixture.deleteAllDeposits();
-    await fillsFixture.deleteAllFilledRelays();
-    await swapBeforeBridgeFixture.deleteAllSwaps();
-    await relayHashInfoFixture.deleteAllRelayHashInfoRows();
-    await swapMetadataFixture.deleteAllSwapMetadata();
-  });
-
-  after(async () => {
     // Close connections after all tests
     await dataSource.destroy();
-    await redis.quit();
+    await redisClient.quit();
   });
 
   it("should show the deposits table is empty when calling getDeposits", async () => {
-    // Ensure the deposits table is empty
-    await depositsFixture.deleteAllDeposits();
-
     // Call getDeposits to retrieve all deposits
     const deposits = await depositsService.getDeposits({ limit: 1 });
 
@@ -365,7 +345,7 @@ describe("Deposits Service Tests", () => {
     expect(deposits).to.be.an("array").that.has.lengthOf(1);
     const deposit = deposits[0];
     expect(deposit?.swapOutputToken).to.equal(swapMetadataData.address);
-    expect(deposit?.swapOutputTokenAmount).to.equal(
+    expect(deposit?.swapOutputTokenAmount?.toString()).to.equal(
       swapMetadataData.minAmountOut,
     );
     // Verify only required swap metadata fields are present

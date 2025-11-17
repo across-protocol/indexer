@@ -1,6 +1,8 @@
 import { newDb } from "pg-mem";
 import { DataSource } from "typeorm";
 import { createDataSource as createRealDataSource } from "@repo/indexer-database";
+import Redis from "ioredis-mock";
+import { Redis as IoRedis } from "ioredis";
 
 /**
  * Creates and initializes an in-memory TypeORM DataSource for testing.
@@ -48,4 +50,15 @@ export async function getTestDataSource(): Promise<DataSource> {
   }
 
   return dataSource;
+}
+
+/**
+ * Creates an in-memory Redis mock.
+ */
+export function getTestRedisInstance(): IoRedis {
+  // Create a fresh in-memory instance
+  const redisClientInMemory = new Redis();
+
+  // Return the mock, typed as the real 'Redis'
+  return redisClientInMemory;
 }
