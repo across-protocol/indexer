@@ -6,6 +6,7 @@ import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 import {
   BlockRange,
+  FallbackHyperEVMFlowCompletedLog,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
   ENDPOINT_V2_ADDRESS,
@@ -26,8 +27,12 @@ import {
 import { EventDecoder } from "../../web3/EventDecoder";
 import { fetchEvents } from "../../utils/contractUtils";
 import {
-  formatAndSaveSimpleTransferFlowCompletedEvents,
-  getSimpleTransferFlowCompletedEventsFromTransactionReceipts,
+  formatAndSaveEvents,
+  getEventsFromTransactionReceipts,
+} from "./eventProcessing";
+import {
+  formatFallbackHyperEVMFlowCompletedEvent,
+  formatSimpleTransferFlowCompletedEvent,
 } from "./hyperEvmExecutor";
 
 export type FetchEventsResult = {
@@ -35,6 +40,7 @@ export type FetchEventsResult = {
   oftReceivedEvents: OFTReceivedEvent[];
   sponsoredOFTSendEvents: SponsoredOFTSendLog[];
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[];
+  fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {
@@ -42,6 +48,7 @@ export type StoreEventsResult = {
   oftReceivedEvents: SaveQueryResult<entities.OFTReceived>[];
   sponsoredOFTSendEvents: SaveQueryResult<entities.SponsoredOFTSend>[];
   simpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
+  fallbackHyperEVMFlowCompletedEvents: SaveQueryResult<entities.FallbackHyperEVMFlowCompleted>[];
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
@@ -166,14 +173,16 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
     let sponsoredOFTSendEvents: SponsoredOFTSendLog[] = [];
     if (sponsoredOFTSrcPeripheryAddress) {
-      sponsoredOFTSendEvents =
-        this.getSponsoredOFTSendEventsFromTransactionReceipts(
-          filteredOftSentTransactionReceipts,
-          sponsoredOFTSrcPeripheryAddress,
-        );
+      sponsoredOFTSendEvents = getEventsFromTransactionReceipts(
+        filteredOftSentTransactionReceipts,
+        sponsoredOFTSrcPeripheryAddress,
+        EventDecoder.decodeOFTSponsoredSendEvents,
+      );
     }
 
-    const simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
+    let simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
+      [];
+    let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
     if (endpointAddress) {
       const composeDeliveredEvents = await fetchEvents(
@@ -188,13 +197,27 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           const transactionReceipts = await this.getTransactionsReceipts(
             composeDeliveredEvents.map((event) => event.transactionHash),
           );
-          const events =
-            getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
+          simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
+            transactionReceipts,
+            hypercoreFlowExecutorAddress,
+            EventDecoder.decodeSimpleTransferFlowCompletedEvents,
+          );
+          blockHashes.push(
+            ...simpleTransferFlowCompletedEvents.map(
+              (event) => event.blockHash,
+            ),
+          );
+          fallbackHyperEVMFlowCompletedEvents =
+            getEventsFromTransactionReceipts(
               transactionReceipts,
               hypercoreFlowExecutorAddress,
+              EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
             );
-          simpleTransferFlowCompletedEvents.push(...events);
-          blockHashes.push(...events.map((event) => event.blockHash));
+          blockHashes.push(
+            ...fallbackHyperEVMFlowCompletedEvents.map(
+              (event) => event.blockHash,
+            ),
+          );
         }
       }
     }
@@ -217,6 +240,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       oftReceivedEvents: filteredOftReceivedEvents,
       sponsoredOFTSendEvents,
       simpleTransferFlowCompletedEvents,
+      fallbackHyperEVMFlowCompletedEvents,
       blocks,
     };
   }
@@ -232,6 +256,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       oftSentEvents,
       sponsoredOFTSendEvents,
       simpleTransferFlowCompletedEvents,
+      fallbackHyperEVMFlowCompletedEvents,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
     const [
@@ -239,6 +264,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       savedOftReceivedEvents,
       savedSponsoredOFTSendEvents,
       savedSimpleTransferFlowCompletedEvents,
+      savedFallbackHyperEVMFlowCompletedEvents,
     ] = await Promise.all([
       this.oftRepository.formatAndSaveOftSentEvents(
         oftSentEvents,
@@ -260,12 +286,25 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
-      formatAndSaveSimpleTransferFlowCompletedEvents(
+      formatAndSaveEvents(
         this.oftRepository,
         simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
+        formatSimpleTransferFlowCompletedEvent,
+        entities.SimpleTransferFlowCompleted,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+      ),
+      formatAndSaveEvents(
+        this.oftRepository,
+        fallbackHyperEVMFlowCompletedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatFallbackHyperEVMFlowCompletedEvent,
+        entities.FallbackHyperEVMFlowCompleted,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
       ),
     ]);
 
@@ -274,6 +313,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       oftReceivedEvents: savedOftReceivedEvents,
       sponsoredOFTSendEvents: savedSponsoredOFTSendEvents,
       simpleTransferFlowCompletedEvents: savedSimpleTransferFlowCompletedEvents,
+      fallbackHyperEVMFlowCompletedEvents:
+        savedFallbackHyperEVMFlowCompletedEvents,
     };
   }
 
@@ -307,26 +348,6 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       {} as Record<string, providers.TransactionReceipt>,
     );
     return transactionReceiptsMap;
-  }
-
-  private getSponsoredOFTSendEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, providers.TransactionReceipt>,
-    sponsoredOFTSrcPeripheryAddress: string,
-  ) {
-    const events: SponsoredOFTSendLog[] = [];
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const sponsoredOFTSendEvents = EventDecoder.decodeOFTSponsoredSendEvents(
-        transactionReceipt,
-        sponsoredOFTSrcPeripheryAddress,
-      );
-      if (sponsoredOFTSendEvents.length > 0) {
-        events.push(...sponsoredOFTSendEvents);
-      }
-    }
-    return events;
   }
 
   private async filterTransactionsForSupportedEndpointIds(

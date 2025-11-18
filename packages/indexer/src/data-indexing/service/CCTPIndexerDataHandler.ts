@@ -42,9 +42,13 @@ import {
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
-  formatAndSaveSimpleTransferFlowCompletedEvents,
-  getSimpleTransferFlowCompletedEventsFromTransactionReceipts,
+  formatFallbackHyperEVMFlowCompletedEvent,
+  formatSimpleTransferFlowCompletedEvent,
 } from "./hyperEvmExecutor";
+import {
+  formatAndSaveEvents,
+  getEventsFromTransactionReceipts,
+} from "./eventProcessing";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -250,16 +254,17 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         ),
       ]);
 
-    const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
+    const messageSentEvents = getEventsFromTransactionReceipts(
       filteredDepositForBurnTxReceipts,
       messageTransmitterAddress,
+      EventDecoder.decodeCCTPMessageSentEvents,
     );
 
-    const mintAndWithdrawEvents =
-      this.getMintAndWithdrawEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        tokenMessengerAddress,
-      );
+    const mintAndWithdrawEvents = getEventsFromTransactionReceipts(
+      filteredMessageReceivedTxReceipts,
+      tokenMessengerAddress,
+      EventDecoder.decodeCCTPMintAndWithdrawEvents,
+    );
 
     const burnEvents = await this.matchDepositForBurnWithMessageSentEvents(
       filteredDepositForBurnEvents,
@@ -290,30 +295,30 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     let simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
       [];
     if (hyperEvmExecutorAddress) {
-      simpleTransferFlowCompletedEvents =
-        getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
-          filteredMessageReceivedTxReceipts,
-          hyperEvmExecutorAddress,
-        );
+      simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        hyperEvmExecutorAddress,
+        EventDecoder.decodeSimpleTransferFlowCompletedEvents,
+      );
     }
 
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
     if (arbitraryEvmFlowExecutorAddress) {
-      arbitraryActionsExecutedEvents =
-        this.getArbitraryActionsExecutedEventsFromTransactionReceipts(
-          filteredMessageReceivedTxReceipts,
-          arbitraryEvmFlowExecutorAddress,
-        );
+      arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        arbitraryEvmFlowExecutorAddress,
+        EventDecoder.decodeArbitraryActionsExecutedEvents,
+      );
     }
 
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
     if (arbitraryEvmFlowExecutorAddress) {
-      fallbackHyperEVMFlowCompletedEvents =
-        this.getFallbackHyperEVMFlowCompletedEventsFromTransactionReceipts(
-          filteredMessageReceivedTxReceipts,
-          arbitraryEvmFlowExecutorAddress,
-        );
+      fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        arbitraryEvmFlowExecutorAddress,
+        EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
+      );
     }
 
     this.runChecks(burnEvents, mintEvents);
@@ -416,52 +421,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     }
   }
 
-  private getMessageSentEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    messageTransmitterAddress: string,
-  ) {
-    const events: MessageSentLog[] = [];
-
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const messageSentEvents: MessageSentLog[] =
-        EventDecoder.decodeCCTPMessageSentEvents(
-          transactionReceipt,
-          messageTransmitterAddress,
-        );
-      if (messageSentEvents.length > 0) {
-        events.push(...messageSentEvents);
-      }
-    }
-
-    return events;
-  }
-
-  private getMintAndWithdrawEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    tokenMessengerAddress: string,
-  ) {
-    const events: MintAndWithdrawLog[] = [];
-
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const mintAndWithdrawEvents: MintAndWithdrawLog[] =
-        EventDecoder.decodeCCTPMintAndWithdrawEvents(
-          transactionReceipt,
-          tokenMessengerAddress,
-        );
-      if (mintAndWithdrawEvents.length > 0) {
-        events.push(...mintAndWithdrawEvents);
-      }
-    }
-
-    return events;
-  }
-
   private getSponsoredDepositForBurnEventsFromTransactionReceipts(
     transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
     sponsoredCCTPSrcPeripheryAddress: string,
@@ -514,50 +473,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
             });
           }
         }
-      }
-    }
-
-    return events;
-  }
-
-  private getArbitraryActionsExecutedEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    arbitraryEvmFlowExecutorAddress: string,
-  ) {
-    const events: ArbitraryActionsExecutedLog[] = [];
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] =
-        EventDecoder.decodeArbitraryActionsExecutedEvents(
-          transactionReceipt,
-          arbitraryEvmFlowExecutorAddress,
-        );
-      if (arbitraryActionsExecutedEvents.length > 0) {
-        events.push(...arbitraryActionsExecutedEvents);
-      }
-    }
-
-    return events;
-  }
-
-  private getFallbackHyperEVMFlowCompletedEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    arbitraryEvmFlowExecutorAddress: string,
-  ) {
-    const events: FallbackHyperEVMFlowCompletedLog[] = [];
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
-        EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents(
-          transactionReceipt,
-          arbitraryEvmFlowExecutorAddress,
-        );
-      if (fallbackHyperEVMFlowCompletedEvents.length > 0) {
-        events.push(...fallbackHyperEVMFlowCompletedEvents);
       }
     }
 
@@ -665,12 +580,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
-      formatAndSaveSimpleTransferFlowCompletedEvents(
+      formatAndSaveEvents(
         this.cctpRepository,
         simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
+        formatSimpleTransferFlowCompletedEvent,
+        entities.SimpleTransferFlowCompleted,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
       ),
       this.cctpRepository.formatAndSaveArbitraryActionsExecutedEvents(
         arbitraryActionsExecutedEvents,
@@ -678,11 +596,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
-      this.cctpRepository.formatAndSaveFallbackHyperEVMFlowCompletedEvents(
+      formatAndSaveEvents(
+        this.cctpRepository,
         fallbackHyperEVMFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,
         blocksTimestamps,
+        formatFallbackHyperEVMFlowCompletedEvent,
+        entities.FallbackHyperEVMFlowCompleted,
+        ["chainId", "blockNumber", "transactionHash", "logIndex"],
       ),
     ]);
 
