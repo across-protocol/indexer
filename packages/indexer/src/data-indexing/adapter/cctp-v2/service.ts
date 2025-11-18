@@ -229,9 +229,11 @@ export function decodeHookData(
     }
 
     // Slice and parse fromAddress (20-byte address)
-    const fromAddress = ethers.utils.hexlify(
+    const fromAddressHex = ethers.utils.hexlify(
       hookDataBytes.slice(DECLARED_LENGTH_END, FROM_ADDRESS_END),
     );
+    // Convert to checksummed address format
+    const fromAddress = ethers.utils.getAddress(fromAddressHex);
 
     // Slice and parse HyperCore nonce (uint64)
     const hyperCoreNonce = BigNumber.from(

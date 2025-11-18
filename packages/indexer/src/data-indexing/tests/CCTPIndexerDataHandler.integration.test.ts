@@ -219,7 +219,7 @@ describe("CCTPIndexerDataHandler", () => {
     assert(decodedHookData, "Expected to decode hookData");
     expect(decodedHookData.hyperCoreNonce.toNumber()).to.equal(1762785559609);
     expect(decodedHookData.fromAddress).to.equal(
-      "0x3f51b87ae65548ab996bdbb363f2553a311ef43e",
+      "0x3F51b87ae65548ab996BDBB363F2553a311eF43E",
     );
     expect(
       ethers.utils.toUtf8String(
