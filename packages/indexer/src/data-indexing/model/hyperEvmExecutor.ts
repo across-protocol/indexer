@@ -42,8 +42,3 @@ export const HYPERCORE_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } = {
 export const ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
 };
-
-// Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
-export const ENDPOINT_V2_ADDRESS: { [key: number]: string } = {
-  [CHAIN_IDs.HYPEREVM]: "0x3a73033c0b1407574c76bdbac67f126f6b4a9aa9",
-};
