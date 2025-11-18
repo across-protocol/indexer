@@ -52,7 +52,10 @@ describe("Deposits Service Tests", () => {
 
   it("should show the deposits table is empty when calling getDeposits", async () => {
     // Call getDeposits to retrieve all deposits
-    const deposits = await depositsService.getDeposits({ limit: 1 });
+    const deposits = await depositsService.getDeposits({
+      limit: 1,
+      depositType: "across",
+    });
 
     // Verify that the deposits array is empty
     expect(deposits).to.be.an("array").that.is.empty;
@@ -64,7 +67,10 @@ describe("Deposits Service Tests", () => {
     ]);
 
     // Call getDeposits to retrieve all deposits
-    const deposits = await depositsService.getDeposits({ limit: 10 });
+    const deposits = await depositsService.getDeposits({
+      limit: 10,
+      depositType: "across",
+    });
 
     // Verify that the deposits array contains one deposit
     expect(deposits).to.be.an("array").that.has.lengthOf(1);
@@ -96,6 +102,7 @@ describe("Deposits Service Tests", () => {
     const firstPageDeposits = await depositsService.getDeposits({
       limit: 5,
       skip: 0,
+      depositType: "across",
     });
 
     // Verify that the first page contains 5 deposits
@@ -115,6 +122,7 @@ describe("Deposits Service Tests", () => {
     const secondPageDeposits = await depositsService.getDeposits({
       limit: 5,
       skip: 5,
+      depositType: "across",
     });
 
     // Verify that the second page contains 5 deposits
@@ -221,6 +229,7 @@ describe("Deposits Service Tests", () => {
     const queriedDeposits = await depositsService.getDeposits({
       limit: 1,
       skip: 0,
+      depositType: "across",
     });
 
     // Verify that the deposit and related entities exist
@@ -339,7 +348,10 @@ describe("Deposits Service Tests", () => {
     ]);
 
     // Query the deposit
-    const deposits = await depositsService.getDeposits({ limit: 1 });
+    const deposits = await depositsService.getDeposits({
+      limit: 1,
+      depositType: "across",
+    });
 
     // Verify swap metadata fields
     expect(deposits).to.be.an("array").that.has.lengthOf(1);
@@ -387,7 +399,10 @@ describe("Deposits Service Tests", () => {
     await relayHashInfoFixture.insertRelayHashInfos([relayHashInfoData]);
 
     // Query the deposit
-    const deposits = await depositsService.getDeposits({ limit: 1 });
+    const deposits = await depositsService.getDeposits({
+      limit: 1,
+      depositType: "across",
+    });
 
     // Verify swap metadata fields are null
     expect(deposits).to.be.an("array").that.has.lengthOf(1);
@@ -443,7 +458,10 @@ describe("Deposits Service Tests", () => {
     ]);
 
     // Query the deposit
-    const deposits = await depositsService.getDeposits({ limit: 1 });
+    const deposits = await depositsService.getDeposits({
+      limit: 1,
+      depositType: "across",
+    });
 
     // Verify swap metadata fields are null (since we only have input side)
     expect(deposits).to.be.an("array").that.has.lengthOf(1);
@@ -545,7 +563,10 @@ describe("Deposits Service Tests", () => {
     });
 
     // Query deposits
-    const deposits = await depositsService.getDeposits({ limit: 10 });
+    const deposits = await depositsService.getDeposits({
+      limit: 10,
+      depositType: "cctp",
+    });
 
     // Verify DepositForBurn is returned (CCTP deposits have burnToken and mintRecipient fields)
     const cctpDeposit = deposits.find(
@@ -593,7 +614,10 @@ describe("Deposits Service Tests", () => {
     ]);
 
     // Query deposits
-    const deposits = await depositsService.getDeposits({ limit: 10 });
+    const deposits = await depositsService.getDeposits({
+      limit: 10,
+      depositType: "oft",
+    });
 
     // Verify OFTSent is returned (OFT deposits have fromAddress as depositor)
     const oftDeposit = deposits.find(

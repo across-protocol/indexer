@@ -251,26 +251,44 @@ export class DepositsService {
       );
     }
 
-    // Combine queries with UNION ALL using utility function
-    const { sql: paginatedSql, params: allParams } = combineQueriesWithUnionAll(
-      [
-        fundsDepositedQueryBuilder,
-        depositForBurnQueryBuilder,
-        oftSentQueryBuilder,
-      ],
-      {
+    // Build array of query builders based on depositType filter
+    const queryBuilders = [];
+    if (!params.depositType || params.depositType === "across") {
+      queryBuilders.push(fundsDepositedQueryBuilder);
+    }
+    if (!params.depositType || params.depositType === "cctp") {
+      queryBuilders.push(depositForBurnQueryBuilder);
+    }
+    if (!params.depositType || params.depositType === "oft") {
+      queryBuilders.push(oftSentQueryBuilder);
+    }
+
+    // If only one query builder, execute it directly without UNION
+    let allDeposits: DepositReturnType[];
+
+    if (queryBuilders.length === 1) {
+      const singleQueryBuilder = queryBuilders[0]!;
+      // For single query builder, we need to ensure orderBy is set correctly
+      // fundsDepositedQueryBuilder already has orderBy("deposit.blockTimestamp", "DESC") on line 67
+      // For others, we need to add it using the actual table column name
+      if (singleQueryBuilder === depositForBurnQueryBuilder) {
+        singleQueryBuilder.orderBy("depositForBurn.blockTimestamp", "DESC");
+      } else if (singleQueryBuilder === oftSentQueryBuilder) {
+        singleQueryBuilder.orderBy("oftSent.blockTimestamp", "DESC");
+      }
+      // Note: fundsDepositedQueryBuilder already has orderBy set, so we don't override it
+      singleQueryBuilder.limit(params.limit || 50).offset(params.skip || 0);
+      allDeposits = await singleQueryBuilder.getRawMany();
+    } else {
+      // Combine queries with UNION ALL using utility function
+      const result = combineQueriesWithUnionAll(queryBuilders, {
         orderBy: "depositBlockTimestamp",
         orderDirection: "DESC",
         limit: params.limit || 50,
         offset: params.skip || 0,
-      },
-    );
-
-    // Execute the combined UNION query
-    const allDeposits: DepositReturnType[] = await this.db.query(
-      paginatedSql,
-      allParams,
-    );
+      });
+      allDeposits = await this.db.query(result.sql, result.params);
+    }
 
     const deposits: DepositReturnType[] = allDeposits;
 
