@@ -84,12 +84,14 @@ export type StoreEventsResult = {
 const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
   [CHAIN_IDs.HYPEREVM_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+  [CHAIN_IDs.HYPEREVM]: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
 const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   [CHAIN_IDs.HYPEREVM_TESTNET]: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+  [CHAIN_IDs.HYPEREVM]: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
 };
 
 // TODO: Update this address once the contract is deployed
