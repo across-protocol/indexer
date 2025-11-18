@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat } from "../../utils";
+import { formatFromAddressToChainFormat, isTestnet } from "../../utils";
 import {
   BlockRange,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
@@ -105,21 +105,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     this.isInitialized = false;
   }
 
-  private isTestnet(chainId: number): boolean {
-    return (
-      chainId === CHAIN_IDs.ARBITRUM_SEPOLIA ||
-      chainId === CHAIN_IDs.HYPEREVM_TESTNET ||
-      chainId === CHAIN_IDs.BASE_SEPOLIA ||
-      chainId === CHAIN_IDs.BLAST_SEPOLIA ||
-      chainId === CHAIN_IDs.LISK_SEPOLIA ||
-      chainId === CHAIN_IDs.MODE_SEPOLIA ||
-      chainId === CHAIN_IDs.OPTIMISM_SEPOLIA ||
-      chainId === CHAIN_IDs.POLYGON_AMOY ||
-      chainId === CHAIN_IDs.SEPOLIA ||
-      chainId === CHAIN_IDs.SOLANA_DEVNET
-    );
-  }
-
   private initialize() {}
 
   public getDataIdentifier() {
@@ -181,10 +166,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const arbitraryEvmFlowExecutorAddress =
       ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS[this.chainId];
 
-    const tokenMessengerAddress = this.isTestnet(this.chainId)
+    const tokenMessengerAddress = isTestnet(this.chainId)
       ? TOKEN_MESSENGER_ADDRESS_TESTNET
       : TOKEN_MESSENGER_ADDRESS_MAINNET;
-    const messageTransmitterAddress = this.isTestnet(this.chainId)
+    const messageTransmitterAddress = isTestnet(this.chainId)
       ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
       : MESSAGE_TRANSMITTER_ADDRESS_MAINNET;
 
