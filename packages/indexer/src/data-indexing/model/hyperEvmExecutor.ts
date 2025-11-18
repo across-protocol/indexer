@@ -35,9 +35,15 @@ export interface FallbackHyperEVMFlowCompletedLog extends providers.Log {
 // Taken from https://testnet.purrsec.com/tx/0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9
 export const HYPERCORE_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.HYPEREVM_TESTNET]: "0x06C61D54958a0772Ee8aF41789466d39FfeaeB13",
+  [CHAIN_IDs.HYPEREVM]: "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
 };
 
 // Taken from https://hyperevmscan.io/tx/0x869d1df5f1e7b6b91a824d8e2b455ac48d1f26f0b5f2823c96df391eb75dff34#eventlog#8
 export const ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
+};
+
+// Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
+export const ENDPOINT_V2_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.HYPEREVM]: "0x3a73033c0b1407574c76bdbac67f126f6b4a9aa9",
 };

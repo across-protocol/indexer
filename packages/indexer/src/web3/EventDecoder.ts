@@ -179,6 +179,16 @@ export class EventDecoder {
     return events;
   }
 
+  /**
+   * Decodes `SimpleTransferFlowCompleted` events from a transaction receipt.
+   * This event is emitted by the HyperEVM executor contract when a simple transfer flow is completed.
+   * The event topic and ABI are taken from the HyperEVM executor contract.
+   * See: https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
+   *
+   * @param receipt The transaction receipt to decode events from.
+   * @param contractAddress Optional address of the contract that emitted the event to avoid decoding events from other contracts.
+   * @returns An array of decoded `SimpleTransferFlowCompletedLog` objects.
+   */
   static decodeSimpleTransferFlowCompletedEvents(
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
