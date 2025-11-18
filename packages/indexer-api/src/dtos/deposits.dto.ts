@@ -89,7 +89,7 @@ export const DepositStatusParams = s.object({
   /**
    * Hyperliquid Withdrawals
    */
-  from: s.optional(s.string()),
+  from: s.optional(parseAddressField),
   hypercoreWithdrawalNonce: s.optional(s.string()),
 });
 
