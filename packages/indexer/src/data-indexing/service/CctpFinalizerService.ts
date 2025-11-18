@@ -14,6 +14,7 @@ import {
   fetchAttestationsForTxn,
   getCctpDestinationChainFromDomain,
   getCctpDomainForChainId,
+  isProductionNetwork,
 } from "../adapter/cctp-v2/service";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
@@ -181,7 +182,7 @@ class CctpFinalizerService extends RepeatableTask {
       const attestations = await fetchAttestationsForTxn(
         getCctpDomainForChainId(Number(burnEvent.chainId)),
         transactionHash,
-        true,
+        isProductionNetwork(Number(burnEvent.chainId)),
       );
       if (attestations.messages.length === 0) {
         this.logger.debug({
