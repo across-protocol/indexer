@@ -8,7 +8,6 @@ import {
   BlockRange,
   HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
-  ENDPOINT_V2_ADDRESS,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
@@ -44,6 +43,9 @@ export type StoreEventsResult = {
   simpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
 };
 
+// Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
+// TODO: Add testnet endpoint v2 address when applicable
+export const ENDPOINT_V2_ADDRESS = "0x3a73033c0b1407574c76bdbac67f126f6b4a9aa9";
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
@@ -129,9 +131,9 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     );
     const hypercoreFlowExecutorAddress =
       HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
-    const endpointAddress = ENDPOINT_V2_ADDRESS[this.chainId];
     const sponsoredOFTSrcPeripheryAddress =
       SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId];
+
     const [oftSentEvents, oftReceivedEvents] = await Promise.all([
       oftAdapterContract.queryFilter(
         "OFTSent",
@@ -175,27 +177,25 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
     const simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
       [];
-    if (endpointAddress) {
-      const composeDeliveredEvents = await fetchEvents(
-        this.provider,
-        endpointAddress,
-        "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
-        blockRange.from,
-        blockRange.to,
-      );
-      if (composeDeliveredEvents.length > 0) {
-        if (hypercoreFlowExecutorAddress) {
-          const transactionReceipts = await this.getTransactionsReceipts(
-            composeDeliveredEvents.map((event) => event.transactionHash),
+    const composeDeliveredEvents = await fetchEvents(
+      this.provider,
+      ENDPOINT_V2_ADDRESS,
+      "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
+      blockRange.from,
+      blockRange.to,
+    );
+    if (composeDeliveredEvents.length > 0) {
+      if (hypercoreFlowExecutorAddress) {
+        const transactionReceipts = await this.getTransactionsReceipts(
+          composeDeliveredEvents.map((event) => event.transactionHash),
+        );
+        const events =
+          getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
+            transactionReceipts,
+            hypercoreFlowExecutorAddress,
           );
-          const events =
-            getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
-              transactionReceipts,
-              hypercoreFlowExecutorAddress,
-            );
-          simpleTransferFlowCompletedEvents.push(...events);
-          blockHashes.push(...events.map((event) => event.blockHash));
-        }
+        simpleTransferFlowCompletedEvents.push(...events);
+        blockHashes.push(...events.map((event) => event.blockHash));
       }
     }
 
