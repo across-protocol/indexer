@@ -270,6 +270,7 @@ class CctpFinalizerService extends RepeatableTask {
 const ATTESTATION_TIMES = {
   [CHAIN_IDs.MAINNET]: { standard: 13 * 60, fast: 20 },
   [CHAIN_IDs.ARBITRUM]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.BASE]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.BSC]: { standard: 2, fast: 8 },
   [CHAIN_IDs.HYPEREVM]: { standard: 5, fast: 8 },
