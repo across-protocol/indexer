@@ -116,9 +116,9 @@ describe("CCTPIndexerDataHandler", () => {
 
   it("should fetch and store SimpleTransferFlowCompleted event in the database", async () => {
     const transactionHash =
-      "0x1bf0dc091249341d0e91380b1c1d7dca683ab1b6773f7fb011b71a3d017a8fc9";
-    const blockNumber = 36200188;
-    setupTestForChainId(CHAIN_IDs.HYPEREVM_TESTNET);
+      "0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb";
+    const blockNumber = 18541961;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
       from: blockNumber,
