@@ -161,8 +161,6 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       oftSentTransactions,
       oftSentEvents,
     );
-    blockHashes.push(...filteredOftSentEvents.map((event) => event.blockHash));
-
     const filteredOftReceivedEvents =
       await this.filterTransactionsForSupportedEndpointIds(oftReceivedEvents);
     const filteredOftSentTransactionReceipts =
@@ -170,6 +168,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         ...new Set(filteredOftSentEvents.map((event) => event.transactionHash)),
       ]);
     blockHashes.push(
+      ...filteredOftSentEvents.map((event) => event.blockHash),
       ...filteredOftReceivedEvents.map((event) => event.blockHash),
     );
 
@@ -203,15 +202,13 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           hypercoreFlowExecutorAddress,
           EventDecoder.decodeSimpleTransferFlowCompletedEvents,
         );
-        blockHashes.push(
-          ...simpleTransferFlowCompletedEvents.map((event) => event.blockHash),
-        );
         fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
           transactionReceipts,
           hypercoreFlowExecutorAddress,
           EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
         );
         blockHashes.push(
+          ...simpleTransferFlowCompletedEvents.map((event) => event.blockHash),
           ...fallbackHyperEVMFlowCompletedEvents.map(
             (event) => event.blockHash,
           ),

@@ -547,7 +547,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const chainAgnosticSponsoredBurnEvents = sponsoredBurnEvents.map((event) =>
       this.convertSponsoredDepositForBurnToChainAgnostic(event),
     );
-
+    const primaryKeyColumns = [
+      "chainId",
+      "blockNumber",
+      "transactionHash",
+      "logIndex",
+    ];
     const [
       savedBurnEvents,
       savedMintEvents,
@@ -582,7 +587,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
         formatSimpleTransferFlowCompletedEvent,
         entities.SimpleTransferFlowCompleted,
-        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+        primaryKeyColumns as (keyof entities.SimpleTransferFlowCompleted)[],
       ),
       this.cctpRepository.formatAndSaveArbitraryActionsExecutedEvents(
         arbitraryActionsExecutedEvents,
@@ -598,7 +603,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         blocksTimestamps,
         formatFallbackHyperEVMFlowCompletedEvent,
         entities.FallbackHyperEVMFlowCompleted,
-        ["chainId", "blockNumber", "transactionHash", "logIndex"],
+        primaryKeyColumns as (keyof entities.FallbackHyperEVMFlowCompleted)[],
       ),
     ]);
 
