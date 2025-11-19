@@ -42,6 +42,12 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         chainId,
         chainIdColumn,
         lastFinalisedBlock,
+        entities.SimpleTransferFlowCompleted,
+      ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
         entities.FallbackHyperEVMFlowCompleted,
       ),
     ]);
