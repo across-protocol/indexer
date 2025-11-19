@@ -39,6 +39,10 @@ import {
   isHypercoreWithdraw,
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
+import {
+  formatAndSaveSimpleTransferFlowCompletedEvents,
+  getSimpleTransferFlowCompletedEventsFromTransactionReceipts,
+} from "./hyperEvmExecutor";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -286,7 +290,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       [];
     if (sponsoredCCTPDstPeripheryAddress) {
       simpleTransferFlowCompletedEvents =
-        this.getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
+        getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
           filteredMessageReceivedTxReceipts,
           sponsoredCCTPDstPeripheryAddress,
         );
@@ -508,28 +512,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return events;
   }
 
-  private getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
-    transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-    hyperEvmExecutorAddress: string,
-  ) {
-    const events: SimpleTransferFlowCompletedLog[] = [];
-    for (const txHash of Object.keys(transactionReceipts)) {
-      const transactionReceipt = transactionReceipts[
-        txHash
-      ] as providers.TransactionReceipt;
-      const simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
-        EventDecoder.decodeSimpleTransferFlowCompletedEvents(
-          transactionReceipt,
-          hyperEvmExecutorAddress,
-        );
-      if (simpleTransferFlowCompletedEvents.length > 0) {
-        events.push(...simpleTransferFlowCompletedEvents);
-      }
-    }
-
-    return events;
-  }
-
   private getArbitraryActionsExecutedEventsFromTransactionReceipts(
     transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
     arbitraryEvmFlowExecutorAddress: string,
@@ -675,7 +657,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
-      this.cctpRepository.formatAndSaveSimpleTransferFlowCompletedEvents(
+      formatAndSaveSimpleTransferFlowCompletedEvents(
+        this.cctpRepository,
         simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
         this.chainId,

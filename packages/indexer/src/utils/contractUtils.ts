@@ -9,7 +9,7 @@ import {
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
 import * as across from "@across-protocol/sdk";
-
+import { ethers } from "ethers";
 import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
 
@@ -244,6 +244,64 @@ export function getHubPoolClient(
     chainId,
     eventSearchConfig,
   );
+}
+
+export type DecodedEventWithTxHash = {
+  decodedEvent: ethers.utils.LogDescription;
+  transactionHash: string;
+};
+
+/**
+ * Fetches and decodes blockchain events from a specified contract within a given block range.
+ * This utility is designed to be generic, allowing it to be used for various event types,
+ * such as 'Transfer' events for both CCTP and OFT protocols.
+ *
+ * @param provider The ethers.js provider instance to interact with the blockchain.
+ * @param contractAddress The address of the contract to query for events.
+ * @param eventAbi A string containing the ABI of the single event to fetch (e.g., "event Transfer(address indexed from, address indexed to, uint256 value)").
+ * @param fromBlock The starting block number for the event search.
+ * @param toBlock The ending block number for the event search.
+ * @returns A promise that resolves to an array of objects, each containing the decoded event and its transaction hash.
+ */
+export async function fetchEvents(
+  provider: ethers.providers.Provider,
+  contractAddress: string,
+  eventAbi: string,
+  fromBlock: number,
+  toBlock: number,
+): Promise<DecodedEventWithTxHash[]> {
+  // Create an interface for the event ABI to parse logs.
+  const eventInterface = new ethers.utils.Interface([eventAbi]);
+  // The event ABI string should contain only one event definition.
+  // We extract the event name from the parsed ABI.
+  const eventKeys = Object.keys(eventInterface.events);
+  const firstEventKey = eventKeys[0];
+  if (!firstEventKey) {
+    // If no event is found in the ABI, return an empty array.
+    return [];
+  }
+  const eventName = eventInterface.events[firstEventKey];
+  if (!eventName) {
+    return [];
+  }
+  // Get the event topic hash to filter logs. This allows us to fetch only the logs for the specified event.
+  const eventTopic = eventInterface.getEventTopic(eventName);
+  const logs = await provider.getLogs({
+    address: contractAddress,
+    fromBlock,
+    toBlock,
+    topics: [eventTopic],
+  });
+
+  // Decode each log and pair it with its transaction hash.
+  const decodedEventsWithTxHash = logs.map((log) => {
+    return {
+      decodedEvent: eventInterface.parseLog(log),
+      transactionHash: log.transactionHash,
+    };
+  });
+
+  return decodedEventsWithTxHash;
 }
 
 export const BN_ZERO = across.utils.bnZero;

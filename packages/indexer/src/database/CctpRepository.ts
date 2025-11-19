@@ -163,44 +163,31 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     return totalDeleted;
   }
 
-  public async formatAndSaveSimpleTransferFlowCompletedEvents(
-    simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[],
+  public async formatAndSaveBurnEvents(
+    burnEvents: BurnEventsPair[],
     lastFinalisedBlock: number,
     chainId: number,
     blockDates: Record<number, Date>,
   ) {
-    const formattedEvents: Partial<entities.SimpleTransferFlowCompleted>[] =
-      simpleTransferFlowCompletedEvents.map((event) => {
-        return {
-          blockNumber: event.blockNumber,
-          logIndex: event.logIndex,
-          transactionHash: event.transactionHash,
-          transactionIndex: event.transactionIndex,
-          blockTimestamp: blockDates[event.blockNumber]!,
-          chainId: chainId.toString(),
-          quoteNonce: event.args.quoteNonce,
-          finalRecipient: event.args.finalRecipient,
-          finalToken: event.args.finalToken.toString(),
-          evmAmountIn: event.args.evmAmountIn.toString(),
-          bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
-          evmAmountSponsored: event.args.evmAmountSponsored.toString(),
-          finalised: event.blockNumber <= lastFinalisedBlock,
-        };
-      });
-
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const savedEvents = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.saveAndHandleFinalisationBatch<entities.SimpleTransferFlowCompleted>(
-          entities.SimpleTransferFlowCompleted,
-          eventsChunk,
-          ["chainId", "blockNumber", "transactionHash", "logIndex"],
-          [],
-        ),
-      ),
-    );
-    const result = savedEvents.flat();
-    return result;
+    const savedEvents: {
+      depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
+      messageSentEvent: SaveQueryResult<entities.MessageSent>;
+    }[] = [];
+    const chunkedEvents = across.utils.chunk(burnEvents, this.chunkSize);
+    for (const eventsChunk of chunkedEvents) {
+      const savedEventsChunk = await Promise.all(
+        eventsChunk.map(async (eventsPair) => {
+          return this.formatAndSaveBurnEventsPair(
+            eventsPair,
+            lastFinalisedBlock,
+            chainId,
+            blockDates,
+          );
+        }),
+      );
+      savedEvents.push(...savedEventsChunk);
+    }
+    return savedEvents;
   }
 
   public async formatAndSaveArbitraryActionsExecutedEvents(
@@ -280,33 +267,6 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     );
     const result = savedEvents.flat();
     return result;
-  }
-
-  public async formatAndSaveBurnEvents(
-    burnEvents: BurnEventsPair[],
-    lastFinalisedBlock: number,
-    chainId: number,
-    blockDates: Record<number, Date>,
-  ) {
-    const savedEvents: {
-      depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
-      messageSentEvent: SaveQueryResult<entities.MessageSent>;
-    }[] = [];
-    const chunkedEvents = across.utils.chunk(burnEvents, this.chunkSize);
-    for (const eventsChunk of chunkedEvents) {
-      const savedEventsChunk = await Promise.all(
-        eventsChunk.map(async (eventsPair) => {
-          return this.formatAndSaveBurnEventsPair(
-            eventsPair,
-            lastFinalisedBlock,
-            chainId,
-            blockDates,
-          );
-        }),
-      );
-      savedEvents.push(...savedEventsChunk);
-    }
-    return savedEvents;
   }
 
   public async formatAndSaveSponsoredBurnEvents(

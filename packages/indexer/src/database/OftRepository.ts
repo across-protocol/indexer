@@ -25,7 +25,11 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const chainIdColumn = "chainId";
-    const [oftSentEvents, oftReceivedEvents] = await Promise.all([
+    const [
+      oftSentEvents,
+      oftReceivedEvents,
+      simpleTransferFlowCompletedEvents,
+    ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
@@ -38,41 +42,18 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.OFTReceived,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SimpleTransferFlowCompleted,
+      ),
     ]);
 
     return {
       oftSentEvents,
       oftReceivedEvents,
-    };
-  }
-
-  public async formatAndSaveOftEvents(
-    oftSentEvents: OFTSentEvent[],
-    oftReceivedEvents: OFTReceivedEvent[],
-    lastFinalisedBlock: number,
-    chainId: number,
-    blockDates: Record<string, Date>,
-    tokenAddress: string,
-  ) {
-    const [savedOftSentEvents, savedOftReceivedEvents] = await Promise.all([
-      this.formatAndSaveOftSentEvents(
-        oftSentEvents,
-        lastFinalisedBlock,
-        chainId,
-        blockDates,
-        tokenAddress,
-      ),
-      this.formatAndSaveOftReceivedEvents(
-        oftReceivedEvents,
-        lastFinalisedBlock,
-        chainId,
-        blockDates,
-        tokenAddress,
-      ),
-    ]);
-    return {
-      savedOftSentEvents,
-      savedOftReceivedEvents,
+      simpleTransferFlowCompletedEvents,
     };
   }
 
@@ -80,7 +61,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     oftSentEvents: OFTSentEvent[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
     tokenAddress: string,
   ) {
     const formattedEvents: Partial<entities.OFTSent>[] = oftSentEvents.map(
@@ -88,7 +69,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         return {
           ...this.formatTransactionData(event),
 
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
 
           guid: event.args.guid,
@@ -140,7 +121,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     sponsoredOFTSendEvents: SponsoredOFTSendLog[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.SponsoredOFTSend>[] =
       sponsoredOFTSendEvents.map((event) => {
@@ -155,7 +136,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
 
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
           quoteNonce: event.args.quoteNonce,
           originSender: event.args.originSender,
@@ -189,14 +170,14 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     oftReceivedEvents: OFTReceivedEvent[],
     lastFinalisedBlock: number,
     chainId: number,
-    blockDates: Record<string, Date>,
+    blockDates: Record<number, Date>,
     tokenAddress: string,
   ) {
     const formattedEvents: Partial<entities.OFTReceived>[] =
       oftReceivedEvents.map((event) => {
         return {
           ...this.formatTransactionData(event),
-          blockTimestamp: blockDates[event.blockHash]!,
+          blockTimestamp: blockDates[event.blockNumber]!,
           chainId: chainId.toString(),
           guid: event.args.guid,
           srcEid: event.args.srcEid,

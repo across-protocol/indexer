@@ -73,4 +73,41 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
   }).timeout(20000);
+
+  it("should process a block range and store SimpleTransferFlowCompleted event for OFT", async () => {
+    const transactionHash =
+      "0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c";
+    const blockNumber = 18414987;
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+    await handler.processBlockRange(blockRange, blockNumber - 1);
+
+    const simpleTransferFlowCompletedRepo = dataSource.getRepository(
+      entities.SimpleTransferFlowCompleted,
+    );
+    const savedEvent = await simpleTransferFlowCompletedRepo.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.quoteNonce).to.equal(
+      "0x49a117e77ab01fd0d76ce06b042baa7b634cc7ff8b8749afbbfd0d5b09797ea7",
+    );
+    expect(savedEvent!.finalRecipient).to.equal(
+      "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    );
+    expect(savedEvent!.finalToken).to.equal(
+      "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+    );
+    expect(savedEvent!.evmAmountIn.toString()).to.equal("1000000");
+    expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
+    expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+  }).timeout(20000);
 });
