@@ -25,24 +25,32 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const chainIdColumn = "chainId";
-    const [oftSentEvents, oftReceivedEvents] = await Promise.all([
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.OFTSent,
-      ),
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.OFTReceived,
-      ),
-    ]);
+    const [oftSentEvents, oftReceivedEvents, arbitraryActionsExecutedEvents] =
+      await Promise.all([
+        this.deleteUnfinalisedEvents(
+          chainId,
+          chainIdColumn,
+          lastFinalisedBlock,
+          entities.OFTSent,
+        ),
+        this.deleteUnfinalisedEvents(
+          chainId,
+          chainIdColumn,
+          lastFinalisedBlock,
+          entities.OFTReceived,
+        ),
+        this.deleteUnfinalisedEvents(
+          chainId,
+          chainIdColumn,
+          lastFinalisedBlock,
+          entities.ArbitraryActionsExecuted,
+        ),
+      ]);
 
     return {
       oftSentEvents,
       oftReceivedEvents,
+      arbitraryActionsExecutedEvents,
     };
   }
 
