@@ -1,4 +1,5 @@
 import {
+  ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
   SimpleTransferFlowCompletedLog,
 } from "../model";
@@ -31,6 +32,35 @@ export const formatSimpleTransferFlowCompletedEvent = (
   evmAmountIn: event.args.evmAmountIn.toString(),
   bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
   evmAmountSponsored: event.args.evmAmountSponsored.toString(),
+  finalised,
+});
+
+/**
+ * @constant formatArbitraryActionsExecutedEvent
+ * Formats an `ArbitraryActionsExecutedLog` event into a partial `ArbitraryActionsExecuted` entity.
+ * @param event The `ArbitraryActionsExecutedLog` event to format.
+ * @param finalised A boolean indicating if the event is finalized.
+ * @param blockTimestamp The timestamp of the block where the event was emitted.
+ * @param chainId The ID of the chain where the event was emitted.
+ * @returns A partial `ArbitraryActionsExecuted` entity.
+ */
+export const formatArbitraryActionsExecutedEvent = (
+  event: ArbitraryActionsExecutedLog,
+  finalised: boolean,
+  blockTimestamp: Date,
+  chainId: number,
+): Partial<entities.ArbitraryActionsExecuted> => ({
+  blockNumber: event.blockNumber,
+  logIndex: event.logIndex,
+  transactionHash: event.transactionHash,
+  transactionIndex: event.transactionIndex,
+  blockTimestamp: blockTimestamp,
+  chainId: chainId.toString(),
+  quoteNonce: event.args.quoteNonce,
+  initialToken: event.args.initialToken,
+  initialAmount: event.args.initialAmount.toString(),
+  finalToken: event.args.finalToken,
+  finalAmount: event.args.finalAmount.toString(),
   finalised,
 });
 
