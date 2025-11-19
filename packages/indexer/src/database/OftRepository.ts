@@ -25,7 +25,11 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     lastFinalisedBlock: number,
   ) {
     const chainIdColumn = "chainId";
-    const [oftSentEvents, oftReceivedEvents] = await Promise.all([
+    const [
+      oftSentEvents,
+      oftReceivedEvents,
+      simpleTransferFlowCompletedEvents,
+    ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
@@ -55,6 +59,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
     return {
       oftSentEvents,
       oftReceivedEvents,
+      simpleTransferFlowCompletedEvents,
     };
   }
 
