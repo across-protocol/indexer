@@ -102,7 +102,7 @@ export class EventDecoder {
     const eventTopic =
       "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
     const eventAbi = ["event MessageSent (bytes message)"];
-    let events: MessageSentLog[] = this.decodeTransactionReceiptLogs(
+    let events: MessageSentLog[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
@@ -123,11 +123,8 @@ export class EventDecoder {
     const eventAbi = [
       "event MintAndWithdraw(address indexed mintRecipient, uint256 amount, address indexed mintToken, uint256 feeCollected)",
     ];
-    let events: MintAndWithdrawLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: MintAndWithdrawLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -148,7 +145,7 @@ export class EventDecoder {
     ];
 
     let events: SponsoredDepositForBurnLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -167,11 +164,8 @@ export class EventDecoder {
       "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
     ];
 
-    let events: SponsoredOFTSendLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: SponsoredOFTSendLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -200,7 +194,7 @@ export class EventDecoder {
       "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
     ];
     let events: SimpleTransferFlowCompletedLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -217,7 +211,7 @@ export class EventDecoder {
     const eventAbi = [
       "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
     ];
-    let events: any[] = this.decodeTransactionReceiptLogs(
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
@@ -238,7 +232,7 @@ export class EventDecoder {
     const eventAbi = [
       "event FallbackHyperEVMFlowCompleted(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed finalToken, uint256 evmAmountIn, uint256 bridgingFeesIncurred, uint256 evmAmountSponsored)",
     ];
-    let events: any[] = this.decodeTransactionReceiptLogs(
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
