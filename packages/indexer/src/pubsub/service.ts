@@ -36,7 +36,7 @@ export class PubSubService {
         message: message != null ? { string: message } : null,
         attestation: attestation != null ? { string: attestation } : null,
         destinationChainId:
-          destinationChainId != null ? { int: destinationChainId } : null,
+          destinationChainId != null ? { long: destinationChainId } : null,
         signature: signature != null ? { string: signature } : null,
       }),
     );
