@@ -147,4 +147,42 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
   }).timeout(20000);
+
+  it("should fetch and store SponsoredAccountActivation event in the database", async () => {
+    const transactionHash =
+      "0x5008ce0be97eb5b8b0a1f8854826f33d33e5038a31c793569354ec2dc66ddfef";
+    const blockNumber = 18007251;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const sponsoredAccountActivationRepository = dataSource.getRepository(
+      entities.SponsoredAccountActivation,
+    );
+    const savedEvent = await sponsoredAccountActivationRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.quoteNonce).to.equal(
+      "0x0000000000000000000000000000000000000000000000000000000069056cc8",
+    );
+    expect(savedEvent!.finalRecipient).to.equal(
+      "0xb8ecd15c43172c0285bEA20e4D3c185980ca610A",
+    );
+    expect(savedEvent!.fundingToken).to.equal(
+      "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+    );
+    expect(savedEvent!.evmAmountSponsored.toString()).to.equal("1000000");
+  }).timeout(20000);
 });

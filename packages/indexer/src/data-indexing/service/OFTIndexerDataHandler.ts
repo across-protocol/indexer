@@ -9,6 +9,8 @@ import {
   BlockRange,
   FallbackHyperEVMFlowCompletedLog,
   SimpleTransferFlowCompletedLog,
+  SponsoredAccountActivationLog,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
@@ -33,6 +35,7 @@ import {
   formatArbitraryActionsExecutedEvent,
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
+  formatSponsoredAccountActivationEvent,
 } from "./hyperEvmExecutor";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
@@ -43,6 +46,7 @@ export type FetchEventsResult = {
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[];
   fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[];
   arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[];
+  sponsoredAccountActivationEvents: SponsoredAccountActivationLog[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {
@@ -52,6 +56,7 @@ export type StoreEventsResult = {
   simpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
   fallbackHyperEVMFlowCompletedEvents: SaveQueryResult<entities.FallbackHyperEVMFlowCompleted>[];
   arbitraryActionsExecutedEvents: SaveQueryResult<entities.ArbitraryActionsExecuted>[];
+  sponsoredAccountActivationEvents: SaveQueryResult<entities.SponsoredAccountActivation>[];
 };
 
 // Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
@@ -196,15 +201,17 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
-    const composeDeliveredEvents = await fetchEvents(
-      this.provider,
-      ENDPOINT_V2_ADDRESS,
-      "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
-      blockRange.from,
-      blockRange.to,
-    );
-    if (composeDeliveredEvents.length > 0) {
-      if (dstOftHandlerAddress) {
+    let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
+    if (dstOftHandlerAddress) {
+      // All events that we are interested in are emitted by the dstOftHandlerAddress
+      const composeDeliveredEvents = await fetchEvents(
+        this.provider,
+        ENDPOINT_V2_ADDRESS,
+        "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
+        blockRange.from,
+        blockRange.to,
+      );
+      if (composeDeliveredEvents.length > 0) {
         const transactionReceipts = await this.getTransactionsReceipts(
           composeDeliveredEvents.map((event) => event.transactionHash),
         );
@@ -223,14 +230,24 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           dstOftHandlerAddress,
           EventDecoder.decodeArbitraryActionsExecutedEvents,
         );
-        blockHashes.push(
-          ...simpleTransferFlowCompletedEvents.map((event) => event.blockHash),
-          ...fallbackHyperEVMFlowCompletedEvents.map(
-            (event) => event.blockHash,
-          ),
-          ...arbitraryActionsExecutedEvents.map((event) => event.blockHash),
-        );
       }
+      const dstOftHandlerContract = new ethers.Contract(
+        dstOftHandlerAddress,
+        SPONSORED_ACCOUNT_ACTIVATION_ABI,
+        this.provider,
+      );
+      sponsoredAccountActivationEvents =
+        (await dstOftHandlerContract.queryFilter(
+          "SponsoredAccountActivation",
+          blockRange.from,
+          blockRange.to,
+        )) as unknown as SponsoredAccountActivationLog[];
+      blockHashes.push(
+        ...simpleTransferFlowCompletedEvents.map((event) => event.blockHash),
+        ...fallbackHyperEVMFlowCompletedEvents.map((event) => event.blockHash),
+        ...arbitraryActionsExecutedEvents.map((event) => event.blockHash),
+        ...sponsoredAccountActivationEvents.map((event) => event.blockHash),
+      );
     }
 
     const blocks = await this.getBlocks([...new Set(blockHashes)]);
@@ -253,6 +270,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       simpleTransferFlowCompletedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
+      sponsoredAccountActivationEvents,
       blocks,
     };
   }
@@ -270,6 +288,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       simpleTransferFlowCompletedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
+      sponsoredAccountActivationEvents,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
     const primaryKeyColumns = [
@@ -285,6 +304,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       savedSimpleTransferFlowCompletedEvents,
       savedFallbackHyperEVMFlowCompletedEvents,
       savedArbitraryActionsExecutedEvents,
+      savedSponsoredAccountActivationEvents,
     ] = await Promise.all([
       this.oftRepository.formatAndSaveOftSentEvents(
         oftSentEvents,
@@ -336,6 +356,16 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         entities.ArbitraryActionsExecuted,
         primaryKeyColumns as (keyof entities.ArbitraryActionsExecuted)[],
       ),
+      formatAndSaveEvents(
+        this.oftRepository,
+        sponsoredAccountActivationEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSponsoredAccountActivationEvent,
+        entities.SponsoredAccountActivation,
+        primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
+      ),
     ]);
 
     return {
@@ -346,6 +376,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       fallbackHyperEVMFlowCompletedEvents:
         savedFallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents: savedArbitraryActionsExecutedEvents,
+      sponsoredAccountActivationEvents: savedSponsoredAccountActivationEvents,
     };
   }
 

@@ -2,8 +2,37 @@ import {
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
   SimpleTransferFlowCompletedLog,
+  SponsoredAccountActivationLog,
 } from "../model";
 import { entities } from "@repo/indexer-database";
+
+/**
+ * @constant formatSponsoredAccountActivationEvent
+ * Formats a `SponsoredAccountActivationLog` event into a partial `SponsoredAccountActivation` entity.
+ * @param event The `SponsoredAccountActivationLog` event to format.
+ * @param finalised A boolean indicating if the event is finalized.
+ * @param blockTimestamp The timestamp of the block where the event was emitted.
+ * @param chainId The ID of the chain where the event was emitted.
+ * @returns A partial `SponsoredAccountActivation` entity.
+ */
+export const formatSponsoredAccountActivationEvent = (
+  event: SponsoredAccountActivationLog,
+  finalised: boolean,
+  blockTimestamp: Date,
+  chainId: number,
+): Partial<entities.SponsoredAccountActivation> => ({
+  blockNumber: event.blockNumber,
+  logIndex: event.logIndex,
+  transactionHash: event.transactionHash,
+  transactionIndex: event.transactionIndex,
+  blockTimestamp: blockTimestamp,
+  chainId: chainId.toString(),
+  quoteNonce: event.args.quoteNonce,
+  finalRecipient: event.args.finalRecipient,
+  fundingToken: event.args.fundingToken,
+  evmAmountSponsored: event.args.evmAmountSponsored.toString(),
+  finalised,
+});
 
 /**
  * @constant formatSimpleTransferFlowCompletedEvent
