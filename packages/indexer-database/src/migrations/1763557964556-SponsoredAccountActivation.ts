@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class SponsoredAccountActivation1763557100
+export class SponsoredAccountActivation1763557964556
   implements MigrationInterface
 {
-  name = "SponsoredAccountActivation1763557100";
+  name = "SponsoredAccountActivation1763557964556";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
