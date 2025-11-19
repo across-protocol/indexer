@@ -11,12 +11,12 @@ import { BlockchainEventRepository } from "../../../../indexer-database/dist/src
  * emitted by a specified HyperEVM executor contract.
  *
  * @param transactionReceipts A record of transaction receipts, indexed by their transaction hash.
- * @param hyperEvmExecutorAddress The address of the HyperEVM executor contract to filter events from.
+ * @param contractAddress The address of the HyperEVM executor contract to filter events from.
  * @returns An array of decoded `SimpleTransferFlowCompletedLog` objects.
  */
 export function getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
   transactionReceipts: Record<string, ethers.providers.TransactionReceipt>,
-  hyperEvmExecutorAddress: string,
+  contractAddress: string,
 ) {
   const events: SimpleTransferFlowCompletedLog[] = [];
   for (const txHash of Object.keys(transactionReceipts)) {
@@ -26,7 +26,7 @@ export function getSimpleTransferFlowCompletedEventsFromTransactionReceipts(
     const simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
       EventDecoder.decodeSimpleTransferFlowCompletedEvents(
         transactionReceipt,
-        hyperEvmExecutorAddress,
+        contractAddress,
       );
     if (simpleTransferFlowCompletedEvents.length > 0) {
       events.push(...simpleTransferFlowCompletedEvents);
