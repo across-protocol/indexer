@@ -7,7 +7,6 @@ import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
   BlockRange,
   FallbackHyperEVMFlowCompletedLog,
-  HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -33,6 +32,7 @@ import {
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
 } from "./hyperEvmExecutor";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -53,6 +53,13 @@ export type StoreEventsResult = {
 // Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
 // TODO: Add testnet endpoint v2 address when applicable
 export const ENDPOINT_V2_ADDRESS = "0x3a73033c0b1407574c76bdbac67f126f6b4a9aa9";
+
+const DST_OFT_HANDLER_ADDRESS: { [key: number]: string } = {
+  // Taken from https://hyperevmscan.io/address/0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888#code
+  [CHAIN_IDs.HYPEREVM]: "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
+};
+("");
+
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
 export class OFTIndexerDataHandler implements IndexerDataHandler {
@@ -136,8 +143,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
-    const hypercoreFlowExecutorAddress =
-      HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
+    const dstOftHandlerAddress = DST_OFT_HANDLER_ADDRESS[this.chainId];
     const sponsoredOFTSrcPeripheryAddress =
       SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId];
 
@@ -193,18 +199,18 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       blockRange.to,
     );
     if (composeDeliveredEvents.length > 0) {
-      if (hypercoreFlowExecutorAddress) {
+      if (dstOftHandlerAddress) {
         const transactionReceipts = await this.getTransactionsReceipts(
           composeDeliveredEvents.map((event) => event.transactionHash),
         );
         simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
           transactionReceipts,
-          hypercoreFlowExecutorAddress,
+          dstOftHandlerAddress,
           EventDecoder.decodeSimpleTransferFlowCompletedEvents,
         );
         fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
           transactionReceipts,
-          hypercoreFlowExecutorAddress,
+          dstOftHandlerAddress,
           EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
         );
         blockHashes.push(

@@ -5,11 +5,9 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import { formatFromAddressToChainFormat, isTestnet } from "../../utils";
 import {
   BlockRange,
-  HYPERCORE_FLOW_EXECUTOR_ADDRESS,
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
-  ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -97,6 +95,12 @@ const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
 // TODO: Update this address once the contract is deployed
+const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
+  // Taken from https://hyperevmscan.io/address/0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95#code
+  [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
+};
+
+// TODO: Update this address once the contract is deployed
 const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
 };
@@ -172,10 +176,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   ): Promise<FetchEventsResult> {
     const sponsoredCCTPSrcPeripheryAddress =
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
-    const hyperEvmExecutorAddress =
-      HYPERCORE_FLOW_EXECUTOR_ADDRESS[this.chainId];
-    const arbitraryEvmFlowExecutorAddress =
-      ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS[this.chainId];
+    const sponsoredCCTPDstPeripheryAddress =
+      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
 
     const tokenMessengerAddress = isTestnet(this.chainId)
       ? TOKEN_MESSENGER_ADDRESS_TESTNET
@@ -288,29 +290,25 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     let simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
       [];
-    if (hyperEvmExecutorAddress) {
-      simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        hyperEvmExecutorAddress,
-        EventDecoder.decodeSimpleTransferFlowCompletedEvents,
-      );
-    }
-
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
-    if (arbitraryEvmFlowExecutorAddress) {
-      arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        arbitraryEvmFlowExecutorAddress,
-        EventDecoder.decodeArbitraryActionsExecutedEvents,
-      );
-    }
-
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
-    if (arbitraryEvmFlowExecutorAddress) {
+    if (sponsoredCCTPDstPeripheryAddress) {
+      simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        sponsoredCCTPDstPeripheryAddress,
+        EventDecoder.decodeSimpleTransferFlowCompletedEvents,
+      );
+
+      arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        sponsoredCCTPDstPeripheryAddress,
+        EventDecoder.decodeArbitraryActionsExecutedEvents,
+      );
+
       fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
         filteredMessageReceivedTxReceipts,
-        arbitraryEvmFlowExecutorAddress,
+        sponsoredCCTPDstPeripheryAddress,
         EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
       );
     }
