@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat } from "../../utils";
+import { formatFromAddressToChainFormat, isTestnet } from "../../utils";
 import {
   BlockRange,
   SimpleTransferFlowCompletedLog,
@@ -75,11 +75,15 @@ export type StoreEventsResult = {
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const TOKEN_MESSENGER_ADDRESS: string =
+const TOKEN_MESSENGER_ADDRESS_MAINNET: string =
+  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
+const TOKEN_MESSENGER_ADDRESS_TESTNET: string =
   "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA";
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const MESSAGE_TRANSMITTER_ADDRESS: string =
+const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: string =
+  "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
 // TODO: Update this address once the contract is deployed
@@ -167,13 +171,20 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const sponsoredCCTPDstPeripheryAddress =
       SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
 
+    const tokenMessengerAddress = isTestnet(this.chainId)
+      ? TOKEN_MESSENGER_ADDRESS_TESTNET
+      : TOKEN_MESSENGER_ADDRESS_MAINNET;
+    const messageTransmitterAddress = isTestnet(this.chainId)
+      ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+      : MESSAGE_TRANSMITTER_ADDRESS_MAINNET;
+
     const tokenMessengerContract = new ethers.Contract(
-      TOKEN_MESSENGER_ADDRESS,
+      tokenMessengerAddress,
       TOKEN_MESSENGER_V2_ABI,
       this.provider,
     );
     const messageTransmitterContract = new ethers.Contract(
-      MESSAGE_TRANSMITTER_ADDRESS,
+      messageTransmitterAddress,
       MESSAGE_TRANSMITTER_V2_ABI,
       this.provider,
     );
@@ -233,13 +244,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const messageSentEvents = this.getMessageSentEventsFromTransactionReceipts(
       filteredDepositForBurnTxReceipts,
-      MESSAGE_TRANSMITTER_ADDRESS,
+      messageTransmitterAddress,
     );
 
     const mintAndWithdrawEvents =
       this.getMintAndWithdrawEventsFromTransactionReceipts(
         filteredMessageReceivedTxReceipts,
-        TOKEN_MESSENGER_ADDRESS,
+        tokenMessengerAddress,
       );
 
     const burnEvents = await this.matchDepositForBurnWithMessageSentEvents(
