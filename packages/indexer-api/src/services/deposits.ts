@@ -258,6 +258,13 @@ export class DepositsService {
     const repo = this.db.getRepository(entities.RelayHashInfo);
     const queryBuilder = repo.createQueryBuilder("rhi");
 
+    if (params.depositTxHash || params.depositTxnRef) {
+      return this.getDepositStatusByTxnRef(
+        (params.depositTxHash || params.depositTxnRef) as string,
+        params.index,
+      );
+    }
+
     if (params.depositId && params.originChainId) {
       queryBuilder.andWhere(
         "rhi.depositId = :depositId AND rhi.originChainId = :originChainId",
@@ -330,6 +337,67 @@ export class DepositsService {
       );
     }
     return result;
+  }
+
+  /**
+   * Get deposit status by transaction reference. The transaction can have multiple types of deposits,
+   * so we need to check all of them: across intents, mint burn and others in the future.
+   * @param txnRef transaction reference
+   * @param index index of the deposit in case of multiple matching deposits
+   */
+  private async getDepositStatusByTxnRef(txnRef: string, index: number) {
+    const intentsQueryBuilder = this.db
+      .getRepository(entities.RelayHashInfo)
+      .createQueryBuilder("rhi")
+      .andWhere("rhi.depositTxHash = :depositTxHash", {
+        depositTxHash: txnRef,
+      })
+      .orderBy("rhi.depositEventId", "ASC");
+
+    const cctpQueryBuilder = this.db
+      .getRepository(entities.MessageSent)
+      .createQueryBuilder("ms")
+      .leftJoinAndSelect(entities.MessageReceived, "mr", "mr.nonce = ms.nonce")
+      .where("ms.transactionHash = :transactionHash", {
+        transactionHash: txnRef,
+      })
+      .orderBy("ms.id", "ASC");
+
+    const oftQueryBuilder = this.db
+      .getRepository(entities.OFTSent)
+      .createQueryBuilder("s")
+      .leftJoinAndSelect(entities.OFTReceived, "r", "r.guid = s.guid")
+      .where("s.transactionHash = :transactionHash", {
+        transactionHash: txnRef,
+      })
+      .orderBy("s.id", "ASC");
+
+    const [intentDeposits, cctpDeposits, oftDeposits] = await Promise.all([
+      intentsQueryBuilder.getMany(),
+      cctpQueryBuilder.getMany(),
+      oftQueryBuilder.getMany(),
+    ]);
+    const matchingDepositsCount = [
+      ...intentDeposits,
+      ...cctpDeposits,
+      ...oftDeposits,
+    ].length;
+    if (matchingDepositsCount === 0) throw new DepositNotFoundException();
+
+    return {
+      status: "pending",
+      originChainId: CHAIN_IDs.ARBITRUM,
+      depositId: "1",
+      destinationChainId: CHAIN_IDs.ARBITRUM,
+      depositTxnRef: txnRef,
+      fillTxnRef: null,
+      depositRefundTxnRef: null,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex: index,
+        maxIndex: matchingDepositsCount - 1,
+      },
+    };
   }
 
   private async getHyperliquidWithdrawalStatus(params: DepositStatusParams) {
