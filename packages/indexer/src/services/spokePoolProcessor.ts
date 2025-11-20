@@ -11,8 +11,6 @@ import {
   Not,
 } from "@repo/indexer-database";
 import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
-
-import { RelayStatus } from "../../../indexer-database/dist/src/entities";
 import {
   DepositSwapPair,
   FillCallsFailedPair,
@@ -205,7 +203,7 @@ export class SpokePoolProcessor {
           destinationChainId: event.destinationChainId,
           fillDeadline: event.fillDeadline,
           fillEventId: event.id,
-          status: RelayStatus.Filled, // Mark the status as filled.
+          status: entities.RelayStatus.Filled, // Mark the status as filled.
           fillTxHash: event.transactionHash,
           fillGasFee: fillGasFee?.toString(),
           includedActions: !utils.isFillOrSlowFillRequestMessageEmpty(
@@ -309,7 +307,7 @@ export class SpokePoolProcessor {
           if (!existingRow) {
             const insertedRow = await relayHashInfoRepository.insert({
               ...item,
-              status: RelayStatus.SlowFillRequested,
+              status: entities.RelayStatus.SlowFillRequested,
             });
             insertResults.push(insertedRow);
           } else {
@@ -319,8 +317,8 @@ export class SpokePoolProcessor {
               {
                 ...item,
                 // Update status to SlowFillRequested only if it is not already marked as Filled.
-                ...(existingRow.status !== RelayStatus.Filled && {
-                  status: RelayStatus.SlowFillRequested,
+                ...(existingRow.status !== entities.RelayStatus.Filled && {
+                  status: entities.RelayStatus.SlowFillRequested,
                 }),
               },
             );
@@ -633,7 +631,7 @@ export class SpokePoolProcessor {
           depositId: deposit.depositId,
           originChainId: deposit.originChainId,
           depositTxHash: deposit.transactionHash,
-          status: RelayStatus.Unfilled,
+          status: entities.RelayStatus.Unfilled,
         },
       });
     });
@@ -646,7 +644,7 @@ export class SpokePoolProcessor {
           depositId: deposit.depositId,
           originChainId: deposit.originChainId,
           depositTxHash: deposit.transactionHash,
-          status: RelayStatus.SlowFillRequested,
+          status: entities.RelayStatus.SlowFillRequested,
         },
       });
     });
@@ -659,7 +657,7 @@ export class SpokePoolProcessor {
           depositId: fill.depositId,
           originChainId: fill.originChainId,
           depositTxHash: fill.transactionHash,
-          status: RelayStatus.Filled,
+          status: entities.RelayStatus.Filled,
         },
       });
     });
@@ -672,7 +670,7 @@ export class SpokePoolProcessor {
           depositId: deposit.depositId,
           originChainId: deposit.originChainId,
           depositTxHash: deposit.depositTxHash,
-          status: RelayStatus.Expired,
+          status: entities.RelayStatus.Expired,
         },
       });
     });

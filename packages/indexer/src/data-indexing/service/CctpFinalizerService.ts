@@ -3,10 +3,6 @@ import axios from "axios";
 
 import { RepeatableTask } from "../../generics";
 import { DataSource, entities } from "@repo/indexer-database";
-import {
-  CctpFinalizerJob,
-  DepositForBurn,
-} from "../../../../indexer-database/dist/src/entities";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { PubSubService } from "../../pubsub/service";
 import { Config } from "../../parseEnv";
@@ -89,7 +85,7 @@ class CctpFinalizerService extends RepeatableTask {
       //    published to the pubsub topic, so that they are not picked up again.
       //#endregion
       const qb = this.postgres
-        .createQueryBuilder(DepositForBurn, "burnEvent")
+        .createQueryBuilder(entities.DepositForBurn, "burnEvent")
         .leftJoinAndSelect("burnEvent.finalizerJob", "job")
         .where("job.id IS NULL")
         // Filter out the burn events that have been deleted due to re-orgs.
@@ -101,7 +97,7 @@ class CctpFinalizerService extends RepeatableTask {
         const sponsoredEvent = await this.postgres
           .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
           .leftJoin(
-            CctpFinalizerJob,
+            entities.CctpFinalizerJob,
             "job",
             "job.sponsoredDepositForBurnId = sponsored.id",
           )
@@ -149,7 +145,7 @@ class CctpFinalizerService extends RepeatableTask {
   }
 
   private async publishBurnEvent(
-    burnEvent: DepositForBurn,
+    burnEvent: entities.DepositForBurn,
     signature?: string,
     sponsoredDepositForBurnId?: number,
   ) {
@@ -251,7 +247,7 @@ class CctpFinalizerService extends RepeatableTask {
       };
 
       await this.postgres
-        .createQueryBuilder(CctpFinalizerJob, "j")
+        .createQueryBuilder(entities.CctpFinalizerJob, "j")
         .insert()
         .values(jobValues)
         .orUpdate(["attestation", "sponsoredDepositForBurnId"], ["burnEventId"])

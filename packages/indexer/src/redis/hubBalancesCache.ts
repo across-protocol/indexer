@@ -1,4 +1,4 @@
-import { isDefined } from "@across-protocol/sdk/dist/cjs/utils/TypeGuards";
+import { utils } from "@across-protocol/sdk";
 import Redis from "ioredis";
 import * as s from "superstruct";
 
@@ -151,7 +151,7 @@ export class HubPoolBalanceCache {
           ? s.create(JSON.parse(result as string), HubPoolBalance)
           : undefined,
       )
-      .filter(isDefined);
+      .filter(utils.isDefined);
   }
 
   /**
