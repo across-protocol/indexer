@@ -218,6 +218,27 @@ export class EventDecoder {
     return events;
   }
 
+  static decodeFallbackHyperEVMFlowCompletedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02#eventlog#25
+    const eventTopic =
+      "0x4755f239bb1b047245415cb917deced72a3ca8baebcef109c396ff332ea6f50f";
+    const eventAbi = [
+      "event FallbackHyperEVMFlowCompleted(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed finalToken, uint256 evmAmountIn, uint256 bridgingFeesIncurred, uint256 evmAmountSponsored)",
+    ];
+    let events: any[] = this.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+    return events;
+  }
+
   static decodeTransactionReceiptLogs(
     receipt: ethers.providers.TransactionReceipt,
     eventTopic: string,

@@ -1,15 +1,12 @@
 import winston from "winston";
 import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
-
 import {
   DataSource,
   entities,
   utils as dbUtils,
   SaveQueryResult,
 } from "@repo/indexer-database";
-
 import {
   DepositForBurnWithBlock,
   MessageSentWithBlock,
@@ -26,6 +23,7 @@ import { formatFromAddressToChainFormat } from "../utils";
 import {
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
+  FallbackHyperEVMFlowCompletedLog,
 } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
@@ -61,6 +59,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       sponsoredDepositForBurnEvents,
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
+      fallbackHyperEVMFlowCompletedEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -104,6 +103,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.ArbitraryActionsExecuted,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.FallbackHyperEVMFlowCompleted,
+      ),
     ]);
 
     return {
@@ -114,6 +119,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       sponsoredDepositForBurnEvents,
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
+      fallbackHyperEVMFlowCompletedEvents,
     };
   }
 
@@ -226,6 +232,46 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
           entities.ArbitraryActionsExecuted,
+          eventsChunk,
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
+          [],
+        ),
+      ),
+    );
+    const result = savedEvents.flat();
+    return result;
+  }
+
+  public async formatAndSaveFallbackHyperEVMFlowCompletedEvents(
+    fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[],
+    lastFinalisedBlock: number,
+    chainId: number,
+    blockDates: Record<number, Date>,
+  ) {
+    const formattedEvents: Partial<entities.FallbackHyperEVMFlowCompleted>[] =
+      fallbackHyperEVMFlowCompletedEvents.map((event) => {
+        return {
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          transactionHash: event.transactionHash,
+          transactionIndex: event.transactionIndex,
+          blockTimestamp: blockDates[event.blockNumber]!,
+          chainId: chainId.toString(),
+          quoteNonce: event.args.quoteNonce,
+          finalRecipient: event.args.finalRecipient,
+          finalToken: event.args.finalToken,
+          evmAmountIn: event.args.evmAmountIn.toString(),
+          bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
+          evmAmountSponsored: event.args.evmAmountSponsored.toString(),
+          finalised: event.blockNumber <= lastFinalisedBlock,
+        };
+      });
+
+    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const savedEvents = await Promise.all(
+      chunkedEvents.map((eventsChunk) =>
+        this.saveAndHandleFinalisationBatch<entities.FallbackHyperEVMFlowCompleted>(
+          entities.FallbackHyperEVMFlowCompleted,
           eventsChunk,
           ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
