@@ -22,7 +22,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/sdk": "^4.3.75",
+    "@across-protocol/constants": "^3.1.89",
+    "@across-protocol/sdk": "^4.3.97",
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/indexer-database": "workspace:*",
@@ -48,15 +49,19 @@
     "@types/body-parser": "^1.19.5",
     "@types/chai": "^4.3.17",
     "@types/cors": "^2.8.17",
+    "@types/ioredis-mock": "^8.2.6",
     "@types/mocha": "^10.0.7",
     "chai": "^4.5.0",
     "eslint": "^8.57.0",
+    "ioredis-mock": "^8.13.1",
     "mocha": "^10.7.0",
     "nyc": "^17.0.0",
+    "pg-mem": "^3.0.5",
     "prettier": "^3.3.3",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
+    "typeorm": "^0.3.20",
     "typescript": "^5.5.4"
   }
 }

@@ -29,6 +29,11 @@ import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { CallsFailedRepository } from "./database/CallsFailedRepository";
 import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
+import { CCTPRepository } from "./database/CctpRepository";
+import { OftRepository } from "./database/OftRepository";
+import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
+import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
+import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -110,6 +115,20 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     indexerQueuesService,
     write,
   );
+  const cctpIndexerManager = new CCTPIndexerManager(
+    logger,
+    config,
+    postgres,
+    retryProvidersFactory,
+    new CCTPRepository(postgres, logger),
+  );
+  const oftIndexerManager = new OFTIndexerManager(
+    logger,
+    config,
+    postgres,
+    retryProvidersFactory,
+    new OftRepository(postgres, logger),
+  );
   const bundleServicesManager = new BundleServicesManager(
     config,
     logger,
@@ -127,6 +146,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     retryProvidersFactory,
     indexerQueuesService,
+  );
+  const cctpFinalizerServiceManager = new CctpFinalizerServiceManager(
+    logger,
+    config,
+    postgres,
   );
 
   // Set up message workers
@@ -163,8 +187,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       priceWorker?.close();
       swapWorker.close();
       acrossIndexerManager.stopGracefully();
+      cctpIndexerManager.stopGracefully();
+      oftIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
+      cctpFinalizerServiceManager.stopGracefully();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -185,11 +212,17 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const [
     bundleServicesManagerResults,
     acrossIndexerManagerResult,
+    cctpIndexerManagerResult,
+    oftIndexerManagerResult,
     hotfixServicesManagerResults,
+    cctpFinalizerServiceManagerResults,
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
+    cctpIndexerManager.start(),
+    oftIndexerManager.start(),
     hotfixServicesManager.start(),
+    cctpFinalizerServiceManager.start(),
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -201,6 +234,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         hotfixServicesManagerResults.status === "fulfilled",
       acrossIndexerManagerRunSuccess:
         acrossIndexerManagerResult.status === "fulfilled",
+      cctpIndexerManagerRunSuccess:
+        cctpIndexerManagerResult.status === "fulfilled",
+      oftIndexerManagerRunSuccess:
+        oftIndexerManagerResult.status === "fulfilled",
+      cctpFinalizerServiceManagerRunSuccess:
+        cctpFinalizerServiceManagerResults.status === "fulfilled",
     },
   });
   await integratorIdWorker.close();

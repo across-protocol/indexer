@@ -2,40 +2,34 @@ import { expect } from "chai";
 import request from "supertest";
 import { ExpressApp } from "../express-app";
 import express from "express";
-import { createDataSource, DataSource, fixtures } from "@repo/indexer-database";
+import { DataSource, fixtures } from "@repo/indexer-database";
+import { getTestDataSource, getTestRedisInstance } from "./setup";
 import Redis from "ioredis";
-import * as Indexer from "@repo/indexer";
-import * as utils from "../utils";
 import * as routers from "../routers";
 
 describe("Express App Tests with Deposits Endpoint", () => {
   let app: express.Express;
   let dataSource: DataSource;
-  let redis: Redis;
+  let redisClient: Redis;
   let depositsFixture: fixtures.FundsDepositedFixture;
 
-  before(async () => {
-    // Set up database and Redis
-    const databaseConfig = utils.getPostgresConfig(process.env);
-    dataSource = await createDataSource(databaseConfig).initialize();
-
-    const redisConfig = Indexer.parseRedisConfig(process.env);
-    redis = new Redis(redisConfig);
+  beforeEach(async () => {
+    dataSource = await getTestDataSource();
+    redisClient = getTestRedisInstance();
 
     // Initialize fixtures
     depositsFixture = new fixtures.FundsDepositedFixture(dataSource);
     await depositsFixture.deleteAllDeposits();
 
     // Initialize the Express app with the deposits router
-    const depositsRouter = routers.deposits.getRouter(dataSource, redis);
+    const depositsRouter = routers.deposits.getRouter(dataSource, redisClient);
     app = ExpressApp({ deposits: depositsRouter });
   });
 
-  after(async () => {
+  afterEach(async () => {
     // Clean up resources
-    await depositsFixture.deleteAllDeposits();
     await dataSource.destroy();
-    await redis.quit();
+    await redisClient.quit();
   });
 
   it("should return 200 and a success message for the /deposits route", async () => {
