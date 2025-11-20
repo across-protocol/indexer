@@ -355,18 +355,32 @@ export class DepositsService {
       .orderBy("rhi.depositEventId", "ASC");
 
     const cctpQueryBuilder = this.db
-      .getRepository(entities.MessageSent)
+      .getRepository<
+        entities.MessageSent & { receivedEvent: entities.MessageReceived }
+      >(entities.MessageSent)
       .createQueryBuilder("ms")
-      .leftJoinAndSelect(entities.MessageReceived, "mr", "mr.nonce = ms.nonce")
+      .leftJoinAndMapOne(
+        "ms.receivedEvent",
+        entities.MessageReceived,
+        "mr",
+        "mr.nonce = ms.nonce",
+      )
       .where("ms.transactionHash = :transactionHash", {
         transactionHash: txnRef,
       })
       .orderBy("ms.id", "ASC");
 
     const oftQueryBuilder = this.db
-      .getRepository(entities.OFTSent)
+      .getRepository<
+        entities.OFTSent & { receivedEvent: entities.OFTReceived }
+      >(entities.OFTSent)
       .createQueryBuilder("s")
-      .leftJoinAndSelect(entities.OFTReceived, "r", "r.guid = s.guid")
+      .leftJoinAndMapOne(
+        "s.receivedEvent",
+        entities.OFTReceived,
+        "r",
+        "r.guid = s.guid",
+      )
       .where("s.transactionHash = :transactionHash", {
         transactionHash: txnRef,
       })
@@ -377,27 +391,150 @@ export class DepositsService {
       cctpQueryBuilder.getMany(),
       oftQueryBuilder.getMany(),
     ]);
-    const matchingDepositsCount = [
-      ...intentDeposits,
-      ...cctpDeposits,
-      ...oftDeposits,
-    ].length;
-    if (matchingDepositsCount === 0) throw new DepositNotFoundException();
+    const taggedIntentDeposits = intentDeposits.map((deposit) => ({
+      type: "across-intents",
+      deposit,
+    }));
+    const taggedCctpDeposits = cctpDeposits.map((deposit) => ({
+      type: "cctp",
+      deposit,
+    }));
+    const taggedOftDeposits = oftDeposits.map((deposit) => ({
+      type: "oft",
+      deposit,
+    }));
+    const taggedDeposits: {
+      type: string;
+      deposit: entities.RelayHashInfo | entities.MessageSent | entities.OFTSent;
+    }[] = [
+      ...taggedIntentDeposits,
+      ...taggedCctpDeposits,
+      ...taggedOftDeposits,
+    ];
 
-    return {
-      status: "pending",
-      originChainId: CHAIN_IDs.ARBITRUM,
-      depositId: "1",
-      destinationChainId: CHAIN_IDs.ARBITRUM,
-      depositTxnRef: txnRef,
-      fillTxnRef: null,
-      depositRefundTxnRef: null,
-      actionsSucceeded: null,
+    if (taggedDeposits.length === 0) throw new DepositNotFoundException();
+
+    const matchingDeposit = taggedDeposits[index];
+    if (!matchingDeposit) {
+      throw new IndexParamOutOfRangeException(
+        `Index ${index} out of range. Index must be between 0 and ${taggedDeposits.length - 1}`,
+      );
+    }
+
+    if (matchingDeposit.type === "across-intents") {
+      return this.getDepositStatusForAcrossIntentsDeposit(
+        matchingDeposit.deposit as entities.RelayHashInfo,
+        index,
+        taggedDeposits.length - 1,
+      );
+    }
+
+    if (matchingDeposit.type === "cctp") {
+      return this.getDepositStatusForCctpDeposit(
+        matchingDeposit.deposit as entities.MessageSent & {
+          receivedEvent: entities.MessageReceived;
+        },
+        index,
+        taggedDeposits.length - 1,
+      );
+    }
+
+    if (matchingDeposit.type === "oft") {
+      return this.getDepositStatusForOftDeposit(
+        matchingDeposit.deposit as entities.OFTSent & {
+          receivedEvent: entities.OFTReceived;
+        },
+        index,
+        taggedDeposits.length - 1,
+      );
+    }
+
+    throw new Error(`Unknown deposit type: ${matchingDeposit.type}`);
+  }
+
+  private getDepositStatusForAcrossIntentsDeposit(
+    deposit: entities.RelayHashInfo,
+    currentIndex: number,
+    maxIndex: number,
+  ) {
+    const result = {
+      status:
+        deposit.status === entities.RelayStatus.Unfilled
+          ? "pending"
+          : deposit.status,
+      originChainId: parseInt(deposit.originChainId),
+      depositId: deposit.depositId,
+      depositTxHash: deposit.depositTxHash,
+      depositTxnRef: deposit.depositTxHash,
+      fillTx: deposit.fillTxHash,
+      fillTxnRef: deposit.fillTxHash,
+      destinationChainId: parseInt(deposit.destinationChainId),
+      depositRefundTxHash: deposit.depositRefundTxHash,
+      depositRefundTxnRef: deposit.depositRefundTxHash,
+      actionsSucceeded:
+        deposit.includedActions === true &&
+        deposit.status === entities.RelayStatus.Filled
+          ? deposit.callsFailedEventId === null
+          : null,
       pagination: {
-        currentIndex: index,
-        maxIndex: matchingDepositsCount - 1,
+        currentIndex,
+        maxIndex,
       },
     };
+
+    return result;
+  }
+
+  private getDepositStatusForCctpDeposit(
+    deposit: entities.MessageSent & { receivedEvent: entities.MessageReceived },
+    currentIndex: number,
+    maxIndex: number,
+  ) {
+    const result = {
+      status: !deposit.receivedEvent ? "pending" : "filled",
+      originChainId: parseInt(deposit.chainId),
+      depositId: deposit.nonce,
+      depositTxHash: deposit.transactionHash,
+      depositTxnRef: deposit.transactionHash,
+      fillTx: deposit.receivedEvent?.transactionHash,
+      fillTxnRef: deposit.receivedEvent?.transactionHash,
+      destinationChainId: parseInt(deposit.receivedEvent?.chainId),
+      depositRefundTxHash: undefined,
+      depositRefundTxnRef: undefined,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex,
+        maxIndex,
+      },
+    };
+
+    return result;
+  }
+
+  private getDepositStatusForOftDeposit(
+    deposit: entities.OFTSent & { receivedEvent: entities.OFTReceived },
+    currentIndex: number,
+    maxIndex: number,
+  ) {
+    const result = {
+      status: !deposit.receivedEvent ? "pending" : "filled",
+      originChainId: parseInt(deposit.chainId),
+      depositId: deposit.guid,
+      depositTxHash: deposit.transactionHash,
+      depositTxnRef: deposit.transactionHash,
+      fillTx: deposit.receivedEvent?.transactionHash,
+      fillTxnRef: deposit.receivedEvent?.transactionHash,
+      destinationChainId: parseInt(deposit.receivedEvent?.chainId),
+      depositRefundTxHash: undefined,
+      depositRefundTxnRef: undefined,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex,
+        maxIndex,
+      },
+    };
+
+    return result;
   }
 
   private async getHyperliquidWithdrawalStatus(params: DepositStatusParams) {
