@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import type {
   DepositParams,
@@ -7,9 +8,11 @@ import type {
   DepositReturnType,
   ParsedDepositReturnType,
   DepositStatusResponse,
+  DepositStatusParams,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
+  HyperliquidWithdrawalNotFoundException,
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
@@ -222,7 +225,7 @@ export class DepositsService {
   }
 
   public async getDepositStatus(
-    params: DepositParams,
+    params: DepositStatusParams,
   ): Promise<DepositStatusResponse> {
     // in the validation rules each of these params are marked as optional
     // but we need to check that at least one of them is present
@@ -231,7 +234,8 @@ export class DepositsService {
         (params.depositId && params.originChainId) ||
         params.depositTxHash ||
         params.depositTxnRef ||
-        params.relayDataHash
+        params.relayDataHash ||
+        (params.from && params.hypercoreWithdrawalNonce)
       )
     ) {
       throw new IncorrectQueryParamsException();
@@ -243,6 +247,11 @@ export class DepositsService {
 
     if (cachedData) {
       return JSON.parse(cachedData);
+    }
+
+    if (params.from && params.hypercoreWithdrawalNonce) {
+      // Hyperliquid Withdrawal status check
+      return this.getHyperliquidWithdrawalStatus(params);
     }
 
     // no cached data, so we need to query the database
@@ -320,6 +329,46 @@ export class DepositsService {
         this.getDepositStatusCacheTTLSeconds(relay.status),
       );
     }
+    return result;
+  }
+
+  private async getHyperliquidWithdrawalStatus(params: DepositStatusParams) {
+    const cacheKey = this.getDepositStatusCacheKey(params);
+    const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
+    const withdrawal = await repo.findOne({
+      where: {
+        fromAddress: params.from,
+        hypercoreNonce: params.hypercoreWithdrawalNonce,
+      },
+    });
+
+    if (!withdrawal) {
+      throw new HyperliquidWithdrawalNotFoundException();
+    }
+
+    const result = {
+      status: "filled",
+      originChainId: CHAIN_IDs.HYPERCORE,
+      depositId: params.hypercoreWithdrawalNonce as string, // it cannot be undefined because of the query validation rules
+      depositTxnRef: null,
+      fillTxnRef: withdrawal.mintTxnHash,
+      destinationChainId: parseInt(withdrawal.destinationChainId),
+      depositRefundTxnRef: null,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex: 0,
+        maxIndex: 0,
+      },
+    };
+
+    const cacheTtlSeconds = 60 * 5; // 5 minutes
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      cacheTtlSeconds,
+    );
+
     return result;
   }
 
@@ -703,7 +752,7 @@ export class DepositsService {
     return false;
   }
 
-  private getDepositStatusCacheKey(params: DepositParams) {
+  private getDepositStatusCacheKey(params: DepositStatusParams) {
     if (params.depositId && params.originChainId) {
       return `depositStatus-${params.depositId}-${params.originChainId}-${params.index}`;
     }
@@ -714,6 +763,10 @@ export class DepositsService {
     }
     if (params.relayDataHash) {
       return `depositStatus-${params.relayDataHash}-${params.index}`;
+    }
+
+    if (params.from && params.hypercoreWithdrawalNonce) {
+      return `depositStatus-${params.from}-${params.hypercoreWithdrawalNonce}`;
     }
 
     // in theory this should never happen because we have already checked
