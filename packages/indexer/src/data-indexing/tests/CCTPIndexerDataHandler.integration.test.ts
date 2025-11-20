@@ -9,7 +9,7 @@ import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
-import { entities } from "../../../../indexer-database/dist/src";
+import { entities } from "@repo/indexer-database";
 import { decodeHookData, decodeMessageBody } from "../adapter/cctp-v2/service";
 import { ethers } from "ethers";
 

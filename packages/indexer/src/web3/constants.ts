@@ -19,6 +19,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.LISK]: 86400,
   [CHAIN_IDs.MAINNET]: 14400,
   [CHAIN_IDs.MODE]: 86400,
+  [CHAIN_IDs.MONAD]: 172800,
   [CHAIN_IDs.OPTIMISM]: 86400,
   [CHAIN_IDs.PLASMA]: 172800,
   [CHAIN_IDs.POLYGON]: 86400,
@@ -62,6 +63,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.LINEA]: 100, // Linea has a soft-finality of 1 block. This value is padded - but at 3s/block the padding is 5 minutes
   [CHAIN_IDs.MAINNET]: 128,
   [CHAIN_IDs.MODE]: 120,
+  [CHAIN_IDs.MONAD]: 120,
   [CHAIN_IDs.OPTIMISM]: 120,
   [CHAIN_IDs.PLASMA]: 120,
   [CHAIN_IDs.POLYGON]: 256,
@@ -101,6 +103,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.BOBA]: 4990,
   [CHAIN_IDs.LINEA]: 5000,
   [CHAIN_IDs.MAINNET]: 7000,
+  [CHAIN_IDs.MONAD]: 1000,
   [CHAIN_IDs.REDSTONE]: 9000,
   [CHAIN_IDs.SCROLL]: 3000,
   [CHAIN_IDs.SOLANA]: 1000,
