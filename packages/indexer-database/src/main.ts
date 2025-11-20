@@ -81,6 +81,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.ArbitraryActionsExecuted,
       entities.FallbackHyperEVMFlowCompleted,
       entities.SponsoredAccountActivation,
+      entities.SwapFlowInitialized,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

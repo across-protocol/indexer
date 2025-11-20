@@ -44,3 +44,16 @@ export interface FallbackHyperEVMFlowCompletedLog extends providers.Log {
     evmAmountSponsored: BigNumber;
   };
 }
+
+export interface SwapFlowInitializedLog extends providers.Log {
+  args: {
+    quoteNonce: string;
+    finalRecipient: string;
+    finalToken: string;
+    evmAmountIn: BigNumber;
+    bridgingFeesIncurred: BigNumber;
+    coreAmountIn: BigNumber;
+    minAmountToSend: BigNumber;
+    maxAmountToSend: BigNumber;
+  };
+}
