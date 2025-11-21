@@ -62,6 +62,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -117,6 +118,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.SponsoredAccountActivation,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SwapFlowInitialized,
+      ),
     ]);
 
     return {
@@ -129,6 +136,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
     };
   }
 

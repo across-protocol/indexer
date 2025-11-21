@@ -52,3 +52,4 @@ export * from "./evm/SimpleTransferFlowCompleted";
 export * from "./evm/ArbitraryActionsExecuted";
 export * from "./evm/FallbackHyperEVMFlowCompleted";
 export * from "./evm/SponsoredAccountActivation";
+export * from "./evm/SwapFlowInitialized";
