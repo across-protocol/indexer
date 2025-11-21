@@ -385,6 +385,7 @@ describe("Deposits Service Tests", () => {
     const txHash = "0x" + "a".repeat(64);
     const chainId = "1";
     const nonce = "0x" + "1".repeat(64);
+    const sourceDomain = 1;
     const messageBody = "0x" + "b".repeat(128);
 
     // Create DepositForBurn
@@ -417,7 +418,7 @@ describe("Deposits Service Tests", () => {
       logIndex: 1,
       message: "0xmessage",
       version: 1,
-      sourceDomain: 1,
+      sourceDomain,
       destinationDomain: 2,
       nonce,
       sender: "0xsender",
@@ -438,7 +439,7 @@ describe("Deposits Service Tests", () => {
       transactionIndex: 0,
       logIndex: 0,
       caller: "0xcaller",
-      sourceDomain: 1,
+      sourceDomain,
       nonce,
       sender: "0xsender",
       finalityThresholdExecuted: 1,

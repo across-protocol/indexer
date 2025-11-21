@@ -84,7 +84,7 @@ export class DepositsService {
       .leftJoinAndSelect(
         entities.MessageReceived,
         "messageReceived",
-        "messageReceived.nonce = messageSent.nonce AND messageReceived.messageBody = messageSent.messageBody",
+        "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
       )
       .leftJoinAndSelect(
         entities.MintAndWithdraw,
