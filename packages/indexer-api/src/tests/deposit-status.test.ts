@@ -53,7 +53,7 @@ describe.only("/deposit/status", () => {
     expect(response.status).to.equal(404);
   });
 
-  it("?depositTxnRef across intents deposit ", async () => {
+  it("should return the status of the across intents deposit given a deposit transaction hash", async () => {
     const [deposit] = await relayHashInfoFixture.insertRelayHashInfos([
       { status: entities.RelayStatus.Filled },
     ]);
@@ -69,7 +69,7 @@ describe.only("/deposit/status", () => {
     expect(response.body.depositTxHash).to.equal(deposit.depositTxHash);
   });
 
-  it("?depositTxnRef cctp mint burn deposit ", async () => {
+  it("should return the status of the cctp mint burn deposit given a deposit transaction hash", async () => {
     const [messageSentEvent] = await messageSentFixture.insertMessageSentEvents(
       [
         {
@@ -101,7 +101,7 @@ describe.only("/deposit/status", () => {
     );
   });
 
-  it("?depositTxnRef oft mint burn deposit with multiple messages", async () => {
+  it("should return the status of the oft mint burn deposit given a deposit transaction hash", async () => {
     const oftSentEvents = await oftSentFixture.insertOftSentEvents([
       { transactionHash: "dummy-txn-ref", guid: "dummy-guid" },
     ]);
@@ -122,7 +122,7 @@ describe.only("/deposit/status", () => {
     );
   });
 
-  it("?depositTxnRef multiple deposits in the same transaction", async () => {
+  it("given a deposit transaction hash, should return the status of the deposit when there are multiple deposits in the same transaction", async () => {
     const txnRef = "dummy-txn-ref";
     const [deposit] = await relayHashInfoFixture.insertRelayHashInfos([
       { status: entities.RelayStatus.Filled, depositTxHash: txnRef },
