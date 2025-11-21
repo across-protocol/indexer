@@ -14,7 +14,7 @@ export class SwapFlowInitialized1763651311589 implements MigrationInterface {
         "evmAmountIn" numeric NOT NULL,
         "bridgingFeesIncurred" numeric NOT NULL,
         "evmAmountSponsored" numeric NOT NULL,
-        "coreAmountIn", numeric NOT NULL,
+        "coreAmountIn" numeric NOT NULL,
         "minAmountToSend" numeric NOT NULL,
         "maxAmountToSend" numeric NOT NULL,
         "blockNumber" integer NOT NULL,
