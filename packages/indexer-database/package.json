@@ -25,7 +25,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/constants": "^3.1.89",
+    "@across-protocol/constants": "^3.1.90",
     "@across-protocol/sdk": "^4.3.97",
     "ethers": "^5.8.0",
     "pg": "^8.4.0",
