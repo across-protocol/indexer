@@ -24,7 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/constants": "^3.1.89",
+    "@across-protocol/constants": "^3.1.90",
     "@across-protocol/contracts": "^4.1.14",
     "@across-protocol/sdk": "^4.3.97",
     "@google-cloud/pubsub": "^5.2.0",

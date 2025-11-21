@@ -9,3 +9,5 @@ export * from "./RelayHashInfoFixture";
 export * from "./SwapBeforeBridgeFixture";
 export * from "./SwapMetadataFixture";
 export * from "./HypercoreCctpWithdrawFixture";
+export * from "./MessageSentFixture";
+export * from "./MessageReceivedFixture";
