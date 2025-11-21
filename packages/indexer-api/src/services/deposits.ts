@@ -363,7 +363,7 @@ export class DepositsService {
         "ms.receivedEvent",
         entities.MessageReceived,
         "mr",
-        "mr.nonce = ms.nonce",
+        "mr.nonce = ms.nonce and mr.sourceDomain = ms.sourceDomain",
       )
       .where("ms.transactionHash = :transactionHash", {
         transactionHash: txnRef,

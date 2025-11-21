@@ -71,11 +71,21 @@ describe.only("/deposit/status", () => {
 
   it("?depositTxnRef cctp mint burn deposit ", async () => {
     const [messageSentEvent] = await messageSentFixture.insertMessageSentEvents(
-      [{ transactionHash: "dummy-txn-ref", nonce: "dummy-nonce" }],
+      [
+        {
+          transactionHash: "dummy-txn-ref",
+          nonce: "dummy-nonce",
+          sourceDomain: 1,
+        },
+      ],
     );
     const [messageReceivedEvent] =
       await messageReceivedFixture.insertMessageReceivedEvents([
-        { transactionHash: "dummy-txn-ref", nonce: "dummy-nonce" },
+        {
+          transactionHash: "dummy-txn-ref",
+          nonce: "dummy-nonce",
+          sourceDomain: 1,
+        },
       ]);
     const queryParams: DepositStatusParams = {
       depositTxnRef: messageSentEvent!.transactionHash,
@@ -118,10 +128,10 @@ describe.only("/deposit/status", () => {
       { status: entities.RelayStatus.Filled, depositTxHash: txnRef },
     ]);
     await messageSentFixture.insertMessageSentEvents([
-      { transactionHash: txnRef, nonce: "dummy-nonce" },
+      { transactionHash: txnRef, nonce: "dummy-nonce", sourceDomain: 1 },
     ]);
     await messageReceivedFixture.insertMessageReceivedEvents([
-      { transactionHash: txnRef, nonce: "dummy-nonce" },
+      { transactionHash: txnRef, nonce: "dummy-nonce", sourceDomain: 1 },
     ]);
     await oftSentFixture.insertOftSentEvents([
       { transactionHash: txnRef, guid: "dummy-guid" },
