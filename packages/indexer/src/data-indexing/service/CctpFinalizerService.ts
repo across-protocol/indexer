@@ -273,6 +273,7 @@ const ATTESTATION_TIMES = {
   [CHAIN_IDs.HYPEREVM]: { standard: 5, fast: 8 },
   [CHAIN_IDs.INK]: { standard: 30 * 60, fast: 8 },
   [CHAIN_IDs.LINEA]: { standard: 6 * 60 * 60, fast: 8 },
+  [CHAIN_IDs.MONAD]: { standard: 8, fast: 8 },
   [CHAIN_IDs.OPTIMISM]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.POLYGON]: { standard: 8, fast: 8 },
   [CHAIN_IDs.SOLANA]: { standard: 25, fast: 8 },
