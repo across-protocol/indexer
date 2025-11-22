@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
 import { formatFromAddressToChainFormat } from "../../utils";
 import {
   BlockRange,
@@ -39,7 +39,6 @@ import {
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
 } from "../adapter/cctp-v2/service";
-import { createMapWithDefault } from "../../utils/map";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 export type EvmBurnEventsPair = {
@@ -75,35 +74,21 @@ export type StoreEventsResult = {
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const TOKEN_MESSENGER_ADDRESS: { [key: number]: string } = createMapWithDefault(
-  {
-    [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-    [CHAIN_IDs.HYPEREVM_TESTNET]: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-  },
-  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-);
+const TOKEN_MESSENGER_ADDRESS_MAINNET: string =
+  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
+const TOKEN_MESSENGER_ADDRESS_TESTNET: string =
+  "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA";
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
-const MESSAGE_TRANSMITTER_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-      [CHAIN_IDs.HYPEREVM_TESTNET]:
-        "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
-    },
-    "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
-  );
+const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: string =
+  "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
+  "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
-  createMapWithDefault(
-    {
-      [CHAIN_IDs.ARBITRUM_SEPOLIA]:
-        "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-    },
-    "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  );
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+};
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
@@ -174,8 +159,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private async fetchEventsByRange(
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
-    const tokenMessengerAddress = TOKEN_MESSENGER_ADDRESS[this.chainId];
-    const messageTransmitterAddress = MESSAGE_TRANSMITTER_ADDRESS[this.chainId];
     const sponsoredCCTPSrcPeripheryAddress =
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     const hyperEvmExecutorAddress =
@@ -183,14 +166,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const arbitraryEvmFlowExecutorAddress =
       ARBITRARY_EVM_FLOW_EXECUTOR_ADDRESS[this.chainId];
 
-    if (!tokenMessengerAddress || !messageTransmitterAddress) {
-      const errorMessage = `CCTP contracts addresses not configured for chain ${this.chainId}`;
-      this.logger.error({
-        at: "CCTPIndexerDataHandler#fetchEventsByRange",
-        message: errorMessage,
-      });
-      throw new Error(errorMessage);
-    }
+    const tokenMessengerAddress =
+      this.chainId in TEST_NETWORKS
+        ? TOKEN_MESSENGER_ADDRESS_TESTNET
+        : TOKEN_MESSENGER_ADDRESS_MAINNET;
+    const messageTransmitterAddress =
+      this.chainId in TEST_NETWORKS
+        ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+        : MESSAGE_TRANSMITTER_ADDRESS_MAINNET;
 
     const tokenMessengerContract = new ethers.Contract(
       tokenMessengerAddress,
