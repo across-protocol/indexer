@@ -24,6 +24,7 @@ import {
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
+  SponsoredAccountActivationLog,
 } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
@@ -60,6 +61,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
+      sponsoredAccountActivationEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -109,6 +111,12 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.FallbackHyperEVMFlowCompleted,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SponsoredAccountActivation,
+      ),
     ]);
 
     return {
@@ -120,6 +128,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
+      sponsoredAccountActivationEvents,
     };
   }
 

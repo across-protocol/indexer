@@ -8,6 +8,8 @@ import {
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
+  SponsoredAccountActivationLog,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -42,6 +44,7 @@ import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
+  formatSponsoredAccountActivationEvent,
 } from "./hyperEvmExecutor";
 import {
   formatAndSaveEvents,
@@ -63,6 +66,7 @@ export type FetchEventsResult = {
   simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[];
   arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[];
   fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[];
+  sponsoredAccountActivationEvents: SponsoredAccountActivationLog[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
@@ -80,6 +84,7 @@ export type StoreEventsResult = {
   savedSimpleTransferFlowCompletedEvents: SaveQueryResult<entities.SimpleTransferFlowCompleted>[];
   savedArbitraryActionsExecutedEvents: SaveQueryResult<entities.ArbitraryActionsExecuted>[];
   savedFallbackHyperEVMFlowCompletedEvents: SaveQueryResult<entities.FallbackHyperEVMFlowCompleted>[];
+  savedSponsoredAccountActivationEvents: SaveQueryResult<entities.SponsoredAccountActivation>[];
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
@@ -295,6 +300,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
+    let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
     if (sponsoredCCTPDstPeripheryAddress) {
       simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
         filteredMessageReceivedTxReceipts,
@@ -313,6 +319,17 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         sponsoredCCTPDstPeripheryAddress,
         EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
       );
+      const sponsoredCCTPDstPeripheryContract = new ethers.Contract(
+        sponsoredCCTPDstPeripheryAddress,
+        SPONSORED_ACCOUNT_ACTIVATION_ABI,
+        this.provider,
+      );
+      sponsoredAccountActivationEvents =
+        (await sponsoredCCTPDstPeripheryContract.queryFilter(
+          "SponsoredAccountActivation",
+          blockRange.from,
+          blockRange.to,
+        )) as unknown as SponsoredAccountActivationLog[];
     }
 
     this.runChecks(burnEvents, mintEvents);
@@ -337,6 +354,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
+      sponsoredAccountActivationEvents,
       blocks,
       transactionReceipts,
       transactions: depositForBurnTransactions,
@@ -531,6 +549,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       simpleTransferFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
+      sponsoredAccountActivationEvents,
       blocks,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
@@ -560,6 +579,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedSimpleTransferFlowCompletedEvents,
       savedArbitraryActionsExecutedEvents,
       savedFallbackHyperEVMFlowCompletedEvents,
+      savedSponsoredAccountActivationEvents,
     ] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
         chainAgnosticBurnEvents,
@@ -605,6 +625,16 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         entities.FallbackHyperEVMFlowCompleted,
         primaryKeyColumns as (keyof entities.FallbackHyperEVMFlowCompleted)[],
       ),
+      formatAndSaveEvents(
+        this.cctpRepository,
+        sponsoredAccountActivationEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSponsoredAccountActivationEvent,
+        entities.SponsoredAccountActivation,
+        primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
+      ),
     ]);
 
     return {
@@ -614,6 +644,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedSimpleTransferFlowCompletedEvents,
       savedArbitraryActionsExecutedEvents,
       savedFallbackHyperEVMFlowCompletedEvents,
+      savedSponsoredAccountActivationEvents,
     };
   }
 
