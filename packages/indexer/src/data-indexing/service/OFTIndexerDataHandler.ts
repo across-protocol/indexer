@@ -62,7 +62,6 @@ const DST_OFT_HANDLER_ADDRESS: { [key: number]: string } = {
   // Taken from https://hyperevmscan.io/address/0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888#code
   [CHAIN_IDs.HYPEREVM]: "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
 };
-("");
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
@@ -196,15 +195,15 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
-    const composeDeliveredEvents = await fetchEvents(
-      this.provider,
-      ENDPOINT_V2_ADDRESS,
-      "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
-      blockRange.from,
-      blockRange.to,
-    );
-    if (composeDeliveredEvents.length > 0) {
-      if (dstOftHandlerAddress) {
+    if (dstOftHandlerAddress) {
+      const composeDeliveredEvents = await fetchEvents(
+        this.provider,
+        ENDPOINT_V2_ADDRESS,
+        "event ComposeDelivered(address from, address to, bytes32 guid, uint16 index)",
+        blockRange.from,
+        blockRange.to,
+      );
+      if (composeDeliveredEvents.length > 0) {
         const transactionReceipts = await this.getTransactionsReceipts(
           composeDeliveredEvents.map((event) => event.transactionHash),
         );
