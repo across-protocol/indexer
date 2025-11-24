@@ -16,21 +16,65 @@ import {
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
-import { combineQueriesWithUnionAll } from "../utils/query";
-import {
-  DepositFields,
-  RelayHashInfoFields,
-  FilledRelayFields,
-  SwapBeforeBridgeFields,
-  DepositForBurnFields,
-  DepositForBurnRelayHashInfoFields,
-  DepositForBurnFilledRelayFields,
-  DepositForBurnSwapBeforeBridgeFields,
-  OftSentFields,
-  OftSentRelayHashInfoFields,
-  OftSentFilledRelayFields,
-  OftSentSwapBeforeBridgeFields,
-} from "../utils/fields";
+
+type APIHandler = (
+  params?: JSON,
+) => Promise<JSON> | JSON | never | Promise<never> | void | Promise<void>;
+// use in typeorm select statement to match DepositReturnType
+const DepositFields = [
+  `deposit.id as "id"`,
+  `deposit.relayHash as "relayHash"`,
+  `deposit.depositId as "depositId"`,
+  `deposit.originChainId as "originChainId"`,
+  `deposit.destinationChainId as "destinationChainId"`,
+  `deposit.depositor as "depositor"`,
+  `deposit.recipient as "recipient"`,
+  `deposit.inputToken as "inputToken"`,
+  `deposit.inputAmount as "inputAmount"`,
+  `deposit.outputToken as "outputToken"`,
+  `CASE WHEN swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" THEN swapMetadata.address ELSE NULL END as "swapOutputToken"`,
+  `CASE WHEN swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" THEN swapMetadata.minAmountOut ELSE NULL END as "swapOutputTokenAmount"`,
+  `deposit.outputAmount as "outputAmount"`,
+  `deposit.message as "message"`,
+  `deposit.messageHash as "messageHash"`,
+  `deposit.exclusiveRelayer as "exclusiveRelayer"`,
+  `deposit.exclusivityDeadline as "exclusivityDeadline"`,
+  `deposit.fillDeadline as "fillDeadline"`,
+  `deposit.quoteTimestamp as "quoteTimestamp"`,
+  `deposit.transactionHash as "depositTxHash"`, // Renamed field
+  `deposit.blockNumber as "depositBlockNumber"`,
+  `deposit.blockTimestamp as "depositBlockTimestamp"`,
+];
+
+const RelayHashInfoFields = [
+  `rhi.status as "status"`,
+  `rhi.depositRefundTxHash as "depositRefundTxHash"`,
+  `rhi.swapTokenPriceUsd as "swapTokenPriceUsd"`,
+  `rhi.swapFeeUsd as "swapFeeUsd"`,
+  `rhi.bridgeFeeUsd as "bridgeFeeUsd"`,
+  `rhi.inputPriceUsd as "inputPriceUsd"`,
+  `rhi.outputPriceUsd as "outputPriceUsd"`,
+  `rhi.fillGasFee as "fillGasFee"`,
+  `rhi.fillGasFeeUsd as "fillGasFeeUsd"`,
+  `rhi.fillGasTokenPriceUsd as "fillGasTokenPriceUsd"`,
+  `CASE 
+    WHEN rhi.includedActions = true AND rhi.status = 'filled' THEN (rhi.callsFailedEventId IS NULL)
+    ELSE NULL
+  END as "actionsSucceeded"`,
+  `rhi.actionsTargetChainId as "actionsTargetChainId"`,
+];
+
+const FilledRelayFields = [
+  `fill.relayer as "relayer"`,
+  `fill.blockTimestamp as "fillBlockTimestamp"`,
+  `fill.transactionHash as "fillTx"`, // Renamed field
+];
+
+const SwapBeforeBridgeFields = [
+  `swap.transactionHash as "swapTransactionHash"`,
+  `swap.swapToken as "swapToken"`,
+  `swap.swapTokenAmount as "swapTokenAmount"`,
+];
 
 export class DepositsService {
   constructor(
@@ -41,8 +85,8 @@ export class DepositsService {
   public async getDeposits(
     params: DepositsParams,
   ): Promise<ParsedDepositReturnType[]> {
-    const fundsDepositedRepo = this.db.getRepository(entities.V3FundsDeposited);
-    const fundsDepositedQueryBuilder = fundsDepositedRepo
+    const repo = this.db.getRepository(entities.V3FundsDeposited);
+    const queryBuilder = repo
       .createQueryBuilder("deposit")
       .leftJoinAndSelect(
         entities.RelayHashInfo,
@@ -72,253 +116,100 @@ export class DepositsService {
         ...FilledRelayFields,
       ]);
 
-    // Build DepositForBurn query with joins to linked CCTP events
-    const depositForBurnRepo = this.db.getRepository(entities.DepositForBurn);
-    const depositForBurnQueryBuilder = depositForBurnRepo
-      .createQueryBuilder("depositForBurn")
-      .leftJoinAndSelect(
-        entities.MessageSent,
-        "messageSent",
-        "messageSent.transactionHash = depositForBurn.transactionHash AND messageSent.chainId = depositForBurn.chainId",
-      )
-      .leftJoinAndSelect(
-        entities.MessageReceived,
-        "messageReceived",
-        "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
-      )
-      .leftJoinAndSelect(
-        entities.MintAndWithdraw,
-        "mintAndWithdraw",
-        "mintAndWithdraw.transactionHash = messageReceived.transactionHash AND mintAndWithdraw.chainId = messageReceived.chainId",
-      )
-      .select([
-        ...DepositForBurnFields,
-        ...DepositForBurnRelayHashInfoFields,
-        ...DepositForBurnSwapBeforeBridgeFields,
-        ...DepositForBurnFilledRelayFields,
-      ]);
-
-    const oftSentRepo = this.db.getRepository(entities.OFTSent);
-    const oftSentQueryBuilder = oftSentRepo
-      .createQueryBuilder("oftSent")
-      .leftJoinAndSelect(
-        entities.OFTReceived,
-        "oftReceived",
-        "oftReceived.guid = oftSent.guid",
-      )
-      .select([
-        ...OftSentFields,
-        ...OftSentRelayHashInfoFields,
-        ...OftSentSwapBeforeBridgeFields,
-        ...OftSentFilledRelayFields,
-      ]);
-
     if (params.address) {
-      fundsDepositedQueryBuilder.andWhere(
+      // Filter deposits by address - matches deposits where the provided address is either depositor or recipient
+      queryBuilder.andWhere(
         "deposit.depositor = :address OR deposit.recipient = :address",
-        {
-          address: params.address,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.depositor = :address OR depositForBurn.mintRecipient = :address",
-        {
-          address: params.address,
-        },
-      );
-      oftSentQueryBuilder.andWhere(
-        "oftSent.fromAddress = :address OR oftReceived.toAddress = :address",
         {
           address: params.address,
         },
       );
     } else {
       if (params.depositor) {
-        fundsDepositedQueryBuilder.andWhere("deposit.depositor = :depositor", {
-          depositor: params.depositor,
-        });
-        depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.depositor = :depositor",
-          {
-            depositor: params.depositor,
-          },
-        );
-        oftSentQueryBuilder.andWhere("oftSent.fromAddress = :depositor", {
+        queryBuilder.andWhere("deposit.depositor = :depositor", {
           depositor: params.depositor,
         });
       }
 
       if (params.recipient) {
-        fundsDepositedQueryBuilder.andWhere("deposit.recipient = :recipient", {
-          recipient: params.recipient,
-        });
-        depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.mintRecipient = :recipient",
-          {
-            recipient: params.recipient,
-          },
-        );
-        oftSentQueryBuilder.andWhere("oftReceived.toAddress = :recipient", {
+        queryBuilder.andWhere("deposit.recipient = :recipient", {
           recipient: params.recipient,
         });
       }
     }
 
     if (params.inputToken) {
-      fundsDepositedQueryBuilder.andWhere("deposit.inputToken = :inputToken", {
-        inputToken: params.inputToken,
-      });
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.burnToken = :inputToken",
-        {
-          inputToken: params.inputToken,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftSent.token = :inputToken", {
+      queryBuilder.andWhere("deposit.inputToken = :inputToken", {
         inputToken: params.inputToken,
       });
     }
 
     if (params.outputToken) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.outputToken = :outputToken",
-        {
-          outputToken: params.outputToken,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "mintAndWithdraw.mintToken = :outputToken",
-        {
-          outputToken: params.outputToken,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftReceived.token = :outputToken", {
+      queryBuilder.andWhere("deposit.outputToken = :outputToken", {
         outputToken: params.outputToken,
       });
     }
 
     if (params.originChainId) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.originChainId = :originChainId",
-        {
-          originChainId: params.originChainId,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.chainId = :originChainId",
-        {
-          originChainId: params.originChainId,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftSent.chainId = :originChainId", {
-        originChainId: params.originChainId.toString(),
+      queryBuilder.andWhere("deposit.originChainId = :originChainId", {
+        originChainId: params.originChainId,
       });
     }
 
     if (params.destinationChainId) {
-      fundsDepositedQueryBuilder.andWhere(
+      queryBuilder.andWhere(
         "deposit.destinationChainId = :destinationChainId",
         {
           destinationChainId: params.destinationChainId,
         },
       );
-      depositForBurnQueryBuilder.andWhere(
-        "mintAndWithdraw.chainId = :destinationChainId",
-        {
-          destinationChainId: params.destinationChainId.toString(),
-        },
-      );
-      oftSentQueryBuilder.andWhere(
-        "oftReceived.chainId = :destinationChainId",
-        {
-          destinationChainId: params.destinationChainId.toString(),
-        },
-      );
     }
 
     if (params.status) {
-      fundsDepositedQueryBuilder.andWhere("rhi.status = :status", {
+      queryBuilder.andWhere("rhi.status = :status", {
         status: params.status,
       });
     }
 
     if (params.integratorId) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.integratorId = :integratorId",
-        {
-          integratorId: params.integratorId,
-        },
-      );
-    }
-
-    // Build array of query builders based on depositType filter
-    const queryBuilders = [];
-    if (!params.depositType || params.depositType === "across") {
-      queryBuilders.push(fundsDepositedQueryBuilder);
-    }
-    if (!params.depositType || params.depositType === "cctp") {
-      queryBuilders.push(depositForBurnQueryBuilder);
-    }
-    if (!params.depositType || params.depositType === "oft") {
-      queryBuilders.push(oftSentQueryBuilder);
-    }
-
-    // If only one query builder, execute it directly without UNION
-    let allDeposits: DepositReturnType[];
-
-    if (queryBuilders.length === 1) {
-      const singleQueryBuilder = queryBuilders[0]!;
-      // For single query builder, we need to ensure orderBy is set correctly
-      // fundsDepositedQueryBuilder already has orderBy("deposit.blockTimestamp", "DESC") on line 67
-      // For others, we need to add it using the actual table column name
-      if (singleQueryBuilder === depositForBurnQueryBuilder) {
-        singleQueryBuilder.orderBy("depositForBurn.blockTimestamp", "DESC");
-      } else if (singleQueryBuilder === oftSentQueryBuilder) {
-        singleQueryBuilder.orderBy("oftSent.blockTimestamp", "DESC");
-      }
-      // Note: fundsDepositedQueryBuilder already has orderBy set, so we don't override it
-      singleQueryBuilder.limit(params.limit || 50).offset(params.skip || 0);
-      allDeposits = await singleQueryBuilder.getRawMany();
-    } else {
-      // Combine queries with UNION ALL using utility function
-      const result = combineQueriesWithUnionAll(queryBuilders, {
-        orderBy: "depositBlockTimestamp",
-        orderDirection: "DESC",
-        limit: params.limit || 50,
-        offset: params.skip || 0,
+      queryBuilder.andWhere("deposit.integratorId = :integratorId", {
+        integratorId: params.integratorId,
       });
-      allDeposits = await this.db.query(result.sql, result.params);
     }
 
-    const deposits: DepositReturnType[] = allDeposits;
+    if (params.skip) {
+      queryBuilder.offset(params.skip);
+    }
 
-    // Fetch speedup events for each deposit (only for V3FundsDeposited)
+    if (params.limit) {
+      queryBuilder.limit(params.limit);
+    }
+
+    const deposits: DepositReturnType[] = await queryBuilder.execute();
+
+    // Fetch speedup events for each deposit
     const speedupRepo = this.db.getRepository(
       entities.RequestedSpeedUpV3Deposit,
     );
     return Promise.all(
       deposits.map(async (deposit) => {
-        // Only fetch speedups if depositId exists (V3FundsDeposited deposits)
-        const speedups =
-          deposit.depositId && deposit.originChainId
-            ? await speedupRepo
-                .createQueryBuilder("speedup")
-                .where(
-                  "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
-                  {
-                    depositId: deposit.depositId,
-                    originChainId: deposit.originChainId,
-                  },
-                )
-                .select([
-                  "speedup.transactionHash as transactionHash",
-                  "speedup.updatedRecipient as updatedRecipient",
-                  "speedup.updatedMessage as updatedMessage",
-                  "speedup.blockNumber as blockNumber",
-                  "speedup.updatedOutputAmount as updatedOutputAmount",
-                ])
-                .getRawMany()
-            : [];
+        const speedups = await speedupRepo
+          .createQueryBuilder("speedup")
+          .where(
+            "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+            {
+              depositId: deposit.depositId,
+              originChainId: deposit.originChainId,
+            },
+          )
+          .select([
+            "speedup.transactionHash as transactionHash",
+            "speedup.updatedRecipient as updatedRecipient",
+            "speedup.updatedMessage as updatedMessage",
+            "speedup.blockNumber as blockNumber",
+            "speedup.updatedOutputAmount as updatedOutputAmount",
+          ])
+          .getRawMany();
 
         return {
           ...deposit,
