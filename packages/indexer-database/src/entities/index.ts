@@ -50,3 +50,4 @@ export * from "./evm/SponsoredOFTSend";
 // HyperEVM
 export * from "./evm/SimpleTransferFlowCompleted";
 export * from "./evm/ArbitraryActionsExecuted";
+export * from "./evm/FallbackHyperEVMFlowCompleted";
