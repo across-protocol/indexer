@@ -30,13 +30,18 @@ import { fetchEvents } from "../../utils/contractUtils";
 import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
+  PK_CHAIN_BLOCK_LOG,
+  PK_CHAIN_BLOCK_TX_LOG,
 } from "./eventProcessing";
 import {
   formatArbitraryActionsExecutedEvent,
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
   formatSponsoredAccountActivationEvent,
-} from "./hyperEvmExecutor";
+  formatOftSentEvent,
+  formatOftReceivedEvent,
+  formatSponsoredOftSendEvent,
+} from "./eventFormatting";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type FetchEventsResult = {
@@ -189,11 +194,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
     let sponsoredOFTSendEvents: SponsoredOFTSendLog[] = [];
     if (sponsoredOFTSrcPeripheryAddress) {
-      sponsoredOFTSendEvents = getEventsFromTransactionReceipts(
-        filteredOftSentTransactionReceipts,
-        sponsoredOFTSrcPeripheryAddress,
-        EventDecoder.decodeOFTSponsoredSendEvents,
-      );
+      sponsoredOFTSendEvents = getEventsFromTransactionReceipts({
+        transactionReceipts: filteredOftSentTransactionReceipts,
+        contractAddress: sponsoredOFTSrcPeripheryAddress,
+        decodeEvents: EventDecoder.decodeOFTSponsoredSendEvents,
+      });
     }
 
     let simpleTransferFlowCompletedEvents: SimpleTransferFlowCompletedLog[] =
@@ -215,21 +220,21 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         const transactionReceipts = await this.getTransactionsReceipts(
           composeDeliveredEvents.map((event) => event.transactionHash),
         );
-        simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
+        simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts({
           transactionReceipts,
-          dstOftHandlerAddress,
-          EventDecoder.decodeSimpleTransferFlowCompletedEvents,
-        );
-        fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
+          contractAddress: dstOftHandlerAddress,
+          decodeEvents: EventDecoder.decodeSimpleTransferFlowCompletedEvents,
+        });
+        fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts({
           transactionReceipts,
-          dstOftHandlerAddress,
-          EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
-        );
-        arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts(
+          contractAddress: dstOftHandlerAddress,
+          decodeEvents: EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
+        });
+        arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts({
           transactionReceipts,
-          dstOftHandlerAddress,
-          EventDecoder.decodeArbitraryActionsExecutedEvents,
-        );
+          contractAddress: dstOftHandlerAddress,
+          decodeEvents: EventDecoder.decodeArbitraryActionsExecutedEvents,
+        });
       }
       const dstOftHandlerContract = new ethers.Contract(
         dstOftHandlerAddress,
@@ -291,12 +296,6 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       sponsoredAccountActivationEvents,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
-    const primaryKeyColumns = [
-      "chainId",
-      "blockNumber",
-      "transactionHash",
-      "logIndex",
-    ];
     const [
       savedOftSentEvents,
       savedOftReceivedEvents,
@@ -306,66 +305,83 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       savedArbitraryActionsExecutedEvents,
       savedSponsoredAccountActivationEvents,
     ] = await Promise.all([
-      this.oftRepository.formatAndSaveOftSentEvents(
-        oftSentEvents,
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: oftSentEvents,
+        lastFinalisedBlock: lastFinalisedBlock,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatOftSentEvent,
+        formatEventArgs: { tokenAddress },
+        entity: entities.OFTSent,
+        primaryKeyColumns: PK_CHAIN_BLOCK_LOG as (keyof entities.OFTSent)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: oftReceivedEvents,
+        lastFinalisedBlock: lastFinalisedBlock,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatOftReceivedEvent,
+        formatEventArgs: { tokenAddress },
+        entity: entities.OFTReceived,
+        primaryKeyColumns: PK_CHAIN_BLOCK_LOG as (keyof entities.OFTReceived)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: sponsoredOFTSendEvents,
+        lastFinalisedBlock: lastFinalisedBlock,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatSponsoredOftSendEvent,
+        entity: entities.SponsoredOFTSend,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredOFTSend)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: simpleTransferFlowCompletedEvents,
+        lastFinalisedBlock: lastFinalisedBlock,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatSimpleTransferFlowCompletedEvent,
+        entity: entities.SimpleTransferFlowCompleted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SimpleTransferFlowCompleted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: fallbackHyperEVMFlowCompletedEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        tokenAddress,
-      ),
-      this.oftRepository.formatAndSaveOftReceivedEvents(
-        oftReceivedEvents,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatFallbackHyperEVMFlowCompletedEvent,
+        entity: entities.FallbackHyperEVMFlowCompleted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.FallbackHyperEVMFlowCompleted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: arbitraryActionsExecutedEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        tokenAddress,
-      ),
-      this.oftRepository.formatAndSaveSponsoredOFTSendEvents(
-        sponsoredOFTSendEvents,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatArbitraryActionsExecutedEvent,
+        entity: entities.ArbitraryActionsExecuted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.oftRepository,
+        events: sponsoredAccountActivationEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-      ),
-      formatAndSaveEvents(
-        this.oftRepository,
-        simpleTransferFlowCompletedEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatSimpleTransferFlowCompletedEvent,
-        entities.SimpleTransferFlowCompleted,
-        primaryKeyColumns as (keyof entities.SimpleTransferFlowCompleted)[],
-      ),
-      formatAndSaveEvents(
-        this.oftRepository,
-        fallbackHyperEVMFlowCompletedEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatFallbackHyperEVMFlowCompletedEvent,
-        entities.FallbackHyperEVMFlowCompleted,
-        primaryKeyColumns as (keyof entities.FallbackHyperEVMFlowCompleted)[],
-      ),
-      formatAndSaveEvents(
-        this.oftRepository,
-        arbitraryActionsExecutedEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatArbitraryActionsExecutedEvent,
-        entities.ArbitraryActionsExecuted,
-        primaryKeyColumns as (keyof entities.ArbitraryActionsExecuted)[],
-      ),
-      formatAndSaveEvents(
-        this.oftRepository,
-        sponsoredAccountActivationEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatSponsoredAccountActivationEvent,
-        entities.SponsoredAccountActivation,
-        primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
-      ),
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatSponsoredAccountActivationEvent,
+        entity: entities.SponsoredAccountActivation,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredAccountActivation)[],
+      }),
     ]);
 
     return {

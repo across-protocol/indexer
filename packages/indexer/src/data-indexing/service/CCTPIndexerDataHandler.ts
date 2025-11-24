@@ -42,13 +42,15 @@ import {
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
+  formatArbitraryActionsExecutedEvent,
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
   formatSponsoredAccountActivationEvent,
-} from "./hyperEvmExecutor";
+} from "./eventFormatting";
 import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
+  PK_CHAIN_BLOCK_TX_LOG,
 } from "./eventProcessing";
 
 export type EvmBurnEventsPair = {
@@ -255,17 +257,17 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         ),
       ]);
 
-    const messageSentEvents = getEventsFromTransactionReceipts(
-      filteredDepositForBurnTxReceipts,
-      messageTransmitterAddress,
-      EventDecoder.decodeCCTPMessageSentEvents,
-    );
+    const messageSentEvents = getEventsFromTransactionReceipts({
+      transactionReceipts: filteredDepositForBurnTxReceipts,
+      contractAddress: messageTransmitterAddress,
+      decodeEvents: EventDecoder.decodeCCTPMessageSentEvents,
+    });
 
-    const mintAndWithdrawEvents = getEventsFromTransactionReceipts(
-      filteredMessageReceivedTxReceipts,
-      tokenMessengerAddress,
-      EventDecoder.decodeCCTPMintAndWithdrawEvents,
-    );
+    const mintAndWithdrawEvents = getEventsFromTransactionReceipts({
+      transactionReceipts: filteredMessageReceivedTxReceipts,
+      contractAddress: tokenMessengerAddress,
+      decodeEvents: EventDecoder.decodeCCTPMintAndWithdrawEvents,
+    });
 
     const burnEvents = await this.matchDepositForBurnWithMessageSentEvents(
       filteredDepositForBurnEvents,
@@ -300,23 +302,23 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       [];
     let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
     if (sponsoredCCTPDstPeripheryAddress) {
-      simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        sponsoredCCTPDstPeripheryAddress,
-        EventDecoder.decodeSimpleTransferFlowCompletedEvents,
-      );
+      simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts({
+        transactionReceipts: filteredMessageReceivedTxReceipts,
+        contractAddress: sponsoredCCTPDstPeripheryAddress,
+        decodeEvents: EventDecoder.decodeSimpleTransferFlowCompletedEvents,
+      });
 
-      arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        sponsoredCCTPDstPeripheryAddress,
-        EventDecoder.decodeArbitraryActionsExecutedEvents,
-      );
+      arbitraryActionsExecutedEvents = getEventsFromTransactionReceipts({
+        transactionReceipts: filteredMessageReceivedTxReceipts,
+        contractAddress: sponsoredCCTPDstPeripheryAddress,
+        decodeEvents: EventDecoder.decodeArbitraryActionsExecutedEvents,
+      });
 
-      fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts(
-        filteredMessageReceivedTxReceipts,
-        sponsoredCCTPDstPeripheryAddress,
-        EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
-      );
+      fallbackHyperEVMFlowCompletedEvents = getEventsFromTransactionReceipts({
+        transactionReceipts: filteredMessageReceivedTxReceipts,
+        contractAddress: sponsoredCCTPDstPeripheryAddress,
+        decodeEvents: EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
+      });
       const sponsoredCCTPDstPeripheryContract = new ethers.Contract(
         sponsoredCCTPDstPeripheryAddress,
         SPONSORED_ACCOUNT_ACTIVATION_ABI,
@@ -564,12 +566,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const chainAgnosticSponsoredBurnEvents = sponsoredBurnEvents.map((event) =>
       this.convertSponsoredDepositForBurnToChainAgnostic(event),
     );
-    const primaryKeyColumns = [
-      "chainId",
-      "blockNumber",
-      "transactionHash",
-      "logIndex",
-    ];
+
     const [
       savedBurnEvents,
       savedMintEvents,
@@ -597,42 +594,50 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         this.chainId,
         blocksTimestamps,
       ),
-      formatAndSaveEvents(
-        this.cctpRepository,
-        simpleTransferFlowCompletedEvents,
+      formatAndSaveEvents({
+        repository: this.cctpRepository,
+        events: simpleTransferFlowCompletedEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatSimpleTransferFlowCompletedEvent,
-        entities.SimpleTransferFlowCompleted,
-        primaryKeyColumns as (keyof entities.SimpleTransferFlowCompleted)[],
-      ),
-      this.cctpRepository.formatAndSaveArbitraryActionsExecutedEvents(
-        arbitraryActionsExecutedEvents,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatSimpleTransferFlowCompletedEvent,
+        entity: entities.SimpleTransferFlowCompleted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SimpleTransferFlowCompleted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.cctpRepository,
+        events: arbitraryActionsExecutedEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-      ),
-      formatAndSaveEvents(
-        this.cctpRepository,
-        fallbackHyperEVMFlowCompletedEvents,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatArbitraryActionsExecutedEvent,
+        entity: entities.ArbitraryActionsExecuted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.cctpRepository,
+        events: fallbackHyperEVMFlowCompletedEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatFallbackHyperEVMFlowCompletedEvent,
-        entities.FallbackHyperEVMFlowCompleted,
-        primaryKeyColumns as (keyof entities.FallbackHyperEVMFlowCompleted)[],
-      ),
-      formatAndSaveEvents(
-        this.cctpRepository,
-        sponsoredAccountActivationEvents,
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatFallbackHyperEVMFlowCompletedEvent,
+        entity: entities.FallbackHyperEVMFlowCompleted,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.FallbackHyperEVMFlowCompleted)[],
+      }),
+      formatAndSaveEvents({
+        repository: this.cctpRepository,
+        events: sponsoredAccountActivationEvents,
         lastFinalisedBlock,
-        this.chainId,
-        blocksTimestamps,
-        formatSponsoredAccountActivationEvent,
-        entities.SponsoredAccountActivation,
-        primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
-      ),
+        chainId: this.chainId,
+        blockDates: blocksTimestamps,
+        formatEvent: formatSponsoredAccountActivationEvent,
+        entity: entities.SponsoredAccountActivation,
+        primaryKeyColumns:
+          PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredAccountActivation)[],
+      }),
     ]);
 
     return {
