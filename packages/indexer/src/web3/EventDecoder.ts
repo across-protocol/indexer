@@ -102,7 +102,7 @@ export class EventDecoder {
     const eventTopic =
       "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
     const eventAbi = ["event MessageSent (bytes message)"];
-    let events: MessageSentLog[] = this.decodeTransactionReceiptLogs(
+    let events: MessageSentLog[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
@@ -123,11 +123,8 @@ export class EventDecoder {
     const eventAbi = [
       "event MintAndWithdraw(address indexed mintRecipient, uint256 amount, address indexed mintToken, uint256 feeCollected)",
     ];
-    let events: MintAndWithdrawLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: MintAndWithdrawLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -148,7 +145,7 @@ export class EventDecoder {
     ];
 
     let events: SponsoredDepositForBurnLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -167,11 +164,8 @@ export class EventDecoder {
       "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
     ];
 
-    let events: SponsoredOFTSendLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: SponsoredOFTSendLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -179,6 +173,16 @@ export class EventDecoder {
     return events;
   }
 
+  /**
+   * Decodes `SimpleTransferFlowCompleted` events from a transaction receipt.
+   * This event is emitted by the HyperEVM executor contract when a simple transfer flow is completed.
+   * The event topic and ABI are taken from the HyperEVM executor contract.
+   * See: https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
+   *
+   * @param receipt The transaction receipt to decode events from.
+   * @param contractAddress Optional address of the contract that emitted the event to avoid decoding events from other contracts.
+   * @returns An array of decoded `SimpleTransferFlowCompletedLog` objects.
+   */
   static decodeSimpleTransferFlowCompletedEvents(
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
@@ -190,7 +194,7 @@ export class EventDecoder {
       "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
     ];
     let events: SimpleTransferFlowCompletedLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -207,7 +211,7 @@ export class EventDecoder {
     const eventAbi = [
       "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
     ];
-    let events: any[] = this.decodeTransactionReceiptLogs(
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
@@ -228,7 +232,7 @@ export class EventDecoder {
     const eventAbi = [
       "event FallbackHyperEVMFlowCompleted(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed finalToken, uint256 evmAmountIn, uint256 bridgingFeesIncurred, uint256 evmAmountSponsored)",
     ];
-    let events: any[] = this.decodeTransactionReceiptLogs(
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
