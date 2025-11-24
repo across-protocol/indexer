@@ -22,6 +22,7 @@ const STARTING_BLOCK_NUMBERS = {
   [CHAIN_IDs.HYPEREVM]: 15083577,
   [CHAIN_IDs.INK]: 26328532,
   [CHAIN_IDs.MAINNET]: 23474786,
+  [CHAIN_IDs.MONAD]: 35000000,
   [CHAIN_IDs.OPTIMISM]: 141788893,
   [CHAIN_IDs.POLYGON]: 77089546,
   [CHAIN_IDs.UNICHAIN]: 28500000,
@@ -229,9 +230,11 @@ export function decodeHookData(
     }
 
     // Slice and parse fromAddress (20-byte address)
-    const fromAddress = ethers.utils.hexlify(
+    const fromAddressHex = ethers.utils.hexlify(
       hookDataBytes.slice(DECLARED_LENGTH_END, FROM_ADDRESS_END),
     );
+    // Convert to checksummed address format
+    const fromAddress = ethers.utils.getAddress(fromAddressHex);
 
     // Slice and parse HyperCore nonce (uint64)
     const hyperCoreNonce = BigNumber.from(

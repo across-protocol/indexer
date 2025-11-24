@@ -3,10 +3,6 @@ import axios from "axios";
 
 import { RepeatableTask } from "../../generics";
 import { DataSource, entities } from "@repo/indexer-database";
-import {
-  CctpFinalizerJob,
-  DepositForBurn,
-} from "../../../../indexer-database/dist/src/entities";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { PubSubService } from "../../pubsub/service";
 import { Config } from "../../parseEnv";
@@ -14,6 +10,7 @@ import {
   fetchAttestationsForTxn,
   getCctpDestinationChainFromDomain,
   getCctpDomainForChainId,
+  isProductionNetwork,
 } from "../adapter/cctp-v2/service";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
@@ -88,7 +85,7 @@ class CctpFinalizerService extends RepeatableTask {
       //    published to the pubsub topic, so that they are not picked up again.
       //#endregion
       const qb = this.postgres
-        .createQueryBuilder(DepositForBurn, "burnEvent")
+        .createQueryBuilder(entities.DepositForBurn, "burnEvent")
         .leftJoinAndSelect("burnEvent.finalizerJob", "job")
         .where("job.id IS NULL")
         // Filter out the burn events that have been deleted due to re-orgs.
@@ -100,7 +97,7 @@ class CctpFinalizerService extends RepeatableTask {
         const sponsoredEvent = await this.postgres
           .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
           .leftJoin(
-            CctpFinalizerJob,
+            entities.CctpFinalizerJob,
             "job",
             "job.sponsoredDepositForBurnId = sponsored.id",
           )
@@ -148,7 +145,7 @@ class CctpFinalizerService extends RepeatableTask {
   }
 
   private async publishBurnEvent(
-    burnEvent: DepositForBurn,
+    burnEvent: entities.DepositForBurn,
     signature?: string,
     sponsoredDepositForBurnId?: number,
   ) {
@@ -181,7 +178,7 @@ class CctpFinalizerService extends RepeatableTask {
       const attestations = await fetchAttestationsForTxn(
         getCctpDomainForChainId(Number(burnEvent.chainId)),
         transactionHash,
-        true,
+        isProductionNetwork(Number(burnEvent.chainId)),
       );
       if (attestations.messages.length === 0) {
         this.logger.debug({
@@ -250,7 +247,7 @@ class CctpFinalizerService extends RepeatableTask {
       };
 
       await this.postgres
-        .createQueryBuilder(CctpFinalizerJob, "j")
+        .createQueryBuilder(entities.CctpFinalizerJob, "j")
         .insert()
         .values(jobValues)
         .orUpdate(["attestation", "sponsoredDepositForBurnId"], ["burnEventId"])
@@ -270,6 +267,7 @@ class CctpFinalizerService extends RepeatableTask {
 const ATTESTATION_TIMES = {
   [CHAIN_IDs.MAINNET]: { standard: 13 * 60, fast: 20 },
   [CHAIN_IDs.ARBITRUM]: { standard: 13 * 60, fast: 8 },
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.BASE]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.BSC]: { standard: 2, fast: 8 },
   [CHAIN_IDs.HYPEREVM]: { standard: 5, fast: 8 },

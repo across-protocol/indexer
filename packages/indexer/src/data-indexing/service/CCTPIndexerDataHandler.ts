@@ -1,8 +1,8 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat, isTestnet } from "../../utils";
+import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { formatFromAddressToChainFormat } from "../../utils";
 import {
   BlockRange,
   SimpleTransferFlowCompletedLog,
@@ -184,12 +184,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const sponsoredCCTPDstPeripheryAddress =
       SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
 
-    const tokenMessengerAddress = isTestnet(this.chainId)
-      ? TOKEN_MESSENGER_ADDRESS_TESTNET
-      : TOKEN_MESSENGER_ADDRESS_MAINNET;
-    const messageTransmitterAddress = isTestnet(this.chainId)
-      ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
-      : MESSAGE_TRANSMITTER_ADDRESS_MAINNET;
+    const tokenMessengerAddress =
+      this.chainId in TEST_NETWORKS
+        ? TOKEN_MESSENGER_ADDRESS_TESTNET
+        : TOKEN_MESSENGER_ADDRESS_MAINNET;
+    const messageTransmitterAddress =
+      this.chainId in TEST_NETWORKS
+        ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+        : MESSAGE_TRANSMITTER_ADDRESS_MAINNET;
 
     const tokenMessengerContract = new ethers.Contract(
       tokenMessengerAddress,
