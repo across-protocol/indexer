@@ -110,4 +110,41 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
   }).timeout(20000);
+
+  it("should process a block range and store FallbackHyperEVMFlowCompleted event for OFT", async () => {
+    const transactionHash =
+      "0x05ccdbd44e8ffbed8f057762f40dee73fb218049347705d88f839dfe3c368c52";
+    const blockNumber = 17917691;
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+    await handler.processBlockRange(blockRange, blockNumber - 1);
+
+    const fallbackHyperEVMFlowCompletedRepo = dataSource.getRepository(
+      entities.FallbackHyperEVMFlowCompleted,
+    );
+    const savedEvent = await fallbackHyperEVMFlowCompletedRepo.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.quoteNonce).to.equal(
+      "0x0000000000000000000000000000000000000000000000000000000069041bd4",
+    );
+    expect(savedEvent!.finalRecipient).to.equal(
+      "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    );
+    expect(savedEvent!.finalToken).to.equal(
+      "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+    );
+    expect(savedEvent!.evmAmountIn.toString()).to.equal("1005000");
+    expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
+    expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+  }).timeout(20000);
 });
