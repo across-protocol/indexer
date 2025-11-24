@@ -28,14 +28,16 @@ export class PubSubService {
     }
     // the published payload is a base64 encoded JSON string. The JSON is
     // validated by the Avro schema defined in GCP
+    // Avro union types must be encoded as objects with the type name as key
     const payload = Buffer.from(
       JSON.stringify({
         burnTransactionHash: burnTransactionHash,
-        sourceChainId,
-        message,
-        attestation,
-        destinationChainId,
-        signature,
+        sourceChainId: sourceChainId,
+        message: message != null ? { string: message } : null,
+        attestation: attestation != null ? { string: attestation } : null,
+        destinationChainId:
+          destinationChainId != null ? { long: destinationChainId } : null,
+        signature: signature != null ? { string: signature } : null,
       }),
     );
     await this.cctpFinalizerTopic.publishMessage({ data: payload });

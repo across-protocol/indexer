@@ -4,7 +4,6 @@ import {
   InsertResult,
   UpdateResult,
 } from "@repo/indexer-database";
-import { RelayStatus } from "../../../../indexer-database/dist/src/entities";
 import { getDbLockKeyForOftEvent } from "../../utils/spokePoolUtils";
 import {
   getChainIdForEndpointId,
@@ -132,7 +131,7 @@ export class OftTransferAggregator {
               // in <column_here> is not supported by "postgres" database.
               oftReceivedEventId: null as any,
               destinationTxnRef: null as any,
-              status: RelayStatus.Unfilled,
+              status: entities.RelayStatus.Unfilled,
             },
           );
         }
@@ -297,7 +296,7 @@ export class OftTransferAggregator {
         originChainId,
       ),
       originTokenAmount: oftReceivedEvent.amountReceivedLD,
-      status: RelayStatus.Filled,
+      status: entities.RelayStatus.Filled,
     };
   }
 }

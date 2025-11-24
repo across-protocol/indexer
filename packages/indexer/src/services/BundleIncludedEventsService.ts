@@ -403,6 +403,16 @@ export class BundleIncludedEventsService extends RepeatableTask {
           return [chainId, null];
         }
 
+        if (!deployedBlockNumber) {
+          this.logger.debug({
+            at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
+            message: `No deployed block number found for chain ${chainId}`,
+            startBlock,
+            cappedEndBlock,
+          });
+          return [chainId, null];
+        }
+
         this.logger.debug({
           at: "Indexer#BundleIncludedEventsService#getSpokeClientsForLookbackBlockRange",
           message: `Instantiate SpokePool client for chain ${chainId}`,
