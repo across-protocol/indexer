@@ -1,5 +1,4 @@
 import { Logger } from "winston";
-import { CHAIN_IDs } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
 
 import { DataSource } from "@repo/indexer-database";
@@ -14,8 +13,7 @@ import { EvmIndexer, Indexer } from "./Indexer";
 import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
 import { OftRepository } from "../../database/OftRepository";
 import { getSupportOftChainIds } from "../adapter/oft/service";
-
-const MAX_BLOCK_RANGE_SIZE = 30_000;
+import { getMaxBlockLookBack } from "../../web3/constants";
 
 export class OFTIndexerManager {
   private indexers: Indexer[] = [];
@@ -75,7 +73,7 @@ export class OFTIndexerManager {
           finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
             Number(chainId),
           ),
-          maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
+          maxBlockRangeSize: getMaxBlockLookBack(Number(chainId)),
         },
         oftIndexerDataHandler,
         this.logger,

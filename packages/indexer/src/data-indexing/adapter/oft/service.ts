@@ -48,6 +48,16 @@ const OFT_SUPPORTED_CHAINS: Record<
       },
     ],
   },
+  [CHAIN_IDs.MONAD]: {
+    endpointId: 30390,
+    tokens: [
+      {
+        key: "usdt0",
+        address: "0x9151434b16b9763660705744891fA906F660EcC5",
+        startBlockNumber: 35000000,
+      },
+    ],
+  },
   [CHAIN_IDs.PLASMA]: {
     endpointId: 30383,
     tokens: [

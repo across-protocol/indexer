@@ -9,7 +9,7 @@ import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
-import { entities } from "../../../../indexer-database/dist/src";
+import { entities } from "@repo/indexer-database";
 import { decodeHookData, decodeMessageBody } from "../adapter/cctp-v2/service";
 import { ethers } from "ethers";
 
@@ -259,7 +259,7 @@ describe("CCTPIndexerDataHandler", () => {
     assert(decodedHookData, "Expected to decode hookData");
     expect(decodedHookData.hyperCoreNonce.toNumber()).to.equal(1762785559609);
     expect(decodedHookData.fromAddress).to.equal(
-      "0x3f51b87ae65548ab996bdbb363f2553a311ef43e",
+      "0x3F51b87ae65548ab996BDBB363F2553a311eF43E",
     );
     expect(
       ethers.utils.toUtf8String(
