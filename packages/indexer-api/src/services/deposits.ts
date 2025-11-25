@@ -34,7 +34,6 @@ import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs
 
 export class DepositsService {
   private static readonly MAX_RECORDS_PER_QUERY_TYPE = 1000;
-  private static readonly UPPER_BOUND_BUFFER = 100;
 
   constructor(
     private db: DataSource,
@@ -254,7 +253,7 @@ export class DepositsService {
     const skip = params.skip || 0;
     const limit = params.limit || 50;
     const upperBound = Math.min(
-      skip + limit + DepositsService.UPPER_BOUND_BUFFER,
+      skip + limit,
       DepositsService.MAX_RECORDS_PER_QUERY_TYPE,
     );
 
