@@ -16,7 +16,6 @@ import {
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
-import { combineQueriesWithUnionAll } from "../utils/query";
 import {
   DepositFields,
   RelayHashInfoFields,
@@ -34,6 +33,9 @@ import {
 import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs/utils/CCTPUtils";
 
 export class DepositsService {
+  private static readonly MAX_RECORDS_PER_QUERY_TYPE = 1000;
+  private static readonly UPPER_BOUND_BUFFER = 100;
+
   constructor(
     private db: DataSource,
     private redis: Redis,
@@ -247,44 +249,63 @@ export class DepositsService {
       );
     }
 
-    // Build array of query builders based on depositType filter
-    const queryBuilders = [];
+    // Calculate upper bound for fetching records from each query
+    // We fetch more than needed to ensure we have enough after sorting
+    const skip = params.skip || 0;
+    const limit = params.limit || 50;
+    const upperBound = Math.min(
+      skip + limit + DepositsService.UPPER_BOUND_BUFFER,
+      DepositsService.MAX_RECORDS_PER_QUERY_TYPE,
+    );
+
+    const depositForBurnOrderBys =
+      depositForBurnQueryBuilder.expressionMap.orderBys;
+    if (Object.keys(depositForBurnOrderBys).length === 0) {
+      depositForBurnQueryBuilder.orderBy(
+        "depositForBurn.blockTimestamp",
+        "DESC",
+      );
+    }
+    const oftSentOrderBys = oftSentQueryBuilder.expressionMap.orderBys;
+    if (Object.keys(oftSentOrderBys).length === 0) {
+      oftSentQueryBuilder.orderBy("oftSent.blockTimestamp", "DESC");
+    }
+
+    fundsDepositedQueryBuilder.limit(upperBound);
+    depositForBurnQueryBuilder.limit(upperBound);
+    oftSentQueryBuilder.limit(upperBound);
+
+    // Execute queries in parallel based on depositType filter
+    const queryPromises: Promise<DepositReturnType[]>[] = [];
+
     if (!params.depositType || params.depositType === "across") {
-      queryBuilders.push(fundsDepositedQueryBuilder);
+      queryPromises.push(fundsDepositedQueryBuilder.getRawMany());
     }
     if (!params.depositType || params.depositType === "cctp") {
-      queryBuilders.push(depositForBurnQueryBuilder);
+      queryPromises.push(depositForBurnQueryBuilder.getRawMany());
     }
     if (!params.depositType || params.depositType === "oft") {
-      queryBuilders.push(oftSentQueryBuilder);
+      queryPromises.push(oftSentQueryBuilder.getRawMany());
     }
 
-    // If only one query builder, execute it directly without UNION
-    let allDeposits: DepositReturnType[];
+    // Execute all queries in parallel
+    const queryResults = await Promise.all(queryPromises);
 
-    if (queryBuilders.length === 1) {
-      const singleQueryBuilder = queryBuilders[0]!;
-      // For single query builder, we need to ensure orderBy is set correctly
-      // fundsDepositedQueryBuilder already has orderBy("deposit.blockTimestamp", "DESC") on line 67
-      // For others, we need to add it using the actual table column name
-      if (singleQueryBuilder === depositForBurnQueryBuilder) {
-        singleQueryBuilder.orderBy("depositForBurn.blockTimestamp", "DESC");
-      } else if (singleQueryBuilder === oftSentQueryBuilder) {
-        singleQueryBuilder.orderBy("oftSent.blockTimestamp", "DESC");
-      }
-      // Note: fundsDepositedQueryBuilder already has orderBy set, so we don't override it
-      singleQueryBuilder.limit(params.limit || 50).offset(params.skip || 0);
-      allDeposits = await singleQueryBuilder.getRawMany();
-    } else {
-      // Combine queries with UNION ALL using utility function
-      const result = combineQueriesWithUnionAll(queryBuilders, {
-        orderBy: "depositBlockTimestamp",
-        orderDirection: "DESC",
-        limit: params.limit || 50,
-        offset: params.skip || 0,
-      });
-      allDeposits = await this.db.query(result.sql, result.params);
-    }
+    let allDeposits: DepositReturnType[] = queryResults.flat();
+
+    // Sort in memory by depositBlockTimestamp DESC
+    allDeposits.sort((a, b) => {
+      const timestampA = a.depositBlockTimestamp
+        ? new Date(a.depositBlockTimestamp).getTime()
+        : -Infinity; // Put null timestamps at the end
+      const timestampB = b.depositBlockTimestamp
+        ? new Date(b.depositBlockTimestamp).getTime()
+        : -Infinity; // Put null timestamps at the end
+      return timestampB - timestampA; // DESC order
+    });
+
+    // Apply skip and limit in memory
+    allDeposits = allDeposits.slice(skip, skip + limit);
 
     type RawDepositResult = DepositReturnType & {
       destinationDomain?: number;
