@@ -1,5 +1,5 @@
 import { Redis } from "ioredis";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import type {
   DepositParams,
@@ -31,6 +31,7 @@ import {
   OftSentFilledRelayFields,
   OftSentSwapBeforeBridgeFields,
 } from "../utils/fields";
+import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs/utils/CCTPUtils";
 
 export class DepositsService {
   constructor(
@@ -58,11 +59,6 @@ export class DepositsService {
         entities.FilledV3Relay,
         "fill",
         "fill.id = rhi.fillEventId",
-      )
-      .leftJoinAndSelect(
-        entities.SwapMetadata,
-        "swapMetadata",
-        `swapMetadata.relayHashInfoId = rhi.id AND swapMetadata.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum"`,
       )
       .orderBy("deposit.blockTimestamp", "DESC")
       .select([
@@ -290,7 +286,12 @@ export class DepositsService {
       allDeposits = await this.db.query(result.sql, result.params);
     }
 
-    const deposits: DepositReturnType[] = allDeposits;
+    type RawDepositResult = DepositReturnType & {
+      destinationDomain?: number;
+      outputToken?: string;
+      outputAmount?: string;
+    };
+    const deposits: RawDepositResult[] = allDeposits;
 
     // Fetch speedup events for each deposit (only for V3FundsDeposited)
     const speedupRepo = this.db.getRepository(
@@ -320,13 +321,51 @@ export class DepositsService {
                 .getRawMany()
             : [];
 
+        // Derive CCTP fields if missing (for CCTP deposits where mint hasn't completed)
+        let destinationChainId = deposit.destinationChainId
+          ? parseInt(deposit.destinationChainId)
+          : null;
+        let outputToken = deposit.outputToken;
+        let outputAmount = deposit.outputAmount;
+
+        const destinationDomain = deposit.destinationDomain;
+        if (destinationDomain && !destinationChainId) {
+          try {
+            const derivedChainId = getCctpDestinationChainFromDomain(
+              destinationDomain,
+              true, // productionNetworks = true
+            );
+            destinationChainId = derivedChainId;
+          } catch (error) {
+            destinationChainId = null;
+          }
+
+          // For CCTP, outputToken is USDC on the destination chain
+          if (!outputToken && destinationChainId) {
+            const usdcToken = TOKEN_SYMBOLS_MAP.USDC;
+            const usdcAddress = usdcToken?.addresses[destinationChainId];
+            if (usdcAddress) {
+              outputToken = usdcAddress;
+            }
+          }
+
+          // For CCTP, outputAmount is inputAmount if mint hasn't completed
+          if (!outputAmount) {
+            outputAmount = deposit.inputAmount;
+          }
+        }
+
+        // Destructure to exclude destinationDomain from the response
+        const { destinationDomain: _, ...depositWithoutDomain } = deposit;
         return {
-          ...deposit,
+          ...depositWithoutDomain,
           depositTxnRef: deposit.depositTxHash,
           depositRefundTxnRef: deposit.depositRefundTxHash,
           fillTxnRef: deposit.fillTx,
           originChainId: parseInt(deposit.originChainId),
-          destinationChainId: parseInt(deposit.destinationChainId),
+          destinationChainId: destinationChainId,
+          outputToken: outputToken,
+          outputAmount: outputAmount,
           speedups,
         };
       }),
