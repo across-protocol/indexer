@@ -176,10 +176,12 @@ export type DepositReturnType = {
 // Add new type for parsed deposits
 export type ParsedDepositReturnType = Omit<
   DepositReturnType,
-  "originChainId" | "destinationChainId"
+  "originChainId" | "destinationChainId" | "outputToken" | "outputAmount"
 > & {
   originChainId: number;
-  destinationChainId: number;
+  destinationChainId: number | null;
+  outputToken: string | null;
+  outputAmount: string | null;
 };
 
 // Define a type for the pagination information
