@@ -11,8 +11,8 @@ export const DepositFields = [
   `deposit."inputToken"::varchar as "inputToken"`,
   `deposit."inputAmount"::varchar as "inputAmount"`,
   `deposit."outputToken"::varchar as "outputToken"`,
-  `(SELECT "address"::varchar FROM "evm"."swap_metadata" WHERE "swap_metadata"."relayHashInfoId" = rhi.id AND "swap_metadata"."side" = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" LIMIT 1) as "swapOutputToken"`,
-  `(SELECT "minAmountOut"::varchar FROM "evm"."swap_metadata" WHERE "swap_metadata"."relayHashInfoId" = rhi.id AND "swap_metadata"."side" = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" LIMIT 1) as "swapOutputTokenAmount"`,
+  `(SELECT sm.address::varchar FROM "evm"."swap_metadata" sm WHERE sm."relayHashInfoId" = rhi.id AND sm.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" AND sm."deletedAt" IS NULL ORDER BY sm.id ASC LIMIT 1)::varchar as "swapOutputToken"`,
+  `(SELECT sm."minAmountOut"::varchar FROM "evm"."swap_metadata" sm WHERE sm."relayHashInfoId" = rhi.id AND sm.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" AND sm."deletedAt" IS NULL ORDER BY sm.id ASC LIMIT 1)::varchar as "swapOutputTokenAmount"`,
   `deposit."outputAmount"::varchar as "outputAmount"`,
   `deposit.message::varchar as "message"`,
   `deposit."messageHash"::varchar as "messageHash"`,
@@ -23,6 +23,7 @@ export const DepositFields = [
   `deposit."transactionHash"::varchar as "depositTxHash"`, // Renamed field
   `deposit."blockNumber"::integer as "depositBlockNumber"`,
   `deposit."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
+  `NULL::integer as "destinationDomain"`,
 ];
 
 export const RelayHashInfoFields = [
@@ -78,6 +79,7 @@ export const DepositForBurnFields = [
   `"depositForBurn"."transactionHash"::varchar as "depositTxHash"`,
   `"depositForBurn"."blockNumber"::integer as "depositBlockNumber"`,
   `"depositForBurn"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
+  `"depositForBurn"."destinationDomain"::integer as "destinationDomain"`,
 ];
 
 export const DepositForBurnRelayHashInfoFields = [
@@ -130,6 +132,7 @@ export const OftSentFields = [
   `"oftSent"."transactionHash"::varchar as "depositTxHash"`,
   `"oftSent"."blockNumber"::integer as "depositBlockNumber"`,
   `"oftSent"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
+  `NULL::integer as "destinationDomain"`,
 ];
 
 export const OftSentRelayHashInfoFields = [
