@@ -1,0 +1,32 @@
+{
+  "name": "@repo/poc-push-based-indexer",
+  "version": "0.0.1",
+  "main": "./src/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "build:check": "tsc --noEmit",
+    "watch": "tsc -b --watch",
+    "fix": "pnpm format && pnpm lint",
+    "format": "prettier --write src",
+    "format:check": "prettier src --check",
+    "lint": "eslint --fix",
+    "lint:check": "eslint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@across-protocol/constants": "^3.1.90",
+    "ethers": "^6.15.0"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}
