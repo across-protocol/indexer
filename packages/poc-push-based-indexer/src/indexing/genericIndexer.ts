@@ -25,7 +25,7 @@ import { AsyncQueue } from "../utils/utils";
 /**
  * Configuration for a complete indexing subsystem.
  */
-export interface IndexerConfig {
+export interface IndexerConfig<TEventEntity, TDb> {
   /** The ID of the blockchain to connect to. */
   chainId: number;
   /** The WebSocket RPC URL for the blockchain. */
@@ -33,6 +33,8 @@ export interface IndexerConfig {
   events: Array<{
     config: EventConfig;
     workerCount: number;
+    transform: Transformer<IndexerEventPayload, TEventEntity>;
+    storeFactory: (workerId: number) => Storer<TEventEntity, TDb>;
   }>;
 }
 
@@ -52,12 +54,10 @@ export interface IndexerConfig {
  *                     to have a potentially unique storage function, for instance, to log with its own ID.
  * @returns An object containing the active provider and a promise representing the worker pool.
  */
-export async function startIndexerSubsystem<TEntity, TDb>(
+export async function startIndexerSubsystem<TDb>(
   db: TDb,
   queue: AsyncQueue<IndexerEventPayload>,
-  indexerConfig: IndexerConfig,
-  transform: Transformer<IndexerEventPayload, TEntity>,
-  storeFactory: (workerId: number) => Storer<TEntity, TDb>,
+  indexerConfig: IndexerConfig<any, TDb>, // TEventEntity is now part of the eventItem
 ) {
   console.log(
     `\n📡 Initializing indexing subsystem for chain ${indexerConfig.chainId}...`,
@@ -71,7 +71,7 @@ export async function startIndexerSubsystem<TEntity, TDb>(
 
   const allWorkers: Promise<void>[] = [];
   for (const eventItem of indexerConfig.events) {
-    const { config, workerCount } = eventItem;
+    const { config, workerCount, transform, storeFactory } = eventItem;
     // Construct Topic: {chainId}.{contractAddress}.{EventName}
     const topic = `${indexerConfig.chainId}.${config.address}.${config.eventName}`;
     console.log(`ℹ️  Configuring Topic: ${topic} with ${workerCount} workers`);

@@ -17,7 +17,28 @@ The core components are:
   - **Transform**: Converts the raw event data into a structured database entity using a pure function.
   - **Store**: Saves the entity to the database.
 
-This architecture is designed to be highly generic and scalable. Adding a new event to be indexed requires minimal code changes, primarily through configuration.
+This architecture is designed to be highly generic and scalable. Adding a new event to be indexed is done through configuration. Each event has its own `workerCount`, `transform`, and `store` functions, allowing for different processing pipelines for different events.
+
+A concrete configuration for an event looks like this:
+
+```typescript
+const ethConfig: IndexerConfig<UniTransfer, InMemoryDatabase> = {
+  chainId: CHAIN_IDs.MAINNET,
+  rpcUrl: process.env.RPC_URL || "wss://ethereum-rpc.publicnode.com",
+  events: [
+    {
+      workerCount: 3,
+      config: {
+        address: UNI_TOKEN_ADDRESS,
+        abi: ERC20_TRANSFER_ABI,
+        eventName: "Transfer",
+      },
+      transform: transformToUniTransferEntity,
+      storeFactory: storeFactory,
+    },
+  ],
+};
+```
 
 ### Sequence Diagram
 
@@ -73,9 +94,11 @@ pnpm install
 
 ### Environment Configuration
 
-The indexer requires a WebSocket RPC URL to connect to a blockchain node. You can provide this by creating a `.env` file in the root of this package (`packages/poc-push-based-indexer`).
+The indexer requires a WebSocket RPC URL to connect to a blockchain node. This can be provided in two ways by creating a `.env.test` file located in the root of the monorepo (`../../.env.test`).
 
-Create a file named `.env` and add the following line:
+**Option 1: Provide a full RPC URL**
+
+Create a file named `.env.test` in the root of the monorepo and add the following line:
 
 ```
 RPC_URL=wss://your-websocket-rpc-url
@@ -87,12 +110,28 @@ For example, for Ethereum Mainnet, you can use a free public node or a private o
 RPC_URL=wss://ethereum-rpc.publicnode.com
 ```
 
+**Option 2: Provide an Alchemy API Key**
+
+If you have an Alchemy API key, you can provide it, and the indexer will construct the Alchemy WebSocket RPC URL for Ethereum Mainnet.
+
+Create a file named `.env.test` in the root of the monorepo and add the following line:
+
+```
+API_KEY=your-alchemy-api-key
+```
+
+For example:
+
+```
+API_KEY=abcdefghijklmnopqrstuvwxyz123456
+```
+
 ### Running the Indexer
 
 Once the dependencies are installed and the environment is configured, you can start the indexer with the following command:
 
 ```bash
-npx ts-node src/index.ts
+pnpm start
 ```
 
 The application will start, connect to the configured WebSocket endpoint, and begin listening for UNI token `Transfer` events on the Ethereum mainnet. You will see log messages in your console as events are captured, published to a topic, and processed by the dedicated workers.

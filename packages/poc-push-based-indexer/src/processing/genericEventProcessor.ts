@@ -79,7 +79,7 @@ export const startGenericEventProcessor = async <TEvent, TEntity, TDb>(
       const event = await source();
       console.log(`[Worker #${workerId}] Picked up event.`);
 
-      // Transform (Pure, synchronous logic)
+      // Transform
       const entity = await transform(event);
 
       // Store (Asynchronous I/O operation)

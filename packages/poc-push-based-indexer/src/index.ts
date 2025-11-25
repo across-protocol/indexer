@@ -1,13 +1,3 @@
-/**
- * @file This is the main entry point for the push-based indexer application.
- *
- * This file is responsible for:
- * - Initializing the core infrastructure components (Message Queue, Database).
- * - Defining the concrete configurations for the indexers we want to run.
- * - Assembling and starting the generic `IndexerSubsystem` with those configurations.
- * - Handling the overall application lifecycle, including graceful shutdown.
- */
-
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { IndexerEventPayload } from "./listening/genericEventListener";
 import { UNI_TOKEN_ADDRESS } from "./config/constants";
@@ -21,7 +11,9 @@ import {
 import { Storer } from "./processing/genericEventProcessor";
 import { UniTransfer } from "./data/entities";
 import { transformToUniTransferEntity } from "./processing/transformations";
+import dotenv from "dotenv";
 
+dotenv.config();
 // --- Infrastructure Initialization ---
 // For this PoC, we use simple in-memory simulations. In production, these
 // would be connections to a real MessageBroker and PostgreSQL instance.
@@ -32,30 +24,12 @@ const db = new InMemoryDatabase();
  * Sets up and starts the indexer for UNI token `Transfer` events on Ethereum Mainnet.
  *
  * This function demonstrates how the generic components are assembled into a concrete
- * indexer. To support a new event, one would create a similar function with its
+ * indexer. To support a new event, one would need to add another event to the events array with its
  * own configuration, transformation, and storage logic.
  *
  * @returns A promise that resolves with the running indexer subsystem instance.
  */
 async function startEthereumMainnetIndexer() {
-  // Concrete Configuration
-  // Define the specific parameters for the Ethereum Mainnet UNI Transfer indexer.
-  const ethConfig: IndexerConfig = {
-    chainId: CHAIN_IDs.MAINNET,
-    rpcUrl: process.env.RPC_URL || "wss://ethereum-rpc.publicnode.com",
-    // We'll run 3 concurrent workers to process events.
-    events: [
-      {
-        workerCount: 3,
-        config: {
-          address: UNI_TOKEN_ADDRESS,
-          abi: ERC20_TRANSFER_ABI,
-          eventName: "Transfer",
-        },
-      },
-    ],
-  };
-
   // Concrete Dependencies for the Generic System
   // Define the specific "store" function for UniTransfer events.
   const storeFactory = (
@@ -68,15 +42,37 @@ async function startEthereumMainnetIndexer() {
     };
   };
 
+  const API_KEY = process.env.API_KEY ?? undefined;
+  if (!process.env.RPC_URL && !API_KEY) {
+    throw Error(
+      "RPC URL Not set. Please either provide the API Key or set the environmental variable RPC_URL",
+    );
+  }
+
+  // Concrete Configuration
+  // Define the specific parameters for the Ethereum Mainnet UNI Transfer indexer.
+  const ethConfig: IndexerConfig<UniTransfer, InMemoryDatabase> = {
+    chainId: CHAIN_IDs.MAINNET,
+    rpcUrl:
+      process.env.RPC_URL || `wss://eth-mainnet.g.alchemy.com/v2/${API_KEY}`,
+    // We'll run 3 concurrent workers to process events.
+    events: [
+      {
+        workerCount: 3,
+        config: {
+          address: UNI_TOKEN_ADDRESS,
+          abi: ERC20_TRANSFER_ABI,
+          eventName: "Transfer",
+        },
+        transform: transformToUniTransferEntity, // The specific transformation function
+        storeFactory: storeFactory, // The factory for the specific storage function
+      },
+    ],
+  };
+
   // Assembly and Startup
   // Start the generic indexer subsystem with our concrete configuration and functions.
-  const indexer = await startIndexerSubsystem(
-    db,
-    messageQueue,
-    ethConfig,
-    transformToUniTransferEntity, // The specific transformation function
-    storeFactory, // The factory for the specific storage function
-  );
+  const indexer = await startIndexerSubsystem(db, messageQueue, ethConfig);
   return indexer;
 }
 
