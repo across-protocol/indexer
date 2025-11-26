@@ -29,7 +29,7 @@ For these tests to run correctly, you need to provide RPC URLs for the testnet c
 
 For example, if running CCTP tests that interact with Arbitrum Sepolia (chain ID 421614), you must include:
 
-```
+```bash
 RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 ```
 
@@ -37,24 +37,24 @@ RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 Navigate to the `packages/indexer` directory to run the following commands:
 
 *   **Run all tests (Unit, Integration, and E2E)**:
-    ```bash
-    pnpm test
-    ```
+```bash
+pnpm test
+```
 *   **Run only Unit Tests**:
-    ```bash
-    pnpm test:unit
-    ```
+```bash
+pnpm test:unit
+```
 *   **Run only Integration Tests**:
-    ```bash
-    pnpm test:integration
-    ```
+```bash
+pnpm test:integration
+```
 *   **Run only E2E Tests**:
-    ```bash
-    pnpm test:e2e
-    ```
+```bash
+pnpm test:e2e
+```
 
 ## ENV
-```
+```bash
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USER=user

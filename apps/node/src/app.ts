@@ -8,12 +8,19 @@ import * as PersistenceExample from "@repo/persistence-example";
 import * as IndexerApi from "@repo/indexer-api";
 import { assert } from "@repo/error-handling";
 import { Logger } from "@uma/logger";
-
-dotenv.config();
+import * as path from "path";
 
 const logger = Logger;
 
+function resolveEnvPath() {
+  const localEnvPath = path.resolve(__dirname, ".env");
+  const rootEnvPath = path.resolve(__dirname, "../../../.env");
+  const envPath = require("fs").existsSync(localEnvPath) ? localEnvPath : rootEnvPath;
+  dotenv.config({ path: envPath });
+}
+
 async function run() {
+  resolveEnvPath();
   const { APP } = process.env;
   assert(APP, 'Specify the application to start with "APP=appname pnpm start"');
   switch (APP) {

@@ -1,7 +1,17 @@
 import dotenv from "dotenv";
 import { DataSource } from "typeorm";
+import * as fs from "fs";
+import * as path from "path";
 
-dotenv.config();
+// First, check for a .env file in the current directory
+const localEnvPath = path.resolve(__dirname, ".env");
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath });
+} else {
+  // Fall back to the .env file in the project root
+  const rootEnvPath = path.resolve(__dirname, "../../.env");
+  dotenv.config({ path: rootEnvPath });
+}
 
 export const AppDataSource = new DataSource({
   type: "postgres",
