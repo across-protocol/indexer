@@ -3,7 +3,8 @@ import { EventDecoder } from "../web3/EventDecoder";
 import { entities } from "@repo/indexer-database";
 
 export const TARGET_CHAIN_ACTION_ADDRESSES: Record<string, string> = {
-  "0x200000000000000000000000000000000000010C": "1337", // HyperCore
+  "0x200000000000000000000000000000000000010C": "1337", // HyperCore USDT0 System Address
+  "0x2000000000000000000000000000000000000168": "1337", // HyperCore USDH System Address
 };
 
 export interface FillTargetChainActionPair {
