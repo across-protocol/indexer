@@ -32,6 +32,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
     ] = await Promise.all([
       this.deleteUnfinalisedEvents(
         chainId,
@@ -69,6 +70,12 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         lastFinalisedBlock,
         entities.SponsoredAccountActivation,
       ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SwapFlowInitialized,
+      ),
     ]);
 
     return {
@@ -78,6 +85,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
     };
   }
 

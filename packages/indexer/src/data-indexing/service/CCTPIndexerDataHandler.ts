@@ -9,7 +9,10 @@ import {
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
   SponsoredAccountActivationLog,
+  SwapFlowInitializedLog,
+  SwapFlowFinalizedLog,
   SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SWAP_FLOW_FINALIZED_ABI,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -45,6 +48,8 @@ import {
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
   formatSponsoredAccountActivationEvent,
+  formatSwapFlowInitializedEvent,
+  formatSwapFlowFinalizedEvent,
 } from "./hyperEvmExecutor";
 import {
   formatAndSaveEvents,
@@ -67,6 +72,8 @@ export type FetchEventsResult = {
   arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[];
   fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[];
   sponsoredAccountActivationEvents: SponsoredAccountActivationLog[];
+  swapFlowInitializedEvents: SwapFlowInitializedLog[];
+  swapFlowFinalizedEvents: SwapFlowFinalizedLog[];
   blocks: Record<string, providers.Block>;
   transactionReceipts: Record<string, providers.TransactionReceipt>;
   transactions: Record<string, Transaction>;
@@ -85,6 +92,8 @@ export type StoreEventsResult = {
   savedArbitraryActionsExecutedEvents: SaveQueryResult<entities.ArbitraryActionsExecuted>[];
   savedFallbackHyperEVMFlowCompletedEvents: SaveQueryResult<entities.FallbackHyperEVMFlowCompleted>[];
   savedSponsoredAccountActivationEvents: SaveQueryResult<entities.SponsoredAccountActivation>[];
+  savedSwapFlowInitializedEvents: SaveQueryResult<entities.SwapFlowInitialized>[];
+  savedSwapFlowFinalizedEvents: SaveQueryResult<entities.SwapFlowFinalized>[];
 };
 
 // Taken from https://developers.circle.com/cctp/evm-smart-contracts
@@ -301,6 +310,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     let fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[] =
       [];
     let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
+    let swapFlowInitializedEvents: SwapFlowInitializedLog[] = [];
+    let swapFlowFinalizedEvents: SwapFlowFinalizedLog[] = [];
     if (sponsoredCCTPDstPeripheryAddress) {
       simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
         filteredMessageReceivedTxReceipts,
@@ -319,9 +330,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         sponsoredCCTPDstPeripheryAddress,
         EventDecoder.decodeFallbackHyperEVMFlowCompletedEvents,
       );
+      swapFlowInitializedEvents = getEventsFromTransactionReceipts(
+        filteredMessageReceivedTxReceipts,
+        sponsoredCCTPDstPeripheryAddress,
+        EventDecoder.decodeSwapFlowInitializedEvents,
+      );
       const sponsoredCCTPDstPeripheryContract = new ethers.Contract(
         sponsoredCCTPDstPeripheryAddress,
-        SPONSORED_ACCOUNT_ACTIVATION_ABI,
+        [...SPONSORED_ACCOUNT_ACTIVATION_ABI, ...SWAP_FLOW_FINALIZED_ABI],
         this.provider,
       );
       sponsoredAccountActivationEvents =
@@ -330,6 +346,12 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
           blockRange.from,
           blockRange.to,
         )) as unknown as SponsoredAccountActivationLog[];
+      swapFlowFinalizedEvents =
+        (await sponsoredCCTPDstPeripheryContract.queryFilter(
+          "SwapFlowFinalized",
+          blockRange.from,
+          blockRange.to,
+        )) as unknown as SwapFlowFinalizedLog[];
     }
 
     this.runChecks(burnEvents, mintEvents);
@@ -355,6 +377,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
       blocks,
       transactionReceipts,
       transactions: depositForBurnTransactions,
@@ -550,6 +574,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       arbitraryActionsExecutedEvents,
       fallbackHyperEVMFlowCompletedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
       blocks,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
@@ -580,6 +605,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedArbitraryActionsExecutedEvents,
       savedFallbackHyperEVMFlowCompletedEvents,
       savedSponsoredAccountActivationEvents,
+      savedSwapFlowInitializedEvents,
+      savedSwapFlowFinalizedEvents,
     ] = await Promise.all([
       this.cctpRepository.formatAndSaveBurnEvents(
         chainAgnosticBurnEvents,
@@ -635,6 +662,26 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         entities.SponsoredAccountActivation,
         primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
       ),
+      formatAndSaveEvents(
+        this.cctpRepository,
+        swapFlowInitializedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSwapFlowInitializedEvent,
+        entities.SwapFlowInitialized,
+        primaryKeyColumns as (keyof entities.SwapFlowInitialized)[],
+      ),
+      formatAndSaveEvents(
+        this.cctpRepository,
+        events.swapFlowFinalizedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSwapFlowFinalizedEvent,
+        entities.SwapFlowFinalized,
+        primaryKeyColumns as (keyof entities.SwapFlowFinalized)[],
+      ),
     ]);
 
     return {
@@ -645,6 +692,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       savedArbitraryActionsExecutedEvents,
       savedFallbackHyperEVMFlowCompletedEvents,
       savedSponsoredAccountActivationEvents,
+      savedSwapFlowInitializedEvents,
+      savedSwapFlowFinalizedEvents,
     };
   }
 

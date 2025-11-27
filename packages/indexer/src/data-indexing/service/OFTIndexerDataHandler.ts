@@ -10,7 +10,10 @@ import {
   FallbackHyperEVMFlowCompletedLog,
   SimpleTransferFlowCompletedLog,
   SponsoredAccountActivationLog,
+  SwapFlowFinalizedLog,
+  SwapFlowInitializedLog,
   SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SWAP_FLOW_FINALIZED_ABI,
 } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
@@ -36,6 +39,8 @@ import {
   formatFallbackHyperEVMFlowCompletedEvent,
   formatSimpleTransferFlowCompletedEvent,
   formatSponsoredAccountActivationEvent,
+  formatSwapFlowFinalizedEvent,
+  formatSwapFlowInitializedEvent,
 } from "./hyperEvmExecutor";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
@@ -47,6 +52,8 @@ export type FetchEventsResult = {
   fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[];
   arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[];
   sponsoredAccountActivationEvents: SponsoredAccountActivationLog[];
+  swapFlowInitializedEvents: SwapFlowInitializedLog[];
+  swapFlowFinalizedEvents: SwapFlowFinalizedLog[];
   blocks: Record<string, providers.Block>;
 };
 export type StoreEventsResult = {
@@ -57,6 +64,8 @@ export type StoreEventsResult = {
   fallbackHyperEVMFlowCompletedEvents: SaveQueryResult<entities.FallbackHyperEVMFlowCompleted>[];
   arbitraryActionsExecutedEvents: SaveQueryResult<entities.ArbitraryActionsExecuted>[];
   sponsoredAccountActivationEvents: SaveQueryResult<entities.SponsoredAccountActivation>[];
+  savedSwapFlowInitializedEvents: SaveQueryResult<entities.SwapFlowInitialized>[];
+  savedSwapFlowFinalizedEvents: SaveQueryResult<entities.SwapFlowFinalized>[];
 };
 
 // Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
@@ -202,6 +211,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       [];
     let arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[] = [];
     let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
+    let swapFlowInitializedEvents: SwapFlowInitializedLog[] = [];
+    let swapFlowFinalizedEvents: SwapFlowFinalizedLog[] = [];
     if (dstOftHandlerAddress) {
       // All events that we are interested in are emitted by the dstOftHandlerAddress
       const composeDeliveredEvents = await fetchEvents(
@@ -230,10 +241,15 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           dstOftHandlerAddress,
           EventDecoder.decodeArbitraryActionsExecutedEvents,
         );
+        swapFlowInitializedEvents = getEventsFromTransactionReceipts(
+          transactionReceipts,
+          dstOftHandlerAddress,
+          EventDecoder.decodeSwapFlowInitializedEvents,
+        );
       }
       const dstOftHandlerContract = new ethers.Contract(
         dstOftHandlerAddress,
-        SPONSORED_ACCOUNT_ACTIVATION_ABI,
+        [...SPONSORED_ACCOUNT_ACTIVATION_ABI, ...SWAP_FLOW_FINALIZED_ABI],
         this.provider,
       );
       sponsoredAccountActivationEvents =
@@ -242,11 +258,18 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
           blockRange.from,
           blockRange.to,
         )) as unknown as SponsoredAccountActivationLog[];
+      swapFlowFinalizedEvents = (await dstOftHandlerContract.queryFilter(
+        "SwapFlowFinalized",
+        blockRange.from,
+        blockRange.to,
+      )) as unknown as SwapFlowFinalizedLog[];
       blockHashes.push(
         ...simpleTransferFlowCompletedEvents.map((event) => event.blockHash),
         ...fallbackHyperEVMFlowCompletedEvents.map((event) => event.blockHash),
         ...arbitraryActionsExecutedEvents.map((event) => event.blockHash),
         ...sponsoredAccountActivationEvents.map((event) => event.blockHash),
+        ...swapFlowInitializedEvents.map((event) => event.blockHash),
+        ...swapFlowFinalizedEvents.map((event) => event.blockHash),
       );
     }
 
@@ -271,6 +294,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
       blocks,
     };
   }
@@ -289,6 +314,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       fallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents,
       sponsoredAccountActivationEvents,
+      swapFlowInitializedEvents,
+      swapFlowFinalizedEvents,
     } = events;
     const blocksTimestamps = this.getBlocksTimestamps(blocks);
     const primaryKeyColumns = [
@@ -305,6 +332,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       savedFallbackHyperEVMFlowCompletedEvents,
       savedArbitraryActionsExecutedEvents,
       savedSponsoredAccountActivationEvents,
+      savedSwapFlowInitializedEvents,
+      savedSwapFlowFinalizedEvents,
     ] = await Promise.all([
       this.oftRepository.formatAndSaveOftSentEvents(
         oftSentEvents,
@@ -366,6 +395,26 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         entities.SponsoredAccountActivation,
         primaryKeyColumns as (keyof entities.SponsoredAccountActivation)[],
       ),
+      formatAndSaveEvents(
+        this.oftRepository,
+        swapFlowInitializedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSwapFlowInitializedEvent,
+        entities.SwapFlowInitialized,
+        primaryKeyColumns as (keyof entities.SwapFlowInitialized)[],
+      ),
+      formatAndSaveEvents(
+        this.oftRepository,
+        swapFlowFinalizedEvents,
+        lastFinalisedBlock,
+        this.chainId,
+        blocksTimestamps,
+        formatSwapFlowFinalizedEvent,
+        entities.SwapFlowFinalized,
+        primaryKeyColumns as (keyof entities.SwapFlowFinalized)[],
+      ),
     ]);
 
     return {
@@ -377,6 +426,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         savedFallbackHyperEVMFlowCompletedEvents,
       arbitraryActionsExecutedEvents: savedArbitraryActionsExecutedEvents,
       sponsoredAccountActivationEvents: savedSponsoredAccountActivationEvents,
+      savedSwapFlowInitializedEvents: savedSwapFlowInitializedEvents,
+      savedSwapFlowFinalizedEvents: savedSwapFlowFinalizedEvents,
     };
   }
 
