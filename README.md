@@ -89,42 +89,6 @@ pnpm build
 
 **Note:** Call `pnpm install` before running `pnpm build` if you've added a new package or updated dependencies.
 
-### Running the Indexer Locally
-
-To run the indexer locally, follow the steps below. All commands should be executed from the root directory of the repository.
-
-1. **Install Dependencies**
-
-   Install all project dependencies using:
-
-```sh
-pnpm install
-```
-
-2. **Start Database Services**
-
-   Launch the required Redis and Postgres services using Docker:
-
-```sh
-docker compose up redis postgres -d
-```
-
-3. **Run Database Migrations**
-
-   Apply database migrations to ensure the schema is up to date:
-
-```sh
-pnpm db:indexer-database:migrate:run
-```
-
-4. **Build and Start the Indexer**
-
-   Build the project and start the indexer application:
-
-```sh
-pnpm build && pnpm start:indexer
-```
-
 #### Configuration Options
 
 - **HubPool Indexer:**  
@@ -155,11 +119,50 @@ To stop the development environment, run the following command:
 ```sh
 docker-compose down
 ```
-
 #### Running Applications
 
 Each application (the indexer + the api) will run in the development environment. This is
 enabled by default and managed by the `docker-compose.yml` file.
+
+### Running the Indexer Locally
+
+To run the indexer locally, follow the steps below. All commands should be executed from the root directory of the repository.
+
+1. **Install Dependencies**
+
+Install all project dependencies using:
+
+```sh
+pnpm install
+```
+
+2. **Start Database Services**
+
+Launch the required Redis and Postgres services using Docker:
+
+```sh
+docker compose up redis postgres -d
+```
+
+3. **Run Database Migrations**
+
+Copy your `.env` file over to `./packages/index-database`
+
+Apply database migrations to ensure the schema is up to date:
+
+```sh
+pnpm db:indexer-database:migrate:run
+```
+
+4. **Build and Start the Indexer**
+
+Copy of your `.env` over to `apps/node/src`.
+
+Build the project and start the indexer application:
+
+```sh
+pnpm build && pnpm start:indexer
+```
 
 ### Managing Dependencies with Turborepo and pnpm
 
