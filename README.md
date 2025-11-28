@@ -65,10 +65,10 @@ Before getting started, ensure that the following are installed and available in
 
 #### Environment Variables
 
-The development environment requires a set of environment variables to be configured. Please refer to the `.env.test` file in the root for the complete list of required variables. To set up your configuration, you can copy the template as follows:
+The development environment requires a set of environment variables to be configured. Please refer to the `.env.example` file in the root for the complete list of required variables. To set up your configuration, you can copy the template as follows:
 
 ```bash
-cp .env.test .env
+cp .env.example .env
 ```
 
 ### Installing dependencies:
@@ -98,7 +98,7 @@ pnpm build
   To enable the spoke pool indexer, set the `SPOKEPOOL_CHAINS_ENABLED` environment variable to a comma-separated list of chain IDs you wish to index (e.g., `SPOKEPOOL_CHAINS_ENABLED=1,10,137`).  
   Additionally, ensure that a corresponding RPC environment variable is set for each enabled chain.
 
-For any additional configuration, refer to the `.env.test` file for a list of required environment variables.
+For any additional configuration, refer to the `.env.example` file for a list of required environment variables.
 
 ### Using a Developer Environment
 
