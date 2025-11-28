@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { createDataSource as createRealDataSource } from "@repo/indexer-database";
 import Redis from "ioredis-mock";
 import { Redis as IoRedis } from "ioredis";
+import * as fields from "../utils/fields";
 
 /**
  * Creates and initializes an in-memory TypeORM DataSource for testing.
@@ -48,6 +49,19 @@ export async function getTestDataSource(): Promise<DataSource> {
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
   }
+
+  // Remove subqueries for pg-mem compatibility - use hardcoded test values
+  (fields as any).DepositFields = fields.DepositFields.map((field) => {
+    if (field.includes("rhi.id") && field.includes("swap_metadata")) {
+      if (field.includes("swapOutputTokenAmount")) {
+        return `'1000000000000000000'::varchar as "swapOutputTokenAmount"`;
+      }
+      if (field.includes("swapOutputToken")) {
+        return `'0x1234567890123456789012345678901234567890'::varchar as "swapOutputToken"`;
+      }
+    }
+    return field;
+  });
 
   return dataSource;
 }

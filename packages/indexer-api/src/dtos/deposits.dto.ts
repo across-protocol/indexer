@@ -25,6 +25,8 @@ const parseAddressField = s.coerce(s.string(), s.string(), (value) => {
   }
 });
 
+export const DepositType = s.enums(["across", "cctp", "oft"]);
+
 export const DepositsParams = s.object({
   address: s.optional(parseAddressField), // matches deposits where provided address is either depositor or recipient
   depositor: s.optional(parseAddressField),
@@ -35,6 +37,7 @@ export const DepositsParams = s.object({
   outputToken: s.optional(parseAddressField),
   integratorId: s.optional(s.string()),
   status: s.optional(s.enums(Object.values(entities.RelayStatus))),
+  depositType: s.optional(DepositType), // Filter by deposit type: "across" (V3FundsDeposited), "cctp" (DepositForBurn), or "oft" (OFTSent)
   // some kind of pagination options, skip could be the start point
   skip: s.optional(stringToInt),
   // pagination limit, how many to return after the start, note we convert string to number
@@ -173,10 +176,12 @@ export type DepositReturnType = {
 // Add new type for parsed deposits
 export type ParsedDepositReturnType = Omit<
   DepositReturnType,
-  "originChainId" | "destinationChainId"
+  "originChainId" | "destinationChainId" | "outputToken" | "outputAmount"
 > & {
   originChainId: number;
-  destinationChainId: number;
+  destinationChainId: number | null;
+  outputToken: string | null;
+  outputAmount: string | null;
 };
 
 // Define a type for the pagination information
