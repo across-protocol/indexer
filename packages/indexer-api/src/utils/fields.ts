@@ -99,8 +99,8 @@ export const DepositForBurnRelayHashInfoFields = [
 
 export const DepositForBurnFilledRelayFields = [
   `NULL::varchar as "relayer"`,
-  `NULL::timestamp as "fillBlockTimestamp"`,
-  `NULL::varchar as "fillTx"`,
+  `"mintAndWithdraw"."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
+  `"mintAndWithdraw"."transactionHash"::varchar as "fillTx"`,
 ];
 
 export const DepositForBurnSwapBeforeBridgeFields = [
