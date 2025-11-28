@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import { startArbitrumMainnetIndexer } from "../service/indexers";
 import { MockEthServer } from "../../tests/testProvider";
-import { BlockchainEventRepository } from "../../../../indexer-database/src/utils";
+import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
 import { TOKEN_MESSENGER_ADDRESS_TESTNET } from "../service/constants";
 import sinon from "sinon";
@@ -11,7 +11,7 @@ import { Logger } from "winston";
 
 describe("Indexer Integration (Real Transaction Data)", () => {
   let dataSource: DataSource;
-  let blockchainRepository: BlockchainEventRepository;
+  let blockchainRepository: dbUtils.BlockchainEventRepository;
   let server: MockEthServer;
   let rpcUrl: string;
   let logger: Logger;
@@ -42,7 +42,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       warn: sinon.spy(),
       error: sinon.spy(),
     } as unknown as Logger;
-    blockchainRepository = new BlockchainEventRepository(
+    blockchainRepository = new dbUtils.BlockchainEventRepository(
       dataSource,
       console as unknown as Logger,
     );

@@ -9,14 +9,14 @@ import {
 import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
 import { depositForBurnTransformer } from "./transformers";
 import { storeDepositForBurnEvent } from "./storer";
-import { BlockchainEventRepository } from "../../../../indexer-database/src/utils";
+import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 
 /**
  * Definition of the request object for starting the Arbitrum Mainnet Indexer.
  */
 export interface StartArbitrumMainnetIndexerRequest {
-  repo: BlockchainEventRepository;
+  repo: dbUtils.BlockchainEventRepository;
   rpcUrl: string;
   logger: Logger;
   /** Optional signal to gracefully shut down the indexer */
@@ -40,7 +40,7 @@ export async function startArbitrumMainnetIndexer(
   // Define the specific parameters for the Arbitrum Mainnet indexer.
   const ethConfig: IndexerConfig<
     Partial<typeof Entity>,
-    BlockchainEventRepository,
+    dbUtils.BlockchainEventRepository,
     IndexerEventPayload
   > = {
     chainId: CHAIN_IDs.ARBITRUM,

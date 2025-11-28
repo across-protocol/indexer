@@ -23,7 +23,7 @@ import { BundleRepository } from "./database/BundleRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
 import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
-import { BlockchainEventRepository } from "../../indexer-database/src/utils/BlockchainEventRepository";
+import { utils as dbUtils } from "@repo/indexer-database";
 // Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
@@ -93,7 +93,7 @@ export async function MainSandbox(
     const rpcUrl = arbProviders[0]; // Take the first available provider
 
     // Setup Repository
-    const repo = new BlockchainEventRepository(postgres, logger);
+    const repo = new dbUtils.BlockchainEventRepository(postgres, logger);
 
     // Setup Shutdown Handling
     const abortController = new AbortController();

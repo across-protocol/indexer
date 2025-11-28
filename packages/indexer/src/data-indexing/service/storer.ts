@@ -1,5 +1,5 @@
 import { entities } from "@repo/indexer-database";
-import { BlockchainEventRepository } from "../../../../indexer-database/src/utils";
+import { utils as dbUtils } from "@repo/indexer-database";
 import { Storer } from "../model/eventProcessor";
 
 const PK_CHAIN_BLOCK_TX_LOG = [
@@ -18,10 +18,10 @@ const PK_CHAIN_BLOCK_TX_LOG = [
  */
 export const storeDepositForBurnEvent: Storer<
   Partial<entities.DepositForBurn>,
-  BlockchainEventRepository
+  dbUtils.BlockchainEventRepository
 > = async (
   event: Partial<entities.DepositForBurn>,
-  repository: BlockchainEventRepository,
+  repository: dbUtils.BlockchainEventRepository,
 ) => {
   return repository.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
     entities.DepositForBurn,
