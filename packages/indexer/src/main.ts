@@ -2,6 +2,7 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { WebhookFactory } from "@repo/webhooks";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";
@@ -22,6 +23,7 @@ import { BundleRepository } from "./database/BundleRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
 import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+import { BlockchainEventRepository } from "../../indexer-database/src/utils/BlockchainEventRepository";
 // Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
@@ -34,6 +36,7 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
+import { startArbitrumMainnetIndexer } from "./data-indexing/service/indexers";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -63,6 +66,73 @@ async function initializeRedis(
       reject(err);
     });
   });
+}
+
+export async function MainSandbox(
+  config: parseEnv.Config,
+  logger: winston.Logger,
+) {
+  const { redisConfig, postgresConfig } = config;
+  const redis = await initializeRedis(redisConfig, logger);
+  const redisCache = new RedisCache(redis);
+  const postgres = await connectToDatabase(postgresConfig, logger);
+
+  try {
+    // Resolve Arbitrum RPC URL
+    // The Config object doesn't hold RPCs directly, so we parse them from env
+    // using the helper function defined in your parseEnv file.
+    const allProviders = parseEnv.parseProvidersUrls();
+    const arbitrumChainId = CHAIN_IDs.ARBITRUM; // 42161
+    const arbProviders = allProviders.get(arbitrumChainId);
+
+    if (!arbProviders || arbProviders.length === 0 || !arbProviders[0]) {
+      throw new Error(
+        `No RPC provider found for Arbitrum (Chain ID ${arbitrumChainId}). Please set RPC_PROVIDER_URLS_${arbitrumChainId} in .env`,
+      );
+    }
+    const rpcUrl = arbProviders[0]; // Take the first available provider
+
+    // Setup Repository
+    const repo = new BlockchainEventRepository(postgres, logger);
+
+    // Setup Shutdown Handling
+    const abortController = new AbortController();
+
+    const handleShutdown = (signal: string) => {
+      logger.info({ message: `Received ${signal}. Shutting down sandbox...` });
+      abortController.abort();
+    };
+
+    process.on("SIGINT", () => handleShutdown("SIGINT"));
+    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+
+    // Start the Indexer
+    logger.info({ message: `Starting Indexer on ${rpcUrl}...` });
+
+    // This promise will resolve only when abortController.abort() is called
+    // and the indexer has finished its cleanup routine.
+    await startArbitrumMainnetIndexer({
+      repo,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+    });
+
+    logger.info({ message: "Indexer finished execution." });
+  } catch (error) {
+    logger.error({
+      message: "Fatal error in MainSandbox",
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+    });
+    process.exitCode = 1;
+  } finally {
+    // Final Cleanup
+    if (postgres.isInitialized) {
+      logger.info({ message: "Closing database connection..." });
+      await postgres.destroy();
+    }
+  }
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {

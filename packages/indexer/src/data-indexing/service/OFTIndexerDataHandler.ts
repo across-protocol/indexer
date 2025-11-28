@@ -67,7 +67,6 @@ const DST_OFT_HANDLER_ADDRESS: { [key: number]: string } = {
   // Taken from https://hyperevmscan.io/address/0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888#code
   [CHAIN_IDs.HYPEREVM]: "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
 };
-("");
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
