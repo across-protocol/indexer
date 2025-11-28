@@ -33,4 +33,4 @@ export type Transformer<TPayload, TEntity> = (
 export type Storer<TEntity, TDb> = (
   entity: TEntity,
   db: TDb,
-) => Promise<void | SaveQueryResult<TEntity>[]>;
+) => Promise<SaveQueryResult<TEntity>[]>;

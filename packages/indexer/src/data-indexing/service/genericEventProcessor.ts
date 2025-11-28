@@ -64,7 +64,19 @@ export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
     // Transform
     const entity = await transform(payload);
     // Store (Asynchronous I/O operation)
-    await store(entity, db);
+    const storedItems = await store(entity, db);
+
+    logger.debug({
+      at: "genericEventProcessor#startGenericEventProcessor",
+      // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
+      message: `Successfully stored event: ${storedItems
+        .map(
+          (entry) =>
+            `${(entry.data as any).constructor.name}#${(entry.data as any).id}`,
+        )
+        .join(", ")}`,
+      notificationPath: "across-indexer-error",
+    });
   } catch (error) {
     logger.error({
       at: "genericEventProcessor#startGenericEventProcessor",

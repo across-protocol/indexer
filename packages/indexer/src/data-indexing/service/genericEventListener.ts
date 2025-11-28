@@ -126,6 +126,13 @@ export const subscribeToEvent = <TPayload>(
             currentBlockHeight: logItem.blockNumber,
           } as TPayload;
           // Trigger the side effect (Forward it to an event processor or message queue)
+          logger.debug({
+            at: "genericEventListener#processLog",
+            message: `Received Log for ${config.eventName} in tx ${logItem.transactionHash}`,
+            chainId,
+            blockTimestamp,
+            contractAddress: config.address,
+          });
           onEvent(payload);
         } catch (err) {
           logger.error({

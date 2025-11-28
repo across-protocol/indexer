@@ -72,9 +72,7 @@ export async function MainSandbox(
   config: parseEnv.Config,
   logger: winston.Logger,
 ) {
-  const { redisConfig, postgresConfig } = config;
-  const redis = await initializeRedis(redisConfig, logger);
-  const redisCache = new RedisCache(redis);
+  const { postgresConfig } = config;
   const postgres = await connectToDatabase(postgresConfig, logger);
 
   try {
@@ -107,7 +105,10 @@ export async function MainSandbox(
     process.on("SIGTERM", () => handleShutdown("SIGTERM"));
 
     // Start the Indexer
-    logger.info({ message: `Starting Indexer on ${rpcUrl}...` });
+    logger.info({
+      at: "Indexer#Main",
+      message: `Starting Indexer on chain ${arbitrumChainId}...`,
+    });
 
     // This promise will resolve only when abortController.abort() is called
     // and the indexer has finished its cleanup routine.
@@ -118,7 +119,7 @@ export async function MainSandbox(
       sigterm: abortController.signal,
     });
 
-    logger.info({ message: "Indexer finished execution." });
+    logger.info({ at: "Indexer#Main", message: "Indexer finished execution." });
   } catch (error) {
     logger.error({
       message: "Fatal error in MainSandbox",
