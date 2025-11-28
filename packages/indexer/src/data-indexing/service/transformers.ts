@@ -1,12 +1,16 @@
 import { entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
 import { IndexerEventPayload } from "./genericEventListener";
-import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
+import {
+  getCctpDestinationChainFromDomain,
+  decodeMessage, // New import
+} from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../../utils";
 import { Transformer } from "../model/eventProcessor";
 import { getFinalisedBlockBufferDistance } from "./constants";
-import { DepositForBurnArgs } from "../model/eventTypes";
+import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
 import { Logger } from "winston";
+import { arrayify } from "ethers/lib/utils"; // New import
 
 /**
  * A generic transformer for addresses.
@@ -68,38 +72,20 @@ export const depositForBurnTransformer: Transformer<
   IndexerEventPayload,
   Partial<entities.DepositForBurn>
 > = (payload, logger: Logger = console as unknown as Logger) => {
-  // Check for 'args' directly on the event
-  const rawArgs = (payload.log as any).args;
-
-  if (!rawArgs) {
-    logger.error({
-      at: "transformers#depositForBurnTransformer",
-      message: `DepositForBurn event missing 'args'. Payload: ${JSON.stringify(payload)}`,
-      notificationPath: "across-indexer-error",
-    });
-    throw new Error(
-      `DepositForBurn event missing 'args'. Payload: ${JSON.stringify(payload)}`,
-    );
-  }
-
+  const rawArgs = getRawArgs(payload, logger);
   const args = rawArgs as unknown as DepositForBurnArgs;
-
   const base = baseTransformer(payload, logger);
-
   const destinationChainId = getCctpDestinationChainFromDomain(
     args.destinationDomain,
   );
-
   const mintRecipient = transformAddress(
     args.mintRecipient,
     destinationChainId,
   );
-
   const tokenMessenger = transformAddress(
     args.destinationTokenMessenger,
     destinationChainId,
   );
-
   const destinationCaller = transformAddress(
     args.destinationCaller,
     destinationChainId,
@@ -118,4 +104,60 @@ export const depositForBurnTransformer: Transformer<
     minFinalityThreshold: args.minFinalityThreshold,
     hookData: args.hookData,
   };
+};
+
+export const messageSentTransformer: Transformer<
+  IndexerEventPayload,
+  Partial<entities.MessageSent>
+> = (payload, logger: Logger = console as unknown as Logger) => {
+  const rawArgs = getRawArgs(payload, logger);
+
+  const args = rawArgs as unknown as MessageSentArgs;
+  const base = baseTransformer(payload, logger);
+  const decodedMessage = decodeMessage(arrayify(args.message));
+  const destinationChainId = getCctpDestinationChainFromDomain(
+    decodedMessage.destinationDomain,
+  );
+  const chainId = parseInt(base.chainId);
+  const sender = transformAddress(decodedMessage.sender, chainId);
+  const recipient = transformAddress(
+    decodedMessage.recipient,
+    destinationChainId,
+  );
+  const destinationCaller = transformAddress(
+    decodedMessage.destinationCaller,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    message: args.message,
+    version: decodedMessage.version,
+    sourceDomain: decodedMessage.sourceDomain,
+    destinationDomain: decodedMessage.destinationDomain,
+    nonce: decodedMessage.nonce,
+    sender: sender,
+    recipient: recipient,
+    destinationCaller: destinationCaller,
+    minFinalityThreshold: decodedMessage.minFinalityThreshold,
+    finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
+    messageBody: decodedMessage.messageBody,
+  };
+};
+
+const getRawArgs = <TEvent>(payload: IndexerEventPayload, logger: Logger) => {
+  const rawArgs = (payload.log as any).args;
+
+  if (!rawArgs) {
+    logger.error({
+      at: "transformers#messageSentTransformer",
+      message: `Event missing 'args'. Payload: ${JSON.stringify(payload)}`,
+      notificationPath: "across-indexer-error",
+    });
+    throw new Error(
+      `MessageSent event missing 'args'. Payload: ${JSON.stringify(payload)}`,
+    );
+  }
+
+  return rawArgs as TEvent;
 };

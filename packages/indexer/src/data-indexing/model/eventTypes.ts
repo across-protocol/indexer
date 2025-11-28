@@ -16,3 +16,7 @@ export interface DepositForBurnArgs {
   minFinalityThreshold: number;
   hookData: `0x${string}`;
 }
+
+export interface MessageSentArgs {
+  message: `0x${string}`;
+}

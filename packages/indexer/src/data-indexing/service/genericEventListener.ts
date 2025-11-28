@@ -134,11 +134,11 @@ export const subscribeToEvent = <TPayload>(
             contractAddress: config.address,
           });
           onEvent(payload);
-        } catch (err) {
+        } catch (error) {
           logger.error({
             at: "genericEventListener#processLog",
             message: "Error processing log batch",
-            error: (err as Error).message,
+            error,
           });
         }
       }
@@ -147,7 +147,7 @@ export const subscribeToEvent = <TPayload>(
       logger.error({
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
-        error: error.message,
+        error: error,
         notificationPath: "across-indexer-error",
       });
 

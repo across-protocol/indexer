@@ -30,3 +30,18 @@ export const storeDepositForBurnEvent: Storer<
     [],
   );
 };
+
+export const storeMessageSentEvent: Storer<
+  Partial<entities.MessageSent>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.MessageSent>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.MessageSent>(
+    entities.MessageSent,
+    [event],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
+    [],
+  );
+};

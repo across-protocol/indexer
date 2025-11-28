@@ -2,24 +2,31 @@ import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import { startArbitrumMainnetIndexer } from "../service/indexers";
-import { MockEthServer } from "../../tests/testProvider";
+import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
-import { TOKEN_MESSENGER_ADDRESS_TESTNET } from "../service/constants";
+import {
+  TOKEN_MESSENGER_ADDRESS_MAINNET,
+  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+} from "../service/constants";
 import sinon from "sinon";
 import { Logger } from "winston";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { decodeMessage } from "../adapter/cctp-v2/service";
 
 describe("Indexer Integration (Real Transaction Data)", () => {
   let dataSource: DataSource;
   let blockchainRepository: dbUtils.BlockchainEventRepository;
-  let server: MockEthServer;
+  let server: MockWebSocketRPCServer;
   let rpcUrl: string;
   let logger: Logger;
+  let abortController: AbortController;
   /**
    * Sets up the mock Ethereum server before all tests.
    */
   before(async () => {
-    server = new MockEthServer();
+    server = new MockWebSocketRPCServer();
     rpcUrl = await server.start();
     console.info(`Mock RPC Server started at: ${rpcUrl}`);
   });
@@ -46,6 +53,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       dataSource,
       console as unknown as Logger,
     );
+    abortController = new AbortController();
   });
 
   /**
@@ -55,6 +63,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
+    abortController.abort();
     sinon.restore();
   });
 
@@ -78,13 +87,11 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       transactions: [],
     });
 
-    const abortController = new AbortController();
-
     // Start the Indexer with the real repository
     startArbitrumMainnetIndexer({
       repo: blockchainRepository,
       rpcUrl,
-      logger,
+      logger: console as any as Logger,
       sigterm: abortController.signal,
     });
     await server.waitForSubscription();
@@ -92,7 +99,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     // Push the REAL Event Payload
     // This matches Log Index 5 from the transaction logs on Arbiscan
     server.pushEvent({
-      address: TOKEN_MESSENGER_ADDRESS_TESTNET,
+      address: TOKEN_MESSENGER_ADDRESS_MAINNET,
       blockNumber: "0x" + blockNumber.toString(16),
       transactionHash: txHash,
       logIndex: "0x5",
@@ -177,10 +184,9 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     // though here we check specific logic-driven fields)
     expect(savedEvent).to.deep.include({
       // --- Chain Context ---
-      chainId: 42161, // Arbitrum One
-      blockNumber: 404646713,
-      transactionHash:
-        "0xf38daaf5d34c3363cd8843c47643ca9583fc04a17f8a93d153e7549ad3509cc0",
+      chainId: CHAIN_IDs.ARBITRUM, // Arbitrum One
+      blockNumber,
+      transactionHash: txHash,
       transactionIndex: 1,
       logIndex: 5,
       finalised: false, // Should be false initially for WS events
@@ -216,6 +222,98 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     // Null checks
     expect(savedEvent!.deletedAt).to.be.null;
     expect(savedEvent!.finalizerJob).to.be.undefined;
-    abortController.abort();
+  }).timeout(20000);
+
+  it("should ingest the MessageSent event from Arbitrum Sepolia tx 0x1c21...d0b", async () => {
+    // Real Transaction Data taken from:
+    // https://sepolia.arbiscan.io/tx/0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b#eventlog#5
+    const txHash =
+      "0x1c21e4117c98efb94600d42d7500aaf221d7614ff3a06a3e5f6fb7d605a27d0b";
+    const blockNumber = 214159659;
+    const blockHash =
+      "0x72f5543d9977ff6e94e7886b9d406f65683bd7ddf6339c7dbfd11afc54140da8";
+    const blockTimestamp = "0x64d73b03"; // Aug-12-2023 09:00:35 AM +UTC
+
+    // Prime the Mock Server
+    server.mockBlockResponse({
+      number: "0x" + blockNumber.toString(16),
+      hash: blockHash,
+      timestamp: blockTimestamp,
+      transactions: [],
+    });
+
+    // Start the Indexer with the real repository
+    // Since `startArbitrumMainnetIndexer` is now configured to listen for both
+    // DepositForBurn and MessageSent, we can call it directly.
+    startArbitrumMainnetIndexer({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      testNet: true,
+    });
+    await server.waitForSubscription();
+
+    const messageData =
+      "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000029800000001000000030000001300000000000000000000000000000000000000000000000000000000000000000000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000000000000000000000000000000000000000000000000003e8000000000000000100000000000000000000000075faf114eafb1bdbe2f0316df893fd58ce46aa4d00000000000000000000000006c61d54958a0772ee8af41789466d39ffeaeb1300000000000000000000000000000000000000000000000000000000000f424000000000000000000000000079176e2e91c77b57ac11c6fe2d2ab2203d87af850000000000000000000000000000000000000000000000000000000000030da400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a5b39782b400ba6061ffd38c4c46abb157925d12dafb3b3d71ec94c8807e835b0000000000000000000000000000000000000000000000000000000069135cbc00000000000000000000000000000000000000000000000000000000000007d200000000000000000000000000000000000000000000000000000000000000640000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d000000000000000000000000111111a1a0667d36bd57c0a9f569b980571111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+    // Push the REAL Event Payload
+    // This matches Log Index 32 from the transaction logs on Arbiscan
+    server.pushEvent({
+      address: MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+      blockNumber: "0x" + blockNumber.toString(16),
+      transactionHash: txHash,
+      logIndex: "0x20", // 32
+      blockHash,
+      transactionIndex: "0x1", // From original test, position in block
+      topics: [
+        // Topic 0: Event Signature MessageSent(bytes message)
+        "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036",
+      ],
+      data: messageData,
+    });
+
+    // Wait for the async event loop to process the message
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Verify Persistence by querying the real in-memory database
+    const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+    const savedEvent = await messageSentRepo.findOne({
+      where: { transactionHash: txHash, logIndex: 32 },
+    });
+
+    // Basic Existence Check
+    expect(savedEvent).to.exist;
+    // Detailed Field Verification
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: blockNumber,
+      transactionHash: txHash,
+      transactionIndex: 1,
+      logIndex: 32,
+      finalised: false,
+      version: 1,
+      sourceDomain: 3,
+      destinationDomain: 19,
+      message:
+        "0x00000001000000030000001300000000000000000000000000000000000000000000000000000000000000000000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000000000000000000000000000000000000000000000000003e8000000000000000100000000000000000000000075faf114eafb1bdbe2f0316df893fd58ce46aa4d00000000000000000000000006c61d54958a0772ee8af41789466d39ffeaeb1300000000000000000000000000000000000000000000000000000000000f424000000000000000000000000079176e2e91c77b57ac11c6fe2d2ab2203d87af850000000000000000000000000000000000000000000000000000000000030da400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a5b39782b400ba6061ffd38c4c46abb157925d12dafb3b3d71ec94c8807e835b0000000000000000000000000000000000000000000000000000000069135cbc00000000000000000000000000000000000000000000000000000000000007d200000000000000000000000000000000000000000000000000000000000000640000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d000000000000000000000000111111a1a0667d36bd57c0a9f569b98057111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000",
+      nonce:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      sender: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      recipient: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      destinationCaller: "0x0000000000000000000000000000000000000000",
+      minFinalityThreshold: 1000,
+      finalityThresholdExecuted: 0,
+      messageBody:
+        "0x0000000100000000000000000000000075faf114eafb1bdbe2f0316df893fd58ce46aa4d00000000000000000000000006c61d54958a0772ee8af41789466d39ffeaeb1300000000000000000000000000000000000000000000000000000000000f424000000000000000000000000079176e2e91c77b57ac11c6fe2d2ab2203d87af850000000000000000000000000000000000000000000000000000000000030da400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a5b39782b400ba6061ffd38c4c46abb157925d12dafb3b3d71ec94c8807e835b0000000000000000000000000000000000000000000000000000000069135cbc00000000000000000000000000000000000000000000000000000000000007d200000000000000000000000000000000000000000000000000000000000000640000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d000000000000000000000000111111a1a0667d36bd57c0a9f569b98057111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000",
+    });
+
+    // Date verification
+    expect(savedEvent!.blockTimestamp.toISOString()).to.equal(
+      "2023-08-12T07:55:47.000Z",
+    );
+
+    // Null checks
+    expect(savedEvent!.deletedAt).to.be.null;
   }).timeout(20000);
 });

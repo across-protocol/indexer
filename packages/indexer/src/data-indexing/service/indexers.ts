@@ -1,14 +1,27 @@
 import { IndexerConfig, startIndexerSubsystem } from "./genericIndexer";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
 import { IndexerEventPayload } from "./genericEventListener";
 import { Entity } from "typeorm";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   DEPOSIT_FOR_BURN_EVENT_NAME,
+  MESSAGE_SENT_EVENT_NAME, // New import
+  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+  TOKEN_MESSENGER_ADDRESS_TESTNET,
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET, // New import
 } from "./constants";
-import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
-import { depositForBurnTransformer } from "./transformers";
-import { storeDepositForBurnEvent } from "./storer";
+import {
+  CCTP_DEPOSIT_FOR_BURN_ABI,
+  MESSAGE_SENT_ABI, // New import
+} from "../model/abis";
+import {
+  depositForBurnTransformer,
+  messageSentTransformer, // New import
+} from "./transformers";
+import {
+  storeDepositForBurnEvent,
+  storeMessageSentEvent, // New import
+} from "./storer";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 
@@ -21,6 +34,7 @@ export interface StartArbitrumMainnetIndexerRequest {
   logger: Logger;
   /** Optional signal to gracefully shut down the indexer */
   sigterm?: AbortSignal;
+  testNet?: boolean;
 }
 
 /**
@@ -43,17 +57,30 @@ export async function startArbitrumMainnetIndexer(
     dbUtils.BlockchainEventRepository,
     IndexerEventPayload
   > = {
-    chainId: CHAIN_IDs.ARBITRUM,
+    chainId: request.testNet ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA,
     rpcUrl,
     events: [
       {
         config: {
-          address: TOKEN_MESSENGER_ADDRESS_MAINNET,
+          address: request.testNet
+            ? TOKEN_MESSENGER_ADDRESS_TESTNET
+            : TOKEN_MESSENGER_ADDRESS_MAINNET,
           abi: CCTP_DEPOSIT_FOR_BURN_ABI,
           eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
         },
         transform: depositForBurnTransformer, // The specific transformation function for DepositForBurn events
         store: storeDepositForBurnEvent, // The specific storage function for DepositForBurn events
+      },
+      {
+        config: {
+          address: request.testNet
+            ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+            : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+          abi: MESSAGE_SENT_ABI,
+          eventName: MESSAGE_SENT_EVENT_NAME,
+        },
+        transform: messageSentTransformer,
+        store: storeMessageSentEvent,
       },
     ],
   };

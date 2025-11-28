@@ -82,7 +82,7 @@ export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
       at: "genericEventProcessor#startGenericEventProcessor",
       message: "Error processing event.",
       notificationPath: "across-indexer-error",
-      error: (error as Error).message,
+      error,
     });
   }
 };

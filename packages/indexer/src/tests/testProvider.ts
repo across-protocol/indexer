@@ -37,7 +37,7 @@ export function createTestRetryProvider(
   }) as across.providers.RetryProvider;
 }
 
-export class MockEthServer {
+export class MockWebSocketRPCServer {
   public wss: WebSocketServer;
   private activeSocket: WebSocket | null = null;
   private nextBlockResponse: any = null;
@@ -46,9 +46,13 @@ export class MockEthServer {
   private subscriptionPromise: Promise<void>;
   private subscriptionResolver: (() => void) | null = null;
 
-  // Hardcoded ID we will use for the handshake
-  // This must match what we send in pushEvent
-  private readonly SUBSCRIPTION_ID = "0x1234567890abcdef";
+  // Map to store active subscriptions and their filters
+  // Key: Subscription ID, Value: Filter options (address, topics)
+  private subscriptions: Map<
+    string,
+    { address?: string | string[]; topics?: any[] }
+  > = new Map();
+  private subscriptionCounter = 0;
 
   constructor() {
     // Create the server instance, but it doesn't listen until .listen() is called inside start()
@@ -96,19 +100,54 @@ export class MockEthServer {
     this.nextBlockResponse = block;
   }
 
+  /**
+   * Pushes a log event to the client.
+   * ONLY sends the event to subscriptions that match the log's address.
+   */
   pushEvent(log: any) {
     if (!this.activeSocket) throw new Error("No client connected");
 
-    // The method MUST be "eth_subscription" (Server -> Client notification)
-    const payload = {
-      jsonrpc: "2.0",
-      method: "eth_subscription",
-      params: {
-        subscription: this.SUBSCRIPTION_ID,
-        result: log,
-      },
-    };
-    this.activeSocket.send(JSON.stringify(payload));
+    // Iterate over all active subscriptions
+    for (const [subId, filter] of this.subscriptions.entries()) {
+      // Check if this log matches the subscription's filter
+      if (this.isLogMatchingFilter(log, filter)) {
+        const payload = {
+          jsonrpc: "2.0",
+          method: "eth_subscription",
+          params: {
+            subscription: subId,
+            result: log,
+          },
+        };
+        this.activeSocket.send(JSON.stringify(payload));
+      }
+    }
+  }
+
+  /**
+   * Checks if a log matches the subscription filter (primarily address check).
+   */
+  private isLogMatchingFilter(
+    log: any,
+    filter: { address?: string | string[]; topics?: any[] },
+  ): boolean {
+    // Check Address (if filter has one)
+    if (filter.address) {
+      const logAddress = log.address.toLowerCase();
+
+      if (Array.isArray(filter.address)) {
+        // Viem might send an array of addresses
+        const match = filter.address.some(
+          (a) => a.toLowerCase() === logAddress,
+        );
+        if (!match) return false;
+      } else {
+        // Single address string
+        if (filter.address.toLowerCase() !== logAddress) return false;
+      }
+    }
+
+    return true;
   }
 
   private handleMessage(ws: WebSocket, rawMessage: any) {
@@ -119,12 +158,27 @@ export class MockEthServer {
     };
 
     if (req.method === "eth_subscribe") {
-      // Respond with our static ID to complete the handshake
-      respond(this.SUBSCRIPTION_ID);
+      // Generate a unique ID for this specific subscription
+      const subId = "0x" + (++this.subscriptionCounter).toString(16);
+
+      // Extract filter params.
+      // req.params looks like: ["logs", { address: "0x...", topics: [...] }]
+      const params = req.params || [];
+      if (params.length > 1 && typeof params[1] === "object") {
+        this.subscriptions.set(subId, params[1]);
+      } else {
+        // Fallback for empty filter (subscribe to everything)
+        this.subscriptions.set(subId, {});
+      }
+
+      // Respond with the unique ID
+      respond(subId);
 
       // Unblock the test! We know Viem is listening now.
       if (this.subscriptionResolver) {
         this.subscriptionResolver();
+        // We set this to null so it doesn't fire again,
+        // satisfying the "wait for connection" pattern.
         this.subscriptionResolver = null;
       }
     } else if (req.method === "eth_getBlockByNumber") {

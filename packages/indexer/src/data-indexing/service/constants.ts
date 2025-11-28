@@ -131,3 +131,4 @@ export const WHITELISTED_FINALIZERS: Array<`0x${string}`> = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
 ];
 export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
+export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
