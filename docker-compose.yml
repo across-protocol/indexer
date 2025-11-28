@@ -36,7 +36,6 @@ services:
       - .env
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
       DATABASE_HOST: postgres
     depends_on:
       - postgres
@@ -57,7 +56,6 @@ services:
       - .env
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
       DATABASE_HOST: postgres
     depends_on:
       - postgres

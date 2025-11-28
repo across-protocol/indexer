@@ -10,6 +10,9 @@ services:
     command: [sh, -c, "pnpm build && pnpm db:indexer-database:migrate:run && pnpm test"]
     env_file:
       - .env.test
+    environment:
+      REDIS_HOST: redis
+      DATABASE_HOST: postgres
     tty: true
     depends_on:
       - postgres
