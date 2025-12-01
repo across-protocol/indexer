@@ -245,6 +245,7 @@ export class DepositsService {
         params.status === entities.RelayStatus.SlowFilled ||
         params.status === entities.RelayStatus.Expired
       ) {
+        // Exclude statuses that are not supported for CCTP and OFT deposits
         depositForBurnQueryBuilder.andWhere("1 = 0");
         oftSentQueryBuilder.andWhere("1 = 0");
       } else if (params.status === entities.RelayStatus.Filled) {
@@ -264,7 +265,8 @@ export class DepositsService {
         },
       );
 
-      // CCTP and OFT deposits don't have integratorId, so exclude them
+      // CCTP and OFT tables don't have integratorId, so exclude them
+      // TODO: remove this once we add integratorId to CCTP and OFT tables
       depositForBurnQueryBuilder.andWhere("1 = 0");
       oftSentQueryBuilder.andWhere("1 = 0");
     }
