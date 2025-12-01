@@ -1,6 +1,6 @@
 import { entities } from "@repo/indexer-database";
 import { utils as dbUtils } from "@repo/indexer-database";
-import { Storer } from "../model/eventProcessor";
+import { Storer } from "../model/genericTypes";
 
 const PK_CHAIN_BLOCK_TX_LOG = [
   "chainId",

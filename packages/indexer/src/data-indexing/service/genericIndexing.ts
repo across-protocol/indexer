@@ -1,7 +1,7 @@
-import { subscribeToEvent, EventConfig } from "./genericEventListener";
+import { subscribeToEvent, EventConfig } from "./genericEventListening";
 import { createWebSocketClient } from "../adapter/websocket";
-import { startGenericEventProcessor } from "./genericEventProcessor";
-import { Storer, Transformer } from "../model/eventProcessor";
+import { processEvent } from "./genericEventProcessing";
+import { Storer, Transformer } from "../model/genericTypes";
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
 import * as chains from "viem/chains";
@@ -11,7 +11,7 @@ import * as chains from "viem/chains";
  * An "indexing subsystem" is a complete producer-consumer pipeline for a specific
  * set of events on a single chain.
  *
- * The `startIndexerSubsystem` function wires together all the components:
+ * The `startIndexingSubsystem` function wires together all the components:
  * - The WebSocket Listener (Producer)
  * - The Event Processors (Consumers)
  */
@@ -40,12 +40,12 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
 }
 
 /**
- * Request object for starting an indexer subsystem.
+ * Request object for starting an indexing subsystem.
  * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  */
-export interface StartIndexerSubsystemRequest<TEventEntity, TDb, TPayload> {
+export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
   /** The database instance. */
   db: TDb;
   /** The configuration for the indexer subsystem. */
@@ -66,8 +66,8 @@ export interface StartIndexerSubsystemRequest<TEventEntity, TDb, TPayload> {
  *
  * @param request The request object containing the database instance, indexer configuration, and the logger.
  */
-export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
-  request: StartIndexerSubsystemRequest<TEventEntity, TDb, TPayload>,
+export async function startIndexing<TEventEntity, TDb, TPayload>(
+  request: StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload>,
 ) {
   const {
     db,
@@ -90,7 +90,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
     try {
       if (unwatchFunctions.length > 0) {
         logger.debug({
-          at: "genericIndexer#tearDown",
+          at: "genericIndexing#tearDown",
           message: "Unwatching subscriptions...",
         });
         unwatchFunctions.forEach((unwatch) => unwatch());
@@ -98,7 +98,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
       }
       if (viemClient) {
         logger.debug({
-          at: "genericIndexer#tearDown",
+          at: "genericIndexing#tearDown",
           message: "Closing WebSocket connection...",
         });
 
@@ -109,7 +109,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
       }
     } catch (err) {
       logger.warn({
-        at: "genericIndexer#tearDown",
+        at: "genericIndexing#tearDown",
         message: "Error during cleanup",
         error: err,
       });
@@ -120,7 +120,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
   while (!sigterm?.aborted) {
     try {
       logger.info({
-        at: "genericIndexer#startIndexerSubsystem",
+        at: "genericIndexing#startIndexingSubsystem",
         message: `Initializing indexing subsystem for chain ${indexerConfig.chainId}...`,
         notificationPath: "across-indexer-info",
       });
@@ -149,7 +149,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
           // In this case we directly call the event processor and have it running in the background to not block the websocket from receiving new events
           onEvent: (payload) => {
             const eventSource = async () => Promise.resolve(payload);
-            startGenericEventProcessor<TEventEntity, TDb, TPayload>({
+            processEvent<TEventEntity, TDb, TPayload>({
               db,
               source: eventSource,
               transform,
@@ -194,7 +194,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
     } catch (e) {
       // Handle Errors & Restart
       logger.error({
-        at: "genericIndexer#startIndexerSubsystem",
+        at: "genericIndexing#startIndexingSubsystem",
         message: `Indexer crashed for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
         error: (e as Error).message,
       });
@@ -212,7 +212,7 @@ export async function startIndexerSubsystem<TEventEntity, TDb, TPayload>(
 
   // Final cleanup on exit
   logger.info({
-    at: "genericIndexer#startIndexerSubsystem",
+    at: "genericIndexing#startIndexingSubsystem",
     message: `Stopping indexing subsystem for chain ${indexerConfig.chainId}.`,
   });
   await tearDown();

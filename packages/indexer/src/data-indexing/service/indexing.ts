@@ -1,6 +1,6 @@
-import { IndexerConfig, startIndexerSubsystem } from "./genericIndexer";
+import { IndexerConfig, startIndexing } from "./genericIndexing";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
-import { IndexerEventPayload } from "./genericEventListener";
+import { IndexerEventPayload } from "./genericEventListening";
 import { Entity } from "typeorm";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
@@ -12,10 +12,10 @@ import {
 } from "./constants";
 import { CCTP_DEPOSIT_FOR_BURN_ABI, MESSAGE_SENT_ABI } from "../model/abis";
 import {
-  depositForBurnTransformer,
-  messageSentTransformer,
-} from "./transformers";
-import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storer";
+  transformDepositForBurnEvent,
+  transformMessageSentEvent,
+} from "./tranforming";
+import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 
@@ -39,7 +39,7 @@ export interface StartIndexerRequest {
  * own configuration, transformation, and storage logic.
  * * @param request The configuration object containing repo, rpcUrl, logger, and shutdown signal.
  */
-export async function startArbitrumIndexer(request: StartIndexerRequest) {
+export async function startArbitrumIndexing(request: StartIndexerRequest) {
   // Destructure the request object
   const { repo, rpcUrl, logger, sigterm } = request;
   // Concrete Configuration
@@ -60,7 +60,7 @@ export async function startArbitrumIndexer(request: StartIndexerRequest) {
           abi: CCTP_DEPOSIT_FOR_BURN_ABI,
           eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
         },
-        transform: depositForBurnTransformer, // The specific transformation function for DepositForBurn events
+        transform: transformDepositForBurnEvent, // The specific transformation function for DepositForBurn events
         store: storeDepositForBurnEvent, // The specific storage function for DepositForBurn events
       },
       {
@@ -71,7 +71,7 @@ export async function startArbitrumIndexer(request: StartIndexerRequest) {
           abi: MESSAGE_SENT_ABI,
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
-        transform: messageSentTransformer,
+        transform: transformMessageSentEvent,
         store: storeMessageSentEvent,
       },
     ],
@@ -79,7 +79,7 @@ export async function startArbitrumIndexer(request: StartIndexerRequest) {
 
   // Assembly and Startup
   // Start the generic indexer subsystem with our concrete configuration and functions.
-  await startIndexerSubsystem({
+  await startIndexing({
     db: repo,
     indexerConfig,
     logger,
