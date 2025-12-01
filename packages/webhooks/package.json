@@ -24,7 +24,7 @@
     "@repo/error-handling": "workspace:*",
     "@repo/indexer-database": "workspace:*",
     "bullmq": "^5.12.12",
-    "express": "^4.19.2",
+    "express": "^4.22.0",
     "express-bearer-token": "^3.0.0",
     "ioredis": "^5.4.1",
     "redis": "^4.7.0",
