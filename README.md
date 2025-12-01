@@ -146,7 +146,11 @@ docker compose up redis postgres -d
 
 3. **Run Database Migrations**
 
-Copy your `.env` file over to `./packages/index-database`
+Copy your `.env` file over to `./packages/indexer-database/.env`:
+
+```sh
+cp .env ./packages/indexer-database/.env
+```
 
 Apply database migrations to ensure the schema is up to date:
 
@@ -156,7 +160,11 @@ pnpm db:indexer-database:migrate:run
 
 4. **Build and Start the Indexer**
 
-Copy of your `.env` over to `apps/node/src`.
+Copy of your `.env` to `apps/node/.env`.
+
+```sh
+cp .env apps/node.env
+```
 
 Build the project and start the indexer application:
 
