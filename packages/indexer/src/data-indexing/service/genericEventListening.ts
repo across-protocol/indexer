@@ -8,7 +8,7 @@ import {
 import { Logger } from "winston";
 
 /**
- * @file Implements the "WebSocket Listener" service from the design document.
+ * @file Implements the "WebSocket Listener" service.
  * This service acts as the **Event Producer** in the pub/sub architecture.
  *
  * It is responsible for:

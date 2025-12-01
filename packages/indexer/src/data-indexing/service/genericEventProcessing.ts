@@ -1,22 +1,23 @@
-import { EventSource, Storer, Transformer } from "../model/eventProcessor";
+import { EventSource, Storer, Transformer } from "../model/genericTypes";
 import { Logger } from "winston";
 
 /**
- * @file Implements the "Event Processor" service from the design document.
+ * @file Implements the "Event Processor" service.
  * This file defines a generic, functional-style event processing pipeline. It is designed
  * to be completely agnostic of the event type, data source, and storage mechanism.
  *
- * The core component is `startGenericEventProcessor`, which orchestrates a continuous
- * loop of fetching, transforming, and storing data.
+ * The core component is `genericEventProcessor`, which orchestrates a single
+ * fetch-transform-store operation. It is intended to be called within a continuous loop
+ * by a listener service.
  */
 
 /**
- * Request object for starting a generic event processor.
+ * Request object for the generic event processor.
  * @template TEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  */
-export interface StartGenericEventProcessorRequest<TEntity, TDb, TPayload> {
+export interface GenericEventProcessorRequest<TEntity, TDb, TPayload> {
   /** The database instance. */
   db: TDb;
   /** The function to source events. */
@@ -30,11 +31,12 @@ export interface StartGenericEventProcessorRequest<TEntity, TDb, TPayload> {
 }
 
 /**
- * Starts a generic, infinite event processing loop (a "worker").
- * This function continuously orchestrates the fetch-transform-store pipeline.
+ * The generic event processor (a "worker").
+ * This function orchestrates a single fetch-transform-store pipeline operation. It is designed
+ * to be called repeatedly by a listener.
  *
- * - **Source:** It calls the `source` function, which blocks until an event is available.
- * - **Transform:** It passes the received event to the `transform` function.
+ * - **Source:** It calls the `source` function, which should provide a new event payload.
+ * - **Transform:** It passes the received payload to the `transform` function.
  * - **Store:** It passes the resulting entity to the `store` function for persistence.
  *
  * This generic design allows the same worker logic to process any type of event,
@@ -45,8 +47,8 @@ export interface StartGenericEventProcessorRequest<TEntity, TDb, TPayload> {
  * @template TDb The type of the database client/connection.
  * @param request The request object containing db, source, transform, store, and logger.
  */
-export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
-  request: StartGenericEventProcessorRequest<TEntity, TDb, TPayload>,
+export const processEvent = async <TEntity, TDb, TPayload>(
+  request: GenericEventProcessorRequest<TEntity, TDb, TPayload>,
 ): Promise<void> => {
   const {
     db,
@@ -55,7 +57,9 @@ export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
     store,
     logger = console as unknown as Logger,
   } = request;
-  // We need to wrap this in a try catch because we call the processor without waiting for its result, which would result in an unhandled promise rejection
+  // A try-catch block is used to gracefully handle any errors that occur during the
+  // sourcing, transformation, or storage of an event. This prevents a single failing
+  // event from crashing the entire listening process.
   try {
     // Fetch (Blocking operation, waits for a new event payload)
     // The source can be directly from an event listener or it can come from a message queue.
@@ -67,7 +71,7 @@ export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
     const storedItems = await store(entity, db);
 
     logger.debug({
-      at: "genericEventProcessor#startGenericEventProcessor",
+      at: "genericEventProcessor#genericEventProcessor",
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
       message: `Successfully stored event: ${storedItems
         .map(
@@ -79,7 +83,7 @@ export const startGenericEventProcessor = async <TEntity, TDb, TPayload>(
     });
   } catch (error) {
     logger.error({
-      at: "genericEventProcessor#startGenericEventProcessor",
+      at: "genericEventProcessor#genericEventProcessor",
       message: "Error processing event.",
       notificationPath: "across-indexer-error",
       error,

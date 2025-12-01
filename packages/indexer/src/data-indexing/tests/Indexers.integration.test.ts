@@ -2,9 +2,9 @@ import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import {
-  startArbitrumIndexer,
-  startHyperEvmIndexer,
-} from "../service/indexers";
+  startArbitrumIndexing,
+  startHyperEvmIndexing,
+} from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
@@ -78,7 +78,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     });
 
     // Start the Indexer with the real repository
-    startArbitrumIndexer({
+    startArbitrumIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,
@@ -235,7 +235,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     // Start the Indexer with the real repository
     // Since `startArbitrumIndexer` is now configured to listen for both
     // DepositForBurn and MessageSent, we can call it directly.
-    startArbitrumIndexer({
+    startArbitrumIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,
@@ -324,7 +324,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       transactions: [],
     });
 
-    startHyperEvmIndexer({
+    startHyperEvmIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,

@@ -1,12 +1,12 @@
 import { entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
-import { IndexerEventPayload } from "./genericEventListener";
+import { IndexerEventPayload } from "./genericEventListening";
 import {
   getCctpDestinationChainFromDomain,
   decodeMessage, // New import
 } from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../../utils";
-import { Transformer } from "../model/eventProcessor";
+import { Transformer } from "../model/genericTypes";
 import { getFinalisedBlockBufferDistance } from "./constants";
 import {
   DepositForBurnArgs,
@@ -85,7 +85,7 @@ function baseTransformer(
  * @param logger An optional logger instance. Defaults to console if not provided.
  * @returns A partial `DepositForBurn` entity ready for storage.
  */
-export const depositForBurnTransformer: Transformer<
+export const transformDepositForBurnEvent: Transformer<
   IndexerEventPayload,
   Partial<entities.DepositForBurn>
 > = (payload, logger: Logger = console as unknown as Logger) => {
@@ -123,7 +123,7 @@ export const depositForBurnTransformer: Transformer<
   };
 };
 
-export const messageSentTransformer: Transformer<
+export const transformMessageSentEvent: Transformer<
   IndexerEventPayload,
   Partial<entities.MessageSent>
 > = (payload, logger: Logger = console as unknown as Logger) => {
