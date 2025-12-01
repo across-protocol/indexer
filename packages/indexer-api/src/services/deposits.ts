@@ -237,6 +237,24 @@ export class DepositsService {
       fundsDepositedQueryBuilder.andWhere("rhi.status = :status", {
         status: params.status,
       });
+
+      // Filter CCTP and OFT deposits based on status
+      if (
+        params.status === entities.RelayStatus.Refunded ||
+        params.status === entities.RelayStatus.SlowFillRequested ||
+        params.status === entities.RelayStatus.SlowFilled ||
+        params.status === entities.RelayStatus.Expired
+      ) {
+        // Exclude statuses that are not supported for CCTP and OFT deposits
+        depositForBurnQueryBuilder.andWhere("1 = 0");
+        oftSentQueryBuilder.andWhere("1 = 0");
+      } else if (params.status === entities.RelayStatus.Filled) {
+        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NOT NULL");
+        oftSentQueryBuilder.andWhere("oftReceived.id IS NOT NULL");
+      } else if (params.status === entities.RelayStatus.Unfilled) {
+        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NULL");
+        oftSentQueryBuilder.andWhere("oftReceived.id IS NULL");
+      }
     }
 
     if (params.integratorId) {
@@ -246,6 +264,11 @@ export class DepositsService {
           integratorId: params.integratorId,
         },
       );
+
+      // CCTP and OFT tables don't have integratorId, so exclude them
+      // TODO: remove this once we add integratorId to CCTP and OFT tables
+      depositForBurnQueryBuilder.andWhere("1 = 0");
+      oftSentQueryBuilder.andWhere("1 = 0");
     }
 
     // Calculate upper bound for fetching records from each query
