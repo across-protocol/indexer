@@ -375,10 +375,18 @@ export class DepositsService {
           }
         }
 
+        let status = deposit.status;
+        if (!status && deposit.fillTx) {
+          status = entities.RelayStatus.Filled;
+        } else if (!status) {
+          status = entities.RelayStatus.Unfilled;
+        }
+
         // Destructure to exclude destinationDomain from the response
         const { destinationDomain: _, ...depositWithoutDomain } = deposit;
         return {
           ...depositWithoutDomain,
+          status: status,
           depositTxnRef: deposit.depositTxHash,
           depositRefundTxnRef: deposit.depositRefundTxHash,
           fillTxnRef: deposit.fillTx,
