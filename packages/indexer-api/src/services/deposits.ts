@@ -315,6 +315,16 @@ export class DepositsService {
 
     let allDeposits: DepositReturnType[] = queryResults.flat();
 
+    // Deduplicate by id - multiple MessageSent records can match the same DepositForBurn
+    const seenIds = new Set<number>();
+    allDeposits = allDeposits.filter((deposit) => {
+      if (seenIds.has(deposit.id)) {
+        return false;
+      }
+      seenIds.add(deposit.id);
+      return true;
+    });
+
     // Sort in memory by depositBlockTimestamp DESC
     allDeposits.sort((a, b) => {
       const timestampA = a.depositBlockTimestamp
