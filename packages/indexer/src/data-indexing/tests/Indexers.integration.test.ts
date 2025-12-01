@@ -1,19 +1,17 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
-import { startArbitrumMainnetIndexer } from "../service/indexers";
+import { startArbitrumIndexer } from "../service/indexers";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
 } from "../service/constants";
 import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { decodeMessage } from "../adapter/cctp-v2/service";
 
 describe("Indexer Integration (Real Transaction Data)", () => {
   let dataSource: DataSource;
@@ -22,21 +20,6 @@ describe("Indexer Integration (Real Transaction Data)", () => {
   let rpcUrl: string;
   let logger: Logger;
   let abortController: AbortController;
-  /**
-   * Sets up the mock Ethereum server before all tests.
-   */
-  before(async () => {
-    server = new MockWebSocketRPCServer();
-    rpcUrl = await server.start();
-    console.info(`Mock RPC Server started at: ${rpcUrl}`);
-  });
-
-  /**
-   * Stops the mock Ethereum server after all tests.
-   */
-  after(() => {
-    server.stop();
-  });
 
   /**
    * Sets up the data source and blockchain repository before each test.
@@ -51,9 +34,11 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     } as unknown as Logger;
     blockchainRepository = new dbUtils.BlockchainEventRepository(
       dataSource,
-      console as unknown as Logger,
+      logger,
     );
     abortController = new AbortController();
+    server = new MockWebSocketRPCServer();
+    rpcUrl = await server.start();
   });
 
   /**
@@ -64,13 +49,14 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       await dataSource.destroy();
     }
     abortController.abort();
+    server.stop();
     sinon.restore();
   });
 
   /**
    * Tests ingesting a DepositForBurn event from a specific Arbitrum Sepolia transaction.
    */
-  it("should ingest the DepositForBurn event from Arbitrum Sepolia tx 0xabb...69f7", async () => {
+  it("should ingest the DepositForBurn event from Arbitrum tx 0xabb...69f7", async () => {
     // Real Transaction Data taken from:
     // https://arbiscan.io/tx/0xf38daaf5d34c3363cd8843c47643ca9583fc04a17f8a93d153e7549ad3509cc0#eventlog
     const txHash =
@@ -88,10 +74,10 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     });
 
     // Start the Indexer with the real repository
-    startArbitrumMainnetIndexer({
+    startArbitrumIndexer({
       repo: blockchainRepository,
       rpcUrl,
-      logger: console as any as Logger,
+      logger,
       sigterm: abortController.signal,
     });
     await server.waitForSubscription();
@@ -243,9 +229,9 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     });
 
     // Start the Indexer with the real repository
-    // Since `startArbitrumMainnetIndexer` is now configured to listen for both
+    // Since `startArbitrumIndexer` is now configured to listen for both
     // DepositForBurn and MessageSent, we can call it directly.
-    startArbitrumMainnetIndexer({
+    startArbitrumIndexer({
       repo: blockchainRepository,
       rpcUrl,
       logger,
@@ -286,7 +272,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     expect(savedEvent).to.exist;
     // Detailed Field Verification
     expect(savedEvent).to.deep.include({
-      chainId: CHAIN_IDs.ARBITRUM,
+      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
       blockNumber: blockNumber,
       transactionHash: txHash,
       transactionIndex: 1,

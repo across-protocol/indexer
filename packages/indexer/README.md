@@ -172,11 +172,11 @@ The sandbox is designed to be easily extensible. Follow these steps to add new c
 
 #### How to Add a New Chain
 
-To index a new blockchain, you need to create a dedicated startup function for it, similar to `startArbitrumMainnetIndexer` in `src/data-indexing/service/indexers.ts`.
+To index a new blockchain, you need to create a dedicated startup function for it, similar to `startArbitrumIndexer` in `src/data-indexing/service/indexers.ts`.
 
-1.  **Create a new function**: For example, `startOptimismMainnetIndexer`. This function will contain the specific configuration for that chain.
+1.  **Create a new function**: For example, `startOptimismIndexer`. This function will contain the specific configuration for that chain.
 2.  **Define the Configuration**: Inside this function, create an `IndexerConfig` object with the `chainId` and `rpcUrl`.
-3.  **Call the new function**: Update the `MainSandbox` function in `src/main.ts` to call your new `startOptimismMainnetIndexer` function.
+3.  **Call the new function**: Update the `MainSandbox` function in `src/main.ts` to call your new `startOptimismIndexer` function.
 
 #### How to Add a New Event
 
@@ -193,7 +193,7 @@ Each event entry is an object with three key properties:
 
 **Example: Adding a `DepositForBurn` Event**
 
-The following example from `startArbitrumMainnetIndexer` shows how to configure the indexer to listen for CCTP's `DepositForBurn` event.
+The following example from `startArbitrumIndexer` shows how to configure the indexer to listen for CCTP's `DepositForBurn` event.
 
 ```typescript
 // Located in: src/data-indexing/service/indexers.ts
@@ -232,4 +232,4 @@ To run the tests, execute the integration test command from the `packages/indexe
 ```bash
 pnpm test:integration
 ```
-This will validate the functionality of the chain-specific indexers, like `startArbitrumMainnetIndexer`, ensuring that events are correctly processed and stored.
+This will validate the functionality of the chain-specific indexers, like `startArbitrumIndexer`, ensuring that events are correctly processed and stored.

@@ -35,13 +35,24 @@ function baseTransformer(
   logger: Logger = console as unknown as Logger,
 ) {
   const { log: logItem, chainId, blockTimestamp, currentBlockHeight } = payload;
-  const { transactionHash, logIndex, transactionIndex, blockNumber } = logItem;
+  const {
+    transactionHash,
+    logIndex,
+    transactionIndex,
+    blockNumber,
+    blockHash,
+  } = logItem;
 
   // Guard against missing essential fields
-  if (!transactionHash || logIndex === null || transactionIndex === null) {
+  if (
+    !transactionHash ||
+    logIndex === null ||
+    transactionIndex === null ||
+    blockHash === null
+  ) {
     logger.error({
       at: "transformers#baseTransformer",
-      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${JSON.stringify(payload)}`,
+      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${JSON.stringify(payload)}`,
       notificationPath: "across-indexer-error",
     });
     throw new Error(
@@ -52,6 +63,7 @@ function baseTransformer(
   return {
     chainId: chainId.toString(),
     blockNumber: Number(blockNumber),
+    blockHash,
     blockTimestamp: new Date(Number(blockTimestamp) * 1000),
     transactionHash,
     transactionIndex,

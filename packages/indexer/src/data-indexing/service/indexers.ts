@@ -5,30 +5,24 @@ import { Entity } from "typeorm";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME, // New import
+  MESSAGE_SENT_EVENT_NAME,
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET, // New import
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
 } from "./constants";
-import {
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-  MESSAGE_SENT_ABI, // New import
-} from "../model/abis";
+import { CCTP_DEPOSIT_FOR_BURN_ABI, MESSAGE_SENT_ABI } from "../model/abis";
 import {
   depositForBurnTransformer,
-  messageSentTransformer, // New import
+  messageSentTransformer,
 } from "./transformers";
-import {
-  storeDepositForBurnEvent,
-  storeMessageSentEvent, // New import
-} from "./storer";
+import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storer";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 
 /**
- * Definition of the request object for starting the Arbitrum Mainnet Indexer.
+ * Definition of the request object for starting an indexer.
  */
-export interface StartArbitrumMainnetIndexerRequest {
+export interface StartIndexerRequest {
   repo: dbUtils.BlockchainEventRepository;
   rpcUrl: string;
   logger: Logger;
@@ -45,19 +39,17 @@ export interface StartArbitrumMainnetIndexerRequest {
  * own configuration, transformation, and storage logic.
  * * @param request The configuration object containing repo, rpcUrl, logger, and shutdown signal.
  */
-export async function startArbitrumMainnetIndexer(
-  request: StartArbitrumMainnetIndexerRequest,
-) {
+export async function startArbitrumIndexer(request: StartIndexerRequest) {
   // Destructure the request object
   const { repo, rpcUrl, logger, sigterm } = request;
   // Concrete Configuration
   // Define the specific parameters for the Arbitrum Mainnet indexer.
-  const ethConfig: IndexerConfig<
+  const indexerConfig: IndexerConfig<
     Partial<typeof Entity>,
     dbUtils.BlockchainEventRepository,
     IndexerEventPayload
   > = {
-    chainId: request.testNet ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA,
+    chainId: request.testNet ? CHAIN_IDs.ARBITRUM_SEPOLIA : CHAIN_IDs.ARBITRUM,
     rpcUrl,
     events: [
       {
@@ -89,7 +81,7 @@ export async function startArbitrumMainnetIndexer(
   // Start the generic indexer subsystem with our concrete configuration and functions.
   await startIndexerSubsystem({
     db: repo,
-    indexerConfig: ethConfig,
+    indexerConfig,
     logger,
     sigterm,
   });
