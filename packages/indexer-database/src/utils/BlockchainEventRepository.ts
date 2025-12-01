@@ -97,7 +97,8 @@ export class BlockchainEventRepository {
     }
 
     if (isFinalisedChanged) {
-      await repository.update(where, data);
+      const updatedData = { finalised: data.finalised };
+      await repository.update(where, updatedData);
       return {
         data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Finalised,
