@@ -134,17 +134,7 @@ class CctpFinalizerService extends RepeatableTask {
       }
 
       // Check for unfinalized transactions that need retry
-      try {
-        await this.retryUnfinalizedTransactions();
-      } catch (error) {
-        this.logger.error({
-          at: "CctpFinalizerService#taskLogic",
-          message: "Error in retryUnfinalizedTransactions",
-          notificationPath: "across-indexer-error",
-          errorJson: JSON.stringify(error),
-          error,
-        });
-      }
+      await this.retryUnfinalizedTransactions();
     } catch (error) {
       this.logger.error({
         at: "CctpFinalizerService#taskLogic",
