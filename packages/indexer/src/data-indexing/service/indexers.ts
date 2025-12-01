@@ -1,34 +1,39 @@
 import { IndexerConfig, startIndexerSubsystem } from "./genericIndexer";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { IndexerEventPayload } from "./genericEventListener";
 import { Entity } from "typeorm";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME, // New import
+  MESSAGE_SENT_EVENT_NAME,
+  OFTSENT_EVENT_NAME,
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET, // New import
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
 } from "./constants";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
-  MESSAGE_SENT_ABI, // New import
+  MESSAGE_SENT_ABI,
+  OFT_SENT_ABI,
 } from "../model/abis";
 import {
   depositForBurnTransformer,
-  messageSentTransformer, // New import
+  messageSentTransformer,
+  oftSentTransformer,
 } from "./transformers";
 import {
   storeDepositForBurnEvent,
-  storeMessageSentEvent, // New import
+  storeMessageSentEvent,
+  storeOftSentEvent,
 } from "./storer";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
+import { getOftChainConfiguration } from "../adapter/oft/service";
 
 /**
- * Definition of the request object for starting the Arbitrum Mainnet Indexer.
+ * Definition of the request object for starting an indexer.
  */
-export interface StartArbitrumMainnetIndexerRequest {
+export interface StartIndexerRequest {
   repo: dbUtils.BlockchainEventRepository;
   rpcUrl: string;
   logger: Logger;
@@ -45,19 +50,17 @@ export interface StartArbitrumMainnetIndexerRequest {
  * own configuration, transformation, and storage logic.
  * * @param request The configuration object containing repo, rpcUrl, logger, and shutdown signal.
  */
-export async function startArbitrumMainnetIndexer(
-  request: StartArbitrumMainnetIndexerRequest,
-) {
+export async function startArbitrumIndexer(request: StartIndexerRequest) {
   // Destructure the request object
   const { repo, rpcUrl, logger, sigterm } = request;
   // Concrete Configuration
   // Define the specific parameters for the Arbitrum Mainnet indexer.
-  const ethConfig: IndexerConfig<
+  const indexerConfig: IndexerConfig<
     Partial<typeof Entity>,
     dbUtils.BlockchainEventRepository,
     IndexerEventPayload
   > = {
-    chainId: request.testNet ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA,
+    chainId: request.testNet ? CHAIN_IDs.ARBITRUM_SEPOLIA : CHAIN_IDs.ARBITRUM,
     rpcUrl,
     events: [
       {
@@ -89,7 +92,46 @@ export async function startArbitrumMainnetIndexer(
   // Start the generic indexer subsystem with our concrete configuration and functions.
   await startIndexerSubsystem({
     db: repo,
-    indexerConfig: ethConfig,
+    indexerConfig: indexerConfig,
+    logger,
+    sigterm,
+  });
+}
+
+/**
+ * Sets up and starts the indexer for OFT events on hyperEVM.
+ * @param request The configuration object containing repo, rpcUrl, logger, and shutdown signal.
+ */
+export async function startHyperEvmIndexer(request: StartIndexerRequest) {
+  const { repo, rpcUrl, logger, sigterm, testNet } = request;
+  const chainId = testNet ? CHAIN_IDs.HYPEREVM_TESTNET : CHAIN_IDs.HYPEREVM;
+  const oftChainConfig = getOftChainConfiguration(chainId);
+  if (!oftChainConfig) {
+    throw new Error(`OFT configuration not found for chainId: ${chainId}`);
+  }
+
+  const indexerConfig: IndexerConfig<
+    Partial<typeof Entity>,
+    dbUtils.BlockchainEventRepository,
+    IndexerEventPayload
+  > = {
+    chainId,
+    rpcUrl,
+    events: oftChainConfig.tokens.map((token) => ({
+      config: {
+        address: token.address as `0x${string}`,
+        abi: OFT_SENT_ABI,
+        eventName: OFTSENT_EVENT_NAME,
+        fromBlock: token.startBlockNumber,
+      },
+      transform: oftSentTransformer,
+      store: storeOftSentEvent,
+    })),
+  };
+
+  await startIndexerSubsystem({
+    db: repo,
+    indexerConfig: indexerConfig,
     logger,
     sigterm,
   });

@@ -1,7 +1,10 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
-import { startArbitrumMainnetIndexer } from "../service/indexers";
+import {
+  startArbitrumIndexer,
+  startHyperEvmIndexer,
+} from "../service/indexers";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
@@ -14,6 +17,7 @@ import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { decodeMessage } from "../adapter/cctp-v2/service";
+import { getOftChainConfiguration } from "../adapter/oft/service";
 
 describe("Indexer Integration (Real Transaction Data)", () => {
   let dataSource: DataSource;
@@ -22,21 +26,6 @@ describe("Indexer Integration (Real Transaction Data)", () => {
   let rpcUrl: string;
   let logger: Logger;
   let abortController: AbortController;
-  /**
-   * Sets up the mock Ethereum server before all tests.
-   */
-  before(async () => {
-    server = new MockWebSocketRPCServer();
-    rpcUrl = await server.start();
-    console.info(`Mock RPC Server started at: ${rpcUrl}`);
-  });
-
-  /**
-   * Stops the mock Ethereum server after all tests.
-   */
-  after(() => {
-    server.stop();
-  });
 
   /**
    * Sets up the data source and blockchain repository before each test.
@@ -51,9 +40,11 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     } as unknown as Logger;
     blockchainRepository = new dbUtils.BlockchainEventRepository(
       dataSource,
-      console as unknown as Logger,
+      logger,
     );
     abortController = new AbortController();
+    server = new MockWebSocketRPCServer();
+    rpcUrl = await server.start();
   });
 
   /**
@@ -64,13 +55,14 @@ describe("Indexer Integration (Real Transaction Data)", () => {
       await dataSource.destroy();
     }
     abortController.abort();
+    server.stop();
     sinon.restore();
   });
 
   /**
    * Tests ingesting a DepositForBurn event from a specific Arbitrum Sepolia transaction.
    */
-  it("should ingest the DepositForBurn event from Arbitrum Sepolia tx 0xabb...69f7", async () => {
+  it("should ingest the DepositForBurn event from Arbitrum tx 0xabb...69f7", async () => {
     // Real Transaction Data taken from:
     // https://arbiscan.io/tx/0xf38daaf5d34c3363cd8843c47643ca9583fc04a17f8a93d153e7549ad3509cc0#eventlog
     const txHash =
@@ -88,10 +80,10 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     });
 
     // Start the Indexer with the real repository
-    startArbitrumMainnetIndexer({
+    startArbitrumIndexer({
       repo: blockchainRepository,
       rpcUrl,
-      logger: console as any as Logger,
+      logger,
       sigterm: abortController.signal,
     });
     await server.waitForSubscription();
@@ -245,7 +237,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     // Start the Indexer with the real repository
     // Since `startArbitrumMainnetIndexer` is now configured to listen for both
     // DepositForBurn and MessageSent, we can call it directly.
-    startArbitrumMainnetIndexer({
+    startArbitrumIndexer({
       repo: blockchainRepository,
       rpcUrl,
       logger,
@@ -286,7 +278,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     expect(savedEvent).to.exist;
     // Detailed Field Verification
     expect(savedEvent).to.deep.include({
-      chainId: CHAIN_IDs.ARBITRUM,
+      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
       blockNumber: blockNumber,
       transactionHash: txHash,
       transactionIndex: 1,
@@ -315,5 +307,79 @@ describe("Indexer Integration (Real Transaction Data)", () => {
 
     // Null checks
     expect(savedEvent!.deletedAt).to.be.null;
+  }).timeout(20000);
+
+  it("should ingest the OFTSent event from hyperEVM tx 0x94d7...cd9", async () => {
+    // Real transaction taken from:
+    // https://hyperevmscan.io/tx/0x94d7feace76e29767cbdb1c1ff83430a846e933040de9caaf167290d22315cd9#eventlog#18
+    const txHash =
+      "0x94d7feace76e29767cbdb1c1ff83430a846e933040de9caaf167290d22315cd9";
+    const blockNumber = 20670509;
+    const blockHash =
+      "0xa2ae33b41e3f1d1896ab84e625da2416f0dc9ee1fcd9c91b975eb118331364e9";
+    const blockTimestamp = "0x6564b1f3"; // An arbitrary timestamp
+
+    server.mockBlockResponse({
+      number: "0x" + blockNumber.toString(16),
+      hash: blockHash,
+      timestamp: blockTimestamp,
+      transactions: [],
+    });
+
+    startHyperEvmIndexer({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+    });
+    await server.waitForSubscription();
+
+    const oftChainConfig = getOftChainConfiguration(CHAIN_IDs.HYPEREVM);
+    const token = oftChainConfig.tokens.find(
+      (t) => t.address === "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98",
+    )!;
+
+    server.pushEvent({
+      address: token.address,
+      blockNumber: "0x" + blockNumber.toString(16),
+      transactionHash: txHash,
+      logIndex: "0x12", // 18
+      blockHash,
+      transactionIndex: "0x1",
+      topics: [
+        "0x85496b760a4b7f8d66384b9df21b381f5d1b1e79f229a47aaf4c232edc2fe59a",
+        "0xfd74b08cc4da0b6cea03a2731ce3bf9c5fa6912cc6241557c39ce2f2dd20b002",
+        "0x00000000000000000000000034f9c0b11e67d72ad65c41ff90a6989846f28c22",
+      ],
+      data:
+        "0x" +
+        "0000000000000000000000000000000000000000000000000000000000007670" + // dstEid: 30320
+        "0000000000000000000000000000000000000000000000000000000005f5e100" + // amountSentLD: 100000000
+        "0000000000000000000000000000000000000000000000000000000005f5e100", // amountReceivedLD: 100000000
+    });
+
+    await new Promise((r) => setTimeout(r, 500));
+
+    const oftSentRepo = dataSource.getRepository(entities.OFTSent);
+    const savedEvent = await oftSentRepo.findOne({
+      where: { transactionHash: txHash, logIndex: 18 },
+    });
+
+    expect(savedEvent).to.exist;
+
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      blockHash,
+      transactionHash: txHash,
+      logIndex: 18,
+      finalised: false,
+      guid: "0xfd74b08cc4da0b6cea03a2731ce3bf9c5fa6912cc6241557c39ce2f2dd20b002",
+      dstEid: 30320,
+      fromAddress: "0x34F9C0B11e67d72AD65C41Ff90A6989846f28c22",
+      amountSentLD: 100000000,
+      amountReceivedLD: 100000000,
+      token: token.address,
+    });
   }).timeout(20000);
 });

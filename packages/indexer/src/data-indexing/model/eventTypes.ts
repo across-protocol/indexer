@@ -20,3 +20,14 @@ export interface DepositForBurnArgs {
 export interface MessageSentArgs {
   message: `0x${string}`;
 }
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Omni-chain Fungible Token (OFT) protocol.
+ * ================================================================================== */
+export interface OftSentArgs {
+  guid: `0x${string}`;
+  fromAddress: `0x${string}`;
+  dstEid: number;
+  amountSentLD: number;
+  amountReceivedLD: number;
+}

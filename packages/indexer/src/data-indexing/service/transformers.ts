@@ -8,9 +8,14 @@ import {
 import { formatFromAddressToChainFormat } from "../../utils";
 import { Transformer } from "../model/eventProcessor";
 import { getFinalisedBlockBufferDistance } from "./constants";
-import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
+import {
+  DepositForBurnArgs,
+  MessageSentArgs,
+  OftSentArgs,
+} from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
+import { getOftChainConfiguration } from "../adapter/oft/service";
 
 /**
  * A generic transformer for addresses.
@@ -35,13 +40,24 @@ function baseTransformer(
   logger: Logger = console as unknown as Logger,
 ) {
   const { log: logItem, chainId, blockTimestamp, currentBlockHeight } = payload;
-  const { transactionHash, logIndex, transactionIndex, blockNumber } = logItem;
+  const {
+    transactionHash,
+    logIndex,
+    transactionIndex,
+    blockNumber,
+    blockHash,
+  } = logItem;
 
   // Guard against missing essential fields
-  if (!transactionHash || logIndex === null || transactionIndex === null) {
+  if (
+    !transactionHash ||
+    logIndex === null ||
+    transactionIndex === null ||
+    blockHash === null
+  ) {
     logger.error({
       at: "transformers#baseTransformer",
-      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${JSON.stringify(payload)}`,
+      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${JSON.stringify(payload)}`,
       notificationPath: "across-indexer-error",
     });
     throw new Error(
@@ -52,6 +68,7 @@ function baseTransformer(
   return {
     chainId: chainId.toString(),
     blockNumber: Number(blockNumber),
+    blockHash,
     blockTimestamp: new Date(Number(blockTimestamp) * 1000),
     transactionHash,
     transactionIndex,
@@ -142,6 +159,27 @@ export const messageSentTransformer: Transformer<
     minFinalityThreshold: decodedMessage.minFinalityThreshold,
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
+  };
+};
+
+export const oftSentTransformer: Transformer<
+  IndexerEventPayload,
+  Partial<entities.OFTSent>
+> = (payload, logger: Logger = console as unknown as Logger) => {
+  const rawArgs = getRawArgs(payload, logger);
+  const args = rawArgs as unknown as OftSentArgs;
+  const base = baseTransformer(payload, logger);
+  const chainId = parseInt(base.chainId);
+  const fromAddress = transformAddress(args.fromAddress, chainId);
+
+  return {
+    ...base,
+    guid: args.guid,
+    dstEid: args.dstEid,
+    fromAddress,
+    amountSentLD: args.amountSentLD.toString(),
+    amountReceivedLD: args.amountReceivedLD.toString(),
+    token: getOftChainConfiguration(payload.chainId).tokens[0]!.address,
   };
 };
 

@@ -36,7 +36,7 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
-import { startArbitrumMainnetIndexer } from "./data-indexing/service/indexers";
+import { startArbitrumIndexer } from "./data-indexing/service/indexers";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -112,7 +112,7 @@ export async function MainSandbox(
 
     // This promise will resolve only when abortController.abort() is called
     // and the indexer has finished its cleanup routine.
-    await startArbitrumMainnetIndexer({
+    await startArbitrumIndexer({
       repo,
       rpcUrl,
       logger,
