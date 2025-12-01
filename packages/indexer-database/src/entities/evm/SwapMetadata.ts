@@ -34,6 +34,11 @@ export enum SwapType {
 @Index("IX_swapMetadata_swapProvider", ["swapProvider"])
 @Index("IX_swapMetadata_recipient", ["recipient"])
 @Index("IX_swapMetadata_address", ["address"])
+@Index("IX_swapMetadata_relayHashInfoId_side_deletedAt", [
+  "relayHashInfoId",
+  "side",
+  "deletedAt",
+])
 export class SwapMetadata {
   @PrimaryGeneratedColumn()
   id: number;
