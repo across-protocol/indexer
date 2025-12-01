@@ -43,7 +43,7 @@ export interface StartIndexerRequest {
 }
 
 /**
- * Sets up and starts the indexer for events on Arbitrum Mainnet.
+ * Sets up and starts the indexer for events on Arbitrum.
  *
  * This function demonstrates how the generic components are assembled into a concrete
  * indexer. To support a new event, one would need to add another event to the events array with its
@@ -54,7 +54,7 @@ export async function startArbitrumIndexer(request: StartIndexerRequest) {
   // Destructure the request object
   const { repo, rpcUrl, logger, sigterm } = request;
   // Concrete Configuration
-  // Define the specific parameters for the Arbitrum Mainnet indexer.
+  // Define the specific parameters for the Arbitrum indexer.
   const indexerConfig: IndexerConfig<
     Partial<typeof Entity>,
     dbUtils.BlockchainEventRepository,

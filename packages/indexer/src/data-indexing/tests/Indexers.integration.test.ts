@@ -10,13 +10,11 @@ import { utils as dbUtils } from "@repo/indexer-database";
 import { entities } from "@repo/indexer-database";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
 } from "../service/constants";
 import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { decodeMessage } from "../adapter/cctp-v2/service";
 import { getOftChainConfiguration } from "../adapter/oft/service";
 
 describe("Indexer Integration (Real Transaction Data)", () => {
@@ -235,7 +233,7 @@ describe("Indexer Integration (Real Transaction Data)", () => {
     });
 
     // Start the Indexer with the real repository
-    // Since `startArbitrumMainnetIndexer` is now configured to listen for both
+    // Since `startArbitrumIndexer` is now configured to listen for both
     // DepositForBurn and MessageSent, we can call it directly.
     startArbitrumIndexer({
       repo: blockchainRepository,
