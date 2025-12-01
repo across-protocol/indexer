@@ -14,6 +14,8 @@ import {
 } from "../adapter/cctp-v2/service";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
+export const CCTP_FINALIZER_RETRY_DELAY_HOURS = 1;
+export const CCTP_FINALIZER_LOOKBACK_DAYS = 1;
 
 export class CctpFinalizerServiceManager {
   private service: RepeatableTask;
@@ -83,6 +85,8 @@ class CctpFinalizerService extends RepeatableTask {
       //    If found, publish with signature; otherwise publish without signature.
       // 3. Create a new CctpFinalizerJob row in the database for each burn event that was
       //    published to the pubsub topic, so that they are not picked up again.
+      // 4. Also check for unfinalized transactions that have a CctpFinalizerJob but no
+      //    MessageReceived event, and retry them if enough time has passed.
       //#endregion
       const qb = this.postgres
         .createQueryBuilder(entities.DepositForBurn, "burnEvent")
@@ -127,6 +131,19 @@ class CctpFinalizerService extends RepeatableTask {
           // Otherwise, publish without signature
           await this.publishBurnEvent(burnEvent);
         }
+      }
+
+      // Check for unfinalized transactions that need retry
+      try {
+        await this.retryUnfinalizedTransactions();
+      } catch (error) {
+        this.logger.error({
+          at: "CctpFinalizerService#taskLogic",
+          message: "Error in retryUnfinalizedTransactions",
+          notificationPath: "across-indexer-error",
+          errorJson: JSON.stringify(error),
+          error,
+        });
       }
     } catch (error) {
       this.logger.error({
@@ -256,6 +273,92 @@ class CctpFinalizerService extends RepeatableTask {
       this.logger.error({
         at: "CctpFinalizerService#publishBurnEvent",
         message: "Error in CctpFinalizerService",
+        notificationPath: "across-indexer-error",
+        errorJson: JSON.stringify(error),
+        error,
+      });
+    }
+  }
+
+  /**
+   * Retry unfinalized CCTP transactions that have a CctpFinalizerJob but no MessageReceived event.
+   * This handles cases where the Cloud Run job failed outside the indexer's control.
+   */
+  private async retryUnfinalizedTransactions(): Promise<void> {
+    try {
+      const lookbackTime = new Date(
+        Date.now() - CCTP_FINALIZER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+      );
+      const retryDelayTime = new Date(
+        Date.now() - CCTP_FINALIZER_RETRY_DELAY_HOURS * 60 * 60 * 1000,
+      );
+
+      const qb = this.postgres
+        .createQueryBuilder(entities.DepositForBurn, "burnEvent")
+        .innerJoinAndSelect("burnEvent.finalizerJob", "job")
+        .innerJoin(
+          entities.MessageSent,
+          "messageSent",
+          "messageSent.transactionHash = burnEvent.transactionHash AND messageSent.chainId = burnEvent.chainId",
+        )
+        .leftJoin(
+          entities.MessageReceived,
+          "messageReceived",
+          "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
+        )
+        .where("burnEvent.deletedAt IS NULL")
+        .andWhere("burnEvent.blockTimestamp >= :lookbackTime", {
+          lookbackTime,
+        })
+        .andWhere("messageReceived.id IS NULL")
+        .andWhere(
+          "(job.createdAt <= :retryDelayTime OR job.updatedAt <= :retryDelayTime)",
+          { retryDelayTime },
+        );
+
+      const unfinalizedBurnEvents = await qb.getMany();
+
+      if (unfinalizedBurnEvents.length > 0) {
+        this.logger.info({
+          at: "CctpFinalizerService#retryUnfinalizedTransactions",
+          message: "Found unfinalized transactions to retry",
+          count: unfinalizedBurnEvents.length,
+        });
+      }
+
+      for (const burnEvent of unfinalizedBurnEvents) {
+        const sponsoredEvent = await this.postgres
+          .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
+          .where("sponsored.transactionHash = :transactionHash", {
+            transactionHash: burnEvent.transactionHash,
+          })
+          .andWhere("sponsored.chainId = :chainId", {
+            chainId: burnEvent.chainId,
+          })
+          .andWhere("sponsored.logIndex > :logIndex", {
+            logIndex: burnEvent.logIndex,
+          })
+          .andWhere("sponsored.deletedAt IS NULL")
+          .orderBy("sponsored.logIndex", "ASC")
+          .limit(1)
+          .getOne();
+
+        if (sponsoredEvent) {
+          // If there's a matching sponsored event, publish with signature
+          await this.publishBurnEvent(
+            burnEvent,
+            sponsoredEvent.signature,
+            sponsoredEvent.id,
+          );
+        } else {
+          // Otherwise, publish without signature
+          await this.publishBurnEvent(burnEvent);
+        }
+      }
+    } catch (error) {
+      this.logger.error({
+        at: "CctpFinalizerService#retryUnfinalizedTransactions",
+        message: "Error retrying unfinalized transactions",
         notificationPath: "across-indexer-error",
         errorJson: JSON.stringify(error),
         error,
