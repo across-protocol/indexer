@@ -256,7 +256,7 @@ export class OftTransferAggregator {
       destinationChainId: destinationChainId.toString(),
       destinationTokenAddress: getCorrespondingTokenAddress(
         chainId,
-        getOftChainConfiguration(chainId).tokens[0]!.address,
+        getOftChainConfiguration(chainId).tokens[0]!.token,
         destinationChainId,
       ),
       destinationTokenAmount: oftSentEvent.amountReceivedLD,
@@ -284,7 +284,7 @@ export class OftTransferAggregator {
       bridgeFeeUsd: "0",
       destinationChainId: chainId.toString(),
       destinationTokenAddress:
-        getOftChainConfiguration(chainId).tokens[0]!.address,
+        getOftChainConfiguration(chainId).tokens[0]!.token,
       destinationTokenAmount: oftReceivedEvent.amountReceivedLD,
       destinationTxnRef: oftReceivedEvent.transactionHash,
       guid: oftReceivedEvent.guid,
