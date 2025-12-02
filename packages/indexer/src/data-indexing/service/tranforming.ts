@@ -8,9 +8,14 @@ import {
 import { formatFromAddressToChainFormat } from "../../utils";
 import { Transformer } from "../model/genericTypes";
 import { getFinalisedBlockBufferDistance } from "./constants";
-import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
+import {
+  DepositForBurnArgs,
+  MessageSentArgs,
+  OftSentArgs,
+} from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
+import { getOftChainConfiguration } from "../adapter/oft/service";
 
 /**
  * A generic transformer for addresses.
@@ -154,6 +159,27 @@ export const transformMessageSentEvent: Transformer<
     minFinalityThreshold: decodedMessage.minFinalityThreshold,
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
+  };
+};
+
+export const transformOftSentEvent: Transformer<
+  IndexerEventPayload,
+  Partial<entities.OFTSent>
+> = (payload, logger: Logger = console as unknown as Logger) => {
+  const rawArgs = getRawArgs(payload, logger);
+  const args = rawArgs as unknown as OftSentArgs;
+  const base = baseTransformer(payload, logger);
+  const chainId = parseInt(base.chainId);
+  const fromAddress = transformAddress(args.fromAddress, chainId);
+
+  return {
+    ...base,
+    guid: args.guid,
+    dstEid: args.dstEid,
+    fromAddress,
+    amountSentLD: args.amountSentLD.toString(),
+    amountReceivedLD: args.amountReceivedLD.toString(),
+    token: getOftChainConfiguration(payload.chainId).tokens[0]!.address,
   };
 };
 
