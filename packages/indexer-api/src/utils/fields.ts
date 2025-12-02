@@ -133,6 +133,7 @@ export const OftSentFields = [
   `"oftSent"."blockNumber"::integer as "depositBlockNumber"`,
   `"oftSent"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
   `NULL::integer as "destinationDomain"`,
+  `"oftSent"."dstEid"::integer as "destinationEndpointId"`,
 ];
 
 export const OftSentRelayHashInfoFields = [
