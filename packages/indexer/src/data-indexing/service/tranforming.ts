@@ -162,7 +162,7 @@ export const transformMessageSentEvent: Transformer<
   };
 };
 
-export const oftSentTransformer: Transformer<
+export const transformOftSentEvent: Transformer<
   IndexerEventPayload,
   Partial<entities.OFTSent>
 > = (payload, logger: Logger = console as unknown as Logger) => {
