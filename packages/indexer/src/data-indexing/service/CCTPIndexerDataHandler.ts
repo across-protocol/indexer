@@ -120,7 +120,10 @@ const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
-const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
+const WHITELISTED_FINALIZERS = [
+  "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+  "0x72adB07A487f38321b6665c02D289C413610B081",
+];
 
 export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
