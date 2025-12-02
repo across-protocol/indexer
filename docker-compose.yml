@@ -31,11 +31,11 @@ services:
     volumes:
       # - .:/usr/src/app
       - indexer-node-modules:/usr/src/app/node_modules
-    command: [sh, -c, "pnpm db:indexer-database:migrate:run && pnpm start:indexer"]
+    command: [ sh, -c, "pnpm db:indexer-database:migrate:run && pnpm start:indexer" ]
     env_file:
       - .env
     environment:
-      INDEXER_REDIS_HOST: redis
+      REDIS_HOST: redis
       DATABASE_HOST: postgres
     depends_on:
       - postgres
@@ -55,7 +55,7 @@ services:
     env_file:
       - .env
     environment:
-      INDEXER_REDIS_HOST: redis
+      REDIS_HOST: redis
       DATABASE_HOST: postgres
     depends_on:
       - postgres
