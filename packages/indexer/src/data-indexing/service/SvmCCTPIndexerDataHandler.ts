@@ -6,7 +6,11 @@ import {
   MessageTransmitterV2Idl,
 } from "@across-protocol/contracts";
 import { address, signature } from "@solana/kit";
-
+import {
+  entities,
+  SaveQueryResult,
+  utils as dbUtils,
+} from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
@@ -42,7 +46,16 @@ export type FetchEventsResult = {
   slotTimes: Record<number, number>;
 };
 
-export type StoreEventsResult = {};
+export type StoreEventsResult = {
+  burnEvents: {
+    depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
+    messageSentEvent: SaveQueryResult<entities.MessageSent>;
+  }[];
+  mintEvents: {
+    messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
+    mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
+  }[];
+};
 
 // Solana CCTP V2 program addresses
 const MESSAGE_TRANSMITTER_V2_ADDRESS =
@@ -126,7 +139,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     const startPerfTime = performance.now();
 
     const events = await this.fetchEventsByRange(blockRange);
-    await this.storeEvents(events, lastFinalisedBlock);
+    const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
 
     await this.cctpRepository.deleteUnfinalisedCCTPEvents(
@@ -146,6 +159,14 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       timeToStoreEvents: timeToStoreEvents - startPerfTime,
       timeToDeleteEvents: timeToDeleteEvents - timeToStoreEvents,
     });
+    if (
+      Object.keys(storedEvents.burnEvents).length > 0 ||
+      Object.keys(storedEvents.mintEvents).length > 0
+    ) {
+      await this.cctpRepository.refreshDepositView(
+        dbUtils.DepositViewType.CCTP,
+      );
+    }
   }
 
   /**
@@ -609,8 +630,8 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     ]);
 
     return {
-      savedBurnEvents,
-      savedMintEvents,
+      burnEvents: savedBurnEvents,
+      mintEvents: savedMintEvents,
     };
   }
 

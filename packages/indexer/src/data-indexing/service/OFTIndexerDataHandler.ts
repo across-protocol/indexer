@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-
+import { utils as dbUtils } from "@repo/indexer-database";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 import {
@@ -151,6 +151,12 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       timeToFetchEvents: timeToFetchEvents - startPerfTime,
       timeToProcessEvents: timeToProcessEvents - timeToDeleteEvents,
     });
+    if (
+      storedEvents.oftReceivedEvents.length > 0 ||
+      storedEvents.oftSentEvents.length > 0
+    ) {
+      await this.oftRepository.refreshDepositView(dbUtils.DepositViewType.OFT);
+    }
   }
 
   private async fetchEventsByRange(
