@@ -10,7 +10,6 @@ import {
   SaveQueryResultType,
   utils as indexerDatabaseUtils,
 } from "@repo/indexer-database";
-
 import * as utils from "../../utils";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -169,6 +168,15 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
+    if (
+      storedEvents.deposits.length > 0 ||
+      storedEvents.fills.length > 0 ||
+      storedEvents.slowFillRequests.length > 0
+    ) {
+      await this.spokePoolClientRepository.refreshDepositView(
+        indexerDatabaseUtils.DepositViewType.ACROSS,
+      );
+    }
   }
 
   private async getFillsGasFee(

@@ -1,6 +1,6 @@
 import { DataSource, EntityTarget, ObjectLiteral } from "typeorm";
 import winston from "winston";
-
+import { DepositViewType, refreshViewByType } from "./views";
 import { SaveQueryResultType, SaveQueryResult } from "../model";
 
 export function filterSaveQueryResults<Entity extends ObjectLiteral>(
@@ -153,5 +153,13 @@ export class BlockchainEventRepository {
       .returning("*")
       .execute();
     return deletedRows.raw;
+  }
+  /**
+   * Refreshes the materialized view corresponding to the provided type.
+   * This allows specific event indexers to trigger their own view updates.
+   * @param type - The type of view to refresh (ACROSS, CCTP, OFT, or ALL)
+   */
+  public async refreshDepositView(type: DepositViewType): Promise<void> {
+    await refreshViewByType(this.postgres, type, this.logger);
   }
 }

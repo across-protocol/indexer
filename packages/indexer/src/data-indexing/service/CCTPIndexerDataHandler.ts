@@ -2,6 +2,7 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { utils as dbUtils } from "@repo/indexer-database";
 import { formatFromAddressToChainFormat } from "../../utils";
 import {
   BlockRange,
@@ -720,6 +721,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       message: `Processed ${savedHypercoreCctpWithdrawals.length} HyperCore CCTP withdrawals`,
       chainId: this.chainId,
     });
+    if (
+      storedEvents.savedBurnEvents.length > 0 ||
+      storedEvents.savedMintEvents.length > 0
+    ) {
+      await this.cctpRepository.refreshDepositView(
+        dbUtils.DepositViewType.CCTP,
+      );
+    }
   }
 
   private getBlocksTimestamps(

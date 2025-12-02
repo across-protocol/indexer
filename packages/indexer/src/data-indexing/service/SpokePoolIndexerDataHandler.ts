@@ -4,6 +4,7 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import { utils as dbUtils } from "@repo/indexer-database";
 import { ethers, providers } from "ethers";
 import {
   entities,
@@ -263,6 +264,15 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       timeToProcessAnciliaryEvents: finalPerfTime - timeToProcessDeposits,
       finalTime: finalPerfTime - startPerfTime,
     });
+    if (
+      storedEvents.deposits.length > 0 ||
+      storedEvents.fills.length > 0 ||
+      storedEvents.slowFillRequests.length > 0
+    ) {
+      await this.spokePoolClientRepository.refreshDepositView(
+        dbUtils.DepositViewType.ACROSS,
+      );
+    }
   }
 
   /**
