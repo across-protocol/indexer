@@ -125,7 +125,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const storedEvents = await this.storeEvents(
       events,
       lastFinalisedBlock,
-      getOftChainConfiguration(this.chainId).tokens[0]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.token,
     );
     const timeToStoreEvents = performance.now();
     await this.oftRepository.deleteUnfinalisedOFTEvents(
@@ -157,7 +157,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const oftAdapterContract = new ethers.Contract(
-      getOftChainConfiguration(this.chainId).tokens[0]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.adapter,
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
