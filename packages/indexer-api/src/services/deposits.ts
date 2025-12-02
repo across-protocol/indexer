@@ -31,6 +31,10 @@ import {
   OftSentSwapBeforeBridgeFields,
 } from "../utils/fields";
 import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs/utils/CCTPUtils";
+import {
+  getChainIdForEndpointId,
+  getCorrespondingTokenAddress,
+} from "@repo/indexer";
 
 export class DepositsService {
   private static readonly MAX_RECORDS_PER_QUERY_TYPE = 1000;
@@ -331,6 +335,7 @@ export class DepositsService {
 
     type RawDepositResult = DepositReturnType & {
       destinationDomain?: number;
+      destinationEndpointId?: number;
       outputToken?: string;
       outputAmount?: string;
     };
@@ -398,6 +403,44 @@ export class DepositsService {
           }
         }
 
+        // Derive OFT fields if missing (for OFT deposits where receive hasn't completed)
+        const destinationEndpointId = deposit.destinationEndpointId;
+        if (destinationEndpointId && !destinationChainId) {
+          try {
+            const derivedChainId = getChainIdForEndpointId(
+              destinationEndpointId,
+            );
+            destinationChainId = derivedChainId;
+          } catch (error) {
+            destinationChainId = null;
+          }
+
+          // For OFT, outputToken is the corresponding token on the destination chain
+          if (
+            !outputToken &&
+            destinationChainId &&
+            deposit.inputToken &&
+            deposit.originChainId
+          ) {
+            try {
+              const originChainId = parseInt(deposit.originChainId);
+              const correspondingToken = getCorrespondingTokenAddress(
+                originChainId,
+                deposit.inputToken,
+                destinationChainId,
+              );
+              outputToken = correspondingToken;
+            } catch (error) {
+              // If we can't find the corresponding token, leave outputToken as is
+            }
+          }
+
+          // For OFT, outputAmount is inputAmount if receive hasn't completed
+          if (!outputAmount) {
+            outputAmount = deposit.inputAmount;
+          }
+        }
+
         let status = deposit.status;
         if (!status && deposit.fillTx) {
           status = entities.RelayStatus.Filled;
@@ -405,8 +448,12 @@ export class DepositsService {
           status = entities.RelayStatus.Unfilled;
         }
 
-        // Destructure to exclude destinationDomain from the response
-        const { destinationDomain: _, ...depositWithoutDomain } = deposit;
+        // Destructure to exclude destinationDomain and destinationEndpointId from the response
+        const {
+          destinationDomain: _,
+          destinationEndpointId: __,
+          ...depositWithoutDomain
+        } = deposit;
         return {
           ...depositWithoutDomain,
           status: status,
