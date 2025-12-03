@@ -379,7 +379,8 @@ export class DepositsService {
         let bridgeFeeUsd = deposit.bridgeFeeUsd;
 
         const destinationDomain = deposit.destinationDomain;
-        if (destinationDomain !== undefined && !destinationChainId) {
+        const isValidDestinationDomain = destinationDomain !== undefined && destinationDomain !== null && destinationDomain !== -1;
+        if (isValidDestinationDomain && !destinationChainId) {
           try {
             const derivedChainId = getCctpDestinationChainFromDomain(
               destinationDomain,
@@ -405,7 +406,7 @@ export class DepositsService {
           }
         }
 
-        if (destinationDomain !== undefined && deposit.destinationChainId) {
+        if (isValidDestinationDomain && deposit.destinationChainId) {
           const bridgeFeeWei = across.utils.BigNumber.from(
             deposit.inputAmount,
           ).sub(outputAmount);
