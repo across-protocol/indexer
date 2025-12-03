@@ -12,6 +12,7 @@ export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } =
 
 export type OftTokenKey = "usdt0";
 
+// Taken from https://docs.usdt0.to/technical-documentation/developer/usdt0-deployments
 const OFT_SUPPORTED_CHAINS: Record<
   number,
   {
@@ -87,6 +88,17 @@ const OFT_SUPPORTED_CHAINS: Record<
         adapter: "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13",
         token: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
         startBlockNumber: 77200000,
+      },
+    ],
+  },
+  [CHAIN_IDs.UNICHAIN]: {
+    endpointId: 30320,
+    tokens: [
+      {
+        key: "usdt0",
+        adapter: "0xc07bE8994D035631c36fb4a89C918CeFB2f03EC3",
+        token: "0x9151434b16b9763660705744891fA906F660EcC5",
+        startBlockNumber: 34007242,
       },
     ],
   },
