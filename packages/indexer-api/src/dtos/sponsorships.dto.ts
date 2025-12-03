@@ -1,15 +1,20 @@
 import * as s from "superstruct";
 import { utils } from "@across-protocol/sdk";
 
-const stringToNumber = s.coerce(s.number(), s.string(), (value) => {
-  if (!/^\d+$/.test(value)) {
-    return value;
-  }
-  return parseInt(value, 10);
-});
+const stringToNumber = s.coerce(s.number(), s.string(), Number);
 
-const parseAddressField = s.coerce(s.string(), s.string(), (value) => {
-  if (utils.isValidEvmAddress(value.toLowerCase())) {
+const EthAddress: s.Struct<string> = s.define(
+  "Valid Ethereum Address",
+  (value) => {
+    return typeof value === "string" && utils.isValidEvmAddress(value);
+  },
+);
+
+// Coerce the input string into custom type
+const parseAddressField = s.coerce(EthAddress, s.string(), (value) => {
+  // If we can normalize it, do so.
+  // If it does not fit the EthAddress type, return it as-is so the 'EthAddress' check fails naturally.
+  if (utils.isValidEvmAddress(value)) {
     return utils.toEvmAddress(value.toLowerCase());
   }
   return value;

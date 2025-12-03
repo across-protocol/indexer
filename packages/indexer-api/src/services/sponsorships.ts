@@ -32,14 +32,15 @@ export class SponsorshipsService {
   public async getSponsorships(
     params: GetSponsorshipsDto,
   ): Promise<SponsorshipDto> {
-    const { address, fromTimestamp, toTimestamp } = params;
+    const address = params.address ? params.address.toLowerCase() : undefined;
+    const { fromTimestamp, toTimestamp } = params;
     const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
     const currentTime = Date.now();
 
     let startTimestamp: number;
     let endTimestamp: number;
 
-    // 1. Both timestamps provided: Validate duration
+    // Both timestamps provided: Validate duration
     if (fromTimestamp && toTimestamp) {
       endTimestamp = toTimestamp;
 
@@ -321,7 +322,6 @@ export class SponsorshipsService {
       totalSponsored: string;
     }[]
   > {
-    const formattedAddress = userAddress.toLowerCase();
     const types = [
       entities.SwapFlowFinalized,
       entities.SimpleTransferFlowCompleted,
@@ -344,8 +344,8 @@ export class SponsorshipsService {
           startDate,
           endDate,
         })
-        .andWhere(`"event"."finalRecipient" = :formattedAddress`, {
-          formattedAddress,
+        .andWhere(`LOWER("event"."finalRecipient") = :formattedAddress`, {
+          formattedAddress: userAddress,
         })
         .groupBy(`"event"."chainId"`)
         .addGroupBy(`"event"."finalRecipient"`)

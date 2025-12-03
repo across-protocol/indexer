@@ -31,7 +31,7 @@ describe("Sponsorships API Integration Tests", () => {
     transactionHash: "0x1",
     logIndex: 1,
     blockNumber: 1,
-    finalRecipient: "0x1",
+    finalRecipient: "0xf1D7F5C564e5c3e07d08F796c7329437156dDD39",
     quoteNonce: "0x1",
     totalSent: "0",
     finalised: true,
@@ -44,7 +44,7 @@ describe("Sponsorships API Integration Tests", () => {
       transactionHash: "0x2",
       logIndex: 1,
       blockNumber: 1,
-      finalRecipient: "0x1",
+      finalRecipient: "0xf1D7F5C564e5c3e07d08F796c7329437156dDD39",
       evmAmountIn: "0",
       bridgingFeesIncurred: "0",
       finalised: true,
@@ -58,7 +58,7 @@ describe("Sponsorships API Integration Tests", () => {
       transactionHash: "0x3",
       logIndex: 1,
       blockNumber: 1,
-      finalRecipient: "0x1",
+      finalRecipient: "0xf1D7F5C564e5c3e07d08F796c7329437156dDD39",
       evmAmountIn: "0",
       bridgingFeesIncurred: "0",
       finalised: true,
@@ -75,6 +75,8 @@ describe("Sponsorships API Integration Tests", () => {
       quoteNonce: "0x1",
       finalised: true,
       transactionIndex: 1,
+      finalRecipient: "0xf1D7F5C564e5c3e07d08F796c7329437156dDD39",
+      evmAmountSponsored: "0",
     };
 
   beforeEach(async () => {
@@ -143,12 +145,12 @@ describe("Sponsorships API Integration Tests", () => {
   });
 
   context("Complex Aggregation with Multiple Chains, Tokens, and Users", () => {
-    const user1 = "0xuser1",
-      user2 = "0xuser2",
-      user3 = "0xuser3";
-    const tokenA = "0xtokena",
-      tokenB = "0xtokenb",
-      tokenC = "0xtokenc";
+    const user1 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      user2 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB49",
+      user3 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB41";
+    const tokenA = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+      tokenB = "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      tokenC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
     const chain1 = "1",
       chain2 = "2",
       chain3 = "3";
@@ -338,6 +340,17 @@ describe("Sponsorships API Integration Tests", () => {
       // non-user specific data should be unaffected
       expect(res.body.sponsorships).to.have.lengthOf(3);
       expect(res.body.accountActivations).to.have.lengthOf(3);
+    });
+
+    it("should return 400 if an invalid address is provided", async () => {
+      const invalidAddress = "0xinvalidAddress";
+      const res = await request(app).get(
+        `/sponsorships?address=${invalidAddress}`,
+      );
+      expect(res.status).to.equal(400);
+      expect(res.body.message).to.include(
+        "Expected a value of type `Valid Ethereum Address`",
+      );
     });
   });
 });
