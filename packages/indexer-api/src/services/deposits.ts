@@ -379,7 +379,7 @@ export class DepositsService {
         let bridgeFeeUsd = deposit.bridgeFeeUsd;
 
         const destinationDomain = deposit.destinationDomain;
-        const isValidDestinationDomain = destinationDomain !== undefined && destinationDomain !== null && destinationDomain !== -1;
+        const isValidDestinationDomain = destinationDomain !== undefined && destinationDomain !== null && destinationDomain > -1;
         if (isValidDestinationDomain && !destinationChainId) {
           try {
             const derivedChainId = getCctpDestinationChainFromDomain(
