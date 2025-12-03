@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
+import * as across from "@across-protocol/sdk";
 import type {
   DepositParams,
   DepositsParams,
@@ -375,9 +376,10 @@ export class DepositsService {
           : null;
         let outputToken = deposit.outputToken;
         let outputAmount = deposit.outputAmount;
+        let bridgeFeeUsd = deposit.bridgeFeeUsd;
 
         const destinationDomain = deposit.destinationDomain;
-        if (destinationDomain && !destinationChainId) {
+        if (destinationDomain !== undefined && !destinationChainId) {
           try {
             const derivedChainId = getCctpDestinationChainFromDomain(
               destinationDomain,
@@ -401,6 +403,14 @@ export class DepositsService {
           if (!outputAmount) {
             outputAmount = deposit.inputAmount;
           }
+        }
+
+        if (destinationDomain !== undefined && deposit.destinationChainId) {
+          const bridgeFeeWei = across.utils.BigNumber.from(
+            deposit.inputAmount,
+          ).sub(outputAmount);
+          // Get CCTP fee for fast transfers. For this computation we assume 1 USDC = 1 USD.
+          bridgeFeeUsd = across.utils.formatUnits(bridgeFeeWei, 6);
         }
 
         // Derive OFT fields if missing (for OFT deposits where receive hasn't completed)
@@ -465,6 +475,7 @@ export class DepositsService {
           outputToken: outputToken,
           outputAmount: outputAmount,
           speedups,
+          bridgeFeeUsd,
         };
       }),
     );
