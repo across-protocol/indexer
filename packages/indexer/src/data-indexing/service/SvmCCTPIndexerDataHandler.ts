@@ -50,7 +50,7 @@ const MESSAGE_TRANSMITTER_V2_ADDRESS =
 const TOKEN_MESSENGER_MINTER_V2_ADDRESS =
   "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe";
 
-const SWAP_API_CALLDATA_MARKER = "0x73c0de";
+const SWAP_API_CALLDATA_MARKER = "73c0de";
 // Solana public keys of the Across finalizers that call receiveMessage
 const WHITELISTED_FINALIZERS = ["FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t"];
 
