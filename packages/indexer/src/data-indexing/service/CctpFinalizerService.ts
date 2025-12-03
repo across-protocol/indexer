@@ -276,13 +276,6 @@ class CctpFinalizerService extends RepeatableTask {
    */
   private async retryUnfinalizedTransactions(): Promise<void> {
     try {
-      const lookbackTime = new Date(
-        Date.now() - CCTP_FINALIZER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
-      );
-      const retryDelayTime = new Date(
-        Date.now() - CCTP_FINALIZER_RETRY_DELAY_HOURS * 60 * 60 * 1000,
-      );
-
       const qb = this.postgres
         .createQueryBuilder(entities.DepositForBurn, "burnEvent")
         .innerJoinAndSelect("burnEvent.finalizerJob", "job")
@@ -297,13 +290,12 @@ class CctpFinalizerService extends RepeatableTask {
           "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
         )
         .where("burnEvent.deletedAt IS NULL")
-        .andWhere("burnEvent.blockTimestamp >= :lookbackTime", {
-          lookbackTime,
-        })
+        .andWhere(
+          `NOW() - burnEvent.blockTimestamp < interval '${CCTP_FINALIZER_LOOKBACK_DAYS} day'`,
+        )
         .andWhere("messageReceived.id IS NULL")
         .andWhere(
-          "(job.createdAt <= :retryDelayTime OR job.updatedAt <= :retryDelayTime)",
-          { retryDelayTime },
+          `NOW() - job.createdAt >= interval '${CCTP_FINALIZER_RETRY_DELAY_HOURS} hour'`,
         );
 
       const unfinalizedBurnEvents = await qb.getMany();

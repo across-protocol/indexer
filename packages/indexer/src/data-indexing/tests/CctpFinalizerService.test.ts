@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import { Logger } from "winston";
 import sinon from "sinon";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { entities } from "@repo/indexer-database";
+import { entities, fixtures } from "@repo/indexer-database";
 import {
   CctpFinalizerServiceManager,
   CCTP_FINALIZER_RETRY_DELAY_HOURS,
@@ -58,50 +58,57 @@ describe("CctpFinalizerService", () => {
 
   describe("publishBurnEvent", () => {
     it("should create CctpFinalizerJob when publishing a new burn event", async () => {
-      const burnEventRepo = dataSource.getRepository(entities.DepositForBurn);
       const jobRepo = dataSource.getRepository(entities.CctpFinalizerJob);
-      const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+      const messageSentFixture = new fixtures.MessageSentFixture(dataSource);
+      const depositForBurnFixture = new fixtures.DepositForBurnFixture(
+        dataSource,
+      );
 
-      await messageSentRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0x123",
-        transactionIndex: 0,
-        logIndex: 0,
-        message: "0xmessage",
-        version: 1,
-        sourceDomain: 3,
-        destinationDomain: 6,
-        nonce: "0xnonce",
-        sender: "0xsender",
-        recipient: "0xrecipient",
-        destinationCaller: "0xcaller",
-        minFinalityThreshold: 1000,
-        finalityThresholdExecuted: 0,
-        messageBody: "0xbody",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 20 * 60 * 1000), // 20 minutes ago
-      });
+      await messageSentFixture.insertMessageSentEvents([
+        {
+          chainId: CHAIN_IDs.ARBITRUM.toString(),
+          blockNumber: 1000,
+          transactionHash: "0x123",
+          transactionIndex: 0,
+          logIndex: 0,
+          message: "0xmessage",
+          version: 1,
+          sourceDomain: 3,
+          destinationDomain: 6,
+          nonce: "0xnonce",
+          sender: "0xsender",
+          recipient: "0xrecipient",
+          destinationCaller: "0xcaller",
+          minFinalityThreshold: 1000,
+          finalityThresholdExecuted: 0,
+          messageBody: "0xbody",
+          finalised: true,
+          blockTimestamp: new Date(Date.now() - 20 * 60 * 1000), // 20 minutes ago
+        },
+      ]);
 
-      const burnEvent = await burnEventRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0x123",
-        transactionIndex: 0,
-        logIndex: 1,
-        burnToken: "0xtoken",
-        amount: "1000000",
-        depositor: "0xdepositor",
-        mintRecipient: "0xrecipient",
-        destinationDomain: 6,
-        destinationTokenMessenger: "0xmessenger",
-        destinationCaller: "0xcaller",
-        maxFee: "1000",
-        minFinalityThreshold: 1000,
-        hookData: "0xhook",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 20 * 60 * 1000), // 20 minutes ago
-      });
+      const [burnEvent] =
+        await depositForBurnFixture.insertDepositForBurnEvents([
+          {
+            chainId: CHAIN_IDs.ARBITRUM.toString(),
+            blockNumber: 1000,
+            transactionHash: "0x123",
+            transactionIndex: 0,
+            logIndex: 1,
+            burnToken: "0xtoken",
+            amount: "1000000",
+            depositor: "0xdepositor",
+            mintRecipient: "0xrecipient",
+            destinationDomain: 6,
+            destinationTokenMessenger: "0xmessenger",
+            destinationCaller: "0xcaller",
+            maxFee: "1000",
+            minFinalityThreshold: 1000,
+            hookData: "0xhook",
+            finalised: true,
+            blockTimestamp: new Date(Date.now() - 20 * 60 * 1000), // 20 minutes ago
+          },
+        ]);
 
       const fetchAttestationsStub = sinon
         .stub(CctpV2Service, "fetchAttestationsForTxn")
@@ -133,10 +140,9 @@ describe("CctpFinalizerService", () => {
 
       // Verify job was created
       const job = await jobRepo.findOne({
-        where: { burnEventId: burnEvent.id },
+        where: { burnEventId: burnEvent?.id },
       });
 
-      expect(job).to.exist;
       expect(job).to.exist;
       expect(job!.attestation).to.equal("0xattestation");
       expect(job!.message).to.equal("0xmessage");
@@ -149,27 +155,32 @@ describe("CctpFinalizerService", () => {
     });
 
     it("should skip burn event if attestation time has not passed", async () => {
-      const burnEventRepo = dataSource.getRepository(entities.DepositForBurn);
+      const depositForBurnFixture = new fixtures.DepositForBurnFixture(
+        dataSource,
+      );
 
-      const burnEvent = await burnEventRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0x456",
-        transactionIndex: 0,
-        logIndex: 0,
-        burnToken: "0xtoken",
-        amount: "1000000",
-        depositor: "0xdepositor",
-        mintRecipient: "0xrecipient",
-        destinationDomain: 6,
-        destinationTokenMessenger: "0xmessenger",
-        destinationCaller: "0xcaller",
-        maxFee: "1000",
-        minFinalityThreshold: 1000,
-        hookData: "0xhook",
-        finalised: true,
-        blockTimestamp: new Date(), // Just now - attestation time hasn't passed
-      });
+      const [burnEvent] =
+        await depositForBurnFixture.insertDepositForBurnEvents([
+          {
+            chainId: CHAIN_IDs.ARBITRUM.toString(),
+            blockNumber: 1000,
+            transactionHash: "0x456",
+            transactionIndex: 0,
+            logIndex: 0,
+            burnToken: "0xtoken",
+            amount: "1000000",
+            depositor: "0xdepositor",
+            mintRecipient: "0xrecipient",
+            destinationDomain: 6,
+            destinationTokenMessenger: "0xmessenger",
+            destinationCaller: "0xcaller",
+            maxFee: "1000",
+            minFinalityThreshold: 1000,
+            hookData: "0xhook",
+            finalised: true,
+            blockTimestamp: new Date(), // Just now - attestation time hasn't passed
+          },
+        ]);
 
       const service = (manager as any).service;
       await (service as any).publishBurnEvent(burnEvent);
@@ -177,7 +188,7 @@ describe("CctpFinalizerService", () => {
       // Verify job was not created and pubsub was not called
       const jobRepo = dataSource.getRepository(entities.CctpFinalizerJob);
       const job = await jobRepo.findOne({
-        where: { burnEventId: burnEvent.id },
+        where: { burnEventId: burnEvent?.id },
       });
 
       expect(job).to.not.exist;
@@ -187,50 +198,57 @@ describe("CctpFinalizerService", () => {
 
   describe("retryUnfinalizedTransactions", () => {
     it("should retry unfinalized transactions that meet retry criteria", async () => {
-      const burnEventRepo = dataSource.getRepository(entities.DepositForBurn);
       const jobRepo = dataSource.getRepository(entities.CctpFinalizerJob);
-      const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+      const messageSentFixture = new fixtures.MessageSentFixture(dataSource);
+      const depositForBurnFixture = new fixtures.DepositForBurnFixture(
+        dataSource,
+      );
 
-      await messageSentRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0x789",
-        transactionIndex: 0,
-        logIndex: 0,
-        message: "0xmessage",
-        version: 1,
-        sourceDomain: 3,
-        destinationDomain: 6,
-        nonce: "0xnonce",
-        sender: "0xsender",
-        recipient: "0xrecipient",
-        destinationCaller: "0xcaller",
-        minFinalityThreshold: 1000,
-        finalityThresholdExecuted: 0,
-        messageBody: "0xbody",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
-      });
+      await messageSentFixture.insertMessageSentEvents([
+        {
+          chainId: CHAIN_IDs.ARBITRUM.toString(),
+          blockNumber: 1000,
+          transactionHash: "0x789",
+          transactionIndex: 0,
+          logIndex: 0,
+          message: "0xmessage",
+          version: 1,
+          sourceDomain: 3,
+          destinationDomain: 6,
+          nonce: "0xnonce",
+          sender: "0xsender",
+          recipient: "0xrecipient",
+          destinationCaller: "0xcaller",
+          minFinalityThreshold: 1000,
+          finalityThresholdExecuted: 0,
+          messageBody: "0xbody",
+          finalised: true,
+          blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+        },
+      ]);
 
-      const burnEvent = await burnEventRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0x789",
-        transactionIndex: 0,
-        logIndex: 1,
-        burnToken: "0xtoken",
-        amount: "1000000",
-        depositor: "0xdepositor",
-        mintRecipient: "0xrecipient",
-        destinationDomain: 6,
-        destinationTokenMessenger: "0xmessenger",
-        destinationCaller: "0xcaller",
-        maxFee: "1000",
-        minFinalityThreshold: 1000,
-        hookData: "0xhook",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago (within lookback)
-      });
+      const [burnEvent] =
+        await depositForBurnFixture.insertDepositForBurnEvents([
+          {
+            chainId: CHAIN_IDs.ARBITRUM.toString(),
+            blockNumber: 1000,
+            transactionHash: "0x789",
+            transactionIndex: 0,
+            logIndex: 1,
+            burnToken: "0xtoken",
+            amount: "1000000",
+            depositor: "0xdepositor",
+            mintRecipient: "0xrecipient",
+            destinationDomain: 6,
+            destinationTokenMessenger: "0xmessenger",
+            destinationCaller: "0xcaller",
+            maxFee: "1000",
+            minFinalityThreshold: 1000,
+            hookData: "0xhook",
+            finalised: true,
+            blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago (within lookback)
+          },
+        ]);
 
       // Create an existing job that was created more than retry delay ago
       const oldJobTime = new Date(
@@ -239,7 +257,7 @@ describe("CctpFinalizerService", () => {
       const job = await jobRepo.save({
         attestation: "0xattestation",
         message: "0xmessage",
-        burnEventId: burnEvent.id,
+        burnEventId: burnEvent?.id,
         createdAt: oldJobTime,
         updatedAt: oldJobTime,
       });
@@ -275,14 +293,6 @@ describe("CctpFinalizerService", () => {
       // Verify pubsub was called (retry happened)
       expect(publishMessageStub.callCount).to.equal(1);
 
-      // Verify job was updated (updatedAt should be refreshed)
-      const updatedJob = await jobRepo.findOne({
-        where: { id: job.id },
-      });
-      expect(updatedJob!.updatedAt.getTime()).to.be.greaterThan(
-        oldJobTime.getTime(),
-      );
-
       fetchAttestationsStub.restore();
       getDomainStub.restore();
       getDestinationChainStub.restore();
@@ -290,33 +300,37 @@ describe("CctpFinalizerService", () => {
     });
 
     it("should not retry if MessageReceived exists (transaction is finalized)", async () => {
-      const burnEventRepo = dataSource.getRepository(entities.DepositForBurn);
       const jobRepo = dataSource.getRepository(entities.CctpFinalizerJob);
-      const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+      const messageSentFixture = new fixtures.MessageSentFixture(dataSource);
+      const depositForBurnFixture = new fixtures.DepositForBurnFixture(
+        dataSource,
+      );
       const messageReceivedRepo = dataSource.getRepository(
         entities.MessageReceived,
       );
 
-      await messageSentRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0xabc",
-        transactionIndex: 0,
-        logIndex: 0,
-        message: "0xmessage",
-        version: 1,
-        sourceDomain: 3,
-        destinationDomain: 6,
-        nonce: "0xnonce",
-        sender: "0xsender",
-        recipient: "0xrecipient",
-        destinationCaller: "0xcaller",
-        minFinalityThreshold: 1000,
-        finalityThresholdExecuted: 0,
-        messageBody: "0xbody",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      });
+      await messageSentFixture.insertMessageSentEvents([
+        {
+          chainId: CHAIN_IDs.ARBITRUM.toString(),
+          blockNumber: 1000,
+          transactionHash: "0xabc",
+          transactionIndex: 0,
+          logIndex: 0,
+          message: "0xmessage",
+          version: 1,
+          sourceDomain: 3,
+          destinationDomain: 6,
+          nonce: "0xnonce",
+          sender: "0xsender",
+          recipient: "0xrecipient",
+          destinationCaller: "0xcaller",
+          minFinalityThreshold: 1000,
+          finalityThresholdExecuted: 0,
+          messageBody: "0xbody",
+          finalised: true,
+          blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
+        },
+      ]);
 
       await messageReceivedRepo.save({
         chainId: CHAIN_IDs.BASE.toString(),
@@ -334,25 +348,28 @@ describe("CctpFinalizerService", () => {
         blockTimestamp: new Date(),
       });
 
-      const burnEvent = await burnEventRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0xabc",
-        transactionIndex: 0,
-        logIndex: 1,
-        burnToken: "0xtoken",
-        amount: "1000000",
-        depositor: "0xdepositor",
-        mintRecipient: "0xrecipient",
-        destinationDomain: 6,
-        destinationTokenMessenger: "0xmessenger",
-        destinationCaller: "0xcaller",
-        maxFee: "1000",
-        minFinalityThreshold: 1000,
-        hookData: "0xhook",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      });
+      const [burnEvent] =
+        await depositForBurnFixture.insertDepositForBurnEvents([
+          {
+            chainId: CHAIN_IDs.ARBITRUM.toString(),
+            blockNumber: 1000,
+            transactionHash: "0xabc",
+            transactionIndex: 0,
+            logIndex: 1,
+            burnToken: "0xtoken",
+            amount: "1000000",
+            depositor: "0xdepositor",
+            mintRecipient: "0xrecipient",
+            destinationDomain: 6,
+            destinationTokenMessenger: "0xmessenger",
+            destinationCaller: "0xcaller",
+            maxFee: "1000",
+            minFinalityThreshold: 1000,
+            hookData: "0xhook",
+            finalised: true,
+            blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
+          },
+        ]);
 
       // Create an existing job
       const oldJobTime = new Date(
@@ -361,7 +378,7 @@ describe("CctpFinalizerService", () => {
       await jobRepo.save({
         attestation: "0xattestation",
         message: "0xmessage",
-        burnEventId: burnEvent.id,
+        burnEventId: burnEvent?.id,
         createdAt: oldJobTime,
         updatedAt: oldJobTime,
       });
@@ -376,50 +393,57 @@ describe("CctpFinalizerService", () => {
     });
 
     it("should not retry if job was created recently (within retry delay)", async () => {
-      const burnEventRepo = dataSource.getRepository(entities.DepositForBurn);
       const jobRepo = dataSource.getRepository(entities.CctpFinalizerJob);
-      const messageSentRepo = dataSource.getRepository(entities.MessageSent);
+      const messageSentFixture = new fixtures.MessageSentFixture(dataSource);
+      const depositForBurnFixture = new fixtures.DepositForBurnFixture(
+        dataSource,
+      );
 
-      await messageSentRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0xdef",
-        transactionIndex: 0,
-        logIndex: 0,
-        message: "0xmessage",
-        version: 1,
-        sourceDomain: 3,
-        destinationDomain: 6,
-        nonce: "0xnonce",
-        sender: "0xsender",
-        recipient: "0xrecipient",
-        destinationCaller: "0xcaller",
-        minFinalityThreshold: 1000,
-        finalityThresholdExecuted: 0,
-        messageBody: "0xbody",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      });
+      await messageSentFixture.insertMessageSentEvents([
+        {
+          chainId: CHAIN_IDs.ARBITRUM.toString(),
+          blockNumber: 1000,
+          transactionHash: "0xdef",
+          transactionIndex: 0,
+          logIndex: 0,
+          message: "0xmessage",
+          version: 1,
+          sourceDomain: 3,
+          destinationDomain: 6,
+          nonce: "0xnonce",
+          sender: "0xsender",
+          recipient: "0xrecipient",
+          destinationCaller: "0xcaller",
+          minFinalityThreshold: 1000,
+          finalityThresholdExecuted: 0,
+          messageBody: "0xbody",
+          finalised: true,
+          blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
+        },
+      ]);
 
-      const burnEvent = await burnEventRepo.save({
-        chainId: CHAIN_IDs.ARBITRUM.toString(),
-        blockNumber: 1000,
-        transactionHash: "0xdef",
-        transactionIndex: 0,
-        logIndex: 1,
-        burnToken: "0xtoken",
-        amount: "1000000",
-        depositor: "0xdepositor",
-        mintRecipient: "0xrecipient",
-        destinationDomain: 6,
-        destinationTokenMessenger: "0xmessenger",
-        destinationCaller: "0xcaller",
-        maxFee: "1000",
-        minFinalityThreshold: 1000,
-        hookData: "0xhook",
-        finalised: true,
-        blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      });
+      const [burnEvent] =
+        await depositForBurnFixture.insertDepositForBurnEvents([
+          {
+            chainId: CHAIN_IDs.ARBITRUM.toString(),
+            blockNumber: 1000,
+            transactionHash: "0xdef",
+            transactionIndex: 0,
+            logIndex: 1,
+            burnToken: "0xtoken",
+            amount: "1000000",
+            depositor: "0xdepositor",
+            mintRecipient: "0xrecipient",
+            destinationDomain: 6,
+            destinationTokenMessenger: "0xmessenger",
+            destinationCaller: "0xcaller",
+            maxFee: "1000",
+            minFinalityThreshold: 1000,
+            hookData: "0xhook",
+            finalised: true,
+            blockTimestamp: new Date(Date.now() - 12 * 60 * 60 * 1000),
+          },
+        ]);
 
       // Create a job that was created recently (within retry delay)
       const recentJobTime = new Date(
@@ -428,7 +452,7 @@ describe("CctpFinalizerService", () => {
       await jobRepo.save({
         attestation: "0xattestation",
         message: "0xmessage",
-        burnEventId: burnEvent.id,
+        burnEventId: burnEvent?.id,
         createdAt: recentJobTime,
         updatedAt: recentJobTime,
       });

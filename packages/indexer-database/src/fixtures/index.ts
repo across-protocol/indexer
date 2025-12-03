@@ -1,4 +1,5 @@
 export * from "./BundleFixture";
+export * from "./DepositForBurnFixture";
 export * from "./FilledRelayFixture";
 export * from "./FundsDepositedFixture";
 export * from "./OftReceivedFixture";
