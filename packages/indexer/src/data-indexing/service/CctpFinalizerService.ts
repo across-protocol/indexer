@@ -210,7 +210,10 @@ class CctpFinalizerService extends RepeatableTask {
         .set({
           nonce: eventNonce,
         })
-        .where("id = :id", { id: burnEvent.id })
+        .where(
+          "chainId = :chainId AND blockNumber = :blockNumber AND transactionHash = :transactionHash",
+          { chainId, blockNumber: burnEvent.blockNumber, transactionHash },
+        )
         .execute();
       this.logger.debug({
         at: "CctpFinalizerService#publishBurnEvent",
