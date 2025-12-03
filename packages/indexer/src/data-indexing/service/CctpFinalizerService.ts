@@ -210,7 +210,10 @@ class CctpFinalizerService extends RepeatableTask {
         .set({
           nonce: eventNonce,
         })
-        .where("id = :id", { id: burnEvent.id })
+        .where(
+          "chainId = :chainId AND blockNumber = :blockNumber AND transactionHash = :transactionHash",
+          { chainId, blockNumber: burnEvent.blockNumber, transactionHash },
+        )
         .execute();
       this.logger.debug({
         at: "CctpFinalizerService#publishBurnEvent",
@@ -273,6 +276,7 @@ const ATTESTATION_TIMES = {
   [CHAIN_IDs.HYPEREVM]: { standard: 5, fast: 8 },
   [CHAIN_IDs.INK]: { standard: 30 * 60, fast: 8 },
   [CHAIN_IDs.LINEA]: { standard: 6 * 60 * 60, fast: 8 },
+  [CHAIN_IDs.MONAD]: { standard: 5, fast: 1 },
   [CHAIN_IDs.OPTIMISM]: { standard: 13 * 60, fast: 8 },
   [CHAIN_IDs.POLYGON]: { standard: 8, fast: 8 },
   [CHAIN_IDs.SOLANA]: { standard: 25, fast: 8 },
