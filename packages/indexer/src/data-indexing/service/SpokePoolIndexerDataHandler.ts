@@ -12,7 +12,7 @@ import {
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
-
+import { updateDeposits } from "../../database/Deposits";
 import * as utils from "../../utils";
 import {
   SpokePoolRepository,
@@ -801,6 +801,16 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         claimedRelayerRefunds,
         this.chainId,
         lastFinalisedBlock,
+      ),
+    ]);
+
+    // We process these in parallel after the main events are saved.
+    await Promise.all([
+      ...v3FundsDepositedEvents.map((event) =>
+        updateDeposits(event, (this.spokePoolClientRepository as any).postgres),
+      ),
+      ...filledV3RelayEvents.map((event) =>
+        updateDeposits(event, (this.spokePoolClientRepository as any).postgres),
       ),
     ]);
     return {

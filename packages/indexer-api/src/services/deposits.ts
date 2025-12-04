@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
+import { SelectQueryBuilder, Brackets, Repository } from "typeorm";
 import * as across from "@across-protocol/sdk";
 import type {
   DepositParams,
@@ -48,439 +49,212 @@ export class DepositsService {
   public async getDeposits(
     params: DepositsParams,
   ): Promise<ParsedDepositReturnType[]> {
-    const fundsDepositedRepo = this.db.getRepository(entities.V3FundsDeposited);
-    const fundsDepositedQueryBuilder = fundsDepositedRepo
-      .createQueryBuilder("deposit")
-      .leftJoinAndSelect(
-        entities.RelayHashInfo,
-        "rhi",
-        "rhi.depositEventId = deposit.id",
-      )
-      .leftJoinAndSelect(
-        entities.SwapBeforeBridge,
-        "swap",
-        "swap.id = rhi.swapBeforeBridgeEventId",
-      )
-      .leftJoinAndSelect(
-        entities.FilledV3Relay,
-        "fill",
-        "fill.id = rhi.fillEventId",
-      )
-      .orderBy("deposit.blockTimestamp", "DESC")
+    const skip = params.skip || 0;
+    const limit = params.limit || 10;
+
+    const queryBuilder = this.db
+      .getRepository(entities.Deposit)
+      .createQueryBuilder("deposits")
       .select([
-        ...DepositFields,
-        ...RelayHashInfoFields,
-        ...SwapBeforeBridgeFields,
-        ...FilledRelayFields,
+        "deposits.id",
+        "deposits.uniqueId",
+        "deposits.type",
+        "deposits.status",
+        "deposits.blockTimestamp",
+        "deposits.originChainId",
+        "deposits.destinationChainId",
+        "deposits.depositor",
+        "deposits.recipient",
       ]);
 
-    // Build DepositForBurn query with joins to linked CCTP events
-    const depositForBurnRepo = this.db.getRepository(entities.DepositForBurn);
-    const depositForBurnQueryBuilder = depositForBurnRepo
-      .createQueryBuilder("depositForBurn")
-      .leftJoinAndSelect(
-        entities.MessageSent,
-        "messageSent",
-        "messageSent.transactionHash = depositForBurn.transactionHash AND messageSent.chainId = depositForBurn.chainId",
-      )
-      .leftJoinAndSelect(
-        entities.MessageReceived,
-        "messageReceived",
-        "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
-      )
-      .leftJoinAndSelect(
-        entities.MintAndWithdraw,
-        "mintAndWithdraw",
-        "mintAndWithdraw.transactionHash = messageReceived.transactionHash AND mintAndWithdraw.chainId = messageReceived.chainId",
-      )
-      .select([
-        ...DepositForBurnFields,
-        ...DepositForBurnRelayHashInfoFields,
-        ...DepositForBurnSwapBeforeBridgeFields,
-        ...DepositForBurnFilledRelayFields,
-      ]);
+    // Join Related Event Tables
+    // We fetch details for all types because a row could be any of them.
 
-    const oftSentRepo = this.db.getRepository(entities.OFTSent);
-    const oftSentQueryBuilder = oftSentRepo
-      .createQueryBuilder("oftSent")
-      .leftJoinAndSelect(
-        entities.OFTReceived,
-        "oftReceived",
-        "oftReceived.guid = oftSent.guid",
-      )
-      .select([
-        ...OftSentFields,
-        ...OftSentRelayHashInfoFields,
-        ...OftSentSwapBeforeBridgeFields,
-        ...OftSentFilledRelayFields,
-      ]);
+    // --- Across V3 Joins ---
+    // Link: Deposit -> V3FundsDeposited
+    queryBuilder.leftJoinAndSelect("deposits.v3FundsDeposited", "deposit");
 
+    // Link: Deposit -> FilledV3Relay
+    queryBuilder.leftJoinAndSelect("deposits.filledV3Relay", "fill");
+
+    // Link: V3FundsDeposited -> RelayHashInfo (RHI)
+    queryBuilder.leftJoinAndSelect(
+      entities.RelayHashInfo,
+      "rhi",
+      "rhi.depositEventId = deposit.id",
+    );
+
+    // Link: RHI -> SwapBeforeBridge
+    queryBuilder.leftJoinAndSelect(
+      entities.SwapBeforeBridge,
+      "swap",
+      "swap.id = rhi.swapBeforeBridgeEventId",
+    );
+
+    // --- CCTP Joins ---
+    queryBuilder.leftJoinAndSelect("deposits.depositForBurn", "depositForBurn");
+    queryBuilder.leftJoinAndSelect(
+      "deposits.mintAndWithdraw",
+      "mintAndWithdraw",
+    );
+
+    // Join MessageSent/Received
+    queryBuilder.leftJoinAndSelect(
+      entities.MessageSent,
+      "messageSent",
+      "messageSent.transactionHash = depositForBurn.transactionHash AND messageSent.chainId = depositForBurn.chainId",
+    );
+    queryBuilder.leftJoinAndSelect(
+      entities.MessageReceived,
+      "messageReceived",
+      "messageReceived.nonce = messageSent.nonce AND messageReceived.sourceDomain = messageSent.sourceDomain",
+    );
+
+    // --- OFT Joins ---
+    queryBuilder.leftJoinAndSelect("deposits.oftSent", "oftSent");
+    queryBuilder.leftJoinAndSelect("deposits.oftReceived", "oftReceived");
+
+    // Apply Filters (Preserving Original Logic)
+    // Filter: Deposit Type
+    if (params.depositType) {
+      queryBuilder.andWhere("deposits.type = :type", {
+        type: params.depositType,
+      });
+    }
+
+    // Filter: Address (Depositor OR Recipient)
     if (params.address) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.depositor = :address OR deposit.recipient = :address",
-        {
-          address: params.address,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.depositor = :address OR depositForBurn.mintRecipient = :address",
-        {
-          address: params.address,
-        },
-      );
-      oftSentQueryBuilder.andWhere(
-        "oftSent.fromAddress = :address OR oftReceived.toAddress = :address",
-        {
-          address: params.address,
-        },
+      queryBuilder.andWhere(
+        "(deposits.depositor = :address OR deposits.recipient = :address)",
+        { address: params.address },
       );
     } else {
+      // Specific Filters
       if (params.depositor) {
-        fundsDepositedQueryBuilder.andWhere("deposit.depositor = :depositor", {
-          depositor: params.depositor,
-        });
-        depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.depositor = :depositor",
-          {
-            depositor: params.depositor,
-          },
-        );
-        oftSentQueryBuilder.andWhere("oftSent.fromAddress = :depositor", {
+        queryBuilder.andWhere("deposits.depositor = :depositor", {
           depositor: params.depositor,
         });
       }
-
       if (params.recipient) {
-        fundsDepositedQueryBuilder.andWhere("deposit.recipient = :recipient", {
-          recipient: params.recipient,
-        });
-        depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.mintRecipient = :recipient",
-          {
-            recipient: params.recipient,
-          },
-        );
-        oftSentQueryBuilder.andWhere("oftReceived.toAddress = :recipient", {
+        queryBuilder.andWhere("deposits.recipient = :recipient", {
           recipient: params.recipient,
         });
       }
     }
 
-    if (params.inputToken) {
-      fundsDepositedQueryBuilder.andWhere("deposit.inputToken = :inputToken", {
-        inputToken: params.inputToken,
-      });
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.burnToken = :inputToken",
-        {
-          inputToken: params.inputToken,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftSent.token = :inputToken", {
-        inputToken: params.inputToken,
-      });
-    }
-
-    if (params.outputToken) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.outputToken = :outputToken",
-        {
-          outputToken: params.outputToken,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "mintAndWithdraw.mintToken = :outputToken",
-        {
-          outputToken: params.outputToken,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftReceived.token = :outputToken", {
-        outputToken: params.outputToken,
-      });
-    }
-
+    // Filter: Chains
     if (params.originChainId) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.originChainId = :originChainId",
-        {
-          originChainId: params.originChainId,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.chainId = :originChainId",
-        {
-          originChainId: params.originChainId,
-        },
-      );
-      oftSentQueryBuilder.andWhere("oftSent.chainId = :originChainId", {
-        originChainId: params.originChainId.toString(),
+      queryBuilder.andWhere("deposits.originChainId = :originChainId", {
+        originChainId: params.originChainId,
       });
     }
-
     if (params.destinationChainId) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.destinationChainId = :destinationChainId",
-        {
-          destinationChainId: params.destinationChainId,
-        },
-      );
-      depositForBurnQueryBuilder.andWhere(
-        "mintAndWithdraw.chainId = :destinationChainId",
-        {
-          destinationChainId: params.destinationChainId.toString(),
-        },
-      );
-      oftSentQueryBuilder.andWhere(
-        "oftReceived.chainId = :destinationChainId",
-        {
-          destinationChainId: params.destinationChainId.toString(),
-        },
+      queryBuilder.andWhere("deposits.destinationChainId = :destChainId", {
+        destChainId: params.destinationChainId,
+      });
+    }
+
+    // Filter: Tokens (Input)
+    // Checks all 3 protocol tables
+    if (params.inputToken) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where("deposit.inputToken = :inputToken")
+            .orWhere("depositForBurn.burnToken = :inputToken")
+            .orWhere("oftSent.token = :inputToken");
+        }),
+        { inputToken: params.inputToken },
       );
     }
 
-    if (params.status) {
-      fundsDepositedQueryBuilder.andWhere("rhi.status = :status", {
-        status: params.status,
-      });
+    // Filter: Tokens (Output)
+    // Checks all 3 protocol tables
+    if (params.outputToken) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where("deposit.outputToken = :outputToken")
+            .orWhere("mintAndWithdraw.mintToken = :outputToken")
+            .orWhere("oftReceived.token = :outputToken");
+        }),
+        { outputToken: params.outputToken },
+      );
+    }
 
-      // Filter CCTP and OFT deposits based on status
-      if (
-        params.status === entities.RelayStatus.Refunded ||
-        params.status === entities.RelayStatus.SlowFillRequested ||
-        params.status === entities.RelayStatus.SlowFilled ||
-        params.status === entities.RelayStatus.Expired
-      ) {
-        // Exclude statuses that are not supported for CCTP and OFT deposits
-        depositForBurnQueryBuilder.andWhere("1 = 0");
-        oftSentQueryBuilder.andWhere("1 = 0");
-      } else if (params.status === entities.RelayStatus.Filled) {
-        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NOT NULL");
-        oftSentQueryBuilder.andWhere("oftReceived.id IS NOT NULL");
+    // Filter: Status
+    if (params.status) {
+      // Map generic status to table logic
+      if (params.status === entities.RelayStatus.Filled) {
+        queryBuilder.andWhere("deposits.status = :status", {
+          status: entities.DepositStatus.FILLED,
+        });
       } else if (params.status === entities.RelayStatus.Unfilled) {
-        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NULL");
-        oftSentQueryBuilder.andWhere("oftReceived.id IS NULL");
+        queryBuilder.andWhere("deposits.status = :status", {
+          status: entities.DepositStatus.PENDING,
+        });
+      } else {
+        // Fallback for statuses like 'refunded', 'slowFilled' which might check specific RHI columns
+        // For now, filtering against the RHI joined table for Across specifics:
+        queryBuilder.andWhere("rhi.status = :status", {
+          status: params.status,
+        });
+
+        // If searching for refund/expired, exclude CCTP/OFT
+        if (
+          [
+            entities.RelayStatus.Refunded,
+            entities.RelayStatus.SlowFillRequested,
+            entities.RelayStatus.SlowFilled,
+            entities.RelayStatus.Expired,
+          ].includes(params.status)
+        ) {
+          queryBuilder.andWhere("deposits.type = :acrossType", {
+            acrossType: entities.DepositType.ACROSS,
+          });
+        }
       }
     }
 
+    // Filter: Integrator ID (Across only)
     if (params.integratorId) {
-      fundsDepositedQueryBuilder.andWhere(
-        "deposit.integratorId = :integratorId",
-        {
-          integratorId: params.integratorId,
-        },
-      );
-
-      // CCTP and OFT tables don't have integratorId, so exclude them
-      // TODO: remove this once we add integratorId to CCTP and OFT tables
-      depositForBurnQueryBuilder.andWhere("1 = 0");
-      oftSentQueryBuilder.andWhere("1 = 0");
+      queryBuilder.andWhere("deposit.integratorId = :integratorId", {
+        integratorId: params.integratorId,
+      });
+      // Original logic: Exclude CCTP/OFT if integratorId is present
+      queryBuilder.andWhere("deposits.type = :acrossType", {
+        acrossType: entities.DepositType.ACROSS,
+      });
     }
 
-    // Calculate upper bound for fetching records from each query
-    // We fetch more than needed to ensure we have enough after sorting
-    const skip = params.skip || 0;
-    const limit = params.limit || 50;
-    const upperBound = Math.min(
-      skip + limit,
-      DepositsService.MAX_RECORDS_PER_QUERY_TYPE,
-    );
+    // Sorting & Pagination
+    queryBuilder
+      .orderBy("deposits.blockTimestamp", "DESC")
+      .skip(skip)
+      .take(limit);
 
-    const depositForBurnOrderBys =
-      depositForBurnQueryBuilder.expressionMap.orderBys;
-    if (Object.keys(depositForBurnOrderBys).length === 0) {
-      depositForBurnQueryBuilder.orderBy(
-        "depositForBurn.blockTimestamp",
-        "DESC",
-      );
-    }
-    const oftSentOrderBys = oftSentQueryBuilder.expressionMap.orderBys;
-    if (Object.keys(oftSentOrderBys).length === 0) {
-      oftSentQueryBuilder.orderBy("oftSent.blockTimestamp", "DESC");
-    }
+    // Execute Query
+    const results = await queryBuilder.getMany();
 
-    fundsDepositedQueryBuilder.limit(upperBound);
-    depositForBurnQueryBuilder.limit(upperBound);
-    oftSentQueryBuilder.limit(upperBound);
-
-    // Execute queries in parallel based on depositType filter
-    const queryPromises: Promise<DepositReturnType[]>[] = [];
-
-    if (!params.depositType || params.depositType === "across") {
-      queryPromises.push(fundsDepositedQueryBuilder.getRawMany());
-    }
-    if (!params.depositType || params.depositType === "cctp") {
-      queryPromises.push(depositForBurnQueryBuilder.getRawMany());
-    }
-    if (!params.depositType || params.depositType === "oft") {
-      queryPromises.push(oftSentQueryBuilder.getRawMany());
-    }
-
-    // Execute all queries in parallel
-    const queryResults = await Promise.all(queryPromises);
-
-    let allDeposits: DepositReturnType[] = queryResults.flat();
-
-    // Sort in memory by depositBlockTimestamp DESC
-    allDeposits.sort((a, b) => {
-      const timestampA = a.depositBlockTimestamp
-        ? new Date(a.depositBlockTimestamp).getTime()
-        : -Infinity; // Put null timestamps at the end
-      const timestampB = b.depositBlockTimestamp
-        ? new Date(b.depositBlockTimestamp).getTime()
-        : -Infinity; // Put null timestamps at the end
-      return timestampB - timestampA; // DESC order
-    });
-
-    // Apply skip and limit in memory
-    allDeposits = allDeposits.slice(skip, skip + limit);
-
-    type RawDepositResult = DepositReturnType & {
-      destinationDomain?: number;
-      destinationEndpointId?: number;
-      outputToken?: string;
-      outputAmount?: string;
-    };
-    const deposits: RawDepositResult[] = allDeposits;
-
-    // Fetch speedup events for each deposit (only for V3FundsDeposited)
-    const speedupRepo = this.db.getRepository(
-      entities.RequestedSpeedUpV3Deposit,
-    );
+    // Map & Format Results
     return Promise.all(
-      deposits.map(async (deposit) => {
-        // Only fetch speedups if depositId exists (V3FundsDeposited deposits)
-        const speedups =
-          deposit.depositId && deposit.originChainId
-            ? await speedupRepo
-                .createQueryBuilder("speedup")
-                .where(
-                  "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
-                  {
-                    depositId: deposit.depositId,
-                    originChainId: deposit.originChainId,
-                  },
-                )
-                .select([
-                  "speedup.transactionHash as transactionHash",
-                  "speedup.updatedRecipient as updatedRecipient",
-                  "speedup.updatedMessage as updatedMessage",
-                  "speedup.blockNumber as blockNumber",
-                  "speedup.updatedOutputAmount as updatedOutputAmount",
-                ])
-                .getRawMany()
-            : [];
-
-        // Derive CCTP fields if missing (for CCTP deposits where mint hasn't completed)
-        let destinationChainId = deposit.destinationChainId
-          ? parseInt(deposit.destinationChainId)
-          : null;
-        let outputToken = deposit.outputToken;
-        let outputAmount = deposit.outputAmount;
-        let bridgeFeeUsd = deposit.bridgeFeeUsd;
-
-        const destinationDomain = deposit.destinationDomain;
-        const isValidDestinationDomain =
-          destinationDomain !== undefined &&
-          destinationDomain !== null &&
-          destinationDomain > -1;
-        if (isValidDestinationDomain && !destinationChainId) {
-          try {
-            const derivedChainId = getCctpDestinationChainFromDomain(
-              destinationDomain,
-              true, // productionNetworks = true
-            );
-            destinationChainId = derivedChainId;
-          } catch (error) {
-            destinationChainId = null;
-          }
-
-          // For CCTP, outputToken is USDC on the destination chain
-          if (!outputToken && destinationChainId) {
-            const usdcToken = TOKEN_SYMBOLS_MAP.USDC;
-            const usdcAddress = usdcToken?.addresses[destinationChainId];
-            if (usdcAddress) {
-              outputToken = usdcAddress;
-            }
-          }
-
-          // For CCTP, outputAmount is inputAmount if mint hasn't completed
-          if (!outputAmount) {
-            outputAmount = deposit.inputAmount;
-          }
+      results.map(async (row) => {
+        if (row.type === entities.DepositType.ACROSS) {
+          return mapAcrossDeposit(
+            row,
+            this.db.getRepository(entities.RequestedSpeedUpV3Deposit),
+          );
+        } else if (row.type === entities.DepositType.CCTP) {
+          return mapCctpDeposit(row);
+        } else if (row.type === entities.DepositType.OFT) {
+          return mapOftDeposit(row);
         }
 
-        if (isValidDestinationDomain && deposit.destinationChainId) {
-          const bridgeFeeWei = across.utils.BigNumber.from(
-            deposit.inputAmount,
-          ).sub(outputAmount);
-          // Get CCTP fee for fast transfers. For this computation we assume 1 USDC = 1 USD.
-          bridgeFeeUsd = across.utils.formatUnits(bridgeFeeWei, 6);
-        }
-
-        // Derive OFT fields if missing (for OFT deposits where receive hasn't completed)
-        const destinationEndpointId = deposit.destinationEndpointId;
-        if (destinationEndpointId && !destinationChainId) {
-          try {
-            const derivedChainId = getChainIdForEndpointId(
-              destinationEndpointId,
-            );
-            destinationChainId = derivedChainId;
-          } catch (error) {
-            destinationChainId = null;
-          }
-
-          // For OFT, outputToken is the corresponding token on the destination chain
-          if (
-            !outputToken &&
-            destinationChainId &&
-            deposit.inputToken &&
-            deposit.originChainId
-          ) {
-            try {
-              const originChainId = parseInt(deposit.originChainId);
-              const correspondingToken = getCorrespondingTokenAddress(
-                originChainId,
-                deposit.inputToken,
-                destinationChainId,
-              );
-              outputToken = correspondingToken;
-            } catch (error) {
-              // If we can't find the corresponding token, leave outputToken as is
-            }
-          }
-
-          // For OFT, outputAmount is inputAmount if receive hasn't completed
-          if (!outputAmount) {
-            outputAmount = deposit.inputAmount;
-          }
-        }
-
-        let status = deposit.status;
-        if (!status && deposit.fillTx) {
-          status = entities.RelayStatus.Filled;
-        } else if (!status) {
-          status = entities.RelayStatus.Unfilled;
-        }
-
-        // Destructure to exclude destinationDomain and destinationEndpointId from the response
-        const {
-          destinationDomain: _,
-          destinationEndpointId: __,
-          ...depositWithoutDomain
-        } = deposit;
+        // Fallback for unknown types (should not happen with correct enum usage)
         return {
-          ...depositWithoutDomain,
-          status: status,
-          depositTxnRef: deposit.depositTxHash,
-          depositRefundTxnRef: deposit.depositRefundTxHash,
-          fillTxnRef: deposit.fillTx,
-          originChainId: parseInt(deposit.originChainId),
-          destinationChainId: destinationChainId,
-          outputToken: outputToken,
-          outputAmount: outputAmount,
-          speedups,
-          bridgeFeeUsd,
-        };
+          uniqueId: row.uniqueId,
+          originChainId: parseInt(row.originChainId),
+          destinationChainId: parseInt(row.destinationChainId),
+          blockTimestamp: row.blockTimestamp,
+        } as unknown as ParsedDepositReturnType;
       }),
     );
   }
@@ -1259,4 +1033,248 @@ export class DepositsService {
     // that at least one of the params is present
     throw new Error("Could not get deposit: could not locate cache data");
   }
+}
+
+/**
+ * Maps an ACROSS type Deposit row to the response DTO.
+ *
+ * This function handles the flattening of the V3FundsDeposited, RelayHashInfo,
+ * and FilledV3Relay entities. It also asynchronously fetches any associated
+ * speedup events for the deposit.
+ *
+ * @param row - The raw Deposit entity joined with Across-specific relations.
+ * @param speedupRepo - The repository used to fetch speedup events (RequestedSpeedUpV3Deposit).
+ * @returns A promise resolving to the parsed deposit object compatible with the API response.
+ */
+export async function mapAcrossDeposit(
+  row: entities.Deposit,
+  speedupRepo: Repository<entities.RequestedSpeedUpV3Deposit>,
+): Promise<ParsedDepositReturnType> {
+  const v3Event = row.v3FundsDeposited;
+  const rhi = (row as any).rhi || {};
+  const swap = (row as any).swap || {};
+  const fill = row.filledV3Relay;
+
+  // Fetch Speedups
+  let speedups: any[] = [];
+  if (v3Event?.depositId && v3Event?.originChainId) {
+    speedups = await speedupRepo
+      .createQueryBuilder("speedup")
+      .where(
+        "speedup.depositId = :depositId AND speedup.originChainId = :originChainId",
+        {
+          depositId: v3Event.depositId,
+          originChainId: v3Event.originChainId,
+        },
+      )
+      .select([
+        "speedup.transactionHash as transactionHash",
+        "speedup.updatedRecipient as updatedRecipient",
+        "speedup.updatedMessage as updatedMessage",
+        "speedup.blockNumber as blockNumber",
+        "speedup.updatedOutputAmount as updatedOutputAmount",
+      ])
+      .getRawMany();
+  }
+
+  // Determine Status
+  let status = rhi.status;
+  if (!status && fill) status = entities.RelayStatus.Filled;
+  else if (!status) status = entities.RelayStatus.Unfilled;
+
+  const mapped = {
+    ...v3Event,
+    ...rhi,
+    ...swap,
+    ...fill,
+
+    originChainId: parseInt(row.originChainId),
+    destinationChainId: parseInt(row.destinationChainId),
+    depositor: row.depositor,
+    recipient: row.recipient,
+    status: status,
+
+    depositTxnRef: v3Event?.transactionHash,
+    depositRefundTxnRef: rhi?.depositRefundTxHash,
+    fillTxnRef: fill?.transactionHash,
+
+    speedups,
+  };
+
+  const finalOutputToken = v3Event?.outputToken;
+  const finalOutputAmount = v3Event?.outputAmount;
+  const finalBridgeFeeUsd = rhi?.bridgeFeeUsd;
+
+  // Cleanup internal fields
+  const { destinationDomain, destinationEndpointId, uniqueId, ...rest } =
+    mapped as any;
+
+  return {
+    ...rest,
+    outputToken: finalOutputToken,
+    outputAmount: finalOutputAmount,
+    bridgeFeeUsd: finalBridgeFeeUsd,
+    uniqueId: row.uniqueId,
+  } as ParsedDepositReturnType;
+}
+
+/**
+ * Maps a CCTP type Deposit row to the response DTO.
+ *
+ * This function consolidates the DepositForBurn (source) and MintAndWithdraw (fill) events.
+ * It also contains logic to derive the destination chain ID from the CCTP domain
+ * and calculate the bridge fee based on input vs output amounts.
+ *
+ * @param row - The raw Deposit entity joined with CCTP-specific relations.
+ * @returns The parsed deposit object compatible with the API response.
+ */
+export function mapCctpDeposit(row: entities.Deposit): ParsedDepositReturnType {
+  const source = row.depositForBurn;
+  const fill = row.mintAndWithdraw;
+  const msgSent = (row as any).messageSent;
+
+  const status = fill ? "filled" : "pending";
+
+  const mapped = {
+    ...source,
+    ...fill,
+
+    originChainId: parseInt(row.originChainId),
+    destinationChainId: parseInt(row.destinationChainId),
+    depositor: row.depositor,
+    recipient: row.recipient,
+    status: status,
+
+    depositTxnRef: source?.transactionHash,
+    depositRefundTxnRef: undefined,
+    fillTxnRef: fill?.transactionHash,
+
+    depositId: msgSent?.nonce,
+    speedups: [],
+  };
+
+  // Logic: Derive Output Token/Amount
+  let destinationChainId = parseInt(row.destinationChainId);
+  let outputToken = fill?.mintToken;
+  let outputAmount = fill?.amount;
+  let finalBridgeFeeUsd: string | undefined;
+
+  if (!destinationChainId && source?.destinationDomain !== undefined) {
+    try {
+      destinationChainId = getCctpDestinationChainFromDomain(
+        source.destinationDomain,
+        true,
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  if (!outputToken && destinationChainId) {
+    const usdcToken = TOKEN_SYMBOLS_MAP.USDC;
+    const usdcAddress = usdcToken?.addresses[destinationChainId];
+    if (usdcAddress) outputToken = usdcAddress;
+  }
+
+  if (!outputAmount && source?.amount) {
+    outputAmount = source.amount;
+  }
+
+  if (source?.destinationDomain !== undefined && destinationChainId) {
+    const inputBn = across.utils.BigNumber.from(source.amount || "0");
+    const outputBn = across.utils.BigNumber.from(outputAmount || "0");
+    const bridgeFeeWei = inputBn.sub(outputBn);
+    finalBridgeFeeUsd = across.utils.formatUnits(bridgeFeeWei, 6);
+  }
+
+  const { destinationDomain, destinationEndpointId, uniqueId, ...rest } =
+    mapped as any;
+
+  return {
+    ...rest,
+    outputToken: outputToken,
+    outputAmount: outputAmount,
+    bridgeFeeUsd: finalBridgeFeeUsd,
+    uniqueId: row.uniqueId,
+  } as ParsedDepositReturnType;
+}
+
+/**
+ * Maps an OFT type Deposit row to the response DTO.
+ *
+ * This function consolidates OFTSent (source) and OFTReceived (fill) events.
+ * It includes logic to derive the destination chain ID from the LayerZero endpoint ID
+ * and find the corresponding token address on the destination chain.
+ *
+ * @param row - The raw Deposit entity joined with OFT-specific relations.
+ * @returns The parsed deposit object compatible with the API response.
+ */
+export function mapOftDeposit(row: entities.Deposit): ParsedDepositReturnType {
+  const source = row.oftSent;
+  const fill = row.oftReceived;
+
+  const status = fill ? "filled" : "pending";
+
+  const mapped = {
+    ...source,
+    ...fill,
+
+    originChainId: parseInt(row.originChainId),
+    destinationChainId: parseInt(row.destinationChainId),
+    depositor: row.depositor,
+    recipient: row.recipient,
+    status: status,
+
+    depositTxnRef: source?.transactionHash,
+    depositRefundTxnRef: undefined,
+    fillTxnRef: fill?.transactionHash,
+    depositId: source?.guid || fill?.guid,
+    speedups: [],
+  };
+
+  // Logic: Derive Output Token/Amount
+  let destinationChainId = parseInt(row.destinationChainId);
+  let outputToken = fill?.token;
+  let outputAmount = fill?.amountReceivedLD;
+
+  if (!destinationChainId && source?.dstEid) {
+    try {
+      destinationChainId = getChainIdForEndpointId(source.dstEid);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  if (
+    !outputToken &&
+    destinationChainId &&
+    source?.token &&
+    row.originChainId
+  ) {
+    try {
+      const originChainId = parseInt(row.originChainId);
+      const correspondingToken = getCorrespondingTokenAddress(
+        originChainId,
+        source.token,
+        destinationChainId,
+      );
+      outputToken = correspondingToken;
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  if (!outputAmount && source?.amountSentLD) {
+    outputAmount = source.amountSentLD;
+  }
+
+  const { destinationDomain, destinationEndpointId, uniqueId, ...rest } =
+    mapped as any;
+
+  return {
+    ...rest,
+    outputToken: outputToken,
+    outputAmount: outputAmount,
+    uniqueId: row.uniqueId,
+  } as ParsedDepositReturnType;
 }

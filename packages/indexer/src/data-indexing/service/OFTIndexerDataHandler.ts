@@ -3,7 +3,7 @@ import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-
+import { updateDeposits } from "../../database/Deposits";
 import {
   ArbitraryActionsExecutedLog,
   BlockRange,
@@ -414,6 +414,16 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
         formatSwapFlowFinalizedEvent,
         entities.SwapFlowFinalized,
         primaryKeyColumns as (keyof entities.SwapFlowFinalized)[],
+      ),
+    ]);
+
+    // We process these in parallel after the main events are saved.
+    await Promise.all([
+      ...savedOftSentEvents.map((event) =>
+        updateDeposits(event, (this.oftRepository as any).postgres),
+      ),
+      ...savedOftReceivedEvents.map((event) =>
+        updateDeposits(event, (this.oftRepository as any).postgres),
       ),
     ]);
 

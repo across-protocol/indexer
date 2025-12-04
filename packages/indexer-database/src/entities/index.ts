@@ -54,3 +54,6 @@ export * from "./evm/FallbackHyperEVMFlowCompleted";
 export * from "./evm/SponsoredAccountActivation";
 export * from "./evm/SwapFlowInitialized";
 export * from "./evm/SwapFlowFinalized";
+
+// Deposits
+export * from "./Deposit";

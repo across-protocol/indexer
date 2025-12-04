@@ -10,7 +10,7 @@ import * as routers from "../routers";
 import { getTestDataSource, getTestRedisInstance } from "./setup";
 import { DepositStatusParams } from "../dtos/deposits.dto";
 
-describe.only("/deposit/status", () => {
+describe("/deposit/status", () => {
   let app: express.Express;
   let dataSource: DataSource;
   let redisClient: Redis;
