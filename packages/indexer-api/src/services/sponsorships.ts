@@ -8,20 +8,33 @@ import {
 import winston from "winston";
 import { entities } from "@repo/indexer-database";
 
-// Internal types representing the Raw SQL results
+/**
+ * Represents a raw row from the sponsorship volume query.
+ * @internal
+ */
 type RawSponsorshipRow = {
   chainId: number;
   tokenAddress: string;
   totalSponsored: string;
 };
 
+/**
+ * Represents a raw row from the user-specific sponsorship volume query.
+ * @internal
+ */
 type RawUserSponsorshipRow = RawSponsorshipRow & {
   finalRecipient: string;
 };
 
+/**
+ * Service for handling business logic related to sponsorships.
+ */
 export class SponsorshipsService {
   private readonly logger: winston.Logger;
 
+  /**
+   * @param {DataSource} db The data source for database access.
+   */
   constructor(private readonly db: DataSource) {
     this.logger = winston.createLogger({
       level: "info",
@@ -32,8 +45,11 @@ export class SponsorshipsService {
 
   /**
    * Retrieves and aggregates sponsorship data based on the provided parameters.
-   * @param params - The parameters for filtering the sponsorship data.
-   * @returns The aggregated sponsorship data.
+   * It fetches total sponsored volume, user-specific volume, and account activations
+   * within a flexible 24-hour window.
+   *
+   * @param {GetSponsorshipsDto} params - The parameters for filtering the sponsorship data, including optional timestamps.
+   * @returns {Promise<SponsorshipDto>} A promise that resolves to the aggregated sponsorship data.
    */
   public async getSponsorships(
     params: GetSponsorshipsDto,
@@ -95,8 +111,11 @@ export class SponsorshipsService {
   }
 
   /**
-   * Aggregates raw rows into: Chain -> [Tokens with Total Amounts]
-   * Handles summation if the same token appears in multiple table types.
+   * Aggregates raw sponsorship data into a structured format by chain.
+   * It sums up total sponsored amounts for each token on each chain.
+   *
+   * @param {RawSponsorshipRow[]} data The raw sponsorship data rows from the database.
+   * @returns {ChainAmounts[]} An array of `ChainAmounts`, where each element represents a chain and its sponsored tokens.
    */
   private aggregateTotalSponsorships(
     data: RawSponsorshipRow[],
@@ -130,7 +149,10 @@ export class SponsorshipsService {
   }
 
   /**
-   * Aggregates raw user sponsorship data by user, then by chain.
+   * Aggregates raw user sponsorship data by user, and then by chain.
+   *
+   * @param {RawUserSponsorshipRow[]} data The raw user-specific sponsorship data rows.
+   * @returns {UserSponsorship[]} An array of `UserSponsorship`, structured by user and their activities across chains.
    */
   private aggregateSponsorshipsByUser(
     data: RawUserSponsorshipRow[],
@@ -172,6 +194,13 @@ export class SponsorshipsService {
     }));
   }
 
+  /**
+   * Fetches the total sponsored volume across multiple event types within a given date range.
+   *
+   * @param {Date} startDate The start of the date range.
+   * @param {Date} endDate The end of the date range.
+   * @returns {Promise<RawSponsorshipRow[]>} A promise that resolves to an array of raw sponsorship rows.
+   */
   private async getSponsoredVolume(
     startDate: Date,
     endDate: Date,
@@ -205,6 +234,13 @@ export class SponsorshipsService {
     return (await Promise.all(promises)).flat();
   }
 
+  /**
+   * Fetches the sponsored volume for each user across multiple event types within a given date range.
+   *
+   * @param {Date} startDate The start of the date range.
+   * @param {Date} endDate The end of the date range.
+   * @returns {Promise<RawUserSponsorshipRow[]>} A promise that resolves to an array of raw, user-specific sponsorship rows.
+   */
   private async getAllUserSponsoredVolume(
     startDate: Date,
     endDate: Date,
@@ -238,6 +274,14 @@ export class SponsorshipsService {
 
     return (await Promise.all(promises)).flat();
   }
+
+  /**
+   * Fetches the unique accounts that were activated within a given date range.
+   *
+   * @param {Date} startDate The start of the date range.
+   * @param {Date} endDate The end of the date range.
+   * @returns {Promise<{ finalRecipient: string }[]>} A promise that resolves to an array of objects, each containing a `finalRecipient` address.
+   */
   private async getAccountActivations(
     startDate: Date,
     endDate: Date,
