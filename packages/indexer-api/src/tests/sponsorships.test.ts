@@ -8,13 +8,9 @@ import request from "supertest";
 import { Application } from "express";
 import { entities } from "@repo/indexer-database";
 import { fixtures } from "@repo/indexer-database";
-import { SponsorshipDto } from "../dtos/sponsorships.dto";
+import { Wallet } from "ethers";
 
 describe("Sponsorships API Integration Tests", () => {
-  const logger = winston.createLogger({
-    transports: [new winston.transports.Console()],
-  });
-
   let dataSource: DataSource;
   let app: Application;
 
@@ -115,9 +111,9 @@ describe("Sponsorships API Integration Tests", () => {
     const res = await request(app).get("/sponsorships");
     expect(res.status).to.equal(200);
     expect(res.body).to.deep.equal({
-      sponsorships: [],
+      totalSponsorships: [],
+      userSponsorships: [],
       accountActivations: [],
-      perChain: {},
     });
   });
 
@@ -141,216 +137,173 @@ describe("Sponsorships API Integration Tests", () => {
     );
 
     expect(res.status).to.equal(200);
-    expect(res.body.sponsorships).to.be.an("array").that.is.empty;
+    expect(res.body.totalSponsorships).to.be.an("array").that.is.empty;
+    expect(res.body.userSponsorships).to.be.an("array").that.is.empty;
   });
 
-  context("Complex Aggregation with Multiple Chains, Tokens, and Users", () => {
-    const user1 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      user2 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB49",
-      user3 = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB41";
-    const tokenA = "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
-      tokenB = "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-      tokenC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-    const chain1 = "1",
-      chain2 = "2",
-      chain3 = "3";
+  it("should correctly aggregate sponsorship data with multiple chains, tokens, and users", async () => {
+    const user1 = Wallet.createRandom().address;
+    const user2 = Wallet.createRandom().address;
+    const user3 = Wallet.createRandom().address;
+    const tokenA = Wallet.createRandom().address;
+    const tokenB = Wallet.createRandom().address;
+    const tokenC = Wallet.createRandom().address;
+    const chain1 = 1,
+      chain2 = 2,
+      chain3 = 3;
 
-    beforeEach(async () => {
-      // Sponsorships
-      await swapFlowFinalizedFixture.insert([
-        {
-          ...defaultSwapFlowFinalized,
-          chainId: chain1,
-          finalToken: tokenA,
-          evmAmountSponsored: "100",
-          finalRecipient: user1,
-          transactionHash: "0x10",
-        },
-        {
-          ...defaultSwapFlowFinalized,
-          chainId: chain2,
-          finalToken: tokenB,
-          evmAmountSponsored: "200",
-          finalRecipient: user2,
-          transactionHash: "0x11",
-        },
-      ]);
-      await simpleTransferFlowCompletedFixture.insert([
-        {
-          ...defaultSimpleTransferFlowCompleted,
-          chainId: chain3,
-          finalToken: tokenC,
-          evmAmountSponsored: "300",
-          finalRecipient: user3,
-          transactionHash: "0x12",
-        },
-        {
-          ...defaultSimpleTransferFlowCompleted,
-          chainId: chain1,
-          finalToken: tokenA,
-          evmAmountSponsored: "150",
-          finalRecipient: user2,
-          transactionHash: "0x13",
-        },
-      ]);
-      await fallbackHyperEVMFlowCompletedFixture.insert([
-        {
-          ...defaultFallbackHyperEVMFlowCompleted,
-          chainId: chain2,
-          finalToken: tokenB,
-          evmAmountSponsored: "250",
-          finalRecipient: user1,
-          transactionHash: "0x14",
-        },
-      ]);
+    // Sponsorships
+    await swapFlowFinalizedFixture.insert([
+      {
+        ...defaultSwapFlowFinalized,
+        chainId: chain1.toString(),
+        finalToken: tokenA,
+        evmAmountSponsored: "100",
+        finalRecipient: user1,
+        transactionHash: "0x10",
+      },
+      {
+        ...defaultSwapFlowFinalized,
+        chainId: chain2.toString(),
+        finalToken: tokenB,
+        evmAmountSponsored: "200",
+        finalRecipient: user2,
+        transactionHash: "0x11",
+      },
+    ]);
+    await simpleTransferFlowCompletedFixture.insert([
+      {
+        ...defaultSimpleTransferFlowCompleted,
+        chainId: chain3.toString(),
+        finalToken: tokenC,
+        evmAmountSponsored: "300",
+        finalRecipient: user3,
+        transactionHash: "0x12",
+      },
+      {
+        ...defaultSimpleTransferFlowCompleted,
+        chainId: chain1.toString(),
+        finalToken: tokenA,
+        evmAmountSponsored: "150",
+        finalRecipient: user2,
+        transactionHash: "0x13",
+      },
+    ]);
+    await fallbackHyperEVMFlowCompletedFixture.insert([
+      {
+        ...defaultFallbackHyperEVMFlowCompleted,
+        chainId: chain2.toString(),
+        finalToken: tokenB,
+        evmAmountSponsored: "250",
+        finalRecipient: user1,
+        transactionHash: "0x14",
+      },
+    ]);
 
-      // Account Activations
-      await sponsoredAccountActivationFixture.insert([
-        {
-          ...defaultSponsoredAccountActivation,
-          chainId: chain1,
-          fundingToken: tokenA,
-          evmAmountSponsored: "500",
-          finalRecipient: user1,
-          transactionHash: "0x15",
-        },
-        {
-          ...defaultSponsoredAccountActivation,
-          chainId: chain2,
-          fundingToken: tokenB,
-          evmAmountSponsored: "600",
-          finalRecipient: user2,
-          transactionHash: "0x16",
-        },
-        {
-          ...defaultSponsoredAccountActivation,
-          chainId: chain3,
-          fundingToken: tokenC,
-          evmAmountSponsored: "700",
-          finalRecipient: user3,
-          transactionHash: "0x17",
-        },
-      ]);
-    });
+    // Account Activations
+    await sponsoredAccountActivationFixture.insert([
+      {
+        ...defaultSponsoredAccountActivation,
+        finalRecipient: user1,
+        chainId: chain1.toString(),
+        fundingToken: tokenA,
+      },
+      {
+        ...defaultSponsoredAccountActivation,
+        finalRecipient: user2,
+        chainId: chain2.toString(),
+        transactionHash: "0x16",
+        fundingToken: tokenB,
+      },
+      {
+        ...defaultSponsoredAccountActivation,
+        finalRecipient: user3,
+        chainId: chain3.toString(),
+        transactionHash: "0x17",
+        fundingToken: tokenC,
+      },
+      {
+        ...defaultSponsoredAccountActivation,
+        finalRecipient: user1,
+        chainId: chain1.toString(),
+        transactionHash: "0x18",
+        fundingToken: tokenA,
+      }, // Duplicate user
+    ]);
 
-    it("should correctly aggregate data globally and per chain", async () => {
-      const res = await request(app).get("/sponsorships");
-      expect(res.status).to.equal(200);
+    const res = await request(app).get("/sponsorships");
+    expect(res.status).to.equal(200);
 
-      const expected: SponsorshipDto = {
-        sponsorships: [
-          { sponsoredAmount: "250", tokenAddress: tokenA }, // 100 + 150
-          { sponsoredAmount: "450", tokenAddress: tokenB }, // 200 + 250
-          { sponsoredAmount: "300", tokenAddress: tokenC },
-        ],
-        userSponsorships: [],
-        accountActivations: [
-          { userAddress: user1, sponsoredAmount: "500", tokenAddress: tokenA },
-          { userAddress: user2, sponsoredAmount: "600", tokenAddress: tokenB },
-          { userAddress: user3, sponsoredAmount: "700", tokenAddress: tokenC },
-        ],
-        perChain: {
-          [chain1]: {
-            sponsorships: [{ sponsoredAmount: "250", tokenAddress: tokenA }],
-            accountActivations: [
-              {
-                userAddress: user1,
-                sponsoredAmount: "500",
-                tokenAddress: tokenA,
-              },
-            ],
-          },
-          [chain2]: {
-            sponsorships: [{ sponsoredAmount: "450", tokenAddress: tokenB }],
-            accountActivations: [
-              {
-                userAddress: user2,
-                sponsoredAmount: "600",
-                tokenAddress: tokenB,
-              },
-            ],
-          },
-          [chain3]: {
-            sponsorships: [{ sponsoredAmount: "300", tokenAddress: tokenC }],
-            accountActivations: [
-              {
-                userAddress: user3,
-                sponsoredAmount: "700",
-                tokenAddress: tokenC,
-              },
-            ],
-          },
-        },
-      };
+    const { totalSponsorships, accountActivations, userSponsorships } =
+      res.body;
 
-      // Verify Global Arrays (Order independent)
-      // .deep.members checks that the array contains the same objects, regardless of order
-      expect(res.body.sponsorships).to.have.deep.members(expected.sponsorships);
-      expect(res.body.userSponsorships).to.be.undefined;
-      expect(res.body.accountActivations).to.have.deep.members(
-        expected.accountActivations,
-      );
+    // Total Sponsorships (order-independent check)
+    expect(totalSponsorships).to.have.deep.members([
+      {
+        chainId: chain1,
+        finalTokens: [{ tokenAddress: tokenA, evmAmountSponsored: "250" }], // 100 + 150
+      },
+      {
+        chainId: chain2,
+        finalTokens: [{ tokenAddress: tokenB, evmAmountSponsored: "450" }], // 200 + 250
+      },
+      {
+        chainId: chain3,
+        finalTokens: [{ tokenAddress: tokenC, evmAmountSponsored: "300" }],
+      },
+    ]);
 
-      // Verify Per-Chain keys exist
-      const chainIds = Object.keys(expected.perChain);
-      expect(Object.keys(res.body.perChain)).to.have.members(chainIds);
+    // Account Activations (order-independent check)
+    expect(accountActivations).to.have.deep.members([
+      { finalRecipient: user1 },
+      { finalRecipient: user2 },
+      { finalRecipient: user3 },
+    ]);
+    // User-Specific Sponsorships (verbose, order-independent check)
+    expect(userSponsorships).to.be.an("array").with.lengthOf(3);
 
-      // Verify Per-Chain contents (Order independent)
-      for (const chainId of chainIds) {
-        const actualChain = res.body.perChain[chainId];
-        const expectedChain = expected.perChain[chainId];
-        expect(expectedChain).to.exist;
-        // Check strict string equality inside these arrays
-        expect(actualChain.sponsorships).to.have.deep.members(
-          expectedChain!.sponsorships,
-        );
-        expect(actualChain.accountActivations).to.have.deep.members(
-          expectedChain!.accountActivations,
-        );
-      }
-    });
+    // Check User 1
+    const user1Sponsorship = userSponsorships.find(
+      (s: any) => s.finalRecipient === user1,
+    );
+    expect(user1Sponsorship, "User 1 data missing").to.exist;
+    expect(user1Sponsorship.sponsorships).to.have.deep.members([
+      {
+        chainId: chain1,
+        finalTokens: [{ tokenAddress: tokenA, evmAmountSponsored: "100" }],
+      },
+      {
+        chainId: chain2,
+        finalTokens: [{ tokenAddress: tokenB, evmAmountSponsored: "250" }],
+      },
+    ]);
 
-    it("should correctly filter by a user address", async () => {
-      const res = await request(app).get(`/sponsorships?address=${user1}`);
-      expect(res.status).to.equal(200);
+    // Check User 2
+    const user2Sponsorship = userSponsorships.find(
+      (s: any) => s.finalRecipient === user2,
+    );
+    expect(user2Sponsorship, "User 2 data missing").to.exist;
+    expect(user2Sponsorship.sponsorships).to.have.deep.members([
+      {
+        chainId: chain1,
+        finalTokens: [{ tokenAddress: tokenA, evmAmountSponsored: "150" }],
+      },
+      {
+        chainId: chain2,
+        finalTokens: [{ tokenAddress: tokenB, evmAmountSponsored: "200" }],
+      },
+    ]);
 
-      const expectedUserSponsorships = [
-        {
-          userAddress: user1,
-          userSponsoredAmount: "100",
-          tokenAddress: tokenA,
-        },
-        {
-          userAddress: user1,
-          userSponsoredAmount: "250",
-          tokenAddress: tokenB,
-        },
-      ];
-
-      res.body.userSponsorships.sort(
-        (a: { tokenAddress: string }, b: { tokenAddress: string }) =>
-          a.tokenAddress.localeCompare(b.tokenAddress),
-      );
-      expectedUserSponsorships.sort((a, b) =>
-        a.tokenAddress.localeCompare(b.tokenAddress),
-      );
-
-      expect(res.body.userSponsorships).to.deep.equal(expectedUserSponsorships);
-
-      // non-user specific data should be unaffected
-      expect(res.body.sponsorships).to.have.lengthOf(3);
-      expect(res.body.accountActivations).to.have.lengthOf(3);
-    });
-
-    it("should return 400 if an invalid address is provided", async () => {
-      const invalidAddress = "0xinvalidAddress";
-      const res = await request(app).get(
-        `/sponsorships?address=${invalidAddress}`,
-      );
-      expect(res.status).to.equal(400);
-      expect(res.body.message).to.include(
-        "Expected a value of type `Valid Ethereum Address`",
-      );
-    });
+    // Check User 3
+    const user3Sponsorship = userSponsorships.find(
+      (s: any) => s.finalRecipient === user3,
+    );
+    expect(user3Sponsorship, "User 3 data missing").to.exist;
+    expect(user3Sponsorship.sponsorships).to.have.deep.members([
+      {
+        chainId: chain3,
+        finalTokens: [{ tokenAddress: tokenC, evmAmountSponsored: "300" }],
+      },
+    ]);
   });
 });

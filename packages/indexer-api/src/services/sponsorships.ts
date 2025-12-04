@@ -1,18 +1,24 @@
-import { DataSource, In } from "typeorm";
+import { DataSource } from "typeorm";
 import {
   GetSponsorshipsDto,
   SponsorshipDto,
-  SponsorshipStats,
-  SponsorshipUserStats,
-  AccountActivationStats,
-  ChainSponsorshipStats,
+  ChainAmounts,
+  UserSponsorship,
 } from "../dtos/sponsorships.dto";
 import winston from "winston";
 import { entities } from "@repo/indexer-database";
 
-/**
- * Service for handling sponsorship data.
- */
+// Internal types representing the Raw SQL results
+type RawSponsorshipRow = {
+  chainId: number;
+  tokenAddress: string;
+  totalSponsored: string;
+};
+
+type RawUserSponsorshipRow = RawSponsorshipRow & {
+  finalRecipient: string;
+};
+
 export class SponsorshipsService {
   private readonly logger: winston.Logger;
 
@@ -32,7 +38,6 @@ export class SponsorshipsService {
   public async getSponsorships(
     params: GetSponsorshipsDto,
   ): Promise<SponsorshipDto> {
-    const address = params.address ? params.address.toLowerCase() : undefined;
     const { fromTimestamp, toTimestamp } = params;
     const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
     const currentTime = Date.now();
@@ -73,191 +78,112 @@ export class SponsorshipsService {
     const startDate = new Date(startTimestamp);
     const endDate = new Date(endTimestamp);
 
-    const sponsorshipsPromise = this.getSponsoredVolume(startDate, endDate);
-    const userSponsorshipsPromise = address
-      ? this.getUserSponsoredVolume(address, startDate, endDate)
-      : [];
-    const accountActivationsPromise = this.getAccountActivationStats(
-      startDate,
-      endDate,
-    );
-
+    // Parallel Data Fetching
     const [sponsorships, userSponsorships, accountActivations] =
       await Promise.all([
-        sponsorshipsPromise,
-        userSponsorshipsPromise,
-        accountActivationsPromise,
+        this.getSponsoredVolume(startDate, endDate),
+        this.getAllUserSponsoredVolume(startDate, endDate),
+        this.getAccountActivations(startDate, endDate),
       ]);
 
-    const perChain: ChainSponsorshipStats = {};
-
-    // Aggregate data per chain.
-    sponsorships.forEach((s) => {
-      if (!perChain[s.chainId]) {
-        perChain[s.chainId] = { sponsorships: [], accountActivations: [] };
-      }
-      const chainStats = perChain[s.chainId];
-      if (chainStats) {
-        chainStats.sponsorships.push({
-          sponsoredAmount: s.totalSponsored,
-          tokenAddress: s.tokenAddress,
-        });
-      }
-    });
-
-    userSponsorships.forEach((us) => {
-      if (!perChain[us.chainId]) {
-        perChain[us.chainId] = { sponsorships: [], accountActivations: [] };
-      }
-      const chainStats = perChain[us.chainId];
-      if (chainStats) {
-        if (!chainStats.userSponsorships) {
-          chainStats.userSponsorships = [];
-        }
-        chainStats.userSponsorships.push({
-          userAddress: us.userAddress,
-          userSponsoredAmount: us.totalSponsored,
-          tokenAddress: us.tokenAddress,
-        });
-      }
-    });
-
-    accountActivations.forEach((aa) => {
-      if (!perChain[aa.chainId]) {
-        perChain[aa.chainId] = { sponsorships: [], accountActivations: [] };
-      }
-      const chainStats = perChain[aa.chainId];
-      if (chainStats) {
-        chainStats.accountActivations.push({
-          userAddress: aa.userAddress,
-          sponsoredAmount: aa.totalSponsored.toString(),
-          tokenAddress: aa.tokenAddress,
-        });
-      }
-    });
-
-    // Aggregate data globally.
-    const globalSponsorships: SponsorshipStats[] =
-      this.aggregateGlobalSponsorships(sponsorships);
-    const globalUserSponsorships: SponsorshipUserStats[] =
-      this.aggregateGlobalUserSponsorships(userSponsorships);
-    const globalAccountActivations: AccountActivationStats[] =
-      this.aggregateGlobalAccountActivations(accountActivations);
-
+    // Aggregation & Formatting
     return {
-      sponsorships: globalSponsorships,
-      userSponsorships: address ? globalUserSponsorships : undefined,
-      accountActivations: globalAccountActivations,
-      perChain: perChain,
+      totalSponsorships: this.aggregateTotalSponsorships(sponsorships),
+      userSponsorships: this.aggregateSponsorshipsByUser(userSponsorships),
+      accountActivations,
     };
   }
 
   /**
-   * Aggregates global sponsorship stats.
-   * @param sponsorships - The sponsorship data to aggregate.
-   * @returns The aggregated global sponsorship stats.
+   * Aggregates raw rows into: Chain -> [Tokens with Total Amounts]
+   * Handles summation if the same token appears in multiple table types.
    */
-  private aggregateGlobalSponsorships(sponsorships: any[]): SponsorshipStats[] {
-    const aggregated = new Map<string, bigint>();
-    sponsorships.forEach((s) => {
-      const amount = BigInt(s.totalSponsored);
-      aggregated.set(
-        s.tokenAddress,
-        (aggregated.get(s.tokenAddress) || BigInt(0)) + amount,
+  private aggregateTotalSponsorships(
+    data: RawSponsorshipRow[],
+  ): ChainAmounts[] {
+    const byChain = new Map<number, Map<string, bigint>>();
+
+    for (const item of data) {
+      const chainId = Number(item.chainId);
+      if (!byChain.has(chainId)) {
+        byChain.set(chainId, new Map<string, bigint>());
+      }
+      const chainMap = byChain.get(chainId)!;
+
+      const currentAmount = chainMap.get(item.tokenAddress) || BigInt(0);
+      // Ensure we handle the string-to-bigint conversion safely here
+      chainMap.set(
+        item.tokenAddress,
+        currentAmount + BigInt(item.totalSponsored),
       );
-    });
+    }
 
-    return Array.from(aggregated.entries()).map(
-      ([tokenAddress, sponsoredAmount]) => ({
-        tokenAddress,
-        sponsoredAmount: sponsoredAmount.toString(),
-      }),
-    );
-  }
-
-  /**
-   * Aggregates global user sponsorship stats.
-   * @param userSponsorships - The user sponsorship data to aggregate.
-   * @returns The aggregated global user sponsorship stats.
-   */
-  private aggregateGlobalUserSponsorships(
-    userSponsorships: any[],
-  ): SponsorshipUserStats[] {
-    const aggregated = new Map<
-      string,
-      { amount: bigint; userAddress: string; tokenAddress: string }
-    >();
-    userSponsorships.forEach((us) => {
-      const key = `${us.userAddress}-${us.tokenAddress}`;
-      const amount = BigInt(us.totalSponsored);
-      const current = aggregated.get(key) || {
-        amount: BigInt(0),
-        userAddress: us.userAddress,
-        tokenAddress: us.tokenAddress,
-      };
-      current.amount += amount;
-      aggregated.set(key, current);
-    });
-
-    return Array.from(aggregated.values()).map((value) => ({
-      userAddress: value.userAddress,
-      userSponsoredAmount: value.amount.toString(),
-      tokenAddress: value.tokenAddress,
+    return Array.from(byChain.entries()).map(([chainId, tokens]) => ({
+      chainId,
+      finalTokens: Array.from(tokens.entries()).map(
+        ([tokenAddress, totalSponsoredAmount]) => ({
+          tokenAddress: tokenAddress,
+          evmAmountSponsored: totalSponsoredAmount.toString(),
+        }),
+      ),
     }));
   }
 
   /**
-   * Aggregates global account activation stats.
-   * @param accountActivations - The account activation data to aggregate.
-   * @returns The aggregated global account activation stats.
+   * Aggregates raw user sponsorship data by user, then by chain.
    */
-  private aggregateGlobalAccountActivations(
-    accountActivations: any[],
-  ): AccountActivationStats[] {
-    const aggregated = new Map<
-      string,
-      { amount: bigint; userAddress: string; tokenAddress: string }
-    >();
-    accountActivations.forEach((aa) => {
-      const key = `${aa.userAddress}-${aa.tokenAddress}`;
-      const amount = BigInt(aa.totalSponsored);
-      const current = aggregated.get(key) || {
-        amount: BigInt(0),
-        userAddress: aa.userAddress,
-        tokenAddress: aa.tokenAddress,
-      };
-      current.amount += amount;
-      aggregated.set(key, current);
-    });
+  private aggregateSponsorshipsByUser(
+    data: RawUserSponsorshipRow[],
+  ): UserSponsorship[] {
+    // userAddress -> chainId -> tokenAddress -> amount
+    const byUser = new Map<string, Map<number, Map<string, bigint>>>();
 
-    return Array.from(aggregated.values()).map((value) => ({
-      userAddress: value.userAddress,
-      sponsoredAmount: value.amount.toString(),
-      tokenAddress: value.tokenAddress,
+    for (const item of data) {
+      const finalRecipient = item.finalRecipient;
+      if (!byUser.has(finalRecipient)) {
+        byUser.set(finalRecipient, new Map<number, Map<string, bigint>>());
+      }
+      const userMap = byUser.get(finalRecipient)!;
+
+      const chainId = Number(item.chainId);
+      if (!userMap.has(chainId)) {
+        userMap.set(chainId, new Map<string, bigint>());
+      }
+      const chainMap = userMap.get(chainId)!;
+
+      const currentAmount = chainMap.get(item.tokenAddress) || BigInt(0);
+      chainMap.set(
+        item.tokenAddress,
+        currentAmount + BigInt(item.totalSponsored),
+      );
+    }
+
+    return Array.from(byUser.entries()).map(([userAddress, chainMap]) => ({
+      finalRecipient: userAddress,
+      sponsorships: Array.from(chainMap.entries()).map(([chainId, tokens]) => ({
+        chainId,
+        finalTokens: Array.from(tokens.entries()).map(
+          ([tokenAddress, amount]) => ({
+            tokenAddress,
+            evmAmountSponsored: amount.toString(),
+          }),
+        ),
+      })),
     }));
   }
 
-  /**
-   * Retrieves the sponsored volume within a given time frame.
-   * @param startDate - The start of the time frame.
-   * @param endDate - The end of the time frame.
-   * @returns The sponsored volume data.
-   */
   private async getSponsoredVolume(
     startDate: Date,
     endDate: Date,
-  ): Promise<
-    { chainId: string; tokenAddress: string; totalSponsored: string }[]
-  > {
+  ): Promise<RawSponsorshipRow[]> {
     const types = [
       entities.SwapFlowFinalized,
       entities.SimpleTransferFlowCompleted,
       entities.FallbackHyperEVMFlowCompleted,
     ];
 
-    // Fetch data in parallel
-    const promises = types.map((entity) => {
-      return this.db
+    const promises = types.map((entity) =>
+      this.db
         .getRepository(entity)
         .createQueryBuilder("event")
         .select(`"event"."chainId"`, "chainId")
@@ -270,71 +196,31 @@ export class SponsorshipsService {
           startDate,
           endDate,
         })
-        .groupBy(`"event"."chainId"`)
-        .addGroupBy(`"event"."finalToken"`)
-        .getRawMany();
-    });
+        .groupBy(`"event"."chainId", "event"."finalToken"`)
+        .getRawMany(),
+    );
 
-    const results = (await Promise.all(promises)).flat();
-
-    // Aggregate using a Composite Key ("chainId:tokenAddress")
-    // This removes the need for nested Maps entirely.
-    const aggregationMap = new Map<string, bigint>();
-
-    for (const result of results) {
-      if (!result.totalSponsored) continue;
-
-      const key = `${result.chainId}:${result.tokenAddress}`;
-      const currentTotal = aggregationMap.get(key) || BigInt(0);
-
-      aggregationMap.set(key, currentTotal + BigInt(result.totalSponsored));
-    }
-
-    // Transform back to array
-    return Array.from(aggregationMap.entries()).map(([key, totalSponsored]) => {
-      // We cast the split result to satisfy TypeScript
-      const [chainId, tokenAddress] = key.split(":") as [string, string];
-
-      return {
-        chainId,
-        tokenAddress,
-        totalSponsored: totalSponsored.toString(),
-      };
-    });
+    // Flatten results because we queried 3 different tables.
+    // The aggregator will sum them up if the same token appears in multiple tables.
+    return (await Promise.all(promises)).flat();
   }
 
-  /**
-   * Retrieves the sponsored volume for a specific user within a given time frame.
-   * @param userAddress - The user's address.
-   * @param startDate - The start of the time frame.
-   * @param endDate - The end of the time frame.
-   * @returns The user's sponsored volume data.
-   */
-  private async getUserSponsoredVolume(
-    userAddress: string,
+  private async getAllUserSponsoredVolume(
     startDate: Date,
     endDate: Date,
-  ): Promise<
-    {
-      chainId: string;
-      userAddress: string;
-      tokenAddress: string;
-      totalSponsored: string;
-    }[]
-  > {
+  ): Promise<RawUserSponsorshipRow[]> {
     const types = [
       entities.SwapFlowFinalized,
       entities.SimpleTransferFlowCompleted,
       entities.FallbackHyperEVMFlowCompleted,
     ];
 
-    // Fetch data
-    const promises = types.map((entity) => {
-      return this.db
+    const promises = types.map((entity) =>
+      this.db
         .getRepository(entity)
         .createQueryBuilder("event")
         .select(`"event"."chainId"`, "chainId")
-        .addSelect(`"event"."finalRecipient"`, "userAddress")
+        .addSelect(`"event"."finalRecipient"`, "finalRecipient")
         .addSelect(`"event"."finalToken"`, "tokenAddress")
         .addSelect(
           `SUM("event"."evmAmountSponsored"::numeric)`,
@@ -344,78 +230,29 @@ export class SponsorshipsService {
           startDate,
           endDate,
         })
-        .andWhere(`LOWER("event"."finalRecipient") = :formattedAddress`, {
-          formattedAddress: userAddress,
-        })
-        .groupBy(`"event"."chainId"`)
-        .addGroupBy(`"event"."finalRecipient"`)
-        .addGroupBy(`"event"."finalToken"`)
-        .getRawMany();
-    });
+        .groupBy(
+          `"event"."chainId", "event"."finalRecipient", "event"."finalToken"`,
+        )
+        .getRawMany(),
+    );
 
-    const results = (await Promise.all(promises)).flat();
-
-    // Aggregate using a Composite Key
-    // We use a string key "chainId:user:token" to store data in a flat Map.
-    const aggregationMap = new Map<string, bigint>();
-
-    for (const row of results) {
-      if (!row.totalSponsored) continue;
-
-      // Create a unique key for this combination
-      const key = `${row.chainId}:${row.userAddress}:${row.tokenAddress}`;
-
-      const currentTotal = aggregationMap.get(key) || BigInt(0);
-      aggregationMap.set(key, currentTotal + BigInt(row.totalSponsored));
-    }
-
-    // Transform back to array
-    return Array.from(aggregationMap.entries()).map(([key, amount]) => {
-      const [chainId, userAddress, tokenAddress] = key.split(":") as [
-        string,
-        string,
-        string,
-      ];
-      return {
-        chainId,
-        userAddress,
-        tokenAddress,
-        totalSponsored: amount.toString(),
-      };
-    });
+    return (await Promise.all(promises)).flat();
   }
-
-  /**
-   * Retrieves the account activation stats within a given time frame.
-   * @param startDate - The start of the time frame.
-   * @param endDate - The end of the time frame.
-   * @returns The account activation stats.
-   */
-  private async getAccountActivationStats(
+  private async getAccountActivations(
     startDate: Date,
     endDate: Date,
-  ): Promise<
-    {
-      chainId: string;
-      userAddress: string;
-      tokenAddress: string;
-      totalSponsored: string;
-    }[]
-  > {
-    return this.db
+  ): Promise<{ finalRecipient: string }[]> {
+    const rows = await this.db
       .getRepository(entities.SponsoredAccountActivation)
       .createQueryBuilder("event")
-      .select(`"event"."chainId"`, "chainId")
-      .addSelect(`"event"."finalRecipient"`, "userAddress")
-      .addSelect(`"event"."fundingToken"`, "tokenAddress")
-      .addSelect(`SUM("event"."evmAmountSponsored"::numeric)`, "totalSponsored")
+      // We only care about unique users, regardless of chain or token
+      .select(`DISTINCT "event"."finalRecipient"`, "finalRecipient")
       .where(`"event"."blockTimestamp" BETWEEN :startDate AND :endDate`, {
         startDate,
         endDate,
       })
-      .groupBy(`"event"."chainId"`)
-      .addGroupBy(`"event"."finalRecipient"`)
-      .addGroupBy(`"event"."fundingToken"`)
       .getRawMany();
+
+    return rows.map((row) => ({ finalRecipient: row.finalRecipient }));
   }
 }
