@@ -100,10 +100,6 @@ describe("Sponsorships API Integration Tests", () => {
   });
 
   afterEach(async () => {
-    await swapFlowFinalizedFixture.deleteAll();
-    await simpleTransferFlowCompletedFixture.deleteAll();
-    await fallbackHyperEVMFlowCompletedFixture.deleteAll();
-    await sponsoredAccountActivationFixture.deleteAll();
     await dataSource.destroy();
   });
 
