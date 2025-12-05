@@ -11,3 +11,4 @@ export * from "./SwapMetadataFixture";
 export * from "./HypercoreCctpWithdrawFixture";
 export * from "./MessageSentFixture";
 export * from "./MessageReceivedFixture";
+export * from "./GenericFixture";

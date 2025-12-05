@@ -36,6 +36,7 @@ export async function Main(
     statsPage: routers.statsPage.getRouter(postgres),
     fills: routers.fills.getRouter(postgres), // Added fills router
     webhook: webhooks.router,
+    sponsorships: routers.sponsorships.getRouter(postgres),
   };
   const app = ExpressApp(allRouters);
 
