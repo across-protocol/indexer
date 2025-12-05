@@ -2,6 +2,30 @@ import * as s from "superstruct";
 
 const stringToNumber = s.coerce(s.number(), s.string(), Number);
 
+// Create a Refinement to validate the number
+const UnixTimestamp = s.refine(stringToNumber, "UnixTimestamp", (value) => {
+  // Check 1: Must be an integer (no decimals)
+  if (!Number.isInteger(value)) {
+    return "Timestamp must be an integer";
+  }
+
+  // Check 2: Must be positive
+  if (value < 0) {
+    return "Timestamp must be positive";
+  }
+
+  // 13 digits range:
+  // Min: 1,000,000,000,000 (Sep 09 2001)
+  // Max: 9,999,999,999,999 (Nov 20 2286)
+  if (value < 1_000_000_000_000 || value > 9_999_999_999_999) {
+    return "Timestamp must be in milliseconds (13 digits)";
+  }
+
+  // Check 3: Must be a valid date in JS
+  const date = new Date(value);
+  return !isNaN(date.getTime()) || "Invalid Date";
+});
+
 /**
  * Represents an amount of a specific token.
  */
@@ -48,9 +72,11 @@ export type UserSponsorship = s.Infer<typeof UserSponsorship>;
  */
 export const GetSponsorshipsDto = s.object({
   /** Optional start of the time range (Unix timestamp). */
-  fromTimestamp: s.optional(stringToNumber),
-  /** Optional end of the time range (Unix timestamp). */
-  toTimestamp: s.optional(stringToNumber),
+  fromTimestamp:
+    s.optional(
+      UnixTimestamp,
+    ) /** Optional end of the time range (Unix timestamp). */,
+  toTimestamp: s.optional(UnixTimestamp),
 });
 export type GetSponsorshipsDto = s.Infer<typeof GetSponsorshipsDto>;
 
