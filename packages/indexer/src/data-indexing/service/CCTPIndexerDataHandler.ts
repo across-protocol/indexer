@@ -111,6 +111,11 @@ const WHITELISTED_FINALIZERS = [
   "0x72adB07A487f38321b6665c02D289C413610B081",
 ];
 
+// Convert whitelisted finalizers to bytes32 format for comparison with destinationCaller
+const WHITELISTED_FINALIZERS_BYTES32 = WHITELISTED_FINALIZERS.map((address) =>
+  ethers.utils.hexZeroPad(address.toLowerCase(), 32).toLowerCase(),
+);
+
 export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
 
@@ -368,7 +373,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       .map((transaction) => transaction.hash);
 
     return depositForBurnEvents.filter((event) => {
-      return transactionHashes.includes(event.transactionHash);
+      // Filter by transaction hash (Swap API marker)
+      if (!transactionHashes.includes(event.transactionHash)) {
+        return false;
+      }
+      // Filter also by destinationCaller.
+      // The Swap API marker alone is insufficient since "73c0de" can appear
+      // in the calldata of transactions unrelated to Across.
+      const destinationCallerLower = event.args.destinationCaller.toLowerCase();
+      return WHITELISTED_FINALIZERS_BYTES32.includes(destinationCallerLower);
     });
   }
 
