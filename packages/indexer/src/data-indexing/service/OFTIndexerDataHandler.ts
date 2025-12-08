@@ -419,11 +419,25 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
     // We process these in parallel after the main events are saved.
     await Promise.all([
-      ...savedOftSentEvents.map((event) =>
-        updateDeposits(event, (this.oftRepository as any).postgres),
+      ...savedOftSentEvents.map((oftSent) =>
+        updateDeposits({
+          dataSource: (this.oftRepository as any).postgres,
+          depositUpdate: {
+            oft: {
+              sent: oftSent.data,
+            },
+          },
+        }),
       ),
-      ...savedOftReceivedEvents.map((event) =>
-        updateDeposits(event, (this.oftRepository as any).postgres),
+      ...savedOftReceivedEvents.map((oftReceived) =>
+        updateDeposits({
+          dataSource: (this.oftRepository as any).postgres,
+          depositUpdate: {
+            oft: {
+              received: oftReceived.data,
+            },
+          },
+        }),
       ),
     ]);
 

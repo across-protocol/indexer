@@ -1,5 +1,6 @@
 import { Repository, ObjectLiteral, DataSource } from "typeorm";
 import { entities } from "@repo/indexer-database";
+import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
 
 /**
  * Enum to define the type of update being performed on the Deposit index.
@@ -11,40 +12,71 @@ export enum DepositUpdateType {
   FILL = "FILL",
 }
 
+export type AcrossDepositUpdate = {
+  deposit?: entities.V3FundsDeposited;
+  fill?: entities.FilledV3Relay;
+};
+
+export type OftDepositUpdate = {
+  sent?: entities.OFTSent;
+  received?: entities.OFTReceived;
+};
+
+export type CctpDepositUpdate = {
+  deposit?: {
+    depositForBurn?: entities.DepositForBurn;
+    messageSent: entities.MessageSent;
+  };
+  fill?: {
+    mintAndWithdraw?: entities.MintAndWithdraw;
+    messageReceived: entities.MessageReceived;
+  };
+};
+
+export type DepositUpdaterRequestType = {
+  dataSource: DataSource;
+  depositUpdate: {
+    across?: AcrossDepositUpdate;
+    cctp?: CctpDepositUpdate;
+    oft?: OftDepositUpdate;
+  };
+};
+
 /**
  * Updates the central Deposit index based on a protocol event.
  *
- * @param event - The specific protocol event (e.g., V3FundsDeposited, OFTSent)
- * @param dataSource - The DataSource to access the Deposit repository and related entities
  */
-export async function updateDeposits<T extends ObjectLiteral>(
-  event: T,
-  dataSource: DataSource,
-): Promise<T> {
+export async function updateDeposits(
+  request: DepositUpdaterRequestType,
+): Promise<entities.Deposit | undefined> {
+  const { dataSource, depositUpdate } = request;
   const depositRepo = dataSource.getRepository(entities.Deposit);
-
+  let savedUpdate: entities.Deposit | undefined;
   // --- ACROSS ---
-  if (event instanceof entities.V3FundsDeposited) {
-    await handleAcrossDeposit(event, depositRepo);
-  } else if (event instanceof entities.FilledV3Relay) {
-    await handleAcrossFill(event, depositRepo);
+  if (depositUpdate.across) {
+    const { deposit, fill } = depositUpdate.across;
+    if (deposit) await handleAcrossDeposit(deposit, depositRepo);
+    if (fill) await handleAcrossFill(fill, depositRepo);
   }
 
   // --- CCTP ---
-  else if (event instanceof entities.DepositForBurn) {
-    await handleCctpDeposit(event, depositRepo, dataSource);
-  } else if (event instanceof entities.MintAndWithdraw) {
-    await handleCctpFill(event, depositRepo, dataSource);
+  else if (depositUpdate.cctp) {
+    const { deposit, fill } = depositUpdate.cctp;
+    if (deposit) {
+      await handleCctpDeposit(deposit, depositRepo);
+    }
+    if (fill) {
+      await handleCctpFill(fill, depositRepo);
+    }
   }
 
   // --- OFT ---
-  else if (event instanceof entities.OFTSent) {
-    await handleOftSent(event, depositRepo);
-  } else if (event instanceof entities.OFTReceived) {
-    await handleOftReceived(event, depositRepo);
+  else if (depositUpdate.oft) {
+    const { sent, received } = depositUpdate.oft;
+    if (sent) await handleOftSent(sent, depositRepo);
+    if (received) await handleOftReceived(received, depositRepo);
   }
-
-  return event;
+  return savedUpdate;
 }
 
 // --- Protocol Handlers ---
@@ -52,11 +84,10 @@ export async function updateDeposits<T extends ObjectLiteral>(
 async function handleAcrossDeposit(
   event: entities.V3FundsDeposited,
   depositRepo: Repository<entities.Deposit>,
-) {
-  const uniqueId = event.relayHash; // Across uses relayHash as the primary identifier
-  if (!uniqueId) return;
+): Promise<void> {
+  const uniqueId = event.internalHash; // Across uses internalHash as the primary identifier
 
-  await updateDepositRecord(
+  return await updateDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.ACROSS,
@@ -75,15 +106,15 @@ async function handleAcrossDeposit(
 async function handleAcrossFill(
   event: entities.FilledV3Relay,
   depositRepo: Repository<entities.Deposit>,
-) {
-  const uniqueId = event.relayHash;
-  if (!uniqueId) return;
+): Promise<void> {
+  const uniqueId = event.internalHash;
 
-  await updateDepositRecord(
+  return await updateDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.ACROSS,
     {
+      originChainId: event.originChainId,
       destinationChainId: event.destinationChainId,
       filledV3RelayId: event.id,
       // Use timestamp as fallback if the deposit event has not been processed yet
@@ -94,56 +125,53 @@ async function handleAcrossFill(
 }
 
 async function handleCctpDeposit(
-  event: entities.DepositForBurn,
+  deposit: {
+    depositForBurn?: entities.DepositForBurn;
+    messageSent: entities.MessageSent;
+  },
   depositRepo: Repository<entities.Deposit>,
-  dataSource: DataSource,
 ) {
   // CCTP requires Nonce for uniqueId from MessageSent
-  const messageSentRepo = dataSource.getRepository(entities.MessageSent);
-  const messageSent = await messageSentRepo.findOne({
-    where: {
-      transactionHash: event.transactionHash,
-      chainId: event.chainId,
-    },
-  });
-
-  if (!messageSent) return;
-
-  const uniqueId = `${messageSent.nonce}-${event.destinationDomain}`;
+  const { depositForBurn, messageSent } = deposit;
+  const uniqueId = `${messageSent.nonce}-${messageSent.destinationDomain}`;
 
   await updateDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.CCTP,
     {
-      originChainId: event.chainId,
-      depositor: event.depositor,
-      recipient: event.mintRecipient,
-      blockTimestamp: event.blockTimestamp,
-      depositForBurnId: event.id,
+      destinationChainId: getCctpDestinationChainFromDomain(
+        messageSent.destinationDomain,
+      ).toString(),
+      depositor: messageSent.sender,
+      recipient: messageSent.recipient,
+      blockTimestamp: messageSent.blockTimestamp,
+      depositForBurnId: messageSent.id,
     },
     DepositUpdateType.DEPOSIT,
   );
+  if (depositForBurn) {
+    await updateDepositRecord(
+      depositRepo,
+      uniqueId,
+      entities.DepositType.CCTP,
+      {
+        depositForBurnId: depositForBurn.id,
+      },
+      DepositUpdateType.DEPOSIT,
+    );
+  }
 }
 
 async function handleCctpFill(
-  event: entities.MintAndWithdraw,
+  fill: {
+    mintAndWithdraw?: entities.MintAndWithdraw;
+    messageReceived: entities.MessageReceived;
+  },
   depositRepo: Repository<entities.Deposit>,
-  dataSource: DataSource,
-) {
+): Promise<void> {
+  const { mintAndWithdraw, messageReceived } = fill;
   // CCTP Fill links to MessageReceived via txHash to get nonce
-  const messageReceivedRepo = dataSource.getRepository(
-    entities.MessageReceived,
-  );
-  const messageReceived = await messageReceivedRepo.findOne({
-    where: {
-      transactionHash: event.transactionHash,
-      chainId: event.chainId,
-    },
-  });
-
-  if (!messageReceived) return;
-
   const uniqueId = `${messageReceived.nonce}-${messageReceived.sourceDomain}`;
 
   await updateDepositRecord(
@@ -151,19 +179,34 @@ async function handleCctpFill(
     uniqueId,
     entities.DepositType.CCTP,
     {
-      destinationChainId: event.chainId,
-      mintAndWithdrawId: event.id,
-      blockTimestamp: event.blockTimestamp,
+      originChainId: getCctpDestinationChainFromDomain(
+        messageReceived.sourceDomain,
+      ).toString(),
+      mintAndWithdrawId: messageReceived.id,
+      blockTimestamp: messageReceived.blockTimestamp,
     },
     DepositUpdateType.FILL,
   );
+
+  if (mintAndWithdraw) {
+    await updateDepositRecord(
+      depositRepo,
+      uniqueId,
+      entities.DepositType.CCTP,
+      {
+        mintAndWithdrawId: mintAndWithdraw.id,
+        recipient: mintAndWithdraw.mintRecipient,
+      },
+      DepositUpdateType.FILL,
+    );
+  }
 }
 
 async function handleOftSent(
   event: entities.OFTSent,
   depositRepo: Repository<entities.Deposit>,
-) {
-  await updateDepositRecord(
+): Promise<void> {
+  return await updateDepositRecord(
     depositRepo,
     event.guid,
     entities.DepositType.OFT,
@@ -180,8 +223,8 @@ async function handleOftSent(
 async function handleOftReceived(
   event: entities.OFTReceived,
   depositRepo: Repository<entities.Deposit>,
-) {
-  await updateDepositRecord(
+): Promise<void> {
+  return await updateDepositRecord(
     depositRepo,
     event.guid,
     entities.DepositType.OFT,
@@ -206,6 +249,7 @@ async function handleOftReceived(
  * @param type - The deposit type (ACROSS, CCTP, OFT)
  * @param updates - Object containing fields to update (undefined values are ignored)
  * @param updateType - The type of update (DEPOSIT or FILL) which dictates the status transition logic
+ * @returns The saved Deposit entity
  */
 async function updateDepositRecord(
   depositRepo: Repository<entities.Deposit>,
@@ -213,7 +257,7 @@ async function updateDepositRecord(
   type: entities.DepositType,
   updates: Partial<entities.Deposit>,
   updateType: DepositUpdateType,
-) {
+): Promise<void> {
   let deposit = await depositRepo.findOne({ where: { uniqueId } });
 
   if (!deposit) {

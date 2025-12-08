@@ -190,7 +190,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
       messageSentEvent: SaveQueryResult<entities.MessageSent>;
     }[] = [];
-    const chunkedEvents = across.utils.chunk(burnEvents, this.chunkSize);
+    const chunkedEvents:BurnEventsPair[][] = across.utils.chunk(burnEvents, this.chunkSize);
     for (const eventsChunk of chunkedEvents) {
       const savedEventsChunk = await Promise.all(
         eventsChunk.map(async (eventsPair) => {
@@ -231,7 +231,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         };
       });
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents:Partial<entities.ArbitraryActionsExecuted>[][] = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
@@ -313,7 +313,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         };
       });
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents:Partial<entities.SponsoredDepositForBurn>[][] = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
@@ -338,7 +338,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
       mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
     }[] = [];
-    const chunkedEvents = across.utils.chunk(mintEvents, this.chunkSize);
+    const chunkedEvents:MintEventsPair[][] = across.utils.chunk(mintEvents, this.chunkSize);
     for (const eventsChunk of chunkedEvents) {
       const savedEventsChunk = await Promise.all(
         eventsChunk.map(async (eventsPair) => {

@@ -690,17 +690,39 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     // We process these in parallel after the main events are saved.
     await Promise.all([
-      ...savedBurnEvents.map(({ depositForBurnEvent }) =>
-        updateDeposits(
+      ...savedBurnEvents.map(
+        ({
           depositForBurnEvent,
-          (this.cctpRepository as any).postgres,
-        ),
+          messageSentEvent,
+        }) =>
+          updateDeposits({
+            dataSource: (this.cctpRepository as any).postgres,
+            depositUpdate: {
+              cctp: {
+                deposit: {
+                  depositForBurn: depositForBurnEvent.data,
+                  messageSent: messageSentEvent.data,
+                },
+              },
+            },
+          }),
       ),
-      ...savedMintEvents.map(({ mintAndWithdrawEvent }) =>
-        updateDeposits(
+      ...savedMintEvents.map(
+        ({
           mintAndWithdrawEvent,
-          (this.cctpRepository as any).postgres,
-        ),
+          messageReceivedEvent,
+        }) =>
+          updateDeposits({
+            dataSource: (this.cctpRepository as any).postgres,
+            depositUpdate: {
+              cctp: {
+                fill: {
+                  mintAndWithdraw: mintAndWithdrawEvent.data,
+                  messageReceived: messageReceivedEvent.data,
+                },
+              },
+            },
+          }),
       ),
     ]);
 

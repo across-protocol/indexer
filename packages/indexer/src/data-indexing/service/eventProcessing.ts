@@ -43,7 +43,7 @@ export async function formatAndSaveEvents<T, TEntity extends ObjectLiteral>(
     return formatEvent(event, finalised, blockTimestamp, chainId);
   });
 
-  const chunkedEvents = across.utils.chunk(formattedEvents, chunkSize);
+  const chunkedEvents: Partial<TEntity>[][] = across.utils.chunk(formattedEvents, chunkSize);
   const savedEvents = await Promise.all(
     chunkedEvents.map((eventsChunk) =>
       repository.saveAndHandleFinalisationBatch<TEntity>(

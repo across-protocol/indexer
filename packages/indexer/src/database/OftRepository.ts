@@ -115,7 +115,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         };
       },
     );
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.OFTSent>[][] = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.OFTSent>(
@@ -183,7 +183,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
         };
       });
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.SponsoredOFTSend>[][] = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
@@ -219,7 +219,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.OFTReceived>[][] = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.OFTReceived>(
