@@ -140,6 +140,8 @@ async function handleAcrossFill(
       originChainId: event.originChainId,
       destinationChainId: event.destinationChainId,
       filledV3RelayId: event.id,
+      recipient: event.recipient,
+      depositor: event.depositor,
       blockTimestamp: event.blockTimestamp, // Fallback timestamp
     },
     DepositUpdateType.FILL,
