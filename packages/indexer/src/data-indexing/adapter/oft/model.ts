@@ -32,12 +32,3 @@ export interface SponsoredOFTSendLog extends ethers.providers.Log {
     sig: string;
   };
 }
-
-export interface ComposeDeliveredEvent extends ethers.Event {
-  args: [] & {
-    from: string;
-    to: string;
-    guid: string;
-    index: number;
-  };
-}
