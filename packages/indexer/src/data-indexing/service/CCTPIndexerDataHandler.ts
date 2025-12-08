@@ -172,10 +172,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange({
-      from: 34467794,
-      to: 34467794,
-    });
+    const events = await this.fetchEventsByRange(blockRange);
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
     const deletedEvents = await this.cctpRepository.deleteUnfinalisedCCTPEvents(
