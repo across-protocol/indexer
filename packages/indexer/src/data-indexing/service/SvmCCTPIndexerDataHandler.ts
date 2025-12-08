@@ -52,7 +52,10 @@ const TOKEN_MESSENGER_MINTER_V2_ADDRESS =
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 // Solana public keys of the Across finalizers that call receiveMessage
-const WHITELISTED_FINALIZERS = ["FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t"];
+const WHITELISTED_FINALIZERS = [
+  "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t",
+  "5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t",
+];
 
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
