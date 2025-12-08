@@ -806,31 +806,22 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
 
     // We process these in parallel after the main events are saved.
     await Promise.all([
-      ...v3FundsDepositedEvents.map((depositEvent) => {
-        const plainDeposit: Omit<
-          utils.V3FundsDepositedWithIntegradorId,
-          "integratorId"
-        > = {
-          ...depositEvent,
-        };
+      ...savedV3FundsDepositedEvents.map((depositEvent) => {
         return updateDeposits({
           dataSource: (this.spokePoolClientRepository as any).postgres,
           depositUpdate: {
             across: {
-              deposit: plainDeposit,
+              deposit: depositEvent.data,
             },
           },
         });
       }),
-      ...filledV3RelayEvents.map((fillEvent) => {
-        const plainFill: across.interfaces.Fill = {
-          ...fillEvent,
-        };
+      ...savedFilledV3RelayEvents.map((fillEvent) => {
         return updateDeposits({
           dataSource: (this.spokePoolClientRepository as any).postgres,
           depositUpdate: {
             across: {
-              fill: plainFill,
+              fill: fillEvent.data,
             },
           },
         });

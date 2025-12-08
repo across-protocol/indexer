@@ -1,16 +1,17 @@
-import { Repository, ObjectLiteral, DataSource } from "typeorm";
+import { Repository, DataSource } from "typeorm";
 import { entities } from "@repo/indexer-database";
 import { getCctpDestinationChainFromDomain } from "../data-indexing/adapter/cctp-v2/service";
+import { getChainIdForEndpointId } from "../data-indexing/adapter/oft/service";
 
 /**
  * Enum to define the type of update being performed on the Deposit index.
- * - DEPOSIT: Represents the source event (e.g., FundsDeposited). Sets status to PENDING unless already FILLED.
- * - FILL: Represents the destination event (e.g., FilledRelay). Always sets status to FILLED.
  */
 export enum DepositUpdateType {
-  DEPOSIT = "DEPOSIT",
-  FILL = "FILL",
+  DEPOSIT = "DEPOSIT", // Source event
+  FILL = "FILL", // Destination event
 }
+
+// --- Input Types ---
 
 export type AcrossDepositUpdate = {
   deposit?: entities.V3FundsDeposited;
@@ -23,11 +24,11 @@ export type OftDepositUpdate = {
 };
 
 export type CctpDepositUpdate = {
-  deposit?: {
+  burn?: {
     depositForBurn?: entities.DepositForBurn;
     messageSent: entities.MessageSent;
   };
-  fill?: {
+  mint?: {
     mintAndWithdraw?: entities.MintAndWithdraw;
     messageReceived: entities.MessageReceived;
   };
@@ -43,51 +44,67 @@ export type DepositUpdaterRequestType = {
 };
 
 /**
- * Updates the central Deposit index based on a protocol event.
- *
+ * Main entry point to update the central Deposit index.
+ * This function orchestrates the update process by delegating to protocol-specific handlers.
+ * @param request - The request object containing the data source and the deposit update payload.
+ * @returns A promise that resolves when the update is complete.
  */
 export async function updateDeposits(
   request: DepositUpdaterRequestType,
-): Promise<entities.Deposit | undefined> {
+): Promise<void> {
   const { dataSource, depositUpdate } = request;
   const depositRepo = dataSource.getRepository(entities.Deposit);
-  let savedUpdate: entities.Deposit | undefined;
+
   // --- ACROSS ---
   if (depositUpdate.across) {
     const { deposit, fill } = depositUpdate.across;
-    if (deposit) await handleAcrossDeposit(deposit, depositRepo);
-    if (fill) await handleAcrossFill(fill, depositRepo);
+    if (deposit) {
+      await handleAcrossDeposit(deposit, depositRepo);
+    }
+    if (fill) {
+      await handleAcrossFill(fill, depositRepo);
+    }
   }
 
   // --- CCTP ---
   else if (depositUpdate.cctp) {
-    const { deposit, fill } = depositUpdate.cctp;
-    if (deposit) {
-      await handleCctpDeposit(deposit, depositRepo);
+    const { burn, mint } = depositUpdate.cctp;
+    if (burn) {
+      await handleCctpBurn(burn, depositRepo);
     }
-    if (fill) {
-      await handleCctpFill(fill, depositRepo);
+    if (mint) {
+      await handleCctpMint(mint, depositRepo);
     }
   }
 
   // --- OFT ---
   else if (depositUpdate.oft) {
     const { sent, received } = depositUpdate.oft;
-    if (sent) await handleOftSent(sent, depositRepo);
-    if (received) await handleOftReceived(received, depositRepo);
+    if (sent) {
+      await handleOftSent(sent, depositRepo);
+    }
+    if (received) {
+      await handleOftReceived(received, depositRepo);
+    }
   }
-  return savedUpdate;
 }
 
 // --- Protocol Handlers ---
 
+/**
+ * Handles the processing of an Across deposit event (V3FundsDeposited).
+ * It creates or updates a deposit record based on the event data.
+ * @param event - The V3FundsDeposited entity from the database.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
 async function handleAcrossDeposit(
   event: entities.V3FundsDeposited,
   depositRepo: Repository<entities.Deposit>,
-): Promise<void> {
-  const uniqueId = event.internalHash; // Across uses internalHash as the primary identifier
+) {
+  // Across uses internalHash (or relayHash) as the unique identifier
+  const uniqueId = event.internalHash;
 
-  return await updateDepositRecord(
+  await upsertDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.ACROSS,
@@ -103,13 +120,19 @@ async function handleAcrossDeposit(
   );
 }
 
+/**
+ * Handles the processing of an Across fill event (FilledV3Relay).
+ * It updates an existing deposit record with the fill information.
+ * @param event - The FilledV3Relay entity from the database.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
 async function handleAcrossFill(
   event: entities.FilledV3Relay,
   depositRepo: Repository<entities.Deposit>,
-): Promise<void> {
+) {
   const uniqueId = event.internalHash;
 
-  return await updateDepositRecord(
+  await upsertDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.ACROSS,
@@ -117,101 +140,113 @@ async function handleAcrossFill(
       originChainId: event.originChainId,
       destinationChainId: event.destinationChainId,
       filledV3RelayId: event.id,
-      // Use timestamp as fallback if the deposit event has not been processed yet
-      blockTimestamp: event.blockTimestamp,
+      blockTimestamp: event.blockTimestamp, // Fallback timestamp
     },
     DepositUpdateType.FILL,
   );
 }
 
-async function handleCctpDeposit(
-  deposit: {
+/**
+ * Handles the processing of a CCTP burn event, which signifies the start of a CCTP transfer.
+ * It combines data from `MessageSent` and optionally `DepositForBurn` to create a deposit record.
+ * @param data - An object containing the `MessageSent` and optional `DepositForBurn` entities.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
+async function handleCctpBurn(
+  data: {
     depositForBurn?: entities.DepositForBurn;
     messageSent: entities.MessageSent;
   },
   depositRepo: Repository<entities.Deposit>,
 ) {
-  // CCTP requires Nonce for uniqueId from MessageSent
-  const { depositForBurn, messageSent } = deposit;
-  const uniqueId = `${messageSent.nonce}-${messageSent.destinationDomain}`;
+  const { depositForBurn, messageSent } = data;
+  const destinationChainId = getCctpDestinationChainFromDomain(
+    messageSent.destinationDomain,
+  ).toString();
+  // CCTP's unique identifier for a transfer is the combination of the message nonce and the destination chain's domain.
+  const uniqueId = `${messageSent.nonce}-${destinationChainId}`;
 
-  await updateDepositRecord(
+  // Prepare updates
+  const updates: Partial<entities.Deposit> = {
+    originChainId: getCctpDestinationChainFromDomain(
+      messageSent.sourceDomain,
+    ).toString(),
+    destinationChainId,
+    recipient: messageSent.recipient,
+    blockTimestamp: messageSent.blockTimestamp,
+  };
+
+  if (depositForBurn) {
+    updates.depositForBurnId = depositForBurn.id;
+    updates.depositor = depositForBurn.depositor;
+  }
+
+  await upsertDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.CCTP,
-    {
-      destinationChainId: getCctpDestinationChainFromDomain(
-        messageSent.destinationDomain,
-      ).toString(),
-      depositor: messageSent.sender,
-      recipient: messageSent.recipient,
-      blockTimestamp: messageSent.blockTimestamp,
-      depositForBurnId: messageSent.id,
-    },
+    updates,
     DepositUpdateType.DEPOSIT,
   );
-  if (depositForBurn) {
-    await updateDepositRecord(
-      depositRepo,
-      uniqueId,
-      entities.DepositType.CCTP,
-      {
-        depositForBurnId: depositForBurn.id,
-      },
-      DepositUpdateType.DEPOSIT,
-    );
-  }
 }
 
-async function handleCctpFill(
-  fill: {
+/**
+ * Handles the processing of a CCTP mint event, which signifies the completion of a CCTP transfer.
+ * It combines data from `MessageReceived` and optionally `MintAndWithdraw` to update a deposit record.
+ * @param data - An object containing the `MessageReceived` and optional `MintAndWithdraw` entities.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
+async function handleCctpMint(
+  data: {
     mintAndWithdraw?: entities.MintAndWithdraw;
     messageReceived: entities.MessageReceived;
   },
   depositRepo: Repository<entities.Deposit>,
-): Promise<void> {
-  const { mintAndWithdraw, messageReceived } = fill;
-  // CCTP Fill links to MessageReceived via txHash to get nonce
-  const uniqueId = `${messageReceived.nonce}-${messageReceived.sourceDomain}`;
+) {
+  const { mintAndWithdraw, messageReceived } = data;
 
-  await updateDepositRecord(
+  // The unique identifier is derived from the nonce and the chain ID where the message was received.
+  const uniqueId = `${messageReceived.nonce}-${messageReceived.chainId}`;
+
+  const updates: Partial<entities.Deposit> = {
+    originChainId: getCctpDestinationChainFromDomain(
+      messageReceived.sourceDomain,
+    ).toString(),
+    destinationChainId: messageReceived.chainId,
+    blockTimestamp: messageReceived.blockTimestamp,
+  };
+
+  if (mintAndWithdraw) {
+    updates.mintAndWithdrawId = mintAndWithdraw.id;
+    updates.recipient = mintAndWithdraw.mintRecipient;
+  }
+
+  await upsertDepositRecord(
     depositRepo,
     uniqueId,
     entities.DepositType.CCTP,
-    {
-      originChainId: getCctpDestinationChainFromDomain(
-        messageReceived.sourceDomain,
-      ).toString(),
-      mintAndWithdrawId: messageReceived.id,
-      blockTimestamp: messageReceived.blockTimestamp,
-    },
+    updates,
     DepositUpdateType.FILL,
   );
-
-  if (mintAndWithdraw) {
-    await updateDepositRecord(
-      depositRepo,
-      uniqueId,
-      entities.DepositType.CCTP,
-      {
-        mintAndWithdrawId: mintAndWithdraw.id,
-        recipient: mintAndWithdraw.mintRecipient,
-      },
-      DepositUpdateType.FILL,
-    );
-  }
 }
 
+/**
+ * Handles the processing of an OFT (Omnichain Fungible Token) sent event.
+ * This function creates or updates a deposit record when an OFT transfer is initiated.
+ * @param event - The OFTSent entity from the database.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
 async function handleOftSent(
   event: entities.OFTSent,
   depositRepo: Repository<entities.Deposit>,
-): Promise<void> {
-  return await updateDepositRecord(
+) {
+  await upsertDepositRecord(
     depositRepo,
     event.guid,
     entities.DepositType.OFT,
     {
       originChainId: event.chainId,
+      destinationChainId: getChainIdForEndpointId(event.dstEid).toString(),
       blockTimestamp: event.blockTimestamp,
       depositor: event.fromAddress,
       oftSentId: event.id,
@@ -220,16 +255,23 @@ async function handleOftSent(
   );
 }
 
+/**
+ * Handles the processing of an OFT (Omnichain Fungible Token) received event.
+ * This function updates a deposit record when an OFT transfer is completed.
+ * @param event - The OFTReceived entity from the database.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ */
 async function handleOftReceived(
   event: entities.OFTReceived,
   depositRepo: Repository<entities.Deposit>,
-): Promise<void> {
-  return await updateDepositRecord(
+) {
+  await upsertDepositRecord(
     depositRepo,
     event.guid,
     entities.DepositType.OFT,
     {
       destinationChainId: event.chainId,
+      originChainId: getChainIdForEndpointId(event.srcEid).toString(),
       recipient: event.toAddress,
       oftReceivedId: event.id,
       blockTimestamp: event.blockTimestamp,
@@ -238,56 +280,60 @@ async function handleOftReceived(
   );
 }
 
-// --- Shared Helper ---
+// --- Shared Core Logic ---
 
 /**
- * Shared function to handle the common logic of finding/creating a Deposit
- * and updating it with partial data.
- *
- * @param depositRepo - The Deposit repository
- * @param uniqueId - The unique identifier for the deposit
- * @param type - The deposit type (ACROSS, CCTP, OFT)
- * @param updates - Object containing fields to update (undefined values are ignored)
- * @param updateType - The type of update (DEPOSIT or FILL) which dictates the status transition logic
- * @returns The saved Deposit entity
+ * Performs an "upsert" operation for a deposit record. It atomically inserts a new record
+ * or updates an existing one based on a unique identifier. This is optimized to reduce
+ * database round trips by using a single `INSERT ... ON CONFLICT` statement.
+ * @param depositRepo - The TypeORM repository for the Deposit entity.
+ * @param uniqueId - The unique identifier for the deposit (e.g., relayHash, CCTP nonce-chain, OFT guid).
+ * @param type - The type of the deposit (e.g., ACROSS, CCTP, OFT).
+ * @param updates - An object containing the fields to be inserted or updated.
+ * @param updateType - The type of event triggering the upsert (DEPOSIT or FILL), which determines status handling.
  */
-async function updateDepositRecord(
+async function upsertDepositRecord(
   depositRepo: Repository<entities.Deposit>,
   uniqueId: string,
   type: entities.DepositType,
   updates: Partial<entities.Deposit>,
   updateType: DepositUpdateType,
 ): Promise<void> {
-  let deposit = await depositRepo.findOne({ where: { uniqueId } });
+  // Prepare the full object to be inserted if the record does not exist.
+  // The initial status is determined by whether the first seen event is a deposit or a fill.
+  const insertData = {
+    uniqueId,
+    type,
+    status:
+      updateType === DepositUpdateType.FILL
+        ? entities.DepositStatus.FILLED
+        : entities.DepositStatus.PENDING,
+    ...updates,
+  };
 
-  if (!deposit) {
-    deposit = depositRepo.create({ uniqueId, type });
-    // If creating a new record (e.g. orphan fill), ensure timestamp is set if provided
-    if (updates.blockTimestamp) {
-      deposit.blockTimestamp = updates.blockTimestamp;
-    }
+  // Define the conflict target for the upsert operation.
+  const conflictPaths = ["uniqueId"];
+
+  // Filter out any keys from the `updates` object that have an `undefined` value.
+  // This is crucial to prevent `null`ing out columns in the database that already have data
+  // if the incoming update for that field is not present.
+  const columnsToUpdate = Object.entries(updates)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+
+  // If the event is a 'FILL', the status must be updated to 'FILLED'.
+  // If it's a 'DEPOSIT' event, the status is only set on insert and not on update.
+  // This prevents a late DEPOSIT event from overwriting a FILLED status.
+  if (updateType === DepositUpdateType.FILL) {
+    columnsToUpdate.push("status");
   }
 
-  // Apply updates safely: only update fields that are explicitly defined
-  // This prevents overwriting existing data with undefined
-  for (const [key, value] of Object.entries(updates)) {
-    if (value !== undefined && value !== null) {
-      (deposit as any)[key] = value;
-    }
-  }
-
-  switch (updateType) {
-    case DepositUpdateType.FILL:
-      deposit.status = entities.DepositStatus.FILLED;
-      break;
-    case DepositUpdateType.DEPOSIT:
-      // If it's a deposit event (source), only set to PENDING if it's not already FILLED
-      // (This handles cases where the fill event was indexed before the deposit event)
-      if (deposit.status !== entities.DepositStatus.FILLED) {
-        deposit.status = entities.DepositStatus.PENDING;
-      }
-      break;
-  }
-
-  await depositRepo.save(deposit);
+  // Execute the upsert using the query builder for `INSERT ... ON CONFLICT` behavior.
+  await depositRepo
+    .createQueryBuilder()
+    .insert()
+    .into(entities.Deposit)
+    .values(insertData)
+    .orUpdate(columnsToUpdate, conflictPaths)
+    .execute();
 }
