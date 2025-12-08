@@ -128,7 +128,6 @@ const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x72adB07A487f38321b6665c02D289C413610B081",
   "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd",
-  "0xb63c02e60C05F05975653edC83F876C334E07C6d", // CCTPHyperEVMSponsoredDstHandler
 ];
 
 // Convert whitelisted finalizers to bytes32 format for comparison with destinationCaller
