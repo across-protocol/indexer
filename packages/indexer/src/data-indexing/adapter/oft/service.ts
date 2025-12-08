@@ -2,7 +2,13 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 
 // Taken from sample tx: https://layerzeroscan.com/tx/0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a
 export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  [CHAIN_IDs.ARBITRUM]: "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+  [CHAIN_IDs.ARBITRUM]: "0x2ac5Ee3796E027dA274fbDe84c82173a65868940",
+  [CHAIN_IDs.MAINNET]: "0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a",
+};
+
+export const OFT_DST_HANDLER_ADDRESS: { [key: number]: string } = {
+  // Taken from https://hyperevmscan.io/address/0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461#code
+  [CHAIN_IDs.HYPEREVM]: "0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461",
 };
 
 export type OftTokenKey = "usdt0";
