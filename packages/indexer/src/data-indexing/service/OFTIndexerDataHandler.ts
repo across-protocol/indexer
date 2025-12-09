@@ -501,13 +501,13 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
   private getBlocksTimestamps(
     blocks: Record<string, providers.Block>,
-  ): Record<number, Date> {
+  ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
         acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },
-      {} as Record<number, Date>,
+      {} as Record<string, Date>,
     );
   }
 }
