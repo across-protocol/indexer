@@ -8,8 +8,8 @@ export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
 };
 
 export const OFT_DST_HANDLER_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461#code
-  [CHAIN_IDs.HYPEREVM]: "0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461",
+  // Taken from https://hyperevmscan.io/address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD
+  [CHAIN_IDs.HYPEREVM]: "0xc8786D517b4e224bB43985A38dBeF8588D7354CD",
 };
 
 export type OftTokenKey = "usdt0";

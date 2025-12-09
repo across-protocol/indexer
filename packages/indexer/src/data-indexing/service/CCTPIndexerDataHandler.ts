@@ -117,6 +117,10 @@ const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
 // TODO: Update this address once the contract is deployed
 const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+  // Taken from: https://basescan.org/address/0xa7a8d1efc1ee3e69999d370380949092251a5c20
+  [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
+  // Taken from: https://arbiscan.io/address/0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b
+  [CHAIN_IDs.ARBITRUM]: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
