@@ -109,7 +109,7 @@ const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
+export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
   // Taken from https://hyperevmscan.io/address/0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95#code
   [CHAIN_IDs.HYPEREVM]: "0xb63c02e60C05F05975653edC83F876C334E07C6d",
 };
