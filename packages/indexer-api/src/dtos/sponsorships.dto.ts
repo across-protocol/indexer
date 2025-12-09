@@ -3,7 +3,7 @@ import * as s from "superstruct";
 const stringToNumber = s.coerce(s.number(), s.string(), Number);
 
 // Create a Refinement to validate the number
-const UnixTimestamp = s.refine(stringToNumber, "UnixTimestamp", (value) => {
+const UnixTimestampMs = s.refine(stringToNumber, "UnixTimestamp", (value) => {
   // Check 1: Must be an integer (no decimals)
   if (!Number.isInteger(value)) {
     return "Timestamp must be an integer";
@@ -23,7 +23,11 @@ const UnixTimestamp = s.refine(stringToNumber, "UnixTimestamp", (value) => {
 
   // Check 3: Must be a valid date in JS
   const date = new Date(value);
-  return !isNaN(date.getTime()) || "Invalid Date";
+  if (isNaN(date.getTime())) {
+    return "Invalid Date";
+  }
+
+  return true;
 });
 
 /**
@@ -74,9 +78,9 @@ export const GetSponsorshipsDto = s.object({
   /** Optional start of the time range (Unix timestamp). */
   fromTimestamp:
     s.optional(
-      UnixTimestamp,
+      UnixTimestampMs,
     ) /** Optional end of the time range (Unix timestamp). */,
-  toTimestamp: s.optional(UnixTimestamp),
+  toTimestamp: s.optional(UnixTimestampMs),
 });
 export type GetSponsorshipsDto = s.Infer<typeof GetSponsorshipsDto>;
 
