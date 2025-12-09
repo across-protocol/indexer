@@ -22,7 +22,6 @@ import {
 @Index("IX_swapFlowInitialized_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_swapFlowInitialized_deletedAt", ["deletedAt"])
 @Index("IX_swapFlowInitialized_finalised", ["finalised"])
-@Index("IX_swapFlowInitialized_contractAddress", ["contractAddress"])
 export class SwapFlowInitialized {
   @PrimaryGeneratedColumn()
   id: number;
@@ -80,7 +79,4 @@ export class SwapFlowInitialized {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
-
-  @Column({ nullable: true })
-  contractAddress?: string;
 }
