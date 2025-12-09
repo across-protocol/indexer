@@ -804,7 +804,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       ),
     ]);
 
-    // We process these in parallel after the main events are saved.
+    // We update the deposits table if we see a new deposit or fill event
     await Promise.all([
       ...savedV3FundsDepositedEvents.map((depositEvent) => {
         return updateDeposits({

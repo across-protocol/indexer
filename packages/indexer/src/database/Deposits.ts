@@ -319,8 +319,9 @@ async function upsertDepositRecord(
   // Filter out any keys from the `updates` object that have an `undefined` value.
   // This is crucial to prevent `null`ing out columns in the database that already have data
   // if the incoming update for that field is not present.
+  // If an entry already exists we omit the blockTimestamp from being updated. The blockTimestamp will be from whatever event was observed first.
   const columnsToUpdate = Object.entries(updates)
-    .filter(([, value]) => value !== undefined)
+    .filter(([key, value]) => value !== undefined && key !== "blockTimestamp")
     .map(([key]) => key);
 
   // If the event is a 'FILL', the status must be updated to 'FILLED'.

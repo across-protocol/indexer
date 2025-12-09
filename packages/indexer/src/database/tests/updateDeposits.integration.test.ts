@@ -194,7 +194,6 @@ describe("DepositUpdater", () => {
   let dataSource: DataSource;
   let depositRepo: Repository<entities.Deposit>;
 
-  // Generic Fixtures
   let v3FundsDepositedFixture: fixtures.GenericFixture<entities.V3FundsDeposited>;
   let filledV3RelayFixture: fixtures.GenericFixture<entities.FilledV3Relay>;
   let oftSentFixture: fixtures.GenericFixture<entities.OFTSent>;
@@ -365,7 +364,8 @@ describe("DepositUpdater", () => {
         depositor: fillEvent.depositor,
         recipient: fillEvent.recipient,
         originChainId: depositEvent.originChainId,
-        blockTimestamp: fillEvent.blockTimestamp,
+        // The block timestamp is from whatever event was observed first
+        blockTimestamp: depositEvent.blockTimestamp,
       });
     });
 
@@ -419,8 +419,8 @@ describe("DepositUpdater", () => {
         depositor: fillEvent.depositor,
         recipient: fillEvent.recipient,
         originChainId: depositEvent.originChainId,
-        // We override the block timestamp with the event that was last observed
-        blockTimestamp: depositEvent.blockTimestamp,
+        // The block timestamp is from whatever event was observed first
+        blockTimestamp: fillEvent.blockTimestamp,
       });
     });
   });

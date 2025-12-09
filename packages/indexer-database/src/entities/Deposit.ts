@@ -45,7 +45,7 @@ export class Deposit {
   /**
    * The ID which stitches together all the relevant events for a given transfer type.
    * OFT: guid
-   * CCTP: nonce-sourceDomain
+   * CCTP: nonce-destinationChainId
    * Across: relayHash / internalHash
    */
   @Column()
@@ -60,9 +60,7 @@ export class Deposit {
   // --- Denormalized Search Fields ---
 
   /**
-   * The timestamp.
-   * If Source Event exists: Equals Source Event Timestamp.
-   * If Orphan Fill (Destination event found but no source event): Equals Fill Event Timestamp (until Source Event updates it).
+   * The timestamp of the first event seen for a given uniqueId.
    */
   @Column()
   blockTimestamp: Date;

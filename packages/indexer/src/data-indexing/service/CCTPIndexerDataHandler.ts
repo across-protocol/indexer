@@ -701,7 +701,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       ),
     ]);
 
-    // We process these in parallel after the main events are saved.
+    // We update the deposits table if we see new burn or mint events
     await Promise.all([
       ...savedBurnEvents.map(({ depositForBurnEvent, messageSentEvent }) =>
         updateDeposits({

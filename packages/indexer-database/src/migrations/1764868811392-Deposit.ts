@@ -54,8 +54,6 @@ export class CreateDepositTable1764868811392 implements MigrationInterface {
     );
 
     // Add Foreign Keys
-    // Note: Assuming specific table names in 'evm' schema based on TypeORM naming conventions.
-    // If your table names differ (e.g., snake_case vs camelCase), you might need to adjust these names.
 
     // Across
     await queryRunner.query(

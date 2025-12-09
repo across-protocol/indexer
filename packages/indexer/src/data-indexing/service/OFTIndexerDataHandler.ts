@@ -417,7 +417,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       ),
     ]);
 
-    // We process these in parallel after the main events are saved.
+    // We update the deposits table if we see new sent or received events
     await Promise.all([
       ...savedOftSentEvents.map((oftSent) =>
         updateDeposits({
