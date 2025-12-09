@@ -26,6 +26,7 @@ import { OftRepository } from "../../database/OftRepository";
 import {
   getOftChainConfiguration,
   isEndpointIdSupported,
+  OFT_DST_HANDLER_ADDRESS,
   SPONSORED_OFT_SRC_PERIPHERY_ADDRESS,
 } from "../adapter/oft/service";
 import { EventDecoder } from "../../web3/EventDecoder";
@@ -71,11 +72,6 @@ export type StoreEventsResult = {
 // Taken from https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
 // TODO: Add testnet endpoint v2 address when applicable
 export const ENDPOINT_V2_ADDRESS = "0x3a73033c0b1407574c76bdbac67f126f6b4a9aa9";
-
-const DST_OFT_HANDLER_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888#code
-  [CHAIN_IDs.HYPEREVM]: "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
-};
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 
@@ -124,7 +120,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const storedEvents = await this.storeEvents(
       events,
       lastFinalisedBlock,
-      getOftChainConfiguration(this.chainId).tokens[0]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.token,
     );
     const timeToStoreEvents = performance.now();
     await this.oftRepository.deleteUnfinalisedOFTEvents(
@@ -156,11 +152,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const oftAdapterContract = new ethers.Contract(
-      getOftChainConfiguration(this.chainId).tokens[0]!.address,
+      getOftChainConfiguration(this.chainId).tokens[0]!.adapter,
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
-    const dstOftHandlerAddress = DST_OFT_HANDLER_ADDRESS[this.chainId];
+    const dstOftHandlerAddress = OFT_DST_HANDLER_ADDRESS[this.chainId];
     const sponsoredOFTSrcPeripheryAddress =
       SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId];
 
@@ -505,13 +501,13 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
 
   private getBlocksTimestamps(
     blocks: Record<string, providers.Block>,
-  ): Record<number, Date> {
+  ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
         acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },
-      {} as Record<number, Date>,
+      {} as Record<string, Date>,
     );
   }
 }

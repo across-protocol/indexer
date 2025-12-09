@@ -1,19 +1,28 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 
-// Taken from sample tx: https://layerzeroscan.com/tx/0x2bc0a3844389de155fac8a91cae44a01379ab9b13aa135cb69f368985b0ae85a
 export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  [CHAIN_IDs.ARBITRUM]: "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+  // Taken from: https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940
+  [CHAIN_IDs.ARBITRUM]: "0x2ac5Ee3796E027dA274fbDe84c82173a65868940",
+  // Taken from: https://etherscan.io/address/0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a
+  [CHAIN_IDs.MAINNET]: "0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a",
+};
+
+export const OFT_DST_HANDLER_ADDRESS: { [key: number]: string } = {
+  // Taken from https://hyperevmscan.io/address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD
+  [CHAIN_IDs.HYPEREVM]: "0xc8786D517b4e224bB43985A38dBeF8588D7354CD",
 };
 
 export type OftTokenKey = "usdt0";
 
+// Taken from https://docs.usdt0.to/technical-documentation/developer/usdt0-deployments
 const OFT_SUPPORTED_CHAINS: Record<
   number,
   {
     endpointId: number;
     tokens: {
       key: OftTokenKey;
-      address: string;
+      adapter: string;
+      token: string;
       startBlockNumber: number;
     }[];
   }
@@ -23,7 +32,8 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92",
+        adapter: "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92",
+        token: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
         startBlockNumber: 385700000,
       },
     ],
@@ -33,7 +43,8 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98",
+        adapter: "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98",
+        token: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
         startBlockNumber: 15500000,
       },
     ],
@@ -43,7 +54,8 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee",
+        adapter: "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee",
+        token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         startBlockNumber: 23400000,
       },
     ],
@@ -53,7 +65,8 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x9151434b16b9763660705744891fA906F660EcC5",
+        adapter: "0x9151434b16b9763660705744891fA906F660EcC5",
+        token: "0xe7cd86e13AC4309349F30B3435a9d337750fC82D",
         startBlockNumber: 35000000,
       },
     ],
@@ -63,7 +76,8 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x02ca37966753bDdDf11216B73B16C1dE756A7CF9",
+        adapter: "0x02ca37966753bDdDf11216B73B16C1dE756A7CF9",
+        token: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
         startBlockNumber: 2500000,
       },
     ],
@@ -73,8 +87,20 @@ const OFT_SUPPORTED_CHAINS: Record<
     tokens: [
       {
         key: "usdt0",
-        address: "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13",
+        adapter: "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13",
+        token: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
         startBlockNumber: 77200000,
+      },
+    ],
+  },
+  [CHAIN_IDs.UNICHAIN]: {
+    endpointId: 30320,
+    tokens: [
+      {
+        key: "usdt0",
+        adapter: "0xc07bE8994D035631c36fb4a89C918CeFB2f03EC3",
+        token: "0x9151434b16b9763660705744891fA906F660EcC5",
+        startBlockNumber: 34007242,
       },
     ],
   },
@@ -108,14 +134,14 @@ export function getCorrespondingTokenAddress(
   destinationChainId: number,
 ) {
   const originTokenKey = OFT_SUPPORTED_CHAINS[originChainId]!.tokens.find(
-    (token) => token.address === originTokenAddress,
+    (token) => token.token === originTokenAddress,
   )?.key;
   if (!originTokenKey) {
     throw new Error(`Origin token address ${originTokenAddress} not found`);
   }
   const destinationTokenAddress = OFT_SUPPORTED_CHAINS[
     destinationChainId
-  ]!.tokens.find((token) => token.key === originTokenKey)?.address;
+  ]!.tokens.find((token) => token.key === originTokenKey)?.token;
   if (!destinationTokenAddress) {
     throw new Error(`Destination token key ${originTokenKey} not found`);
   }

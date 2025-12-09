@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
+import * as across from "@across-protocol/sdk";
 import type {
   DepositParams,
   DepositsParams,
@@ -31,6 +32,10 @@ import {
   OftSentSwapBeforeBridgeFields,
 } from "../utils/fields";
 import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs/utils/CCTPUtils";
+import {
+  getChainIdForEndpointId,
+  getCorrespondingTokenAddress,
+} from "@repo/indexer";
 
 export class DepositsService {
   private static readonly MAX_RECORDS_PER_QUERY_TYPE = 1000;
@@ -237,6 +242,24 @@ export class DepositsService {
       fundsDepositedQueryBuilder.andWhere("rhi.status = :status", {
         status: params.status,
       });
+
+      // Filter CCTP and OFT deposits based on status
+      if (
+        params.status === entities.RelayStatus.Refunded ||
+        params.status === entities.RelayStatus.SlowFillRequested ||
+        params.status === entities.RelayStatus.SlowFilled ||
+        params.status === entities.RelayStatus.Expired
+      ) {
+        // Exclude statuses that are not supported for CCTP and OFT deposits
+        depositForBurnQueryBuilder.andWhere("1 = 0");
+        oftSentQueryBuilder.andWhere("1 = 0");
+      } else if (params.status === entities.RelayStatus.Filled) {
+        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NOT NULL");
+        oftSentQueryBuilder.andWhere("oftReceived.id IS NOT NULL");
+      } else if (params.status === entities.RelayStatus.Unfilled) {
+        depositForBurnQueryBuilder.andWhere("mintAndWithdraw.id IS NULL");
+        oftSentQueryBuilder.andWhere("oftReceived.id IS NULL");
+      }
     }
 
     if (params.integratorId) {
@@ -246,6 +269,11 @@ export class DepositsService {
           integratorId: params.integratorId,
         },
       );
+
+      // CCTP and OFT tables don't have integratorId, so exclude them
+      // TODO: remove this once we add integratorId to CCTP and OFT tables
+      depositForBurnQueryBuilder.andWhere("1 = 0");
+      oftSentQueryBuilder.andWhere("1 = 0");
     }
 
     // Calculate upper bound for fetching records from each query
@@ -308,6 +336,7 @@ export class DepositsService {
 
     type RawDepositResult = DepositReturnType & {
       destinationDomain?: number;
+      destinationEndpointId?: number;
       outputToken?: string;
       outputAmount?: string;
     };
@@ -347,9 +376,14 @@ export class DepositsService {
           : null;
         let outputToken = deposit.outputToken;
         let outputAmount = deposit.outputAmount;
+        let bridgeFeeUsd = deposit.bridgeFeeUsd;
 
         const destinationDomain = deposit.destinationDomain;
-        if (destinationDomain && !destinationChainId) {
+        const isValidDestinationDomain =
+          destinationDomain !== undefined &&
+          destinationDomain !== null &&
+          destinationDomain > -1;
+        if (isValidDestinationDomain && !destinationChainId) {
           try {
             const derivedChainId = getCctpDestinationChainFromDomain(
               destinationDomain,
@@ -375,10 +409,68 @@ export class DepositsService {
           }
         }
 
-        // Destructure to exclude destinationDomain from the response
-        const { destinationDomain: _, ...depositWithoutDomain } = deposit;
+        if (isValidDestinationDomain && deposit.destinationChainId) {
+          const bridgeFeeWei = across.utils.BigNumber.from(
+            deposit.inputAmount,
+          ).sub(outputAmount);
+          // Get CCTP fee for fast transfers. For this computation we assume 1 USDC = 1 USD.
+          bridgeFeeUsd = across.utils.formatUnits(bridgeFeeWei, 6);
+        }
+
+        // Derive OFT fields if missing (for OFT deposits where receive hasn't completed)
+        const destinationEndpointId = deposit.destinationEndpointId;
+        if (destinationEndpointId && !destinationChainId) {
+          try {
+            const derivedChainId = getChainIdForEndpointId(
+              destinationEndpointId,
+            );
+            destinationChainId = derivedChainId;
+          } catch (error) {
+            destinationChainId = null;
+          }
+
+          // For OFT, outputToken is the corresponding token on the destination chain
+          if (
+            !outputToken &&
+            destinationChainId &&
+            deposit.inputToken &&
+            deposit.originChainId
+          ) {
+            try {
+              const originChainId = parseInt(deposit.originChainId);
+              const correspondingToken = getCorrespondingTokenAddress(
+                originChainId,
+                deposit.inputToken,
+                destinationChainId,
+              );
+              outputToken = correspondingToken;
+            } catch (error) {
+              // If we can't find the corresponding token, leave outputToken as is
+            }
+          }
+
+          // For OFT, outputAmount is inputAmount if receive hasn't completed
+          if (!outputAmount) {
+            outputAmount = deposit.inputAmount;
+          }
+        }
+
+        let status = deposit.status;
+        if (!status && deposit.fillTx) {
+          status = entities.RelayStatus.Filled;
+        } else if (!status) {
+          status = entities.RelayStatus.Unfilled;
+        }
+
+        // Destructure to exclude destinationDomain and destinationEndpointId from the response
+        const {
+          destinationDomain: _,
+          destinationEndpointId: __,
+          ...depositWithoutDomain
+        } = deposit;
         return {
           ...depositWithoutDomain,
+          status: status,
           depositTxnRef: deposit.depositTxHash,
           depositRefundTxnRef: deposit.depositRefundTxHash,
           fillTxnRef: deposit.fillTx,
@@ -387,6 +479,7 @@ export class DepositsService {
           outputToken: outputToken,
           outputAmount: outputAmount,
           speedups,
+          bridgeFeeUsd,
         };
       }),
     );

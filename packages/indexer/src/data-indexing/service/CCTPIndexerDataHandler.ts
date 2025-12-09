@@ -117,10 +117,23 @@ const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
 // TODO: Update this address once the contract is deployed
 const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+  // Taken from: https://basescan.org/address/0xa7a8d1efc1ee3e69999d370380949092251a5c20
+  [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
+  // Taken from: https://arbiscan.io/address/0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b
+  [CHAIN_IDs.ARBITRUM]: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
-const WHITELISTED_FINALIZERS = ["0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"];
+const WHITELISTED_FINALIZERS = [
+  "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+  "0x72adB07A487f38321b6665c02D289C413610B081",
+  "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd",
+];
+
+// Convert whitelisted finalizers to bytes32 format for comparison with destinationCaller
+const WHITELISTED_FINALIZERS_BYTES32 = WHITELISTED_FINALIZERS.map((address) =>
+  ethers.utils.hexZeroPad(address.toLowerCase(), 32).toLowerCase(),
+);
 
 export class CCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
@@ -411,7 +424,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       .map((transaction) => transaction.hash);
 
     return depositForBurnEvents.filter((event) => {
-      return transactionHashes.includes(event.transactionHash);
+      // Filter by transaction hash (Swap API marker)
+      if (!transactionHashes.includes(event.transactionHash)) {
+        return false;
+      }
+      // Filter also by destinationCaller.
+      // The Swap API marker alone is insufficient since "73c0de" can appear
+      // in the calldata of transactions unrelated to Across.
+      const destinationCallerLower = event.args.destinationCaller.toLowerCase();
+      return WHITELISTED_FINALIZERS_BYTES32.includes(destinationCallerLower);
     });
   }
 
@@ -724,13 +745,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
   private getBlocksTimestamps(
     blocks: Record<string, providers.Block>,
-  ): Record<number, Date> {
+  ): Record<string, Date> {
     return Object.entries(blocks).reduce(
       (acc, [blockHash, block]) => {
         acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },
-      {} as Record<number, Date>,
+      {} as Record<string, Date>,
     );
   }
 

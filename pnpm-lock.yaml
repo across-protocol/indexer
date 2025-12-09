@@ -357,6 +357,9 @@ importers:
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
+      ethers:
+        specifier: ^5.8.0
+        version: 5.8.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       ioredis-mock:
         specifier: ^8.13.1
         version: 8.13.1(@types/ioredis-mock@8.2.6(ioredis@5.4.1))(ioredis@5.4.1)
@@ -1363,6 +1366,7 @@ packages:
   '@google-cloud/trace-agent@5.1.6':
     resolution: {integrity: sha512-TLZwbR9WYx/wNhJv6PcbKEuHZpArUG1WtaPLwjxRJeTVNDV2gOsDVDihbezCyyOcHxU3kXCewB5y2BA1pP0mIg==}
     engines: {node: '>=10'}
+    deprecated: This package is deprecated. We encourage users to use https://opentelemetry.io/docs/languages/js/libraries/ instead
 
   '@grpc/grpc-js@1.14.0':
     resolution: {integrity: sha512-N8Jx6PaYzcTRNzirReJCtADVoq4z7+1KQ4E70jTg/koQiMoUSN1kbNjPOqpPbhMFhfU1/l7ixspPl8dNY+FoUg==}

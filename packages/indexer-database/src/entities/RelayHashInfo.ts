@@ -38,11 +38,6 @@ export enum RelayStatus {
   "status",
 ])
 @Index("IX_rhi_status", ["status"])
-@Index("IX_rhi_depositEventId", ["depositEventId"])
-@Index("IX_rhi_fillEventId", ["fillEventId"])
-@Index("IX_rhi_slowFillRequestEventId", ["slowFillRequestEventId"])
-@Index("IX_rhi_swapBeforeBridgeEventId", ["swapBeforeBridgeEventId"])
-@Index("IX_rhi_callsFailedEventId", ["callsFailedEventId"])
 export class RelayHashInfo {
   @PrimaryGeneratedColumn()
   id: number;

@@ -6,8 +6,6 @@ Across Indexer monorepo
 
 You can read further details on each component's README file
 
-### Apps
-
 ### Packages
 
 Configuration packages:
@@ -17,7 +15,7 @@ Configuration packages:
 
 Other components that need to use these configurations should include the package names in their dev dependencies and then extend the configurations from component-local configuration files. For example:
 
-```
+```json
 // a component package.json
 {
   // ...
@@ -29,7 +27,7 @@ Other components that need to use these configurations should include the packag
 }
 ```
 
-```
+```json
 // a component tsconfig.json
 {
   "extends": "@repo/typescript-config/base.json",
@@ -39,7 +37,7 @@ Other components that need to use these configurations should include the packag
 }
 ```
 
-```
+```javascript
 // a component .eslintrc.js
 module.exports = {
   extends: ["@repo/eslint-config/index.js"],
@@ -57,67 +55,56 @@ This Turborepo has some additional tools already setup for you:
 
 ## How to use
 
+### Prerequisites
+
+Before getting started, ensure that the following are installed and available in your environment:
+
+- **Node.js**: Version 20.x
+- **Redis**
+- **Docker**
+
+#### Environment Variables
+
+The development environment requires a set of environment variables to be configured. Please refer to the `.env.example` file in the root for the complete list of required variables. To set up your configuration, you can copy the template as follows:
+
+```bash
+cp .env.example .env
+```
+
 ### Installing dependencies:
 
 To install dependencies for all apps and packages, run the following command from the root of the repository:
 
-```
+```bash
 pnpm install
-```
-
-Turborepo suggests to install dependencies directly in the component that uses them.
-
-To do that, add the dependency to the `package.json` of the component running the following commands from within the workspace:
-
-```
-pnpm add some-runtime-package
-pnpm add -D some-dev-dependency-package
-```
-
-To add a dependency to a named workspace, regardless of the current workspace or directory, run the followig command:
-
-```
-pnpm add some-runtime-package --filter someworkspace
-pnpm add -D some-dev-dependency-package --filter someworkspace
-```
-
-If you ever need to update the root `package.json`, no matter what directory you’re in, you can add and remove by including the -w switch:
-
-```
-pnpm add -w some-runtime-package
-pnpm add -wD some-dev-dependency-package
 ```
 
 ### Build
 
 To build all apps and packages, run the following command:
 
-```
+```bash
 pnpm build
 ```
 
 **Note:** Call `pnpm install` before running `pnpm build` if you've added a new package or updated dependencies.
 
-### Develop
+#### Configuration Options
 
-To develop all apps and packages, run the following command:
+- **HubPool Indexer:**  
+  To enable the hubpool indexer, set the `ENABLE_HUBPOOL_INDEXER` environment variable to `true`.
 
-```
-pnpm dev
-```
+- **SpokePool Indexer:**  
+  To enable the spoke pool indexer, set the `SPOKEPOOL_CHAINS_ENABLED` environment variable to a comma-separated list of chain IDs you wish to index (e.g., `SPOKEPOOL_CHAINS_ENABLED=1,10,137`).  
+  Additionally, ensure that a corresponding RPC environment variable is set for each enabled chain.
 
-To run tasks only for the components you're currently working on, you can use the --filter flag:
-
-```
-turbo build --filter=<component>
-turbo dev --filter=<component>
-```
+For any additional configuration, refer to the `.env.example` file for a list of required environment variables.
 
 ### Using a Developer Environment
 
 This repository is configured to use Docker Compose to create a development environment with all external dependencies.
 
-#### Starting the Environment
+#### Starting Docker Development Environment
 
 To start the development environment, run the following command:
 
@@ -132,25 +119,85 @@ To stop the development environment, run the following command:
 ```sh
 docker-compose down
 ```
-
 #### Running Applications
 
 Each application (the indexer + the api) will run in the development environment. This is
 enabled by default and managed by the `docker-compose.yml` file.
 
+### Running the Indexer Locally
+
+To run the indexer locally, follow the steps below. All commands should be executed from the root directory of the repository.
+
+1. **Install Dependencies**
+
+Install all project dependencies using:
+
+```sh
+pnpm install
+```
+
+2. **Start Database Services**
+
+Launch the required Redis and Postgres services using Docker:
+
+```sh
+docker compose up redis postgres -d
+```
+
+3. **Run Database Migrations**
+
+Copy your `.env` file over to `./packages/indexer-database/.env`:
+
+```sh
+cp .env ./packages/indexer-database/.env
+```
+
+Apply database migrations to ensure the schema is up to date:
+
+```sh
+pnpm db:indexer-database:migrate:run
+```
+
+4. **Build and Start the Indexer**
+
+Copy of your `.env` to `apps/node/.env`.
+
+```sh
+cp .env apps/node.env
+```
+
+Build the project and start the indexer application:
+
+```sh
+pnpm build && pnpm start:indexer
+```
+
+### Managing Dependencies with Turborepo and pnpm
+
+Turborepo recommends installing dependencies directly within the component or package that uses them.
+
+To add a dependency to the `package.json` of the current workspace, run:
+
+```bash
+pnpm add some-runtime-package
+pnpm add -D some-dev-dependency-package
+```
+
+To add a dependency to a specific workspace by name, regardless of your current directory, use:
+
+```bash
+pnpm add some-runtime-package --filter someworkspace
+pnpm add -D some-dev-dependency-package --filter someworkspace
+```
+
+To update the root `package.json` from any location, add or remove dependencies using the `-w` (workspace root) flag:
+
+```bash
+pnpm add -w some-runtime-package
+pnpm add -wD some-dev-dependency-package
+```
+
 **Example:**
-
-#### Required Environment Variables
-
-The development environment requires the following ENV variables to be set:
-
-- `DATABASE_HOST="postgres"`
-- `REDIS_HOST="redis"`
-- `DATABASE_PORT`
-- `DATABASE_USER`
-- `DATABASE_PASSWORD`
-- `DATABASE_NAME`
-- `REDIS_PORT`
 
 ### Creating a new library
 

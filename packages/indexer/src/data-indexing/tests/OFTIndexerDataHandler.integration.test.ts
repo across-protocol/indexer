@@ -10,6 +10,10 @@ import { OftRepository } from "../../database/OftRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { getTestDataSource } from "../../tests/setup";
+import {
+  OFT_DST_HANDLER_ADDRESS,
+  SPONSORED_OFT_SRC_PERIPHERY_ADDRESS,
+} from "../adapter/oft/service";
 
 describe("OFTIndexerDataHandler", () => {
   let dataSource: DataSource;
@@ -57,6 +61,10 @@ describe("OFTIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
+    // TODO: Remove this reassign after production deployment is certain
+    SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[CHAIN_IDs.ARBITRUM] =
+      "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE";
+
     setupTestForChainId(CHAIN_IDs.ARBITRUM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -82,6 +90,11 @@ describe("OFTIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
+
+    // TODO: Remove this reassign after production deployment is certain
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -119,6 +132,11 @@ describe("OFTIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
+
+    // TODO: Remove this reassign after production deployment is certain
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -152,6 +170,11 @@ describe("OFTIndexerDataHandler", () => {
     const transactionHash =
       "0x5008ce0be97eb5b8b0a1f8854826f33d33e5038a31c793569354ec2dc66ddfef";
     const blockNumber = 18007251;
+
+    // TODO: Remove this reassign after production deployment is certain
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {

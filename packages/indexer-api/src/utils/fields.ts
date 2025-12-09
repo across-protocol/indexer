@@ -99,8 +99,8 @@ export const DepositForBurnRelayHashInfoFields = [
 
 export const DepositForBurnFilledRelayFields = [
   `NULL::varchar as "relayer"`,
-  `NULL::timestamp as "fillBlockTimestamp"`,
-  `NULL::varchar as "fillTx"`,
+  `"mintAndWithdraw"."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
+  `"mintAndWithdraw"."transactionHash"::varchar as "fillTx"`,
 ];
 
 export const DepositForBurnSwapBeforeBridgeFields = [
@@ -116,7 +116,7 @@ export const OftSentFields = [
   `"oftSent"."chainId"::bigint as "originChainId"`,
   `"oftReceived"."chainId"::bigint as "destinationChainId"`,
   `"oftSent"."fromAddress"::varchar as "depositor"`,
-  `"oftReceived"."toAddress"::varchar as "recipient"`,
+  `"oftSent"."fromAddress"::varchar as "recipient"`,
   `"oftSent"."token"::varchar as "inputToken"`,
   `"oftSent"."amountSentLD"::varchar as "inputAmount"`,
   `"oftReceived"."token"::varchar as "outputToken"`,
@@ -133,6 +133,7 @@ export const OftSentFields = [
   `"oftSent"."blockNumber"::integer as "depositBlockNumber"`,
   `"oftSent"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
   `NULL::integer as "destinationDomain"`,
+  `"oftSent"."dstEid"::integer as "destinationEndpointId"`,
 ];
 
 export const OftSentRelayHashInfoFields = [
