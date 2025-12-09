@@ -12,6 +12,7 @@ import { createTestRetryProvider } from "../../tests/testProvider";
 import { entities } from "@repo/indexer-database";
 import { decodeHookData, decodeMessageBody } from "../adapter/cctp-v2/service";
 import { ethers } from "ethers";
+import { SPONSORED_CCTP_DST_PERIPHERY_ADDRESS } from "../service/CCTPIndexerDataHandler";
 
 /**
  * Test suite for the CCTPIndexerDataHandler.
@@ -47,6 +48,10 @@ describe("CCTPIndexerDataHandler", () => {
       warn: sinon.spy(),
       error: sinon.spy(),
     } as unknown as Logger;
+
+    // Use the address that emitted the historical HyperEVM events referenced by these tests.
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
   });
 
   afterEach(async () => {
