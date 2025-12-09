@@ -7,15 +7,9 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "@repo/indexer-database";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";
-import {
-  CCTPIndexerDataHandler,
-  SPONSORED_CCTP_DST_PERIPHERY_ADDRESS,
-} from "../service/CCTPIndexerDataHandler";
+import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { RedisCache } from "../../redis/redisCache";
-import * as Web3Constants from "../../web3/constants";
 import { parseProvidersUrls, Config } from "../../parseEnv";
-import * as Constants from "../service/constants";
 import { getTestDataSource } from "../../tests/setup";
 import { CCTPRepository } from "../../database/CctpRepository";
 
@@ -66,9 +60,6 @@ describe("CCTPIndexerManager", () => {
       retryProvidersFactory,
       cctpRepository,
     );
-
-    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
-      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
   });
 
   afterEach(async () => {
