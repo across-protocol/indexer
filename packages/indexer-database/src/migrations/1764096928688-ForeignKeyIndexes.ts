@@ -17,5 +17,14 @@ export class ForeignKeyIndexes1764096928688 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX "evm"."IX_swapMetadata_relayHashInfoId_side_deletedAt"`,
     );
+    await queryRunner.query(`DROP INDEX "public"."IX_rhi_callsFailedEventId"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IX_rhi_swapBeforeBridgeEventId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IX_rhi_slowFillRequestEventId"`,
+    );
+    await queryRunner.query(`DROP INDEX "public"."IX_rhi_fillEventId"`);
+    await queryRunner.query(`DROP INDEX "public"."IX_rhi_depositEventId"`);
   }
 }

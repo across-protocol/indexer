@@ -116,7 +116,7 @@ export const OftSentFields = [
   `"oftSent"."chainId"::bigint as "originChainId"`,
   `"oftReceived"."chainId"::bigint as "destinationChainId"`,
   `"oftSent"."fromAddress"::varchar as "depositor"`,
-  `"oftReceived"."toAddress"::varchar as "recipient"`,
+  `"oftSent"."fromAddress"::varchar as "recipient"`,
   `"oftSent"."token"::varchar as "inputToken"`,
   `"oftSent"."amountSentLD"::varchar as "inputAmount"`,
   `"oftReceived"."token"::varchar as "outputToken"`,

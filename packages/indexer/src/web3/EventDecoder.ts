@@ -17,7 +17,11 @@ import {
   SponsoredDepositForBurnLog,
 } from "../data-indexing/adapter/cctp-v2/model";
 import { SponsoredOFTSendLog } from "../data-indexing/adapter/oft/model";
-import { SimpleTransferFlowCompletedLog } from "../data-indexing/model/hyperEvmExecutor";
+import {
+  SimpleTransferFlowCompletedLog,
+  SwapFlowFinalizedLog,
+  SwapFlowInitializedLog,
+} from "../data-indexing/model/hyperEvmExecutor";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(
@@ -102,7 +106,7 @@ export class EventDecoder {
     const eventTopic =
       "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
     const eventAbi = ["event MessageSent (bytes message)"];
-    let events: MessageSentLog[] = this.decodeTransactionReceiptLogs(
+    let events: MessageSentLog[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
@@ -123,11 +127,8 @@ export class EventDecoder {
     const eventAbi = [
       "event MintAndWithdraw(address indexed mintRecipient, uint256 amount, address indexed mintToken, uint256 feeCollected)",
     ];
-    let events: MintAndWithdrawLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: MintAndWithdrawLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -148,7 +149,7 @@ export class EventDecoder {
     ];
 
     let events: SponsoredDepositForBurnLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -167,11 +168,8 @@ export class EventDecoder {
       "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
     ];
 
-    let events: SponsoredOFTSendLog[] = this.decodeTransactionReceiptLogs(
-      receipt,
-      eventTopic,
-      eventAbi,
-    );
+    let events: SponsoredOFTSendLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -179,6 +177,16 @@ export class EventDecoder {
     return events;
   }
 
+  /**
+   * Decodes `SimpleTransferFlowCompleted` events from a transaction receipt.
+   * This event is emitted by the HyperEVM executor contract when a simple transfer flow is completed.
+   * The event topic and ABI are taken from the HyperEVM executor contract.
+   * See: https://hyperevmscan.io/tx/0xf72cfb2c0a9f781057cd4f7beca6fc6bd9290f1d73adef1142b8ac1b0ed7186c#eventlog#37
+   *
+   * @param receipt The transaction receipt to decode events from.
+   * @param contractAddress Optional address of the contract that emitted the event to avoid decoding events from other contracts.
+   * @returns An array of decoded `SimpleTransferFlowCompletedLog` objects.
+   */
   static decodeSimpleTransferFlowCompletedEvents(
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
@@ -190,7 +198,7 @@ export class EventDecoder {
       "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
     ];
     let events: SimpleTransferFlowCompletedLog[] =
-      this.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }
@@ -207,11 +215,85 @@ export class EventDecoder {
     const eventAbi = [
       "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
     ];
-    let events: any[] = this.decodeTransactionReceiptLogs(
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
       receipt,
       eventTopic,
       eventAbi,
     );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+    return events;
+  }
+
+  static decodeFallbackHyperEVMFlowCompletedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // Taken from https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02#eventlog#25
+    const eventTopic =
+      "0x4755f239bb1b047245415cb917deced72a3ca8baebcef109c396ff332ea6f50f";
+    const eventAbi = [
+      "event FallbackHyperEVMFlowCompleted(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed finalToken, uint256 evmAmountIn, uint256 bridgingFeesIncurred, uint256 evmAmountSponsored)",
+    ];
+    let events: any[] = EventDecoder.decodeTransactionReceiptLogs(
+      receipt,
+      eventTopic,
+      eventAbi,
+    );
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+    return events;
+  }
+
+  /**
+   * Decodes `SwapFlowInitialized` events from a transaction receipt.
+   * This event is emitted by the HyperEVM executor contract when a swap flow is initialized.
+   *
+   * @param receipt The transaction receipt to decode events from.
+   * @param contractAddress Optional address of the contract that emitted the event to avoid decoding events from other contracts.
+   * @returns An array of decoded `SwapFlowInitializedLog` objects.
+   */
+  static decodeSwapFlowInitializedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // TODO: Change the event topic once we have the correct one. This is just a placeholder.
+    const eventTopic =
+      "0x8f7c9e99276d4943f338779695034c44dd3f790c604b9319808a7337c76cc782";
+    const eventAbi = [
+      "event SwapFlowInitialized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 coreAmountIn,uint64 minAmountToSend,uint64 maxAmountToSend)",
+    ];
+    let events: SwapFlowInitializedLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
+    if (contractAddress) {
+      events = events.filter((event) => event.address === contractAddress);
+    }
+    return events;
+  }
+
+  /**
+   * Decodes `SwapFlowFinalized` events from a transaction receipt.
+   * This event is emitted by the HyperEVM executor contract when a swap flow is finalized.
+   *
+   * @param receipt The transaction receipt to decode events from.
+   * @param contractAddress Optional address of the contract that emitted the event to avoid decoding events from other contracts.
+   * @returns An array of decoded `SwapFlowFinalizedLog` objects.
+   */
+  static decodeSwapFlowFinalizedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+    contractAddress?: string,
+  ) {
+    // The event topic for SwapFlowFinalized.
+    // TODO: Change this event topic once we have events on the hyperEVM blockchain
+    const eventTopic =
+      "0x2649b068b54881f148d79a785233588975b95874c56852afee4f04c64a504261";
+    const eventAbi = [
+      "event SwapFlowFinalized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint64 totalSent,uint256 evmAmountSponsored)",
+    ];
+    let events: SwapFlowFinalizedLog[] =
+      EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
       events = events.filter((event) => event.address === contractAddress);
     }

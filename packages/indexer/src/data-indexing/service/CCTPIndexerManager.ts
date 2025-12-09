@@ -14,7 +14,8 @@ import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
 import { CCTPRepository } from "../../database/CctpRepository";
-import { getMaxBlockLookBack } from "../../web3/constants";
+
+const MAX_BLOCK_RANGE_SIZE = 30_000;
 
 export class CCTPIndexerManager {
   private evmIndexers?: Indexer[];
@@ -77,7 +78,7 @@ export class CCTPIndexerManager {
             getIndexingDelaySeconds(chainId, this.config) * 2,
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
-          maxBlockRangeSize: getMaxBlockLookBack(chainId),
+          maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
           indexingDelaySecondsOnError: this.config.indexingDelaySecondsOnError,
         },
         cctpIndexerDataHandler,
@@ -127,7 +128,7 @@ export class CCTPIndexerManager {
           indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
-          maxBlockRangeSize: getMaxBlockLookBack(chainId),
+          maxBlockRangeSize: MAX_BLOCK_RANGE_SIZE,
         },
         svmCctpIndexerDataHandler,
         this.logger,
