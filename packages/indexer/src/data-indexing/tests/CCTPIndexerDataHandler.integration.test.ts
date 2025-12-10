@@ -155,13 +155,9 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0x869d1df5f1e7b6b91a824d8e2b455ac48d1f26f0b5f2823c96df391eb75dff34";
     const blockNumber = 18510668;
-
-    const originalAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM];
     // Use the address that emitted the historical HyperEVM events referenced by these tests.
     SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
-
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -202,13 +198,9 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02";
     const blockNumber = 18913313;
-
-    const originalAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM];
     // Use the address that emitted the historical HyperEVM events referenced by these tests.
     SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
-
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
