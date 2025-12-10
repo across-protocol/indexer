@@ -259,16 +259,18 @@ export class EventDecoder {
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
   ) {
-    // TODO: Change the event topic once we have the correct one. This is just a placeholder.
     const eventTopic =
-      "0x8f7c9e99276d4943f338779695034c44dd3f790c604b9319808a7337c76cc782";
+      "0x550576b2f9e0ac12dfd5dd2d5743b5b7f11f34302b5f6bec6ad60db81bd6a918";
     const eventAbi = [
       "event SwapFlowInitialized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 coreAmountIn,uint64 minAmountToSend,uint64 maxAmountToSend)",
     ];
     let events: SwapFlowInitializedLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
@@ -295,7 +297,10 @@ export class EventDecoder {
     let events: SwapFlowFinalizedLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
