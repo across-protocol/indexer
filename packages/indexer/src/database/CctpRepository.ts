@@ -49,6 +49,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
   public async deleteUnfinalisedCCTPEvents(
     chainId: number,
     lastFinalisedBlock: number,
+    contractAddress?: string,
   ) {
     const chainIdColumn = "chainId";
     const [
@@ -98,30 +99,42 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         chainIdColumn,
         lastFinalisedBlock,
         entities.SimpleTransferFlowCompleted,
+        contractAddress,
       ),
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
         lastFinalisedBlock,
         entities.ArbitraryActionsExecuted,
+        contractAddress,
       ),
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
         lastFinalisedBlock,
         entities.FallbackHyperEVMFlowCompleted,
+        contractAddress,
       ),
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
         lastFinalisedBlock,
         entities.SponsoredAccountActivation,
+        contractAddress,
       ),
       this.deleteUnfinalisedEvents(
         chainId,
         chainIdColumn,
         lastFinalisedBlock,
         entities.SwapFlowInitialized,
+        contractAddress,
+      ),
+      this.deleteUnfinalisedEvents(
+        chainId,
+        chainIdColumn,
+        lastFinalisedBlock,
+        entities.SwapFlowFinalized,
+        contractAddress,
       ),
     ]);
 
@@ -227,6 +240,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           finalToken: event.args.finalToken,
           finalAmount: event.args.finalAmount.toString(),
           finalised: event.blockNumber <= lastFinalisedBlock,
+          address: event.address,
         };
       });
 

@@ -21,6 +21,7 @@ import {
 @Index("IX_arbitrary_actions_executed_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_arbitrary_actions_executed_deletedAt", ["deletedAt"])
 @Index("IX_arbitrary_actions_executed_finalised", ["finalised"])
+@Index("IX_arbitrary_actions_executed_address", ["address"])
 export class ArbitraryActionsExecuted {
   @PrimaryGeneratedColumn()
   id: number;
@@ -66,4 +67,7 @@ export class ArbitraryActionsExecuted {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  @Column({ nullable: true })
+  address?: string;
 }
