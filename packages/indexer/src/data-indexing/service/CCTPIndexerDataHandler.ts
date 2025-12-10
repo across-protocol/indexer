@@ -777,7 +777,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       transactionHash: event.transactionHash,
       transactionIndex: event.transactionIndex,
       logIndex: event.logIndex,
-      nonce: event.args.nonce,
+      quoteNonce: event.args.quoteNonce,
       originSender: event.args.originSender,
       finalRecipient: event.destinationChainId
         ? formatFromAddressToChainFormat(
