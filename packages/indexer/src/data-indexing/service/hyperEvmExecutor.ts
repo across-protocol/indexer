@@ -34,6 +34,7 @@ export const formatSponsoredAccountActivationEvent = (
   fundingToken: event.args.fundingToken,
   evmAmountSponsored: event.args.evmAmountSponsored.toString(),
   finalised,
+  contractAddress: event.address,
 });
 
 /**
@@ -64,6 +65,7 @@ export const formatSimpleTransferFlowCompletedEvent = (
   bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
   evmAmountSponsored: event.args.evmAmountSponsored.toString(),
   finalised,
+  contractAddress: event.address,
 });
 
 /**
@@ -93,6 +95,7 @@ export const formatArbitraryActionsExecutedEvent = (
   finalToken: event.args.finalToken,
   finalAmount: event.args.finalAmount.toString(),
   finalised,
+  contractAddress: event.address,
 });
 
 /**
@@ -123,6 +126,7 @@ export const formatFallbackHyperEVMFlowCompletedEvent = (
   bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
   evmAmountSponsored: event.args.evmAmountSponsored.toString(),
   finalised,
+  contractAddress: event.address,
 });
 
 /**
@@ -155,6 +159,7 @@ export const formatSwapFlowInitializedEvent = (
   minAmountToSend: event.args.minAmountToSend.toString(),
   maxAmountToSend: event.args.maxAmountToSend.toString(),
   finalised,
+  contractAddress: event.address,
 });
 
 /**
@@ -184,4 +189,5 @@ export const formatSwapFlowFinalizedEvent = (
   totalSent: event.args.totalSent.toString(),
   evmAmountSponsored: event.args.evmAmountSponsored.toString(),
   finalised,
+  contractAddress: event.address,
 });

@@ -136,24 +136,6 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
         entities.SwapFlowFinalized,
         contractAddress,
       ),
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.FallbackHyperEVMFlowCompleted,
-      ),
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.SponsoredAccountActivation,
-      ),
-      this.deleteUnfinalisedEvents(
-        chainId,
-        chainIdColumn,
-        lastFinalisedBlock,
-        entities.SwapFlowInitialized,
-      ),
     ]);
 
     return {
@@ -258,6 +240,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           finalToken: event.args.finalToken,
           finalAmount: event.args.finalAmount.toString(),
           finalised: event.blockNumber <= lastFinalisedBlock,
+          contractAddress: event.address,
         };
       });
 

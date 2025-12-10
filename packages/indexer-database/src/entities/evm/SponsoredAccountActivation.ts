@@ -22,6 +22,7 @@ import {
 @Index("IX_SponsoredAccountActivation_deletedAt", ["deletedAt"])
 @Index("IX_SponsoredAccountActivation_finalised", ["finalised"])
 @Index("IX_SponsoredAccountActivation_finalRecipient", ["finalRecipient"])
+@Index("IX_SponsoredAccountActivation_contractAddress", ["contractAddress"])
 export class SponsoredAccountActivation {
   @PrimaryGeneratedColumn()
   id: number;
@@ -64,4 +65,7 @@ export class SponsoredAccountActivation {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  @Column({ nullable: true })
+  contractAddress?: string;
 }
