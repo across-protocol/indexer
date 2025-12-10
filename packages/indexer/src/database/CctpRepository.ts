@@ -240,7 +240,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           finalToken: event.args.finalToken,
           finalAmount: event.args.finalAmount.toString(),
           finalised: event.blockNumber <= lastFinalisedBlock,
-          address: event.address,
+          contractAddress: event.address,
         };
       });
 

@@ -22,7 +22,7 @@ import {
 @Index("IX_swapFlowFinalized_blockTimestamp", ["blockTimestamp"])
 @Index("IX_swapFlowFinalized_deletedAt", ["deletedAt"])
 @Index("IX_swapFlowFinalized_finalised", ["finalised"])
-@Index("IX_swapFlowFinalized_address", ["address"])
+@Index("IX_swapFlowFinalized_contractAddress", ["contractAddress"])
 export class SwapFlowFinalized {
   @PrimaryGeneratedColumn()
   id: number;
@@ -70,5 +70,5 @@ export class SwapFlowFinalized {
   deletedAt?: Date;
 
   @Column({ nullable: true })
-  address?: string;
+  contractAddress?: string;
 }

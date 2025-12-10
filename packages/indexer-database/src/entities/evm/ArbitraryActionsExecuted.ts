@@ -21,7 +21,7 @@ import {
 @Index("IX_arbitrary_actions_executed_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_arbitrary_actions_executed_deletedAt", ["deletedAt"])
 @Index("IX_arbitrary_actions_executed_finalised", ["finalised"])
-@Index("IX_arbitrary_actions_executed_address", ["address"])
+@Index("IX_arbitrary_actions_executed_contractAddress", ["contractAddress"])
 export class ArbitraryActionsExecuted {
   @PrimaryGeneratedColumn()
   id: number;
@@ -69,5 +69,5 @@ export class ArbitraryActionsExecuted {
   deletedAt?: Date;
 
   @Column({ nullable: true })
-  address?: string;
+  contractAddress?: string;
 }

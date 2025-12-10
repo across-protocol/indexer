@@ -22,7 +22,7 @@ import {
 @Index("IX_SimpleTransferFlowCompleted_blockTimeStamp", ["blockTimestamp"])
 @Index("IX_SimpleTransferFlowCompleted_deletedAt", ["deletedAt"])
 @Index("IX_SimpleTransferFlowCompleted_finalised", ["finalised"])
-@Index("IX_SimpleTransferFlowCompleted_address", ["address"])
+@Index("IX_SimpleTransferFlowCompleted_contractAddress", ["contractAddress"])
 export class SimpleTransferFlowCompleted {
   @PrimaryGeneratedColumn()
   id: number;
@@ -73,5 +73,5 @@ export class SimpleTransferFlowCompleted {
   deletedAt?: Date;
 
   @Column({ nullable: true })
-  address?: string;
+  contractAddress?: string;
 }
