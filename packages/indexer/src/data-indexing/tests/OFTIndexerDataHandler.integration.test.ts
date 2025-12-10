@@ -201,6 +201,7 @@ describe("OFTIndexerDataHandler", () => {
 
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockTimestamp).to.exist;
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
     expect(savedEvent!.quoteNonce).to.equal(
       "0x0000000000000000000000000000000000000000000000000000000069056cc8",
@@ -259,6 +260,56 @@ describe("OFTIndexerDataHandler", () => {
 
     // Optional: Verify contract address if known or just type check
     expect(savedEvent!.contractAddress).to.be.a("string");
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
+  }).timeout(20000);
+
+  it("should fetch and store SwapFlowInitialized event in the database", async () => {
+    // Taken from https://hyperevmscan.io/tx/0x9af51c6c1cfd7ce2daaeaaaba1832071ef0033dc49da5e0406b5c3f314da39de#eventlog#0
+    const transactionHash =
+      "0x9af51c6c1cfd7ce2daaeaaaba1832071ef0033dc49da5e0406b5c3f314da39de";
+
+    const blockNumber = 21474788;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowInitializedRepository = dataSource.getRepository(
+      entities.SwapFlowInitialized,
+    );
+
+    const savedEvent = await swapFlowInitializedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    expect(savedEvent).to.deep.include({
+      // Identity & Indexing
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      transactionHash: transactionHash,
+      logIndex: 0,
+      transactionIndex: 0,
+      finalised: true,
+      quoteNonce:
+        "0x48af6868cc5ac8b9be544d9c70a86d17246066b4be4bcfe4a7ee8ecb5bb25c60",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      // Amounts (Expected as strings for 'numeric'/'bigint' columns)
+      evmAmountIn: 1000000,
+      bridgingFeesIncurred: 0,
+      coreAmountIn: 100000000,
+      minAmountToSend: 95000000,
+      maxAmountToSend: 100000000,
+    });
+
+    // Date Assertion
+    // We check that it is a valid date object, rather than a specific ms timestamp
     expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
   }).timeout(20000);
 });
