@@ -1,10 +1,4 @@
-import {
-  EventSource,
-  Storer,
-  Transformer,
-  Filter,
-  Preprocessor,
-} from "../model/genericTypes";
+import { EventSource, Storer, Transformer } from "../model/genericTypes";
 import { Logger } from "winston";
 
 /**
@@ -22,26 +16,16 @@ import { Logger } from "winston";
  * @template TEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
- * @template TPreprocessed The type of the preprocessed data.
  */
-export interface GenericEventProcessorRequest<
-  TEntity,
-  TDb,
-  TPayload,
-  TPreprocessed = TPayload,
-> {
+export interface GenericEventProcessorRequest<TEntity, TDb, TPayload> {
   /** The database instance. */
   db: TDb;
   /** The function to source events. */
   source: EventSource<TPayload>;
-  /** The function to preprocess the event payload. */
-  preprocess: Preprocessor<TPayload, TPreprocessed>;
   /** The function to transform the event payload into an entity. */
-  transform: Transformer<TPreprocessed, TPayload, TEntity>;
+  transform: Transformer<TPayload, TEntity>;
   /** The function to store the entity in the database. */
   store: Storer<TEntity, TDb>;
-  /** The function to filter the entity. */
-  filter?: Filter<TPreprocessed, TPayload>;
   /** An optional logger instance. */
   logger?: Logger;
 }
@@ -52,9 +36,7 @@ export interface GenericEventProcessorRequest<
  * to be called repeatedly by a listener.
  *
  * - **Source:** It calls the `source` function, which should provide a new event payload.
- * - **Preprocess:** (Optional) It preprocesses the payload.
- * - **Filter:** It passes the preprocessed data and raw payload to the `filter` function.
- * - **Transform:** It passes the preprocessed data and raw payload to the `transform` function.
+ * - **Transform:** It passes the received payload to the `transform` function.
  * - **Store:** It passes the resulting entity to the `store` function for persistence.
  *
  * This generic design allows the same worker logic to process any type of event,
@@ -63,18 +45,18 @@ export interface GenericEventProcessorRequest<
  * @template TEvent The type of the raw event.
  * @template TEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
- * @template TPreprocessed The type of the preprocessed data.
  * @param request The request object containing db, source, transform, store, and logger.
  */
-export const processEvent = async <
-  TEntity,
-  TDb,
-  TPayload,
-  TPreprocessed = TPayload,
->(
-  request: GenericEventProcessorRequest<TEntity, TDb, TPayload, TPreprocessed>,
+export const processEvent = async <TEntity, TDb, TPayload>(
+  request: GenericEventProcessorRequest<TEntity, TDb, TPayload>,
 ): Promise<void> => {
-  const { db, source, preprocess, transform, store, filter, logger } = request;
+  const {
+    db,
+    source,
+    transform,
+    store,
+    logger = console as unknown as Logger,
+  } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
   // sourcing, transformation, or storage of an event. This prevents a single failing
   // event from crashing the entire listening process.
@@ -83,22 +65,12 @@ export const processEvent = async <
     // The source can be directly from an event listener or it can come from a message queue.
     // The async aspect makes it usable for both scenarios
     const payload = await source();
-
-    // Preprocess
-    let preprocessed: TPreprocessed = await preprocess(payload);
-
-    // Filter
-    if (filter && !(await filter(preprocessed, payload))) {
-      return;
-    }
-
     // Transform
-    const entity = await transform(preprocessed, payload);
-
+    const entity = await transform(payload);
     // Store (Asynchronous I/O operation)
     const storedItems = await store(entity, db);
 
-    logger?.debug({
+    logger.debug({
       at: "genericEventProcessor#genericEventProcessor",
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
       message: `Successfully stored event: ${storedItems
@@ -107,9 +79,10 @@ export const processEvent = async <
             `${(entry.data as any).constructor.name}#${(entry.data as any).id}`,
         )
         .join(", ")}`,
+      notificationPath: "across-indexer-error",
     });
   } catch (error) {
-    logger?.error({
+    logger.error({
       at: "genericEventProcessor#genericEventProcessor",
       message: "Error processing event.",
       notificationPath: "across-indexer-error",
