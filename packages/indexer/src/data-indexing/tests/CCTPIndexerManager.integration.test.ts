@@ -7,12 +7,9 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import { entities } from "@repo/indexer-database";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import * as CCTPIndexerManagerModule from "../service/CCTPIndexerManager";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { RedisCache } from "../../redis/redisCache";
-import * as Web3Constants from "../../web3/constants";
 import { parseProvidersUrls, Config } from "../../parseEnv";
-import * as Constants from "../service/constants";
 import { getTestDataSource } from "../../tests/setup";
 import { CCTPRepository } from "../../database/CctpRepository";
 
