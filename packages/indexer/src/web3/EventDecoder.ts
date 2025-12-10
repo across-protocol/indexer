@@ -259,7 +259,6 @@ export class EventDecoder {
     receipt: ethers.providers.TransactionReceipt,
     contractAddress?: string,
   ) {
-    // TODO: Change the event topic once we have the correct one. This is just a placeholder.
     const eventTopic =
       "0x550576b2f9e0ac12dfd5dd2d5743b5b7f11f34302b5f6bec6ad60db81bd6a918";
     const eventAbi = [
@@ -268,7 +267,10 @@ export class EventDecoder {
     let events: SwapFlowInitializedLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
@@ -286,16 +288,18 @@ export class EventDecoder {
     contractAddress?: string,
   ) {
     // The event topic for SwapFlowFinalized.
-    // TODO: Change this event topic once we have events on the hyperEVM blockchain
     const eventTopic =
-      "0x2649b068b54881f148d79a785233588975b95874c56852afee4f04c64a504261";
+      "0x53b9d5645f8b7ccd861ebd6036860fd21716451d1f238cb3720f12f3c49b0c43";
     const eventAbi = [
       "event SwapFlowFinalized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint64 totalSent,uint256 evmAmountSponsored)",
     ];
     let events: SwapFlowFinalizedLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }

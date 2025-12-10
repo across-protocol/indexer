@@ -263,22 +263,18 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const filteredMessageReceivedEvents = this.filterMintTransactions(
       messageReceivedEvents,
     );
-    const [transactionReceipts, blocks] = await Promise.all([
-      this.getTransactionsReceipts([
-        ...new Set([
-          ...filteredDepositForBurnEvents.map((event) => event.transactionHash),
-          ...filteredMessageReceivedEvents.map(
-            (event) => event.transactionHash,
-          ),
-        ]),
-      ]),
-      this.getBlocks([
-        ...new Set([
-          ...filteredDepositForBurnEvents.map((event) => event.blockHash),
-          ...filteredMessageReceivedEvents.map((event) => event.blockHash),
-        ]),
+
+    const transactionReceipts = await this.getTransactionsReceipts([
+      ...new Set([
+        ...filteredDepositForBurnEvents.map((event) => event.transactionHash),
+        ...filteredMessageReceivedEvents.map((event) => event.transactionHash),
       ]),
     ]);
+    // Save the block hashes of all the burn and mint transactions
+    let blockHashes = new Set([
+      ...Object.values(transactionReceipts).map((event) => event.blockHash),
+    ]);
+
     const filteredDepositForBurnTxReceipts =
       this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
         ...new Set(
@@ -339,6 +335,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     let sponsoredAccountActivationEvents: SponsoredAccountActivationLog[] = [];
     let swapFlowInitializedEvents: SwapFlowInitializedLog[] = [];
     let swapFlowFinalizedEvents: SwapFlowFinalizedLog[] = [];
+
     if (sponsoredCCTPDstPeripheryAddress) {
       simpleTransferFlowCompletedEvents = getEventsFromTransactionReceipts(
         filteredMessageReceivedTxReceipts,
@@ -362,23 +359,34 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         sponsoredCCTPDstPeripheryAddress,
         EventDecoder.decodeSwapFlowInitializedEvents,
       );
+
       const sponsoredCCTPDstPeripheryContract = new ethers.Contract(
         sponsoredCCTPDstPeripheryAddress,
         [...SPONSORED_ACCOUNT_ACTIVATION_ABI, ...SWAP_FLOW_FINALIZED_ABI],
         this.provider,
       );
-      sponsoredAccountActivationEvents =
-        (await sponsoredCCTPDstPeripheryContract.queryFilter(
-          "SponsoredAccountActivation",
-          blockRange.from,
-          blockRange.to,
-        )) as unknown as SponsoredAccountActivationLog[];
-      swapFlowFinalizedEvents =
-        (await sponsoredCCTPDstPeripheryContract.queryFilter(
-          "SwapFlowFinalized",
-          blockRange.from,
-          blockRange.to,
-        )) as unknown as SwapFlowFinalizedLog[];
+
+      [sponsoredAccountActivationEvents, swapFlowFinalizedEvents] =
+        await Promise.all([
+          sponsoredCCTPDstPeripheryContract.queryFilter(
+            "SponsoredAccountActivation",
+            blockRange.from,
+            blockRange.to,
+          ) as unknown as Promise<SponsoredAccountActivationLog[]>,
+          sponsoredCCTPDstPeripheryContract.queryFilter(
+            "SwapFlowFinalized",
+            blockRange.from,
+            blockRange.to,
+          ) as unknown as Promise<SwapFlowFinalizedLog[]>,
+        ]);
+
+      // Append the block hashes of the additionally fetched events (those that are not in existing tx receipts)
+      sponsoredAccountActivationEvents.forEach((event) =>
+        blockHashes.add(event.blockHash),
+      );
+      swapFlowFinalizedEvents.forEach((event) =>
+        blockHashes.add(event.blockHash),
+      );
     }
 
     this.runChecks(burnEvents, mintEvents);
@@ -395,6 +403,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
       });
     }
+
+    // Fetch all blocks in a single RPC call
+    const blocks = await this.getBlocks([...blockHashes]);
 
     return {
       burnEvents,
