@@ -92,6 +92,7 @@ describe("OFTIndexerDataHandler", () => {
     };
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -122,6 +123,7 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1000000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should process a block range and store FallbackHyperEVMFlowCompleted event for OFT", async () => {
@@ -134,6 +136,7 @@ describe("OFTIndexerDataHandler", () => {
     };
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -164,6 +167,7 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1005000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should fetch and store SponsoredAccountActivation event in the database", async () => {
@@ -172,6 +176,7 @@ describe("OFTIndexerDataHandler", () => {
     const blockNumber = 18007251;
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -207,6 +212,7 @@ describe("OFTIndexerDataHandler", () => {
       "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
     );
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("1000000");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
   it("should fetch and store SwapFlowFinalized event in the database", async () => {
     // Transaction Hash from the prompt
