@@ -127,7 +127,7 @@ export class BlockchainEventRepository {
     const columns = entityMetadata.columns.map((column) => column.propertyName);
     const hasChainIdTargetColumn = columns.includes(chainIdColumnIdentifier);
     const hasDeletedAtColumn = columns.includes("deletedAt");
-    const hasContractAddressColumn = columns.includes("address");
+    const hasContractAddressColumn = columns.includes("contractAddress");
 
     if (
       entityMetadata.schema !== "evm" ||
@@ -152,7 +152,7 @@ export class BlockchainEventRepository {
         hasContractAddressColumn,
       });
       throw new Error(
-        `Cannot delete events of ${entityMetadata.name} entity with contract address ${contractAddress} because it does not have an address column`
+        `Cannot delete events of ${entityMetadata.name} entity with contract address ${contractAddress} because it does not have an address column`,
       );
     }
 
@@ -167,7 +167,7 @@ export class BlockchainEventRepository {
       .returning("*");
 
     if (contractAddress) {
-      qb.andWhere("address = :contractAddress", { contractAddress });
+      qb.andWhere("contractAddress = :contractAddress", { contractAddress });
     }
     const deletedRows = await qb.execute();
     return deletedRows.raw;

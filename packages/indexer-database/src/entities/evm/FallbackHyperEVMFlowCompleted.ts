@@ -23,7 +23,9 @@ import {
 ])
 @Index("IX_fallback_hyper_evm_flow_completed_deletedAt", ["deletedAt"])
 @Index("IX_fallback_hyper_evm_flow_completed_finalised", ["finalised"])
-@Index("IX_fallback_hyper_evm_flow_completed_address", ["address"])
+@Index("IX_fallback_hyper_evm_flow_completed_contractAddress", [
+  "contractAddress",
+])
 export class FallbackHyperEVMFlowCompleted {
   @PrimaryGeneratedColumn()
   id: number;
@@ -74,5 +76,5 @@ export class FallbackHyperEVMFlowCompleted {
   deletedAt?: Date;
 
   @Column({ nullable: true })
-  address?: string;
+  contractAddress?: string;
 }
