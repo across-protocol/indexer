@@ -196,6 +196,7 @@ describe("OFTIndexerDataHandler", () => {
 
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockTimestamp).to.exist;
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
     expect(savedEvent!.quoteNonce).to.equal(
       "0x0000000000000000000000000000000000000000000000000000000069056cc8",
