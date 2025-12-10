@@ -117,10 +117,15 @@ export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
 // TODO: Update this address once the contract is deployed
 const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  // Taken from: https://basescan.org/address/0xa7a8d1efc1ee3e69999d370380949092251a5c20
-  [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
-  // Taken from: https://arbiscan.io/address/0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b
   [CHAIN_IDs.ARBITRUM]: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
+  [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
+  [CHAIN_IDs.LINEA]: "0x60eB88A83434f13095B0A138cdCBf5078Aa5005C",
+  [CHAIN_IDs.MAINNET]: "0x89004EA51Bac007FEc55976967135b2Aa6e838d4",
+  [CHAIN_IDs.MONAD]: "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5",
+  [CHAIN_IDs.OPTIMISM]: "0x986E476F93a423d7a4CD0baF362c5E0903268142",
+  [CHAIN_IDs.POLYGON]: "0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5",
+  [CHAIN_IDs.UNICHAIN]: "0x2918236893EC1ec739a96C381e00403d52ac560F",
+  [CHAIN_IDs.WORLD_CHAIN]: "0x1c8243198570658f818FC56538f2c837C2a32958",
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
@@ -177,7 +182,10 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange(blockRange);
+    const events = await this.fetchEventsByRange({
+      from: 409272539,
+      to: 409272541,
+    });
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
 
