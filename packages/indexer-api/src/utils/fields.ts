@@ -80,6 +80,9 @@ export const DepositForBurnFields = [
   `"depositForBurn"."blockNumber"::integer as "depositBlockNumber"`,
   `"depositForBurn"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
   `"depositForBurn"."destinationDomain"::integer as "destinationDomain"`,
+  `"messageSent"."nonce"::varchar as "nonce"`,
+  `"messageReceived"."transactionHash"::varchar as "messageReceivedTxHash"`,
+  `"messageReceived"."chainId"::bigint as "messageReceivedChainId"`,
 ];
 
 export const DepositForBurnRelayHashInfoFields = [
@@ -134,6 +137,9 @@ export const OftSentFields = [
   `"oftSent"."blockTimestamp"::timestamp as "depositBlockTimestamp"`,
   `NULL::integer as "destinationDomain"`,
   `"oftSent"."dstEid"::integer as "destinationEndpointId"`,
+  `"oftSent"."guid"::varchar as "guid"`,
+  `"oftReceived"."transactionHash"::varchar as "oftReceivedTxHash"`,
+  `"oftReceived"."chainId"::bigint as "oftReceivedChainId"`,
 ];
 
 export const OftSentRelayHashInfoFields = [
