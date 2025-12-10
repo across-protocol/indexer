@@ -24,6 +24,7 @@ import {
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
+  SponsoredAccountActivationLog,
 } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
@@ -217,86 +218,6 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       savedEvents.push(...savedEventsChunk);
     }
     return savedEvents;
-  }
-
-  public async formatAndSaveArbitraryActionsExecutedEvents(
-    arbitraryActionsExecutedEvents: ArbitraryActionsExecutedLog[],
-    lastFinalisedBlock: number,
-    chainId: number,
-    blockDates: Record<number, Date>,
-  ) {
-    const formattedEvents: Partial<entities.ArbitraryActionsExecuted>[] =
-      arbitraryActionsExecutedEvents.map((event) => {
-        return {
-          blockNumber: event.blockNumber,
-          logIndex: event.logIndex,
-          transactionHash: event.transactionHash,
-          transactionIndex: event.transactionIndex,
-          blockTimestamp: blockDates[event.blockNumber]!,
-          chainId: chainId.toString(),
-          quoteNonce: event.args.quoteNonce,
-          initialToken: event.args.initialToken,
-          initialAmount: event.args.initialAmount.toString(),
-          finalToken: event.args.finalToken,
-          finalAmount: event.args.finalAmount.toString(),
-          finalised: event.blockNumber <= lastFinalisedBlock,
-          contractAddress: event.address,
-        };
-      });
-
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const savedEvents = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
-          entities.ArbitraryActionsExecuted,
-          eventsChunk,
-          ["chainId", "blockNumber", "transactionHash", "logIndex"],
-          [],
-        ),
-      ),
-    );
-    const result = savedEvents.flat();
-    return result;
-  }
-
-  public async formatAndSaveFallbackHyperEVMFlowCompletedEvents(
-    fallbackHyperEVMFlowCompletedEvents: FallbackHyperEVMFlowCompletedLog[],
-    lastFinalisedBlock: number,
-    chainId: number,
-    blockDates: Record<number, Date>,
-  ) {
-    const formattedEvents: Partial<entities.FallbackHyperEVMFlowCompleted>[] =
-      fallbackHyperEVMFlowCompletedEvents.map((event) => {
-        return {
-          blockNumber: event.blockNumber,
-          logIndex: event.logIndex,
-          transactionHash: event.transactionHash,
-          transactionIndex: event.transactionIndex,
-          blockTimestamp: blockDates[event.blockNumber]!,
-          chainId: chainId.toString(),
-          quoteNonce: event.args.quoteNonce,
-          finalRecipient: event.args.finalRecipient,
-          finalToken: event.args.finalToken,
-          evmAmountIn: event.args.evmAmountIn.toString(),
-          bridgingFeesIncurred: event.args.bridgingFeesIncurred.toString(),
-          evmAmountSponsored: event.args.evmAmountSponsored.toString(),
-          finalised: event.blockNumber <= lastFinalisedBlock,
-        };
-      });
-
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
-    const savedEvents = await Promise.all(
-      chunkedEvents.map((eventsChunk) =>
-        this.saveAndHandleFinalisationBatch<entities.FallbackHyperEVMFlowCompleted>(
-          entities.FallbackHyperEVMFlowCompleted,
-          eventsChunk,
-          ["chainId", "blockNumber", "transactionHash", "logIndex"],
-          [],
-        ),
-      ),
-    );
-    const result = savedEvents.flat();
-    return result;
   }
 
   public async formatAndSaveArbitraryActionsExecutedEvents(

@@ -128,6 +128,7 @@ const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x72adB07A487f38321b6665c02D289C413610B081",
   "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd",
+  "0xb63c02e60C05F05975653edC83F876C334E07C6d", // CCTPHyperEVMSponsoredDstHandler
 ];
 
 // Convert whitelisted finalizers to bytes32 format for comparison with destinationCaller
@@ -218,6 +219,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     const sponsoredCCTPDstPeripheryAddress =
       SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+
     const tokenMessengerAddress =
       this.chainId in TEST_NETWORKS
         ? TOKEN_MESSENGER_ADDRESS_TESTNET
@@ -261,18 +263,22 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const filteredMessageReceivedEvents = this.filterMintTransactions(
       messageReceivedEvents,
     );
-
-    const transactionReceipts = await this.getTransactionsReceipts([
-      ...new Set([
-        ...filteredDepositForBurnEvents.map((event) => event.transactionHash),
-        ...filteredMessageReceivedEvents.map((event) => event.transactionHash),
+    const [transactionReceipts, blocks] = await Promise.all([
+      this.getTransactionsReceipts([
+        ...new Set([
+          ...filteredDepositForBurnEvents.map((event) => event.transactionHash),
+          ...filteredMessageReceivedEvents.map(
+            (event) => event.transactionHash,
+          ),
+        ]),
+      ]),
+      this.getBlocks([
+        ...new Set([
+          ...filteredDepositForBurnEvents.map((event) => event.blockHash),
+          ...filteredMessageReceivedEvents.map((event) => event.blockHash),
+        ]),
       ]),
     ]);
-    // Save the block hashes of all the burn and mint transactions
-    let blockHashes = new Set([
-      ...Object.values(transactionReceipts).map((event) => event.blockHash),
-    ]);
-
     const filteredDepositForBurnTxReceipts =
       this.getTransactionReceiptsByTransactionHashes(transactionReceipts, [
         ...new Set(
@@ -356,34 +362,23 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         sponsoredCCTPDstPeripheryAddress,
         EventDecoder.decodeSwapFlowInitializedEvents,
       );
-
       const sponsoredCCTPDstPeripheryContract = new ethers.Contract(
         sponsoredCCTPDstPeripheryAddress,
         [...SPONSORED_ACCOUNT_ACTIVATION_ABI, ...SWAP_FLOW_FINALIZED_ABI],
         this.provider,
       );
-
-      [sponsoredAccountActivationEvents, swapFlowFinalizedEvents] =
-        await Promise.all([
-          sponsoredCCTPDstPeripheryContract.queryFilter(
-            "SponsoredAccountActivation",
-            blockRange.from,
-            blockRange.to,
-          ) as unknown as Promise<SponsoredAccountActivationLog[]>,
-          sponsoredCCTPDstPeripheryContract.queryFilter(
-            "SwapFlowFinalized",
-            blockRange.from,
-            blockRange.to,
-          ) as unknown as Promise<SwapFlowFinalizedLog[]>,
-        ]);
-
-      // Append the block hashes of the additionally fetched events (those that are not in existing tx receipts)
-      sponsoredAccountActivationEvents.forEach((event) =>
-        blockHashes.add(event.blockHash),
-      );
-      swapFlowFinalizedEvents.forEach((event) =>
-        blockHashes.add(event.blockHash),
-      );
+      sponsoredAccountActivationEvents =
+        (await sponsoredCCTPDstPeripheryContract.queryFilter(
+          "SponsoredAccountActivation",
+          blockRange.from,
+          blockRange.to,
+        )) as unknown as SponsoredAccountActivationLog[];
+      swapFlowFinalizedEvents =
+        (await sponsoredCCTPDstPeripheryContract.queryFilter(
+          "SwapFlowFinalized",
+          blockRange.from,
+          blockRange.to,
+        )) as unknown as SwapFlowFinalizedLog[];
     }
 
     this.runChecks(burnEvents, mintEvents);
@@ -400,9 +395,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
       });
     }
-
-    // Fetch all blocks in a single RPC call
-    const blocks = await this.getBlocks([...blockHashes]);
 
     return {
       burnEvents,
