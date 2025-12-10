@@ -83,6 +83,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.SponsoredAccountActivation,
       entities.SwapFlowInitialized,
       entities.SwapFlowFinalized,
+      // Deposits
+      entities.Deposit,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

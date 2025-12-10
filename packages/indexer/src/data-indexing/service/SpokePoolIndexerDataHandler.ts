@@ -12,7 +12,7 @@ import {
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
-
+import { updateDeposits } from "../../database/Deposits";
 import * as utils from "../../utils";
 import {
   SpokePoolRepository,
@@ -803,6 +803,31 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
         lastFinalisedBlock,
       ),
     ]);
+
+    // We update the deposits table if we see a new deposit or fill event
+    await Promise.all([
+      ...savedV3FundsDepositedEvents.map((depositEvent) => {
+        return updateDeposits({
+          dataSource: (this.spokePoolClientRepository as any).postgres,
+          depositUpdate: {
+            across: {
+              deposit: depositEvent.data,
+            },
+          },
+        });
+      }),
+      ...savedFilledV3RelayEvents.map((fillEvent) => {
+        return updateDeposits({
+          dataSource: (this.spokePoolClientRepository as any).postgres,
+          depositUpdate: {
+            across: {
+              fill: fillEvent.data,
+            },
+          },
+        });
+      }),
+    ]);
+
     return {
       deposits: savedV3FundsDepositedEvents,
       fills: savedFilledV3RelayEvents,

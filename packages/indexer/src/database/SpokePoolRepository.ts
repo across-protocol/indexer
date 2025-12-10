@@ -120,7 +120,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         blockTimestamp,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.V3FundsDeposited>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
@@ -178,7 +179,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         blockTimestamp,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.FilledV3Relay>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
@@ -230,7 +232,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         };
       })
       .filter((event) => event !== undefined);
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.RequestedV3SlowFill>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
@@ -272,7 +275,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
           }),
         ),
     );
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.RequestedSpeedUpV3Deposit>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
@@ -303,7 +307,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
       };
     });
 
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.RelayedRootBundle>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
@@ -347,7 +352,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.ExecutedRelayerRefundRoot>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
@@ -383,7 +389,8 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
         finalised: event.blockNumber <= lastFinalisedBlock,
       };
     });
-    const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
+    const chunkedEvents: Partial<entities.TokensBridged>[][] =
+      across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
         this.saveAndHandleFinalisationBatch<entities.TokensBridged>(

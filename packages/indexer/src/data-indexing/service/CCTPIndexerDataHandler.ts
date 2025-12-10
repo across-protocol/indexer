@@ -3,6 +3,7 @@ import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
 import { formatFromAddressToChainFormat } from "../../utils";
+import { updateDeposits } from "../../database/Deposits";
 import {
   BlockRange,
   SimpleTransferFlowCompletedLog,
@@ -727,6 +728,36 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         formatSwapFlowFinalizedEvent,
         entities.SwapFlowFinalized,
         primaryKeyColumns as (keyof entities.SwapFlowFinalized)[],
+      ),
+    ]);
+
+    // We update the deposits table if we see new burn or mint events
+    await Promise.all([
+      ...savedBurnEvents.map(({ depositForBurnEvent, messageSentEvent }) =>
+        updateDeposits({
+          dataSource: (this.cctpRepository as any).postgres,
+          depositUpdate: {
+            cctp: {
+              burn: {
+                depositForBurn: depositForBurnEvent.data,
+                messageSent: messageSentEvent.data,
+              },
+            },
+          },
+        }),
+      ),
+      ...savedMintEvents.map(({ mintAndWithdrawEvent, messageReceivedEvent }) =>
+        updateDeposits({
+          dataSource: (this.cctpRepository as any).postgres,
+          depositUpdate: {
+            cctp: {
+              mint: {
+                mintAndWithdraw: mintAndWithdrawEvent.data,
+                messageReceived: messageReceivedEvent.data,
+              },
+            },
+          },
+        }),
       ),
     ]);
 
