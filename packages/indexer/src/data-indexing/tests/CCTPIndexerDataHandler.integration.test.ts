@@ -48,10 +48,6 @@ describe("CCTPIndexerDataHandler", () => {
       warn: sinon.spy(),
       error: sinon.spy(),
     } as unknown as Logger;
-
-    // Use the address that emitted the historical HyperEVM events referenced by these tests.
-    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
-      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
   });
 
   afterEach(async () => {
@@ -123,6 +119,13 @@ describe("CCTPIndexerDataHandler", () => {
     const transactionHash =
       "0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb";
     const blockNumber = 18541961;
+
+    const originalAddress =
+      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM];
+    // Use the address that emitted the historical HyperEVM events referenced by these tests.
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -145,12 +148,20 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(10000);
 
   it("should fetch and store ArbitraryActionsExecuted event in the database", async () => {
     const transactionHash =
       "0x869d1df5f1e7b6b91a824d8e2b455ac48d1f26f0b5f2823c96df391eb75dff34";
     const blockNumber = 18510668;
+
+    const originalAddress =
+      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM];
+    // Use the address that emitted the historical HyperEVM events referenced by these tests.
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -184,12 +195,20 @@ describe("CCTPIndexerDataHandler", () => {
       "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
     );
     expect(savedEvent!.finalAmount.toString()).to.equal("99990");
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(10000);
 
   it("should fetch and store FallbackHyperEVMFlowCompleted event in the database", async () => {
     const transactionHash =
       "0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02";
     const blockNumber = 18913313;
+
+    const originalAddress =
+      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM];
+    // Use the address that emitted the historical HyperEVM events referenced by these tests.
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] =
+      "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95";
+
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -224,6 +243,8 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("999900");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("100");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+
+    SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(10000);
 
   it("should fetch hypercore withdraw data and be able to decode the hookData", async () => {
@@ -348,5 +369,33 @@ describe("CCTPIndexerDataHandler", () => {
         ethers.utils.arrayify(savedWithdrawal.magicBytes),
       ),
     ).to.contain("cctp-forward");
+  }).timeout(10000);
+
+  it("should fetch and store SwapFlowFinalized event in the database", async () => {
+    // Taken from https://hyperevmscan.io/tx/0xa1f8686b14a775def91a8f27c192d0ba15991612a418e642ae6e0a961aab743a
+    const transactionHash =
+      "0xa1f8686b14a775def91a8f27c192d0ba15991612a418e642ae6e0a961aab743a";
+    // Block number for the tx on HyperEVM
+    const blockNumber = 21438516;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowFinalizedRepository = dataSource.getRepository(
+      entities.SwapFlowFinalized,
+    );
+    const savedEvent = await swapFlowFinalizedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
   }).timeout(10000);
 });

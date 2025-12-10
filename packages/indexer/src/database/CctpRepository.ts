@@ -24,7 +24,6 @@ import {
   SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
-  SponsoredAccountActivationLog,
 } from "../data-indexing/model";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
