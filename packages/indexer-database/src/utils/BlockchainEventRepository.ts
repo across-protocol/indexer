@@ -152,7 +152,7 @@ export class BlockchainEventRepository {
         hasContractAddressColumn,
       });
       throw new Error(
-        `Cannot delete events of ${entityMetadata.name} entity with contract address because it does not have an address column`,
+        `Cannot delete events of ${entityMetadata.name} entity with contract address ${contractAddress} because it does not have an address column`
       );
     }
 

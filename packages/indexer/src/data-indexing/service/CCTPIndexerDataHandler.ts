@@ -183,6 +183,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const sponsoredCCTPDstPeripheryAddress =
       SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+
+    if (!sponsoredCCTPDstPeripheryAddress) {
+      this.logger.debug({
+        at: "Indexer#CCTPIndexerDataHandler#processBlockRange",
+        message: `No sponsored CCTP Dst Periphery address configured for chain ${this.chainId}, delete events based on chain id only`,
+        chainId: this.chainId,
+      });
+    }
+
     const deletedEvents = await this.cctpRepository.deleteUnfinalisedCCTPEvents(
       this.chainId,
       lastFinalisedBlock,
