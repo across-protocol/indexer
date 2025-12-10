@@ -398,4 +398,54 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
     expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
   }).timeout(10000);
+
+  it("should fetch and store SwapFlowInitialized event in the database", async () => {
+    // Taken from https://hyperevmscan.io/tx/0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779#eventlog#6
+    const transactionHash =
+      "0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779";
+
+    const blockNumber = 21420009;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowInitializedRepository = dataSource.getRepository(
+      entities.SwapFlowInitialized,
+    );
+
+    const savedEvent = await swapFlowInitializedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    expect(savedEvent).to.deep.include({
+      // Identity & Indexing
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      transactionHash: transactionHash,
+      logIndex: 6,
+      transactionIndex: 0,
+      finalised: true,
+      quoteNonce:
+        "0xe887e72e2b5dd7ea466bb32701b0e45cc862f4bda3887192f346eb26733d3f4c",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      // Amounts (Expected as strings for 'numeric'/'bigint' columns)
+      evmAmountIn: 10998900,
+      bridgingFeesIncurred: 1100,
+      coreAmountIn: 1099890000,
+      minAmountToSend: 1100000000,
+      maxAmountToSend: 1100000000,
+    });
+
+    // Date Assertion
+    // We check that it is a valid date object, rather than a specific ms timestamp
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
+  }).timeout(10000);
 });

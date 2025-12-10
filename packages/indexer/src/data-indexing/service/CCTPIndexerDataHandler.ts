@@ -109,9 +109,9 @@ const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
 // TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95#code
-  [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
+export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
+  // Taken from https://hyperevmscan.io/address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f#code
+  [CHAIN_IDs.HYPEREVM]: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
 };
 
 // TODO: Update this address once the contract is deployed
@@ -218,7 +218,6 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
     const sponsoredCCTPDstPeripheryAddress =
       SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
-
     const tokenMessengerAddress =
       this.chainId in TEST_NETWORKS
         ? TOKEN_MESSENGER_ADDRESS_TESTNET
