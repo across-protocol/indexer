@@ -92,6 +92,7 @@ describe("OFTIndexerDataHandler", () => {
     };
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -122,6 +123,7 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1000000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should process a block range and store FallbackHyperEVMFlowCompleted event for OFT", async () => {
@@ -134,6 +136,7 @@ describe("OFTIndexerDataHandler", () => {
     };
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -164,6 +167,7 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1005000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should fetch and store SponsoredAccountActivation event in the database", async () => {
@@ -172,6 +176,7 @@ describe("OFTIndexerDataHandler", () => {
     const blockNumber = 18007251;
 
     // TODO: Remove this reassign after production deployment is certain
+    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
     OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
       "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
 
@@ -208,5 +213,103 @@ describe("OFTIndexerDataHandler", () => {
       "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
     );
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("1000000");
+    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
+  }).timeout(20000);
+  it("should fetch and store SwapFlowFinalized event in the database", async () => {
+    // Transaction Hash from the prompt
+    const transactionHash =
+      "0x65cf35f251be963ba8d0e65a42095523b8d0b9c363be6962d3ec85f7eced989a";
+
+    const blockNumber = 21472009;
+
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // Process the block
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowFinalizedRepository = dataSource.getRepository(
+      entities.SwapFlowFinalized,
+    );
+
+    // Fetch the specific event.
+    const savedEvent = await swapFlowFinalizedRepository.findOne({
+      where: {
+        transactionHash: transactionHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      // Identity & Indexing
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      transactionHash: transactionHash,
+      finalised: true,
+      quoteNonce:
+        "0x5a82cef73142053ee223b58a87fc6380073977ed5052430c2b89bf251972fe33",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      totalSent: 100000000,
+      evmAmountSponsored: 0,
+    });
+
+    // Optional: Verify contract address if known or just type check
+    expect(savedEvent!.contractAddress).to.be.a("string");
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
+  }).timeout(20000);
+
+  it("should fetch and store SwapFlowInitialized event in the database", async () => {
+    // Taken from https://hyperevmscan.io/tx/0x9af51c6c1cfd7ce2daaeaaaba1832071ef0033dc49da5e0406b5c3f314da39de#eventlog#0
+    const transactionHash =
+      "0x9af51c6c1cfd7ce2daaeaaaba1832071ef0033dc49da5e0406b5c3f314da39de";
+
+    const blockNumber = 21474788;
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
+    sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
+
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowInitializedRepository = dataSource.getRepository(
+      entities.SwapFlowInitialized,
+    );
+
+    const savedEvent = await swapFlowInitializedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    expect(savedEvent).to.deep.include({
+      // Identity & Indexing
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      transactionHash: transactionHash,
+      logIndex: 0,
+      transactionIndex: 0,
+      finalised: true,
+      quoteNonce:
+        "0x48af6868cc5ac8b9be544d9c70a86d17246066b4be4bcfe4a7ee8ecb5bb25c60",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      // Amounts (Expected as strings for 'numeric'/'bigint' columns)
+      evmAmountIn: 1000000,
+      bridgingFeesIncurred: 0,
+      coreAmountIn: 100000000,
+      minAmountToSend: 95000000,
+      maxAmountToSend: 100000000,
+    });
+
+    // Date Assertion
+    // We check that it is a valid date object, rather than a specific ms timestamp
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
   }).timeout(20000);
 });

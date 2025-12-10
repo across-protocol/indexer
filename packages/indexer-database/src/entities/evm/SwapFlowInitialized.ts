@@ -46,9 +46,6 @@ export class SwapFlowInitialized {
   bridgingFeesIncurred: string;
 
   @Column({ type: "numeric" })
-  evmAmountSponsored: string;
-
-  @Column({ type: "numeric" })
   coreAmountIn: string;
 
   @Column({ type: "numeric" })
