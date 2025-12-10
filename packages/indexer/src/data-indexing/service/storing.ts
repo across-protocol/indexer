@@ -9,6 +9,8 @@ const PK_CHAIN_BLOCK_TX_LOG = [
   "logIndex",
 ];
 
+const PK_CHAIN_BLOCK_HASH_LOG = ["chainId", "blockHash", "logIndex"];
+
 /**
  * Stores a DepositForBurn event in the database.
  *
@@ -42,6 +44,21 @@ export const storeMessageSentEvent: Storer<
     entities.MessageSent,
     [event],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
+    [],
+  );
+};
+
+export const storeOftSentEvent: Storer<
+  Partial<entities.OFTSent>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.OFTSent>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
+    entities.OFTSent,
+    [event],
+    PK_CHAIN_BLOCK_HASH_LOG as (keyof entities.OFTSent)[],
     [],
   );
 };

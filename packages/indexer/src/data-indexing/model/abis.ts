@@ -7,3 +7,11 @@ export const CCTP_DEPOSIT_FOR_BURN_ABI = [
 ];
 
 export const MESSAGE_SENT_ABI = ["event MessageSent(bytes message)"];
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific ABIs for the Omni-chain Fungible Token (OFT) protocol.
+ * ================================================================================== */
+export const OFT_SENT_ABI = [
+  "event OFTSent(bytes32 indexed guid, uint32 dstEid, address indexed fromAddress, uint256 amountSentLD, uint256 amountReceivedLD)",
+];

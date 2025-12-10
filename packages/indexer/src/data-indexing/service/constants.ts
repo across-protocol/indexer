@@ -132,3 +132,9 @@ export const WHITELISTED_FINALIZERS: Array<`0x${string}`> = [
 ];
 export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
 export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Omni-chain Fungible Token (OFT) protocol.
+ * ================================================================================== */
+export const OFTSENT_EVENT_NAME = "OFTSent";
