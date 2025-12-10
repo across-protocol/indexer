@@ -121,11 +121,13 @@ export class BlockchainEventRepository {
     chainIdColumnIdentifier: string,
     lastFinalisedBlock: number,
     entity: EntityTarget<Entity>,
+    contractAddress?: string,
   ): Promise<Entity[]> {
     const entityMetadata = this.postgres.getMetadata(entity);
     const columns = entityMetadata.columns.map((column) => column.propertyName);
     const hasChainIdTargetColumn = columns.includes(chainIdColumnIdentifier);
     const hasDeletedAtColumn = columns.includes("deletedAt");
+    const hasContractAddressColumn = columns.includes("contractAddress");
 
     if (
       entityMetadata.schema !== "evm" ||
@@ -142,16 +144,32 @@ export class BlockchainEventRepository {
       throw new Error(`Cannot delete events of ${entityMetadata.name} entity`);
     }
 
+    if (contractAddress && !hasContractAddressColumn) {
+      this.logger.error({
+        at: "BlockchainEventRepository#deleteUnfinalisedEvents",
+        message: `Cannot delete events of ${entityMetadata.name} entity with contract address because it does not have an address column`,
+        schema: entityMetadata.schema,
+        hasContractAddressColumn,
+      });
+      throw new Error(
+        `Cannot delete events of ${entityMetadata.name} entity with contract address ${contractAddress} because it does not have an address column`,
+      );
+    }
+
     const repository = this.postgres.getRepository(entity);
-    const deletedRows = await repository
+    let qb = repository
       .createQueryBuilder()
       .softDelete()
       .where(`${chainIdColumnIdentifier} = :chainId`, { chainId })
       .andWhere("blockNumber < :lastFinalisedBlock", { lastFinalisedBlock })
       .andWhere("finalised IS FALSE")
       .andWhere("deletedAt IS NULL")
-      .returning("*")
-      .execute();
+      .returning("*");
+
+    if (contractAddress) {
+      qb.andWhere("contractAddress = :contractAddress", { contractAddress });
+    }
+    const deletedRows = await qb.execute();
     return deletedRows.raw;
   }
 }

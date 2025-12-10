@@ -123,9 +123,11 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       getOftChainConfiguration(this.chainId).tokens[0]!.token,
     );
     const timeToStoreEvents = performance.now();
+    const dstOftHandlerAddress = OFT_DST_HANDLER_ADDRESS[this.chainId];
     await this.oftRepository.deleteUnfinalisedOFTEvents(
       this.chainId,
       lastFinalisedBlock,
+      dstOftHandlerAddress,
     );
     await this.oftRepository.deleteUnfinalisedSponsoredOFTSendEvents(
       this.chainId,
