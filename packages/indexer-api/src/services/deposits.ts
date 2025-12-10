@@ -462,6 +462,7 @@ export class DepositsService {
         }
 
         let status = deposit.status;
+        let fillTx = deposit.fillTx;
 
         // For CCTP deposits, use the status function
         if (deposit.destinationDomain && !deposit.depositId && deposit.nonce) {
@@ -484,6 +485,7 @@ export class DepositsService {
             statusResponse.status === "pending"
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
+          fillTx = statusResponse.fillTx || fillTx;
         }
         // For OFT deposits, use the status function
         else if (
@@ -510,6 +512,7 @@ export class DepositsService {
             statusResponse.status === "pending"
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
+          fillTx = statusResponse.fillTx || fillTx;
         }
         // For Across deposits, use existing logic
         else {
@@ -531,7 +534,8 @@ export class DepositsService {
           status: status,
           depositTxnRef: deposit.depositTxHash,
           depositRefundTxnRef: deposit.depositRefundTxHash,
-          fillTxnRef: deposit.fillTx,
+          fillTx: fillTx,
+          fillTxnRef: fillTx,
           originChainId: parseInt(deposit.originChainId),
           destinationChainId: destinationChainId,
           outputToken: outputToken,
