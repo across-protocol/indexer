@@ -182,10 +182,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
 
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange({
-      from: 409272539,
-      to: 409272541,
-    });
+    const events = await this.fetchEventsByRange(blockRange);
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
     const timeToStoreEvents = performance.now();
 
