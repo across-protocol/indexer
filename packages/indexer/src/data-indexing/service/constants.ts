@@ -93,3 +93,42 @@ export function getIndexingDelaySeconds(chainId: number, config: Config) {
 
   return indexingDelay;
 }
+
+/* ==================================================================================
+ * CCTP DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Circle Cross-Chain Transfer Protocol (CCTP).
+ * ================================================================================== */
+
+// Taken from https://developers.circle.com/cctp/evm-smart-contracts
+export const TOKEN_MESSENGER_ADDRESS_MAINNET: `0x${string}` =
+  "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d";
+export const TOKEN_MESSENGER_ADDRESS_TESTNET: `0x${string}` =
+  "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA";
+
+// Taken from https://developers.circle.com/cctp/evm-smart-contracts
+export const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: `0x${string}` =
+  "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
+export const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: `0x${string}` =
+  "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
+
+// TODO: Update this address once the contract is deployed
+export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: {
+  [key: number]: `0x${string}`;
+} = {
+  // Taken from https://hyperevmscan.io/address/0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95#code
+  [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
+};
+
+// TODO: Update this address once the contract is deployed
+export const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: {
+  [key: number]: `0x${string}`;
+} = {
+  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+};
+
+export const SWAP_API_CALLDATA_MARKER = "73c0de";
+export const WHITELISTED_FINALIZERS: Array<`0x${string}`> = [
+  "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+];
+export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
+export const MESSAGE_SENT_EVENT_NAME = "MessageSent";

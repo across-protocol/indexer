@@ -23,6 +23,12 @@ async function run() {
     case "indexer":
       void (await Indexer.Main(Indexer.envToConfig(process.env), logger));
       break;
+    case "indexer-sandbox":
+      void (await Indexer.MainSandbox(
+        Indexer.envToConfig(process.env),
+        logger,
+      ));
+      break;
     case "persistence-example":
       void (await PersistenceExample.Main(process.env));
       return "Example persistence app running";
