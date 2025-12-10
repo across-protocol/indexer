@@ -208,4 +208,51 @@ describe("OFTIndexerDataHandler", () => {
     );
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("1000000");
   }).timeout(20000);
+  it("should fetch and store SwapFlowFinalized event in the database", async () => {
+    // Transaction Hash from the prompt
+    const transactionHash =
+      "0x65cf35f251be963ba8d0e65a42095523b8d0b9c363be6962d3ec85f7eced989a";
+
+    const blockNumber = 21472009;
+
+    setupTestForChainId(CHAIN_IDs.HYPEREVM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+
+    // Process the block
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const swapFlowFinalizedRepository = dataSource.getRepository(
+      entities.SwapFlowFinalized,
+    );
+
+    // Fetch the specific event.
+    const savedEvent = await swapFlowFinalizedRepository.findOne({
+      where: {
+        transactionHash: transactionHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      // Identity & Indexing
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: blockNumber,
+      transactionHash: transactionHash,
+      finalised: true,
+      quoteNonce:
+        "0x5a82cef73142053ee223b58a87fc6380073977ed5052430c2b89bf251972fe33",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      totalSent: 100000000,
+      evmAmountSponsored: 0,
+    });
+
+    // Optional: Verify contract address if known or just type check
+    expect(savedEvent!.contractAddress).to.be.a("string");
+    expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
+  }).timeout(20000);
 });
