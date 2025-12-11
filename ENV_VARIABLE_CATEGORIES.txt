@@ -1,0 +1,159 @@
+GROUP 1: SECRETS
+================
+Sensitive credentials that must be protected. Store in Secret Manager or Configurama with encryption.
+
+DATABASE_PASSWORD
+  → PostgreSQL database password. Critical security credential.
+
+JWT_SECRET
+  → Used to sign/verify API tokens. Compromise = unauthorized API access.
+
+COINGECKO_API_KEY
+  → Paid API key for CoinGecko. Has rate limits and costs money.
+
+SLACK_CONFIG
+  → Contains webhook URLs. Can be abused to spam/phish team channels.
+
+PAGER_DUTY_V2_CONFIG
+  → Integration keys for PagerDuty alerts. Can trigger false alerts.
+
+RPC_PROVIDER_URLS_XYZ
+  → RPC endpoints with embedded API keys (e.g., Alchemy, QuickNode, Chainstack).
+  → These are paid services with rate limits. Leak = bill runs up or service gets cut off.
+  → Examples: RPC_PROVIDER_URLS_1, RPC_PROVIDER_URLS_10, etc. for all chains
+
+
+GROUP 2: INFRASTRUCTURE
+=======================
+Connection strings that establish persistent connections at startup. Changing requires restart.
+
+REDIS_HOST
+  → Redis server hostname. Connection established once via new Redis() at startup.
+
+REDIS_PORT
+  → Redis server port. Part of initial connection string.
+
+DATABASE_HOST
+  → PostgreSQL server hostname. TypeORM connection pool created once at startup.
+
+DATABASE_PORT
+  → PostgreSQL server port. Part of connection pool config.
+
+DATABASE_USER
+  → PostgreSQL username. Baked into connection pool.
+
+DATABASE_NAME
+  → Which PostgreSQL database to connect to. Part of connection pool.
+
+PORT
+  → HTTP server port to listen on. Server.listen() called once at startup.
+
+PUBSUB_GCP_PROJECT_ID
+  → GCP project for Pub/Sub. Subscriber client created once at startup.
+
+PUBSUB_CCTP_FINALIZER_TOPIC
+  → Pub/Sub topic name. Subscription created once when CctpFinalizerService starts.
+
+
+GROUP 3: RUNTIME CONFIG
+=======================
+Business logic, feature toggles, and performance tuning. Most require restart, but some can be hot-swapped.
+
+--- Chain Configuration (restart required) ---
+HUBPOOL_CHAIN
+  → Chain ID for Ethereum HubPool contract. Used to instantiate HubPoolIndexer at startup.
+
+SPOKEPOOL_CHAINS_ENABLED
+  → Comma-separated chain IDs to index. Determines which SpokePoolIndexers are created.
+
+CCTP_INDEXER_CHAIN_IDS
+  → Comma-separated chain IDs for CCTP. Determines which CCTP indexers are created.
+
+--- Feature Flags (restart required) ---
+ENABLE_HUBPOOL_INDEXER
+  → Toggle HubPool indexing. Checked once when AcrossIndexerManager starts.
+
+ENABLE_BUNDLE_BUILDER
+  → Toggle bundle builder service. Checked once when BundleServicesManager starts.
+
+ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
+  → Toggle bundle events processor. Checked once when BundleServicesManager starts.
+
+ENABLE_HOTFIX_SERVICES
+  → Toggle hotfix services. Controls if HotfixServicesManager is instantiated.
+
+ENABLE_PRICE_WORKER
+  → Toggle price fetching worker. Controls if PriceWorker is instantiated.
+
+ENABLE_CCTP_FINALIZER
+  → Toggle CCTP finalizer. Checked once when CctpFinalizerServiceManager starts.
+
+ENABLE_OFT_INDEXER
+  → Toggle OFT indexing. Checked once when OFTIndexerManager starts.
+
+--- RPC Provider Tuning (restart required) ---
+PROVIDER_CACHE_NAMESPACE
+  → Redis key prefix for RPC cache. Used when instantiating RetryProvider.
+
+PROVIDER_CACHE_TTL
+  → Cache TTL in seconds. Passed to RetryProvider constructor.
+
+MAX_CONCURRENCY / NODE_MAX_CONCURRENCY
+  → Max concurrent RPC calls globally. Passed to RetryProvider constructor.
+
+NODE_MAX_CONCURRENCY_{chainId}
+  → Max concurrent RPC calls per specific chain. Overrides global setting.
+
+PCT_RPC_CALLS_LOGGED
+  → Percentage of RPC calls to log (0-100). Passed to RetryProvider constructor.
+
+NODE_PCT_RPC_CALLS_LOGGED_{chainId}
+  → Percentage to log per chain. Overrides global setting.
+
+STANDARD_TTL_BLOCK_DISTANCE
+  → Blocks from head to use standard cache TTL. Used in cache key TTL calculation.
+
+NO_TTL_BLOCK_DISTANCE
+  → Blocks from head to cache forever. Old blocks are immutable.
+
+NO_TTL_BLOCK_DISTANCE_{chainId}
+  → Same per chain. Overrides global for specific chain.
+
+NODE_QUORUM_THRESHOLD / NODE_QUORUM_{chainId}
+  → How many RPC providers must agree on result. Passed to RetryProvider constructor.
+
+RETRIES / NODE_RETRIES / NODE_RETRIES_{chainId}
+  → Max retry attempts for failed RPC calls. Passed to RetryProvider constructor.
+
+DELAY / NODE_RETRY_DELAY_{chainId}
+  → Delay in seconds between retries. Passed to RetryProvider constructor.
+
+NODE_TIMEOUT_{chainId}
+  → RPC timeout in milliseconds per chain. Passed to RetryProvider constructor.
+
+--- Service Configuration (restart required) ---
+BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
+  → Seconds between bundle service runs. Passed to start() method, fixed in loop.
+
+ENVIRONMENT
+  → Environment name (dev/staging/prod). Used in logging/alerting context.
+
+BOT_IDENTIFIER
+  → Identifier for this instance in logs/alerts. Helps distinguish multiple deployments.
+
+WEBHOOK_CLIENTS
+  → JSON config for webhook subscribers. Parsed once at startup by WebhookFactory.
+
+--- Hot-Swappable Performance Tuning (can change at runtime) ---
+indexingDelaySeconds
+  → Seconds between indexing cycles. Read from config every loop iteration in Indexer.ts.
+
+indexingDelaySecondsOnError
+  → Backoff delay when errors occur. Read from config every error in Indexer.ts.
+
+maxBlockRangeSize
+  → Max blocks to fetch per iteration. Read from config every block range calculation.
+
+bundleEventsServiceStartBlockNumber
+  → Starting block for bundle processor. Read from config every bundle query.
+
