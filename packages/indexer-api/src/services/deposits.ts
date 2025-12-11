@@ -78,6 +78,11 @@ export class DepositsService {
     const depositForBurnQueryBuilder = depositForBurnRepo
       .createQueryBuilder("depositForBurn")
       .leftJoinAndSelect(
+        entities.SponsoredDepositForBurn,
+        "sponsoredDepositForBurn",
+        "sponsoredDepositForBurn.transactionHash = depositForBurn.transactionHash AND sponsoredDepositForBurn.chainId = depositForBurn.chainId",
+      )
+      .leftJoinAndSelect(
         entities.MessageSent,
         "messageSent",
         "messageSent.transactionHash = depositForBurn.transactionHash AND messageSent.chainId = depositForBurn.chainId",
@@ -103,6 +108,11 @@ export class DepositsService {
     const oftSentQueryBuilder = oftSentRepo
       .createQueryBuilder("oftSent")
       .leftJoinAndSelect(
+        entities.SponsoredOFTSend,
+        "sponsoredOFTSend",
+        "sponsoredOFTSend.transactionHash = oftSent.transactionHash AND sponsoredOFTSend.chainId = oftSent.chainId",
+      )
+      .leftJoinAndSelect(
         entities.OFTReceived,
         "oftReceived",
         "oftReceived.guid = oftSent.guid",
@@ -122,13 +132,13 @@ export class DepositsService {
         },
       );
       depositForBurnQueryBuilder.andWhere(
-        "depositForBurn.depositor = :address OR depositForBurn.mintRecipient = :address",
+        "COALESCE(sponsoredDepositForBurn.originSender, depositForBurn.depositor) = :address OR COALESCE(sponsoredDepositForBurn.finalRecipient, depositForBurn.mintRecipient) = :address",
         {
           address: params.address,
         },
       );
       oftSentQueryBuilder.andWhere(
-        "oftSent.fromAddress = :address OR oftReceived.toAddress = :address",
+        "COALESCE(sponsoredOFTSend.originSender, oftSent.fromAddress) = :address OR COALESCE(sponsoredOFTSend.finalRecipient, oftReceived.toAddress) = :address",
         {
           address: params.address,
         },
@@ -139,14 +149,17 @@ export class DepositsService {
           depositor: params.depositor,
         });
         depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.depositor = :depositor",
+          "COALESCE(sponsoredDepositForBurn.originSender, depositForBurn.depositor) = :depositor",
           {
             depositor: params.depositor,
           },
         );
-        oftSentQueryBuilder.andWhere("oftSent.fromAddress = :depositor", {
-          depositor: params.depositor,
-        });
+        oftSentQueryBuilder.andWhere(
+          "COALESCE(sponsoredOFTSend.originSender, oftSent.fromAddress) = :depositor",
+          {
+            depositor: params.depositor,
+          },
+        );
       }
 
       if (params.recipient) {
@@ -154,14 +167,17 @@ export class DepositsService {
           recipient: params.recipient,
         });
         depositForBurnQueryBuilder.andWhere(
-          "depositForBurn.mintRecipient = :recipient",
+          "COALESCE(sponsoredDepositForBurn.finalRecipient, depositForBurn.mintRecipient) = :recipient",
           {
             recipient: params.recipient,
           },
         );
-        oftSentQueryBuilder.andWhere("oftReceived.toAddress = :recipient", {
-          recipient: params.recipient,
-        });
+        oftSentQueryBuilder.andWhere(
+          "COALESCE(sponsoredOFTSend.finalRecipient, oftReceived.toAddress) = :recipient",
+          {
+            recipient: params.recipient,
+          },
+        );
       }
     }
 
