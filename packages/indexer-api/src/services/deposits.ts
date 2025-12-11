@@ -97,6 +97,11 @@ export class DepositsService {
         "mintAndWithdraw",
         "mintAndWithdraw.transactionHash = messageReceived.transactionHash AND mintAndWithdraw.chainId = messageReceived.chainId",
       )
+      .leftJoinAndSelect(
+        entities.SwapFlowInitialized,
+        "swapFlowInitialized",
+        "swapFlowInitialized.quoteNonce = sponsoredDepositForBurn.quoteNonce",
+      )
       .select([
         ...DepositForBurnFields,
         ...DepositForBurnRelayHashInfoFields,
@@ -116,6 +121,11 @@ export class DepositsService {
         entities.OFTReceived,
         "oftReceived",
         "oftReceived.guid = oftSent.guid",
+      )
+      .leftJoinAndSelect(
+        entities.SwapFlowInitialized,
+        "swapFlowInitialized",
+        "swapFlowInitialized.quoteNonce = sponsoredOFTSend.quoteNonce",
       )
       .select([
         ...OftSentFields,
