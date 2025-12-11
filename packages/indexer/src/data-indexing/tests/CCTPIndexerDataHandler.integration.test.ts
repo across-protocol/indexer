@@ -174,7 +174,6 @@ describe("CCTPIndexerDataHandler", () => {
       "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
     );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
-    setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
       from: blockNumber,
@@ -387,7 +386,6 @@ describe("CCTPIndexerDataHandler", () => {
       "0x15d5b49cece7e1c90ca03074c809e02ffefa40112f9051aa681d18d856f6fbd3";
     // Block number for the tx on HyperEVM
     const blockNumber = 21420192;
-
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
