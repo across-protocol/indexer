@@ -908,6 +908,7 @@ export class DepositsService {
             swapFlowInitialized,
             swapFlowFinalized,
             fallbackFlowCompleted,
+            simpleTransferFlowCompleted,
           ] = await Promise.all([
             this.db
               .getRepository(entities.SwapFlowInitialized)
@@ -930,6 +931,13 @@ export class DepositsService {
                 quoteNonce: sponsoredOftSend.quoteNonce,
               })
               .getOne(),
+            this.db
+              .getRepository(entities.SimpleTransferFlowCompleted)
+              .createQueryBuilder("stfc")
+              .where("stfc.quoteNonce = :quoteNonce", {
+                quoteNonce: sponsoredOftSend.quoteNonce,
+              })
+              .getOne(),
           ]);
 
           // If swap flow is finalized, use that as the fill transaction
@@ -944,15 +952,21 @@ export class DepositsService {
             fillTx = fallbackFlowCompleted.transactionHash;
             actionsSucceeded = false;
           }
+          // If simple transfer flow completed, use that as the fill transaction
+          else if (simpleTransferFlowCompleted) {
+            status = "filled";
+            fillTx = simpleTransferFlowCompleted.transactionHash;
+            actionsSucceeded = true;
+          }
           // If only initialized but not finalized or fallback, transfer is pending
           else if (swapFlowInitialized) {
             status = "pending";
             fillTx = null;
           }
-          // No swap flow events but received - simple sponsored transfer is complete
+          // No lzCompose executed - transfer is pending
           else {
-            status = "filled";
-            fillTx = oftReceivedTxHash;
+            status = "pending";
+            fillTx = null;
           }
         } else {
           // Sponsored transfer to non-HyperEVM chain or no quoteNonce - use received event
