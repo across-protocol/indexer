@@ -2,7 +2,11 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat } from "../../utils";
+import {
+  formatFromAddressToChainFormat,
+  getSponsoredCCTPDstPeripheryAddress,
+  getSponsoredCCTPSrcPeripheryAddress,
+} from "../../utils";
 import {
   BlockRange,
   SimpleTransferFlowCompletedLog,
@@ -182,7 +186,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const timeToStoreEvents = performance.now();
 
     const sponsoredCCTPDstPeripheryAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPDstPeripheryAddress();
 
     if (!sponsoredCCTPDstPeripheryAddress) {
       this.logger.debug({
@@ -216,9 +220,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const sponsoredCCTPSrcPeripheryAddress =
-      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPSrcPeripheryAddress(this.chainId);
     const sponsoredCCTPDstPeripheryAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPDstPeripheryAddress();
 
     const tokenMessengerAddress =
       this.chainId in TEST_NETWORKS
