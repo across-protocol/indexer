@@ -1,7 +1,6 @@
 import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
-
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 import {
@@ -18,6 +17,10 @@ import {
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
 import {
+  getSponsoredOFTSrcPeripheryAddress,
+  getDstOFTHandlerAddress,
+} from "../../utils";
+import {
   OFTReceivedEvent,
   OFTSentEvent,
   SponsoredOFTSendLog,
@@ -26,8 +29,6 @@ import { OftRepository } from "../../database/OftRepository";
 import {
   getOftChainConfiguration,
   isEndpointIdSupported,
-  OFT_DST_HANDLER_ADDRESS,
-  SPONSORED_OFT_SRC_PERIPHERY_ADDRESS,
 } from "../adapter/oft/service";
 import { EventDecoder } from "../../web3/EventDecoder";
 import { fetchEvents } from "../../utils/contractUtils";
@@ -43,7 +44,6 @@ import {
   formatSwapFlowFinalizedEvent,
   formatSwapFlowInitializedEvent,
 } from "./hyperEvmExecutor";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -123,7 +123,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       getOftChainConfiguration(this.chainId).tokens[0]!.token,
     );
     const timeToStoreEvents = performance.now();
-    const dstOftHandlerAddress = OFT_DST_HANDLER_ADDRESS[this.chainId];
+    const dstOftHandlerAddress = getDstOFTHandlerAddress(this.chainId);
     await this.oftRepository.deleteUnfinalisedOFTEvents(
       this.chainId,
       lastFinalisedBlock,
@@ -158,9 +158,10 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
       O_ADAPTER_UPGRADEABLE_ABI,
       this.provider,
     );
-    const dstOftHandlerAddress = OFT_DST_HANDLER_ADDRESS[this.chainId];
-    const sponsoredOFTSrcPeripheryAddress =
-      SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[this.chainId];
+    const dstOftHandlerAddress = getDstOFTHandlerAddress(this.chainId);
+    const sponsoredOFTSrcPeripheryAddress = getSponsoredOFTSrcPeripheryAddress(
+      this.chainId,
+    );
 
     const [oftSentEvents, oftReceivedEvents] = await Promise.all([
       oftAdapterContract.queryFilter(
