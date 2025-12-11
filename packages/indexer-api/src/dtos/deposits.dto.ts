@@ -157,7 +157,7 @@ export type DepositReturnType = {
   // from fill
   relayer?: string;
   fillBlockTimestamp?: Date;
-  fillTx?: string; // Renamed from fillTransactionHash
+  fillTx?: string | null; // Renamed from fillTransactionHash
 
   // from swap
   swapTransactionHash?: string;
@@ -197,7 +197,7 @@ export type DepositStatusResponse = {
   depositId: string;
   depositTxHash?: string | null;
   fillTx?: string | null;
-  destinationChainId: number;
+  destinationChainId?: number | null;
   depositRefundTxHash?: string | null;
   actionsSucceeded: boolean | null;
   pagination: PaginationInfo;
