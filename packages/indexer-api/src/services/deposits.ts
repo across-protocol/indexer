@@ -485,7 +485,7 @@ export class DepositsService {
             statusResponse.status === "pending"
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
-          fillTx = statusResponse.fillTx || fillTx;
+          fillTx = statusResponse.fillTx ?? undefined;
         }
         // For OFT deposits, use the status function
         else if (
@@ -512,7 +512,7 @@ export class DepositsService {
             statusResponse.status === "pending"
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
-          fillTx = statusResponse.fillTx || fillTx;
+          fillTx = statusResponse.fillTx ?? undefined;
         }
         // For Across deposits, use existing logic
         else {
