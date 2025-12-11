@@ -2,7 +2,11 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
-import { formatFromAddressToChainFormat } from "../../utils";
+import {
+  formatFromAddressToChainFormat,
+  getSponsoredCCTPDstPeripheryAddress,
+  getSponsoredCCTPSrcPeripheryAddress,
+} from "../../utils";
 import {
   BlockRange,
   SimpleTransferFlowCompletedLog,
@@ -108,26 +112,6 @@ const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: string =
 const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
-// TODO: Update this address once the contract is deployed
-export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f#code
-  [CHAIN_IDs.HYPEREVM]: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
-};
-
-// TODO: Update this address once the contract is deployed
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  [CHAIN_IDs.ARBITRUM]: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
-  [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
-  [CHAIN_IDs.LINEA]: "0x60eB88A83434f13095B0A138cdCBf5078Aa5005C",
-  [CHAIN_IDs.MAINNET]: "0x89004EA51Bac007FEc55976967135b2Aa6e838d4",
-  [CHAIN_IDs.MONAD]: "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5",
-  [CHAIN_IDs.OPTIMISM]: "0x986E476F93a423d7a4CD0baF362c5E0903268142",
-  [CHAIN_IDs.POLYGON]: "0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5",
-  [CHAIN_IDs.UNICHAIN]: "0x2918236893EC1ec739a96C381e00403d52ac560F",
-  [CHAIN_IDs.WORLD_CHAIN]: "0x1c8243198570658f818FC56538f2c837C2a32958",
-};
-
 const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
@@ -187,7 +171,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const timeToStoreEvents = performance.now();
 
     const sponsoredCCTPDstPeripheryAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPDstPeripheryAddress();
 
     if (!sponsoredCCTPDstPeripheryAddress) {
       this.logger.debug({
@@ -221,9 +205,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     blockRange: BlockRange,
   ): Promise<FetchEventsResult> {
     const sponsoredCCTPSrcPeripheryAddress =
-      SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPSrcPeripheryAddress(this.chainId);
     const sponsoredCCTPDstPeripheryAddress =
-      SPONSORED_CCTP_DST_PERIPHERY_ADDRESS[this.chainId];
+      getSponsoredCCTPDstPeripheryAddress();
 
     const tokenMessengerAddress =
       this.chainId in TEST_NETWORKS

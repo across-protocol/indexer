@@ -12,6 +12,7 @@ import { RedisCache } from "../../redis/redisCache";
 import { parseProvidersUrls, Config } from "../../parseEnv";
 import { getTestDataSource } from "../../tests/setup";
 import { CCTPRepository } from "../../database/CctpRepository";
+import { stubContractUtils } from "./utils";
 
 describe("CCTPIndexerManager", () => {
   let dataSource: DataSource;
@@ -95,6 +96,12 @@ describe("CCTPIndexerManager", () => {
     const getBlockNumberStub = sinon
       .stub(provider, "getBlockNumber")
       .resolves(blockNumber);
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "SponsoredCCTPSrcPeriphery",
+      "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
+      CHAIN_IDs.ARBITRUM_SEPOLIA,
+    );
 
     const indexerPromise = manager.start();
 

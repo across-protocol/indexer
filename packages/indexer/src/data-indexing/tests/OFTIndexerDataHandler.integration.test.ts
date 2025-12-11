@@ -10,10 +10,7 @@ import { OftRepository } from "../../database/OftRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { getTestDataSource } from "../../tests/setup";
-import {
-  OFT_DST_HANDLER_ADDRESS,
-  SPONSORED_OFT_SRC_PERIPHERY_ADDRESS,
-} from "../adapter/oft/service";
+import { stubContractUtils } from "./utils";
 
 describe("OFTIndexerDataHandler", () => {
   let dataSource: DataSource;
@@ -61,10 +58,13 @@ describe("OFTIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
-    // TODO: Remove this reassign after production deployment is certain
-    SPONSORED_OFT_SRC_PERIPHERY_ADDRESS[CHAIN_IDs.ARBITRUM] =
-      "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE";
 
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "SponsoredOFTSrcPeriphery",
+      "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE",
+      CHAIN_IDs.ARBITRUM,
+    );
     setupTestForChainId(CHAIN_IDs.ARBITRUM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -91,11 +91,12 @@ describe("OFTIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    // TODO: Remove this reassign after production deployment is certain
-    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
-      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
-
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "DstOFTHandler",
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
+      CHAIN_IDs.HYPEREVM,
+    );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -123,7 +124,6 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1000000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should process a block range and store FallbackHyperEVMFlowCompleted event for OFT", async () => {
@@ -135,11 +135,12 @@ describe("OFTIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    // TODO: Remove this reassign after production deployment is certain
-    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
-      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
-
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "DstOFTHandler",
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
+      CHAIN_IDs.HYPEREVM,
+    );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
@@ -167,7 +168,6 @@ describe("OFTIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("1005000");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("0");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
 
   it("should fetch and store SponsoredAccountActivation event in the database", async () => {
@@ -175,11 +175,12 @@ describe("OFTIndexerDataHandler", () => {
       "0x5008ce0be97eb5b8b0a1f8854826f33d33e5038a31c793569354ec2dc66ddfef";
     const blockNumber = 18007251;
 
-    // TODO: Remove this reassign after production deployment is certain
-    const originalAddress = OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM];
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] =
-      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888";
-
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "DstOFTHandler",
+      "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888",
+      CHAIN_IDs.HYPEREVM,
+    );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -213,7 +214,6 @@ describe("OFTIndexerDataHandler", () => {
       "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
     );
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("1000000");
-    OFT_DST_HANDLER_ADDRESS[CHAIN_IDs.HYPEREVM] = originalAddress!;
   }).timeout(20000);
   it("should fetch and store SwapFlowFinalized event in the database", async () => {
     // Transaction Hash from the prompt
@@ -222,6 +222,12 @@ describe("OFTIndexerDataHandler", () => {
 
     const blockNumber = 21472009;
 
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "DstOFTHandler",
+      "0xc8786d517b4e224bb43985a38dbef8588d7354cd",
+      CHAIN_IDs.HYPEREVM,
+    );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
@@ -269,6 +275,12 @@ describe("OFTIndexerDataHandler", () => {
       "0x9af51c6c1cfd7ce2daaeaaaba1832071ef0033dc49da5e0406b5c3f314da39de";
 
     const blockNumber = 21474788;
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "DstOFTHandler",
+      "0xc8786d517b4e224bb43985a38dbef8588d7354cd",
+      CHAIN_IDs.HYPEREVM,
+    );
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
 
     const blockRange: BlockRange = {
