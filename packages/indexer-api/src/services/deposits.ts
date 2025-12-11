@@ -752,13 +752,13 @@ export class DepositsService {
     maxIndex: number,
   ) {
     let status: "pending" | "filled" = "pending";
-    let fillTx: string | undefined = undefined;
+    let fillTx: string | null = null;
     let actionsSucceeded: boolean | null = null;
 
     // If no messageReceived event, the deposit is pending
     if (!deposit.receivedEvent) {
       status = "pending";
-      fillTx = undefined;
+      fillTx = null;
     } else {
       const messageReceivedTxHash = deposit.receivedEvent.transactionHash;
       const messageReceivedChainId = deposit.receivedEvent.chainId;
@@ -833,7 +833,7 @@ export class DepositsService {
             actionsSucceeded = true;
           } else {
             status = "pending";
-            fillTx = undefined;
+            fillTx = null;
           }
         }
         // Default for HyperEVM: messageReceived exists but no sponsored flow events - transfer is filled
@@ -857,8 +857,8 @@ export class DepositsService {
       fillTx,
       fillTxnRef: fillTx,
       destinationChainId: parseInt(deposit.receivedEvent?.chainId),
-      depositRefundTxHash: undefined,
-      depositRefundTxnRef: undefined,
+      depositRefundTxHash: null,
+      depositRefundTxnRef: null,
       actionsSucceeded,
       pagination: {
         currentIndex,
@@ -873,13 +873,13 @@ export class DepositsService {
     maxIndex: number,
   ) {
     let status: "pending" | "filled" = "pending";
-    let fillTx: string | undefined = undefined;
+    let fillTx: string | null = null;
     let actionsSucceeded: boolean | null = null;
 
     // If no OFTReceived event, the deposit is pending
     if (!deposit.receivedEvent) {
       status = "pending";
-      fillTx = undefined;
+      fillTx = null;
     } else {
       const oftReceivedTxHash = deposit.receivedEvent.transactionHash;
       const destinationChainId = deposit.receivedEvent.chainId;
@@ -947,7 +947,7 @@ export class DepositsService {
           // If only initialized but not finalized or fallback, transfer is pending
           else if (swapFlowInitialized) {
             status = "pending";
-            fillTx = undefined;
+            fillTx = null;
           }
           // No swap flow events but received - simple sponsored transfer is complete
           else {
@@ -971,8 +971,8 @@ export class DepositsService {
       fillTx,
       fillTxnRef: fillTx,
       destinationChainId: parseInt(deposit.receivedEvent?.chainId),
-      depositRefundTxHash: undefined,
-      depositRefundTxnRef: undefined,
+      depositRefundTxHash: null,
+      depositRefundTxnRef: null,
       actionsSucceeded,
       pagination: {
         currentIndex,

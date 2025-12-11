@@ -196,9 +196,9 @@ export type DepositStatusResponse = {
   originChainId: number;
   depositId: string;
   depositTxHash?: string | null;
-  fillTx?: string | undefined;
+  fillTx?: string | null;
   destinationChainId: number;
-  depositRefundTxHash?: string | undefined;
+  depositRefundTxHash?: string | null;
   actionsSucceeded: boolean | null;
   pagination: PaginationInfo;
 };
