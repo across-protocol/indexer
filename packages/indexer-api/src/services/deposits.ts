@@ -100,7 +100,7 @@ export class DepositsService {
       .leftJoinAndSelect(
         entities.SwapFlowInitialized,
         "swapFlowInitialized",
-        "(sponsoredDepositForBurn.quoteNonce IS NOT NULL AND swapFlowInitialized.quoteNonce = sponsoredDepositForBurn.quoteNonce) OR (messageReceived.id IS NOT NULL AND swapFlowInitialized.transactionHash = messageReceived.transactionHash AND swapFlowInitialized.chainId = messageReceived.chainId)",
+        "swapFlowInitialized.quoteNonce = sponsoredDepositForBurn.quoteNonce",
       )
       .select([
         ...DepositForBurnFields,
