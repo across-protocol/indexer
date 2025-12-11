@@ -338,6 +338,12 @@ export class DepositsService {
       destinationEndpointId?: number;
       outputToken?: string;
       outputAmount?: string;
+      nonce?: string;
+      messageReceivedTxHash?: string;
+      messageReceivedChainId?: string;
+      guid?: string;
+      oftReceivedTxHash?: string;
+      oftReceivedChainId?: string;
     };
     const deposits: RawDepositResult[] = allDeposits;
 
@@ -456,10 +462,65 @@ export class DepositsService {
         }
 
         let status = deposit.status;
-        if (!status && deposit.fillTx) {
-          status = entities.RelayStatus.Filled;
-        } else if (!status) {
-          status = entities.RelayStatus.Unfilled;
+        let fillTx = deposit.fillTx;
+
+        // For CCTP deposits, use the status function
+        if (deposit.destinationDomain && !deposit.depositId && deposit.nonce) {
+          const statusResponse = await this.getDepositStatusForCctpDeposit(
+            {
+              chainId: deposit.originChainId,
+              nonce: deposit.nonce,
+              transactionHash: deposit.depositTxHash,
+            },
+            deposit.messageReceivedTxHash && deposit.messageReceivedChainId
+              ? {
+                  transactionHash: deposit.messageReceivedTxHash,
+                  chainId: deposit.messageReceivedChainId.toString(),
+                }
+              : null,
+            0,
+            0,
+          );
+          status =
+            statusResponse.status === "pending"
+              ? entities.RelayStatus.Unfilled
+              : entities.RelayStatus.Filled;
+          fillTx = statusResponse.fillTx ?? null;
+        }
+        // For OFT deposits, use the status function
+        else if (
+          deposit.destinationEndpointId &&
+          !deposit.depositId &&
+          deposit.guid
+        ) {
+          const statusResponse = await this.getDepositStatusForOftDeposit(
+            {
+              chainId: deposit.originChainId,
+              guid: deposit.guid,
+              transactionHash: deposit.depositTxHash,
+            },
+            deposit.oftReceivedTxHash && deposit.oftReceivedChainId
+              ? {
+                  transactionHash: deposit.oftReceivedTxHash,
+                  chainId: deposit.oftReceivedChainId.toString(),
+                }
+              : null,
+            0,
+            0,
+          );
+          status =
+            statusResponse.status === "pending"
+              ? entities.RelayStatus.Unfilled
+              : entities.RelayStatus.Filled;
+          fillTx = statusResponse.fillTx ?? null;
+        }
+        // For Across deposits, use existing logic
+        else {
+          if (!status && deposit.fillTx) {
+            status = entities.RelayStatus.Filled;
+          } else if (!status) {
+            status = entities.RelayStatus.Unfilled;
+          }
         }
 
         // Destructure to exclude destinationDomain and destinationEndpointId from the response
@@ -473,7 +534,8 @@ export class DepositsService {
           status: status,
           depositTxnRef: deposit.depositTxHash,
           depositRefundTxnRef: deposit.depositRefundTxHash,
-          fillTxnRef: deposit.fillTx,
+          fillTx: fillTx,
+          fillTxnRef: fillTx,
           originChainId: parseInt(deposit.originChainId),
           destinationChainId: destinationChainId,
           outputToken: outputToken,
@@ -691,20 +753,32 @@ export class DepositsService {
     }
 
     if (matchingDeposit.type === "cctp") {
+      const cctpDeposit = matchingDeposit.deposit as entities.MessageSent & {
+        receivedEvent: entities.MessageReceived;
+      };
       return await this.getDepositStatusForCctpDeposit(
-        matchingDeposit.deposit as entities.MessageSent & {
-          receivedEvent: entities.MessageReceived;
+        {
+          chainId: cctpDeposit.chainId,
+          nonce: cctpDeposit.nonce,
+          transactionHash: cctpDeposit.transactionHash,
         },
+        cctpDeposit.receivedEvent || null,
         index,
         taggedDeposits.length - 1,
       );
     }
 
     if (matchingDeposit.type === "oft") {
+      const oftDeposit = matchingDeposit.deposit as entities.OFTSent & {
+        receivedEvent: entities.OFTReceived;
+      };
       return await this.getDepositStatusForOftDeposit(
-        matchingDeposit.deposit as entities.OFTSent & {
-          receivedEvent: entities.OFTReceived;
+        {
+          chainId: oftDeposit.chainId,
+          guid: oftDeposit.guid,
+          transactionHash: oftDeposit.transactionHash,
         },
+        oftDeposit.receivedEvent || null,
         index,
         taggedDeposits.length - 1,
       );
@@ -747,7 +821,15 @@ export class DepositsService {
   }
 
   private async getDepositStatusForCctpDeposit(
-    deposit: entities.MessageSent & { receivedEvent: entities.MessageReceived },
+    deposit: {
+      chainId: string;
+      nonce: string;
+      transactionHash: string;
+    },
+    receivedEvent: {
+      transactionHash: string;
+      chainId: string;
+    } | null,
     currentIndex: number,
     maxIndex: number,
   ) {
@@ -756,12 +838,12 @@ export class DepositsService {
     let actionsSucceeded: boolean | null = null;
 
     // If no messageReceived event, the deposit is pending
-    if (!deposit.receivedEvent) {
+    if (!receivedEvent) {
       status = "pending";
       fillTx = null;
     } else {
-      const messageReceivedTxHash = deposit.receivedEvent.transactionHash;
-      const messageReceivedChainId = deposit.receivedEvent.chainId;
+      const messageReceivedTxHash = receivedEvent.transactionHash;
+      const messageReceivedChainId = receivedEvent.chainId;
 
       // Only check for sponsored flow events on HyperEVM
       const isHyperEVM =
@@ -856,7 +938,9 @@ export class DepositsService {
       depositTxnRef: deposit.transactionHash,
       fillTx,
       fillTxnRef: fillTx,
-      destinationChainId: parseInt(deposit.receivedEvent?.chainId),
+      destinationChainId: receivedEvent
+        ? parseInt(receivedEvent.chainId)
+        : null,
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
@@ -868,7 +952,15 @@ export class DepositsService {
   }
 
   private async getDepositStatusForOftDeposit(
-    deposit: entities.OFTSent & { receivedEvent: entities.OFTReceived },
+    deposit: {
+      chainId: string;
+      guid: string;
+      transactionHash: string;
+    },
+    receivedEvent: {
+      transactionHash: string;
+      chainId: string;
+    } | null,
     currentIndex: number,
     maxIndex: number,
   ) {
@@ -877,22 +969,29 @@ export class DepositsService {
     let actionsSucceeded: boolean | null = null;
 
     // If no OFTReceived event, the deposit is pending
-    if (!deposit.receivedEvent) {
+    if (!receivedEvent) {
       status = "pending";
       fillTx = null;
     } else {
-      const oftReceivedTxHash = deposit.receivedEvent.transactionHash;
-      const destinationChainId = deposit.receivedEvent.chainId;
+      const oftReceivedTxHash = receivedEvent.transactionHash;
+      const destinationChainId = receivedEvent.chainId;
+
+      // Early exit for HyperEVM - no need to query SponsoredOFTSend if not HyperEVM
+      const isHyperEVM = parseInt(destinationChainId) === CHAIN_IDs.HYPEREVM;
 
       // Check for SponsoredOFTSend on the origin chain (same transaction as OFTSent)
-      const sponsoredOftSend = await this.db
-        .getRepository(entities.SponsoredOFTSend)
-        .createQueryBuilder("sos")
-        .where("sos.transactionHash = :txHash AND sos.chainId = :chainId", {
-          txHash: deposit.transactionHash,
-          chainId: deposit.chainId,
-        })
-        .getOne();
+      // Only needed for HyperEVM chains
+      let sponsoredOftSend = null;
+      if (isHyperEVM) {
+        sponsoredOftSend = await this.db
+          .getRepository(entities.SponsoredOFTSend)
+          .createQueryBuilder("sos")
+          .where("sos.transactionHash = :txHash AND sos.chainId = :chainId", {
+            txHash: deposit.transactionHash,
+            chainId: deposit.chainId,
+          })
+          .getOne();
+      }
 
       // If no sponsored OFT send, it's a simple transfer - use received event as fill
       if (!sponsoredOftSend) {
@@ -900,7 +999,6 @@ export class DepositsService {
         fillTx = oftReceivedTxHash;
       } else {
         // Sponsored transfer - check for swap flow events on destination
-        const isHyperEVM = parseInt(destinationChainId) === CHAIN_IDs.HYPEREVM;
 
         if (isHyperEVM && sponsoredOftSend.quoteNonce) {
           // Query for swap flow events in parallel
@@ -984,7 +1082,9 @@ export class DepositsService {
       depositTxnRef: deposit.transactionHash,
       fillTx,
       fillTxnRef: fillTx,
-      destinationChainId: parseInt(deposit.receivedEvent?.chainId),
+      destinationChainId: receivedEvent
+        ? parseInt(receivedEvent.chainId)
+        : null,
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
