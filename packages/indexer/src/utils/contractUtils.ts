@@ -333,7 +333,11 @@ function getBetaContractAddress(
 ): string | undefined {
   // getDeployedAddressBetaRelease throws an error if the address does not exist
   try {
-    return getDeployedAddressBetaRelease(name, chainId);
+    const address = getDeployedAddressBetaRelease(name, chainId);
+    if (!address) {
+      throw new Error(`Address for contract ${name} on ${chainId} not found `);
+    }
+    return ethers.utils.getAddress(address);
   } catch (error) {
     const message = `Error trying to fetch contract address for ${name} on chain with chain ID ${chainId}`;
     if (logger) {
