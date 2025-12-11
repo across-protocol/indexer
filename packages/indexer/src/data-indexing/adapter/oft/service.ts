@@ -1,14 +1,16 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 
+// Taken from: https://github.com/across-protocol/contracts/blob/5d9df65f84bacfaf8f20c56973998d3a86ccd2b5/broadcast/deployed-addresses.json
 export const SPONSORED_OFT_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  // Taken from: https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940
   [CHAIN_IDs.ARBITRUM]: "0x2ac5Ee3796E027dA274fbDe84c82173a65868940",
-  // Taken from: https://etherscan.io/address/0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a
   [CHAIN_IDs.MAINNET]: "0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a",
+  [CHAIN_IDs.UNICHAIN]: "0x0bf1a44ae69869cf7aea7e0cba76624792fad4de",
+  [CHAIN_IDs.POLYGON]: "0xc6a21e6a57777f2183312c19e614dd6054b1a54f",
+  [CHAIN_IDs.MONAD]: "0xa3de5f042efd4c732498883100a2d319bbb3c1a1",
 };
 
 export const OFT_DST_HANDLER_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD
+  // Taken from https://github.com/across-protocol/contracts/blob/5d9df65f84bacfaf8f20c56973998d3a86ccd2b5/broadcast/deployed-addresses.json#L541
   [CHAIN_IDs.HYPEREVM]: "0xc8786D517b4e224bB43985A38dBeF8588D7354CD",
 };
 

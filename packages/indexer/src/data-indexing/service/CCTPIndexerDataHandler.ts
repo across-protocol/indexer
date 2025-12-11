@@ -108,19 +108,23 @@ const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: string =
 const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
 
-// TODO: Update this address once the contract is deployed
 export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: { [key: number]: string } = {
-  // Taken from https://hyperevmscan.io/address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f#code
+  // Taken from: https://github.com/across-protocol/contracts/blob/5d9df65f84bacfaf8f20c56973998d3a86ccd2b5/broadcast/deployed-addresses.json#L531
   [CHAIN_IDs.HYPEREVM]: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
 };
 
-// TODO: Update this address once the contract is deployed
+// Taken from: https://github.com/across-protocol/contracts/blob/5d9df65f84bacfaf8f20c56973998d3a86ccd2b5/broadcast/deployed-addresses.json
 const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: { [key: number]: string } = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-  // Taken from: https://basescan.org/address/0xa7a8d1efc1ee3e69999d370380949092251a5c20
   [CHAIN_IDs.BASE]: "0xA7A8d1efC1EE3E69999D370380949092251a5c20",
-  // Taken from: https://arbiscan.io/address/0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b
   [CHAIN_IDs.ARBITRUM]: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
+  [CHAIN_IDs.MAINNET]: "0x89004ea51bac007fec55976967135b2aa6e838d4",
+  [CHAIN_IDs.OPTIMISM]: "0x986e476f93a423d7a4cd0baf362c5e0903268142",
+  [CHAIN_IDs.UNICHAIN]: "0x2918236893ec1ec739a96c381e00403d52ac560f",
+  [CHAIN_IDs.POLYGON]: "0x473debe3db7338e03e3c8dc8e980bb1dacb25bc5",
+  [CHAIN_IDs.MONAD]: "0xcbf361ee59cc74b9d6e7af947fe4136828faf2c5",
+  [CHAIN_IDs.WORLD_CHAIN]: "0x1c8243198570658f818fc56538f2c837c2a32958",
+  [CHAIN_IDs.LINEA]: "0x60eb88a83434f13095b0a138cdcbf5078aa5005c",
 };
 
 const SWAP_API_CALLDATA_MARKER = "73c0de";
