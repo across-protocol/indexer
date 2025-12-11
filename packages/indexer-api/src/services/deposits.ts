@@ -479,9 +479,11 @@ export class DepositsService {
 
         let status = deposit.status;
         let fillTx = deposit.fillTx;
+        let actionsTargetChainId: string | null =
+          deposit.actionsTargetChainId ?? null;
 
         // For CCTP deposits, use the status function
-        if (deposit.destinationDomain && !deposit.depositId && deposit.nonce) {
+        if (isValidDestinationDomain && deposit.nonce) {
           const statusResponse = await this.getDepositStatusForCctpDeposit(
             {
               chainId: deposit.originChainId,
@@ -502,6 +504,9 @@ export class DepositsService {
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
           fillTx = statusResponse.fillTx ?? null;
+          // TODO: convert response field type to number
+          actionsTargetChainId =
+            statusResponse.actionsTargetChainId?.toString() ?? null;
         }
         // For OFT deposits, use the status function
         else if (
@@ -529,6 +534,9 @@ export class DepositsService {
               ? entities.RelayStatus.Unfilled
               : entities.RelayStatus.Filled;
           fillTx = statusResponse.fillTx ?? null;
+          // TODO: convert response field type to number
+          actionsTargetChainId =
+            statusResponse.actionsTargetChainId?.toString() ?? null;
         }
         // For Across deposits, use existing logic
         else {
@@ -539,10 +547,16 @@ export class DepositsService {
           }
         }
 
-        // Destructure to exclude destinationDomain and destinationEndpointId from the response
+        /**
+         * Destructure to exclude from the response:
+         */
         const {
           destinationDomain: _,
           destinationEndpointId: __,
+          messageReceivedTxHash,
+          messageReceivedChainId,
+          guid,
+          nonce,
           ...depositWithoutDomain
         } = deposit;
         return {
@@ -852,6 +866,21 @@ export class DepositsService {
     let status: "pending" | "filled" = "pending";
     let fillTx: string | null = null;
     let actionsSucceeded: boolean | null = null;
+    let actionsTargetChainId: number | null = null;
+
+    const sponsoredDepositForBurnEvent = await this.db
+      .getRepository(entities.SponsoredDepositForBurn)
+      .createQueryBuilder("sdfb")
+      .where("sdfb.transactionHash = :txHash AND sdfb.chainId = :chainId", {
+        txHash: deposit.transactionHash,
+        chainId: deposit.chainId,
+      })
+      .getOne();
+
+    if (sponsoredDepositForBurnEvent) {
+      // currently all sponsored transfers are to HyperCore
+      actionsTargetChainId = CHAIN_IDs.HYPERCORE;
+    }
 
     // If no messageReceived event, the deposit is pending
     if (!receivedEvent) {
@@ -914,6 +943,8 @@ export class DepositsService {
           status = "filled";
           fillTx = fallbackFlowCompleted.transactionHash;
           actionsSucceeded = false;
+          // fallback flow is not to HyperCore
+          actionsTargetChainId = null;
         }
         // If SwapFlowInitialized exists, check for SwapFlowFinalized
         else if (swapFlowInitialized) {
@@ -960,6 +991,7 @@ export class DepositsService {
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
+      actionsTargetChainId,
       pagination: {
         currentIndex,
         maxIndex,
@@ -983,6 +1015,7 @@ export class DepositsService {
     let status: "pending" | "filled" = "pending";
     let fillTx: string | null = null;
     let actionsSucceeded: boolean | null = null;
+    let actionsTargetChainId: number | null = null;
 
     // If no OFTReceived event, the deposit is pending
     if (!receivedEvent) {
@@ -1015,6 +1048,7 @@ export class DepositsService {
         fillTx = oftReceivedTxHash;
       } else {
         // Sponsored transfer - check for swap flow events on destination
+        actionsTargetChainId = CHAIN_IDs.HYPERCORE;
 
         if (isHyperEVM && sponsoredOftSend.quoteNonce) {
           // Query for swap flow events in parallel
@@ -1065,6 +1099,7 @@ export class DepositsService {
             status = "filled";
             fillTx = fallbackFlowCompleted.transactionHash;
             actionsSucceeded = false;
+            actionsTargetChainId = null;
           }
           // If simple transfer flow completed, use that as the fill transaction
           else if (simpleTransferFlowCompleted) {
@@ -1104,6 +1139,7 @@ export class DepositsService {
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
+      actionsTargetChainId,
       pagination: {
         currentIndex,
         maxIndex,
