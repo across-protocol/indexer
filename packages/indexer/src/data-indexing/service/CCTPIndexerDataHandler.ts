@@ -791,7 +791,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
       maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
       maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
-      finalToken: event.args.finalToken,
+      finalToken: event.destinationChainId
+        ? formatFromAddressToChainFormat(
+            across.utils.toAddressType(
+              event.args.finalToken,
+              event.destinationChainId,
+            ),
+            event.destinationChainId,
+          )
+        : event.args.finalToken,
       signature: event.args.signature,
     };
   }
