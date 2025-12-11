@@ -940,7 +940,7 @@ export class DepositsService {
       fillTxnRef: fillTx,
       destinationChainId: receivedEvent
         ? parseInt(receivedEvent.chainId)
-        : undefined,
+        : null,
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
@@ -1084,7 +1084,7 @@ export class DepositsService {
       fillTxnRef: fillTx,
       destinationChainId: receivedEvent
         ? parseInt(receivedEvent.chainId)
-        : undefined,
+        : null,
       depositRefundTxHash: null,
       depositRefundTxnRef: null,
       actionsSucceeded,
