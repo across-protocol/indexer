@@ -31,7 +31,6 @@ import {
   OftSentFilledRelayFields,
   OftSentSwapBeforeBridgeFields,
 } from "../utils/fields";
-import { getCctpDestinationChainFromDomain } from "@across-protocol/sdk/dist/cjs/utils/CCTPUtils";
 import {
   getChainIdForEndpointId,
   getCorrespondingTokenAddress,
@@ -385,10 +384,11 @@ export class DepositsService {
           destinationDomain > -1;
         if (isValidDestinationDomain && !destinationChainId) {
           try {
-            const derivedChainId = getCctpDestinationChainFromDomain(
-              destinationDomain,
-              true, // productionNetworks = true
-            );
+            const derivedChainId =
+              across.utils.getCctpDestinationChainFromDomain(
+                destinationDomain,
+                true, // productionNetworks = true
+              );
             destinationChainId = derivedChainId;
           } catch (error) {
             destinationChainId = null;
@@ -691,7 +691,7 @@ export class DepositsService {
     }
 
     if (matchingDeposit.type === "cctp") {
-      return this.getDepositStatusForCctpDeposit(
+      return await this.getDepositStatusForCctpDeposit(
         matchingDeposit.deposit as entities.MessageSent & {
           receivedEvent: entities.MessageReceived;
         },
@@ -701,7 +701,7 @@ export class DepositsService {
     }
 
     if (matchingDeposit.type === "oft") {
-      return this.getDepositStatusForOftDeposit(
+      return await this.getDepositStatusForOftDeposit(
         matchingDeposit.deposit as entities.OFTSent & {
           receivedEvent: entities.OFTReceived;
         },
@@ -746,56 +746,239 @@ export class DepositsService {
     return result;
   }
 
-  private getDepositStatusForCctpDeposit(
+  private async getDepositStatusForCctpDeposit(
     deposit: entities.MessageSent & { receivedEvent: entities.MessageReceived },
     currentIndex: number,
     maxIndex: number,
   ) {
-    const result = {
-      status: !deposit.receivedEvent ? "pending" : "filled",
+    let status: "pending" | "filled" = "pending";
+    let fillTx: string | null = null;
+    let actionsSucceeded: boolean | null = null;
+
+    // If no messageReceived event, the deposit is pending
+    if (!deposit.receivedEvent) {
+      status = "pending";
+      fillTx = null;
+    } else {
+      const messageReceivedTxHash = deposit.receivedEvent.transactionHash;
+      const messageReceivedChainId = deposit.receivedEvent.chainId;
+
+      // Only check for sponsored flow events on HyperEVM
+      const isHyperEVM =
+        parseInt(messageReceivedChainId) === CHAIN_IDs.HYPEREVM;
+
+      if (isHyperEVM) {
+        // Query for sponsored flow events in parallel
+        const [
+          simpleTransferFlowCompleted,
+          swapFlowInitialized,
+          fallbackFlowCompleted,
+        ] = await Promise.all([
+          this.db
+            .getRepository(entities.SimpleTransferFlowCompleted)
+            .createQueryBuilder("stfc")
+            .where(
+              "stfc.transactionHash = :txHash AND stfc.chainId = :chainId",
+              {
+                txHash: messageReceivedTxHash,
+                chainId: messageReceivedChainId,
+              },
+            )
+            .getOne(),
+          this.db
+            .getRepository(entities.SwapFlowInitialized)
+            .createQueryBuilder("sfi")
+            .where("sfi.transactionHash = :txHash AND sfi.chainId = :chainId", {
+              txHash: messageReceivedTxHash,
+              chainId: messageReceivedChainId,
+            })
+            .getOne(),
+          this.db
+            .getRepository(entities.FallbackHyperEVMFlowCompleted)
+            .createQueryBuilder("fhfc")
+            .where(
+              "fhfc.transactionHash = :txHash AND fhfc.chainId = :chainId",
+              {
+                txHash: messageReceivedTxHash,
+                chainId: messageReceivedChainId,
+              },
+            )
+            .getOne(),
+        ]);
+
+        // If SimpleTransferFlowCompleted exists, transfer is complete
+        if (simpleTransferFlowCompleted) {
+          status = "filled";
+          fillTx = messageReceivedTxHash;
+        }
+        // If FallbackHyperEVMFlowCompleted exists, actions failed but transfer completed
+        else if (fallbackFlowCompleted) {
+          status = "filled";
+          fillTx = fallbackFlowCompleted.transactionHash;
+          actionsSucceeded = false;
+        }
+        // If SwapFlowInitialized exists, check for SwapFlowFinalized
+        else if (swapFlowInitialized) {
+          const swapFlowFinalized = await this.db
+            .getRepository(entities.SwapFlowFinalized)
+            .createQueryBuilder("sff")
+            .where("sff.quoteNonce = :quoteNonce", {
+              quoteNonce: swapFlowInitialized.quoteNonce,
+            })
+            .getOne();
+
+          if (swapFlowFinalized) {
+            status = "filled";
+            fillTx = swapFlowFinalized.transactionHash;
+            actionsSucceeded = true;
+          } else {
+            status = "pending";
+            fillTx = null;
+          }
+        }
+        // Default for HyperEVM: messageReceived exists but no sponsored flow events - transfer is filled
+        else {
+          status = "filled";
+          fillTx = messageReceivedTxHash;
+        }
+      } else {
+        // For non-HyperEVM chains, messageReceived means the transfer is filled
+        status = "filled";
+        fillTx = messageReceivedTxHash;
+      }
+    }
+
+    return {
+      status,
       originChainId: parseInt(deposit.chainId),
       depositId: deposit.nonce,
       depositTxHash: deposit.transactionHash,
       depositTxnRef: deposit.transactionHash,
-      fillTx: deposit.receivedEvent?.transactionHash,
-      fillTxnRef: deposit.receivedEvent?.transactionHash,
+      fillTx,
+      fillTxnRef: fillTx,
       destinationChainId: parseInt(deposit.receivedEvent?.chainId),
-      depositRefundTxHash: undefined,
-      depositRefundTxnRef: undefined,
-      actionsSucceeded: null,
+      depositRefundTxHash: null,
+      depositRefundTxnRef: null,
+      actionsSucceeded,
       pagination: {
         currentIndex,
         maxIndex,
       },
     };
-
-    return result;
   }
 
-  private getDepositStatusForOftDeposit(
+  private async getDepositStatusForOftDeposit(
     deposit: entities.OFTSent & { receivedEvent: entities.OFTReceived },
     currentIndex: number,
     maxIndex: number,
   ) {
-    const result = {
-      status: !deposit.receivedEvent ? "pending" : "filled",
+    let status: "pending" | "filled" = "pending";
+    let fillTx: string | null = null;
+    let actionsSucceeded: boolean | null = null;
+
+    // If no OFTReceived event, the deposit is pending
+    if (!deposit.receivedEvent) {
+      status = "pending";
+      fillTx = null;
+    } else {
+      const oftReceivedTxHash = deposit.receivedEvent.transactionHash;
+      const destinationChainId = deposit.receivedEvent.chainId;
+
+      // Check for SponsoredOFTSend on the origin chain (same transaction as OFTSent)
+      const sponsoredOftSend = await this.db
+        .getRepository(entities.SponsoredOFTSend)
+        .createQueryBuilder("sos")
+        .where("sos.transactionHash = :txHash AND sos.chainId = :chainId", {
+          txHash: deposit.transactionHash,
+          chainId: deposit.chainId,
+        })
+        .getOne();
+
+      // If no sponsored OFT send, it's a simple transfer - use received event as fill
+      if (!sponsoredOftSend) {
+        status = "filled";
+        fillTx = oftReceivedTxHash;
+      } else {
+        // Sponsored transfer - check for swap flow events on destination
+        const isHyperEVM = parseInt(destinationChainId) === CHAIN_IDs.HYPEREVM;
+
+        if (isHyperEVM && sponsoredOftSend.quoteNonce) {
+          // Query for swap flow events in parallel
+          const [
+            swapFlowInitialized,
+            swapFlowFinalized,
+            fallbackFlowCompleted,
+          ] = await Promise.all([
+            this.db
+              .getRepository(entities.SwapFlowInitialized)
+              .createQueryBuilder("sfi")
+              .where("sfi.quoteNonce = :quoteNonce", {
+                quoteNonce: sponsoredOftSend.quoteNonce,
+              })
+              .getOne(),
+            this.db
+              .getRepository(entities.SwapFlowFinalized)
+              .createQueryBuilder("sff")
+              .where("sff.quoteNonce = :quoteNonce", {
+                quoteNonce: sponsoredOftSend.quoteNonce,
+              })
+              .getOne(),
+            this.db
+              .getRepository(entities.FallbackHyperEVMFlowCompleted)
+              .createQueryBuilder("fhfc")
+              .where("fhfc.quoteNonce = :quoteNonce", {
+                quoteNonce: sponsoredOftSend.quoteNonce,
+              })
+              .getOne(),
+          ]);
+
+          // If swap flow is finalized, use that as the fill transaction
+          if (swapFlowFinalized) {
+            status = "filled";
+            fillTx = swapFlowFinalized.transactionHash;
+            actionsSucceeded = true;
+          }
+          // If fallback flow completed, actions failed but transfer completed
+          else if (fallbackFlowCompleted) {
+            status = "filled";
+            fillTx = fallbackFlowCompleted.transactionHash;
+            actionsSucceeded = false;
+          }
+          // If only initialized but not finalized or fallback, transfer is pending
+          else if (swapFlowInitialized) {
+            status = "pending";
+            fillTx = null;
+          }
+          // No swap flow events but received - simple sponsored transfer is complete
+          else {
+            status = "filled";
+            fillTx = oftReceivedTxHash;
+          }
+        } else {
+          // Sponsored transfer to non-HyperEVM chain or no quoteNonce - use received event
+          status = "filled";
+          fillTx = oftReceivedTxHash;
+        }
+      }
+    }
+
+    return {
+      status,
       originChainId: parseInt(deposit.chainId),
       depositId: deposit.guid,
       depositTxHash: deposit.transactionHash,
       depositTxnRef: deposit.transactionHash,
-      fillTx: deposit.receivedEvent?.transactionHash,
-      fillTxnRef: deposit.receivedEvent?.transactionHash,
+      fillTx,
+      fillTxnRef: fillTx,
       destinationChainId: parseInt(deposit.receivedEvent?.chainId),
-      depositRefundTxHash: undefined,
-      depositRefundTxnRef: undefined,
-      actionsSucceeded: null,
+      depositRefundTxHash: null,
+      depositRefundTxnRef: null,
+      actionsSucceeded,
       pagination: {
         currentIndex,
         maxIndex,
       },
     };
-
-    return result;
   }
 
   private async getHyperliquidWithdrawalStatus(params: DepositStatusParams) {
