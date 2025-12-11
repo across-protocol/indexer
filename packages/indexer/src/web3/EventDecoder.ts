@@ -112,7 +112,10 @@ export class EventDecoder {
       eventAbi,
     );
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
 
     return events;
@@ -130,7 +133,10 @@ export class EventDecoder {
     let events: MintAndWithdrawLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
 
     return events;
@@ -174,7 +180,10 @@ export class EventDecoder {
     let events: SponsoredOFTSendLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
 
     return events;
@@ -203,7 +212,10 @@ export class EventDecoder {
     let events: SimpleTransferFlowCompletedLog[] =
       EventDecoder.decodeTransactionReceiptLogs(receipt, eventTopic, eventAbi);
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
@@ -224,7 +236,10 @@ export class EventDecoder {
       eventAbi,
     );
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
@@ -245,7 +260,10 @@ export class EventDecoder {
       eventAbi,
     );
     if (contractAddress) {
-      events = events.filter((event) => event.address === contractAddress);
+      events = events.filter(
+        (event) =>
+          event.address.toLowerCase() === contractAddress.toLowerCase(),
+      );
     }
     return events;
   }
