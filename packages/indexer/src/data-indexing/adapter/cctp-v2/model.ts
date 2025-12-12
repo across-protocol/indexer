@@ -87,6 +87,25 @@ export interface SolanaDepositForBurnEvent {
   };
 }
 
+export interface SolanaSponsoredDepositForBurnEvent {
+  name: string;
+  slot: bigint;
+  signature: Signature;
+  program: Address;
+  blockTime: UnixTimestamp | null;
+  confirmationStatus: string | null;
+  data: {
+    quoteNonce: string;
+    originSender: string;
+    finalRecipient: string;
+    quoteDeadline: string;
+    maxBpsToSponsor: string;
+    maxUserSlippageBps: string;
+    finalToken: string;
+    signature: string;
+  };
+}
+
 export interface SolanaMessageSentEvent {
   slot: bigint;
   signature: Signature;
