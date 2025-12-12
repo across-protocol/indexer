@@ -152,7 +152,7 @@ export type DepositReturnType = {
   fillGasFeeUsd?: string;
   fillGasTokenPriceUsd?: string;
   actionsSucceeded?: boolean | null;
-  actionsTargetChainId?: string;
+  actionsTargetChainId?: number | null;
 
   // from fill
   relayer?: string;
