@@ -5,7 +5,6 @@ import {
   TokenMessengerMinterV2Idl,
   MessageTransmitterV2Idl,
 } from "@across-protocol/contracts";
-import { createHash } from "crypto";
 import { SponsoredCctpSrcPeripheryIdl } from "@across-protocol/contracts-beta";
 import { address, signature } from "@solana/kit";
 import { BlockRange } from "../model";
@@ -30,6 +29,7 @@ import {
   SolanaSponsoredDepositForBurnEvent,
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
+import { getSponsoredCCTPSrcPeripheryAddress } from "../../utils";
 
 export type SolanaBurnEventsPair = {
   depositForBurn: SolanaDepositForBurnEvent;
@@ -67,9 +67,6 @@ const WHITELISTED_FINALIZERS = [
   "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t",
   "5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t",
 ];
-
-const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS =
-  "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq";
 
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
@@ -109,12 +106,17 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         );
 
       // Initialize client for SponsoredCctpSrcPeriphery (for sponsored burn events)
-      this.sponsoredCctpSrcPeripheryClient =
-        await across.arch.svm.SvmCpiEventsClient.createFor(
-          this.provider,
-          SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS,
-          SponsoredCctpSrcPeripheryIdl,
-        );
+      const peripheryAddress = getSponsoredCCTPSrcPeripheryAddress(
+        this.chainId,
+      );
+      if (peripheryAddress) {
+        this.sponsoredCctpSrcPeripheryClient =
+          await across.arch.svm.SvmCpiEventsClient.createFor(
+            this.provider,
+            peripheryAddress,
+            SponsoredCctpSrcPeripheryIdl,
+          );
+      }
     } catch (error) {
       this.logger.error({
         at: "SvmCCTPIndexerDataHandler#initialize",
