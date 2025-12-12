@@ -5,8 +5,9 @@ import {
   TokenMessengerMinterV2Idl,
   MessageTransmitterV2Idl,
 } from "@across-protocol/contracts";
+import { createHash } from "crypto";
+import { SponsoredCctpSrcPeripheryIdl } from "@across-protocol/contracts-beta";
 import { address, signature } from "@solana/kit";
-
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
@@ -18,12 +19,16 @@ import {
 import {
   getIndexingStartBlockNumber,
   decodeMessage,
+  getCctpDestinationChainFromDomain,
 } from "../adapter/cctp-v2/service";
+import { formatFromAddressToChainFormat } from "../../utils/adressUtils";
 import {
   SolanaDepositForBurnEvent,
   SolanaMessageSentEvent,
   SolanaMessageReceivedEvent,
   SolanaMintAndWithdrawEvent,
+  SolanaSponsoredDepositForBurnEvent,
+  SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
 
 export type SolanaBurnEventsPair = {
@@ -36,14 +41,20 @@ export type SolanaMintEventsPair = {
   mintAndWithdraw: SolanaMintAndWithdrawEvent;
 };
 
+// Type definition for a Solana Transaction fetched via the provider
+// Infers the return type of the send() method of the getTransaction builder
+type Transaction = NonNullable<
+  Awaited<ReturnType<ReturnType<SvmProvider["getTransaction"]>["send"]>>
+>;
+
 export type FetchEventsResult = {
   burnEvents: SolanaBurnEventsPair[];
+  sponsoredBurnEvents: SolanaSponsoredDepositForBurnEvent[];
   mintEvents: SolanaMintEventsPair[];
   slotTimes: Record<number, number>;
 };
 
 export type StoreEventsResult = {};
-
 // Solana CCTP V2 program addresses
 const MESSAGE_TRANSMITTER_V2_ADDRESS =
   "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC";
@@ -57,10 +68,16 @@ const WHITELISTED_FINALIZERS = [
   "5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t",
 ];
 
+const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS =
+  "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq";
+
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
   private tokenMessengerClient: across.arch.svm.SvmCpiEventsClient | undefined;
   private messageTransmitterClient:
+    | across.arch.svm.SvmCpiEventsClient
+    | undefined;
+  private sponsoredCctpSrcPeripheryClient:
     | across.arch.svm.SvmCpiEventsClient
     | undefined;
 
@@ -89,6 +106,14 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
           this.provider,
           MESSAGE_TRANSMITTER_V2_ADDRESS,
           MessageTransmitterV2Idl,
+        );
+
+      // Initialize client for SponsoredCctpSrcPeriphery (for sponsored burn events)
+      this.sponsoredCctpSrcPeripheryClient =
+        await across.arch.svm.SvmCpiEventsClient.createFor(
+          this.provider,
+          SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS,
+          SponsoredCctpSrcPeripheryIdl,
         );
     } catch (error) {
       this.logger.error({
@@ -227,7 +252,11 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       toSlot: blockRange.to,
     });
 
-    if (!this.tokenMessengerClient || !this.messageTransmitterClient) {
+    if (
+      !this.tokenMessengerClient ||
+      !this.messageTransmitterClient ||
+      !this.sponsoredCctpSrcPeripheryClient
+    ) {
       throw new Error("CCTP clients not initialized");
     }
 
@@ -237,7 +266,6 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       BigInt(blockRange.from),
       BigInt(blockRange.to),
     )) as across.arch.svm.EventWithData[];
-
     // Filter for Swap API transactions (check transaction logs for marker)
     const filteredDepositForBurnEvents =
       await this.filterTransactionsFromSwapApi(
@@ -245,8 +273,29 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       );
 
     // Look for MessageSent account in the transaction
-    const burnEvents =
-      await this.matchDepositForBurnWithMessageSentFromTransactions(
+    // Fetch transactions for all events that need them (filtered DepositForBurn events)
+    const transactions = await this.getTransactionsForSignatures(
+      filteredDepositForBurnEvents.map((e) => e.signature),
+    );
+    // Look for MessageSent account in the transaction
+    const burnEvents = await this.matchDepositForBurnWithMessageSent(
+      filteredDepositForBurnEvents,
+      transactions,
+    );
+
+    // Fetch SponsoredDepositForBurn events
+    const allSponsoredBurnEvents =
+      (await this.sponsoredCctpSrcPeripheryClient.queryEvents(
+        "SponsoredDepositForBurn" as any,
+        BigInt(blockRange.from),
+        BigInt(blockRange.to),
+      )) as (SolanaSponsoredDepositForBurnEvent &
+        across.arch.svm.EventWithData)[];
+
+    // Match sponsored events with depositForBurn events by transaction signature
+    const sponsoredBurnEvents =
+      this.matchSponsoredDepositForBurnWithDepositForBurn(
+        allSponsoredBurnEvents,
         filteredDepositForBurnEvents,
       );
 
@@ -269,7 +318,11 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     );
 
     // Build slotTimes from all events
-    const slotTimes = [...depositForBurnEvents, ...receiveMessageEvents].reduce(
+    const slotTimes = [
+      ...depositForBurnEvents,
+      ...receiveMessageEvents,
+      ...sponsoredBurnEvents,
+    ].reduce(
       (acc, event) => {
         if (event.blockTime !== null) {
           acc[Number(event.slot)] = Number(event.blockTime);
@@ -297,6 +350,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
 
     return {
       burnEvents,
+      sponsoredBurnEvents,
       mintEvents,
       slotTimes,
     };
@@ -336,21 +390,74 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
   }
 
   /**
-   * Fetches MessageSent data and pairs with DepositForBurn events
-   * In Solana, MessageSent data is stored in an account.
+   * Helper function to transform an address to the format expected by the destination chain.
+   * Based on the chain ID, specific formatting logic is applied.
+   *
+   * @param address The address string to transform.
+   * @param chainId The chain ID of the destination chain.
+   * @returns The transformed address string.
    */
-  private async matchDepositForBurnWithMessageSentFromTransactions(
-    depositForBurnEvents: SolanaDepositForBurnEvent[],
-  ): Promise<SolanaBurnEventsPair[]> {
-    const burnEventsPairs: SolanaBurnEventsPair[] = [];
+  private transformAddress(address: string, chainId: number): string {
+    const addressType = across.utils.toAddressType(address, chainId);
+    return formatFromAddressToChainFormat(addressType, chainId);
+  }
 
-    await across.utils.forEachAsync(depositForBurnEvents, async (deposit) => {
+  /**
+   * Fetches transactions for a list of signatures in batches.
+   * Utilizes the provider to fetch transaction details including logs and account keys.
+   *
+   * @param signatures Array of transaction signatures to fetch.
+   * @returns A Map where keys are signatures and values are the fetched transaction objects.
+   */
+  private async getTransactionsForSignatures(signatures: string[]) {
+    const transactions = new Map<string, Transaction>();
+    const uniqueSignatures = [...new Set(signatures)];
+
+    await across.utils.forEachAsync(uniqueSignatures, async (sig) => {
       try {
         const txn = await this.provider
-          .getTransaction(signature(deposit.signature), {
+          .getTransaction(signature(sig), {
             maxSupportedTransactionVersion: 0,
           })
           .send();
+        if (txn) {
+          transactions.set(sig, txn);
+        }
+      } catch (error) {
+        this.logger.error({
+          at: "SvmCCTPIndexerDataHandler#getTransactionsForSignatures",
+          message: "Failed to fetch transaction",
+          signature: sig,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+
+    return transactions;
+  }
+
+  /**
+   * Fetches MessageSent data and pairs with DepositForBurn events
+   * In Solana, MessageSent data is stored in an account.
+   */
+  private async matchDepositForBurnWithMessageSent(
+    depositForBurnEvents: SolanaDepositForBurnEvent[],
+    transactions: Map<string, Transaction>,
+  ): Promise<SolanaBurnEventsPair[]> {
+    const burnEvents: SolanaBurnEventsPair[] = [];
+
+    await across.utils.forEachAsync(depositForBurnEvents, async (deposit) => {
+      try {
+        const txn = transactions.get(deposit.signature);
+
+        if (!txn) {
+          this.logger.warn({
+            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSent",
+            message: "Transaction not found for signature",
+            signature: deposit.signature,
+          });
+          return;
+        }
 
         // Extract the MessageSent account address from the transaction
         // The MessageSent account is the second signer (index 1) in the transaction
@@ -360,7 +467,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
 
         if (!messageSentAccountAddress) {
           this.logger.warn({
-            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
+            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSent",
             message:
               "Could not find MessageSent account address in transaction",
             signature: deposit.signature,
@@ -376,7 +483,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
           );
         if (!messageSentAccount?.data?.message) {
           this.logger.error({
-            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
+            at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSent",
             message: "Could not fetch or decode MessageSent account data",
             signature: deposit.signature,
             messageSentAccountAddress: messageSentAccountAddress.toString(),
@@ -408,21 +515,84 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
           messageBody: decodedMessage.messageBody,
         };
 
-        burnEventsPairs.push({
+        const pair: SolanaBurnEventsPair = {
           depositForBurn: deposit,
           messageSent,
-        });
+        };
+
+        burnEvents.push(pair);
       } catch (error) {
         this.logger.error({
-          at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSentFromTransactions",
-          message: "Failed to fetch transaction for MessageSent extraction",
+          at: "SvmCCTPIndexerDataHandler#matchDepositForBurnWithMessageSent",
+          message: "Failed to process deposit event for MessageSent matching",
           signature: deposit.signature,
           error: error instanceof Error ? error.message : String(error),
         });
       }
     });
 
-    return burnEventsPairs;
+    return burnEvents;
+  }
+
+  /**
+   * Matches SponsoredDepositForBurn events with their corresponding DepositForBurn events.
+   * This matching is necessary to:
+   * 1. Retrieve the `destinationChainId` from the DepositForBurn event (which is required for address transformation).
+   * 2. Transform the `finalRecipient` and `finalToken` addresses into the correct format for the destination chain.
+   *
+   * @param allSponsoredBurnEvents The list of raw SponsoredDepositForBurn events fetched from the chain.
+   * @param depositForBurnEvents The list of already processed DepositForBurn events.
+   * @returns A list of fully processed and transformed SolanaSponsoredDepositForBurnEvent objects.
+   */
+  private matchSponsoredDepositForBurnWithDepositForBurn(
+    allSponsoredBurnEvents: (SolanaSponsoredDepositForBurnEvent &
+      across.arch.svm.EventWithData)[],
+    depositForBurnEvents: SolanaDepositForBurnEvent[],
+  ): SolanaSponsoredDepositForBurnEvent[] {
+    // Match sponsored events with depositForBurn events by transaction signature
+    // We filter allSponsoredBurnEvents to keep only those that match a transaction in filteredDepositForBurnEvents
+    // and transform the finalRecipient using the destination chain ID.
+    const depositForBurnBySignature = new Map<
+      string,
+      SolanaDepositForBurnEvent
+    >();
+    for (const deposit of depositForBurnEvents) {
+      depositForBurnBySignature.set(deposit.signature, deposit);
+    }
+
+    const sponsoredBurnEvents: SolanaSponsoredDepositForBurnEvent[] = [];
+
+    for (const sponsoredEvent of allSponsoredBurnEvents) {
+      const depositEvent = depositForBurnBySignature.get(
+        sponsoredEvent.signature,
+      );
+      if (depositEvent) {
+        // Found the matching DepositForBurn event
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          depositEvent.data.destinationDomain,
+        );
+
+        // Transform finalRecipient using the destination chain ID
+        // The event returns finalRecipient as a base58 string (Solana PublicKey)
+        // We need to convert it to the format expected by the destination chain
+        const transformedFinalRecipient = this.transformAddress(
+          sponsoredEvent.data?.finalRecipient,
+          destinationChainId,
+        );
+        const transformedFinalToken = this.transformAddress(
+          sponsoredEvent.data?.finalToken,
+          destinationChainId,
+        );
+        sponsoredEvent.data.finalRecipient = transformedFinalRecipient;
+        sponsoredEvent.data.finalToken = transformedFinalToken;
+
+        sponsoredBurnEvents.push({
+          ...sponsoredEvent,
+        });
+      }
+    }
+
+    return sponsoredBurnEvents;
   }
 
   /**
@@ -577,7 +747,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     events: FetchEventsResult,
     lastFinalisedBlock: number,
   ): Promise<StoreEventsResult> {
-    const { burnEvents, mintEvents, slotTimes } = events;
+    const { burnEvents, sponsoredBurnEvents, mintEvents, slotTimes } = events;
 
     // Build blockDates from slotTimes for all events
     const blockDates: Record<number, Date> = {};
@@ -596,24 +766,34 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       this.convertMintEventsPairToChainAgnostic(pair),
     );
 
-    const [savedBurnEvents, savedMintEvents] = await Promise.all([
-      this.cctpRepository.formatAndSaveBurnEvents(
-        chainAgnosticBurnEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blockDates,
-      ),
-      this.cctpRepository.formatAndSaveMintEvents(
-        chainAgnosticMintEvents,
-        lastFinalisedBlock,
-        this.chainId,
-        blockDates,
-      ),
-    ]);
+    const [savedBurnEvents, savedMintEvents, savedSponsoredBurnEvents] =
+      await Promise.all([
+        this.cctpRepository.formatAndSaveBurnEvents(
+          chainAgnosticBurnEvents,
+          lastFinalisedBlock,
+          this.chainId,
+          blockDates,
+        ),
+        this.cctpRepository.formatAndSaveMintEvents(
+          chainAgnosticMintEvents,
+          lastFinalisedBlock,
+          this.chainId,
+          blockDates,
+        ),
+        this.cctpRepository.formatAndSaveSponsoredBurnEvents(
+          sponsoredBurnEvents.map((event) =>
+            this.convertSponsoredDepositForBurnToChainAgnostic(event),
+          ),
+          lastFinalisedBlock,
+          this.chainId,
+          blockDates,
+        ),
+      ]);
 
     return {
       savedBurnEvents,
       savedMintEvents,
+      savedSponsoredBurnEvents,
     };
   }
 
@@ -660,6 +840,27 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         finalityThresholdExecuted: messageSent.finalityThresholdExecuted,
         messageBody: messageSent.messageBody,
       },
+    };
+  }
+
+  private convertSponsoredDepositForBurnToChainAgnostic(
+    sponsoredDepositForBurn: SolanaSponsoredDepositForBurnEvent,
+  ): SponsoredDepositForBurnWithBlock {
+    return {
+      blockNumber: Number(sponsoredDepositForBurn.slot),
+      transactionHash: sponsoredDepositForBurn.signature,
+      transactionIndex: 0,
+      logIndex: 0,
+      quoteNonce: sponsoredDepositForBurn.data.quoteNonce,
+      originSender: sponsoredDepositForBurn.data.originSender,
+      finalRecipient: sponsoredDepositForBurn.data.finalRecipient,
+      quoteDeadline: new Date(
+        Number(sponsoredDepositForBurn.data.quoteDeadline) * 1000,
+      ),
+      maxBpsToSponsor: sponsoredDepositForBurn.data.maxBpsToSponsor,
+      maxUserSlippageBps: sponsoredDepositForBurn.data.maxUserSlippageBps,
+      finalToken: sponsoredDepositForBurn.data.finalToken.toString(),
+      signature: sponsoredDepositForBurn.data.signature,
     };
   }
 

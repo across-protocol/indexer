@@ -31,6 +31,13 @@ export function createTestRetryProvider(
   } as unknown as Redis;
   const redisCache = new RedisCache(dummyRedis);
   const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
+  // If the chain is SVM, we need to use the SVM provider
+  if (across.utils.chainIsSvm(chainId)) {
+    retryProvidersFactory.initializeProviders();
+    return retryProvidersFactory.getProviderForChainId(
+      chainId,
+    ) as across.providers.RetryProvider;
+  }
   return retryProvidersFactory.getCustomEvmProvider({
     chainId,
     enableCaching: false,
