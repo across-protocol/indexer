@@ -94,7 +94,7 @@ class CctpFinalizerService extends RepeatableTask {
 
       for (const burnEvent of burnEvents) {
         // Check if there's a matching SponsoredDepositForBurn event for this deposit
-        const sponsoredEvent = await this.postgres
+        let qb = this.postgres
           .createQueryBuilder(entities.SponsoredDepositForBurn, "sponsored")
           .leftJoin(
             entities.CctpFinalizerJob,
@@ -107,14 +107,17 @@ class CctpFinalizerService extends RepeatableTask {
           .andWhere("sponsored.chainId = :chainId", {
             chainId: burnEvent.chainId,
           })
-          .andWhere("sponsored.logIndex > :logIndex", {
-            logIndex: burnEvent.logIndex,
-          })
           .andWhere("job.id IS NULL")
           .andWhere("sponsored.deletedAt IS NULL")
           .orderBy("sponsored.logIndex", "ASC")
-          .limit(1)
-          .getOne();
+          .limit(1);
+
+        if (Number(burnEvent.chainId) !== CHAIN_IDs.SOLANA) {
+          qb = qb.andWhere("sponsored.logIndex > :logIndex", {
+            logIndex: burnEvent.logIndex,
+          });
+        }
+        const sponsoredEvent = await qb.getOne();
 
         if (sponsoredEvent) {
           // If there's a matching sponsored event, publish with signature
