@@ -479,7 +479,7 @@ export class DepositsService {
 
         let status = deposit.status;
         let fillTx = deposit.fillTx;
-        let actionsTargetChainId: string | null =
+        let actionsTargetChainId: number | null =
           deposit.actionsTargetChainId ?? null;
 
         // For CCTP deposits, use the status function
@@ -505,8 +505,7 @@ export class DepositsService {
               : entities.RelayStatus.Filled;
           fillTx = statusResponse.fillTx ?? null;
           // TODO: convert response field type to number
-          actionsTargetChainId =
-            statusResponse.actionsTargetChainId?.toString() ?? null;
+          actionsTargetChainId = statusResponse.actionsTargetChainId ?? null;
         }
         // For OFT deposits, use the status function
         else if (
@@ -535,8 +534,7 @@ export class DepositsService {
               : entities.RelayStatus.Filled;
           fillTx = statusResponse.fillTx ?? null;
           // TODO: convert response field type to number
-          actionsTargetChainId =
-            statusResponse.actionsTargetChainId?.toString() ?? null;
+          actionsTargetChainId = statusResponse.actionsTargetChainId ?? null;
         }
         // For Across deposits, use existing logic
         else {
@@ -572,6 +570,7 @@ export class DepositsService {
           outputAmount: outputAmount,
           speedups,
           bridgeFeeUsd,
+          actionsTargetChainId,
         };
       }),
     );
