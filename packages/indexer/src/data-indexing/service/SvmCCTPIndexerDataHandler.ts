@@ -1,4 +1,5 @@
 import { Logger } from "winston";
+import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
 import {
   MessageTransmitterV2Client,
@@ -764,6 +765,9 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     const chainAgnosticMintEvents = mintEvents.map((pair) =>
       this.convertMintEventsPairToChainAgnostic(pair),
     );
+    const chainAgnosticSponsoredBurnEvents = sponsoredBurnEvents.map((event) =>
+      this.convertSponsoredDepositForBurnToChainAgnostic(event),
+    );
 
     const [savedBurnEvents, savedMintEvents, savedSponsoredBurnEvents] =
       await Promise.all([
@@ -780,9 +784,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
           blockDates,
         ),
         this.cctpRepository.formatAndSaveSponsoredBurnEvents(
-          sponsoredBurnEvents.map((event) =>
-            this.convertSponsoredDepositForBurnToChainAgnostic(event),
-          ),
+          chainAgnosticSponsoredBurnEvents,
           lastFinalisedBlock,
           this.chainId,
           blockDates,
@@ -820,7 +822,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         destinationCaller: depositForBurn.data.destinationCaller,
         maxFee: depositForBurn.data.maxFee,
         minFinalityThreshold: depositForBurn.data.minFinalityThreshold,
-        hookData: depositForBurn.data.hookData,
+        hookData: ethers.utils.hexlify(depositForBurn.data.hookData),
       },
       messageSent: {
         blockNumber: Number(messageSent.slot),
@@ -850,7 +852,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       transactionHash: sponsoredDepositForBurn.signature,
       transactionIndex: 0,
       logIndex: 0,
-      quoteNonce: sponsoredDepositForBurn.data.quoteNonce,
+      quoteNonce: ethers.utils.hexlify(sponsoredDepositForBurn.data.quoteNonce),
       originSender: sponsoredDepositForBurn.data.originSender,
       finalRecipient: sponsoredDepositForBurn.data.finalRecipient,
       quoteDeadline: new Date(
@@ -859,7 +861,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       maxBpsToSponsor: sponsoredDepositForBurn.data.maxBpsToSponsor,
       maxUserSlippageBps: sponsoredDepositForBurn.data.maxUserSlippageBps,
       finalToken: sponsoredDepositForBurn.data.finalToken.toString(),
-      signature: sponsoredDepositForBurn.data.signature,
+      signature: ethers.utils.hexlify(sponsoredDepositForBurn.data.signature),
     };
   }
 
