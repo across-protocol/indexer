@@ -3,7 +3,6 @@ import { providers, Contract } from "ethers";
 import { address } from "@solana/kit";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { Logger } from "winston";
-import * as sdk from "@across-protocol/sdk";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
@@ -318,7 +317,6 @@ type BetaContractName =
   | "SponsoredCCTPDstPeriphery"
   | "DstOFTHandler"
   | "SponsoredCCTPSrcPeriphery"
-  | "SponsoredCctpSrcPeriphery"
   | "SponsoredOFTSrcPeriphery";
 
 /**
@@ -339,9 +337,7 @@ function getBetaContractAddress(
     if (!address) {
       throw new Error(`Address for contract ${name} on ${chainId} not found `);
     }
-    return across.utils.chainIsSvm(chainId)
-      ? address
-      : ethers.utils.getAddress(address);
+    return ethers.utils.getAddress(address);
   } catch (error) {
     const message = `Error trying to fetch contract address for ${name} on chain with chain ID ${chainId}`;
     if (logger) {
@@ -370,12 +366,7 @@ export const getSponsoredCCTPDstPeripheryAddress = (
  * @returns {string} The deployed contract address.
  */
 export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) =>
-  getBetaContractAddress(
-    sdk.utils.chainIsSvm(chainId)
-      ? "SponsoredCctpSrcPeriphery"
-      : "SponsoredCCTPSrcPeriphery",
-    chainId,
-  );
+  getBetaContractAddress("SponsoredCCTPSrcPeriphery", chainId);
 
 /**
  * Gets the Sponsored OFT Source Periphery address.
