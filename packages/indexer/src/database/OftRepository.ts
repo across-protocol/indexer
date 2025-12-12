@@ -178,6 +178,14 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
           finalRecipientAddressType,
           chainId,
         );
+        const finalTokenAddressType = across.utils.toAddressType(
+          event.args.finalToken,
+          chainId,
+        );
+        const finalToken = formatFromAddressToChainFormat(
+          finalTokenAddressType,
+          chainId,
+        );
 
         return {
           ...this.formatTransactionData(event),
@@ -190,7 +198,7 @@ export class OftRepository extends dbUtils.BlockchainEventRepository {
           quoteDeadline: new Date(event.args.quoteDeadline.toNumber() * 1000),
           maxBpsToSponsor: event.args.maxBpsToSponsor.toString(),
           maxUserSlippageBps: event.args.maxUserSlippageBps.toString(),
-          finalToken: event.args.finalToken,
+          finalToken: finalToken,
           sig: event.args.sig,
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
