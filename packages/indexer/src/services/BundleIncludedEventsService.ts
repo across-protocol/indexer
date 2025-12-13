@@ -187,7 +187,19 @@ export class BundleIncludedEventsService extends RepeatableTask {
     try {
       const startTime = Date.now();
       await Promise.all(
-        Object.values(spokeClients).map((client) => client.update()),
+        Object.values(spokeClients).map(async (client) => {
+          try {
+            await client.update();
+          } catch (error) {
+            logger.debug({
+              at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
+              message: `Failed to update spoke client for chain ${client.chainId} and bundle ${bundle.id}`,
+              error,
+              errorJson: JSON.stringify(error),
+            });
+            throw error;
+          }
+        }),
       );
       const endTime = Date.now();
       const duration = endTime - startTime;
