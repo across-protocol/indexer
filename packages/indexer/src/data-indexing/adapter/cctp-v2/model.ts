@@ -83,7 +83,7 @@ export interface SolanaDepositForBurnEvent {
     destinationCaller: string;
     maxFee: string;
     minFinalityThreshold: number;
-    hookData: string;
+    hookData: Uint8Array;
   };
 }
 

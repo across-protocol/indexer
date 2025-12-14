@@ -1,5 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
+import { ethers } from "ethers";
 import {
   MessageTransmitterV2Client,
   TokenMessengerMinterV2Idl,
@@ -641,7 +642,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         destinationCaller: depositForBurn.data.destinationCaller,
         maxFee: depositForBurn.data.maxFee,
         minFinalityThreshold: depositForBurn.data.minFinalityThreshold,
-        hookData: depositForBurn.data.hookData,
+        hookData: ethers.utils.hexlify(depositForBurn.data.hookData),
       },
       messageSent: {
         blockNumber: Number(messageSent.slot),
