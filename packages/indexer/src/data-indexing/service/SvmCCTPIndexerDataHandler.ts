@@ -31,6 +31,7 @@ import {
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
 import { getSponsoredCCTPSrcPeripheryAddress } from "../../utils";
+import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 export type SolanaBurnEventsPair = {
   depositForBurn: SolanaDepositForBurnEvent;
@@ -55,7 +56,17 @@ export type FetchEventsResult = {
   slotTimes: Record<number, number>;
 };
 
-export type StoreEventsResult = {};
+export type StoreEventsResult = {
+  savedBurnEvents: {
+    depositForBurnEvent: SaveQueryResult<entities.DepositForBurn>;
+    messageSentEvent: SaveQueryResult<entities.MessageSent>;
+  }[];
+  savedMintEvents: {
+    messageReceivedEvent: SaveQueryResult<entities.MessageReceived>;
+    mintAndWithdrawEvent: SaveQueryResult<entities.MintAndWithdraw>;
+  }[];
+  savedSponsoredBurnEvents: SaveQueryResult<entities.SponsoredDepositForBurn>[];
+};
 // Solana CCTP V2 program addresses
 const MESSAGE_TRANSMITTER_V2_ADDRESS =
   "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC";
@@ -156,8 +167,21 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
 
     const startPerfTime = performance.now();
 
-    const events = await this.fetchEventsByRange(blockRange);
-    await this.storeEvents(events, lastFinalisedBlock);
+    const fetchResults = await this.fetchEventsByRange(blockRange);
+    const timeToFetchEvents = performance.now();
+
+    const storedEvents = await this.storeEvents(
+      fetchResults,
+      lastFinalisedBlock,
+    );
+    const countStoredEvents = countValues(storedEvents);
+    if (countStoredEvents > 0) {
+      this.logger.debug({
+        at: "Indexer#SvmCCTPIndexerDataHandler#processBlockRange",
+        message: `Stored ${countStoredEvents} events for ${this.getDataIdentifier()}`,
+        storedEvents: summaryStoredEvents(storedEvents),
+      });
+    }
     const timeToStoreEvents = performance.now();
 
     await this.cctpRepository.deleteUnfinalisedCCTPEvents(
@@ -176,6 +200,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       finalTime: finalPerfTime - startPerfTime,
       timeToStoreEvents: timeToStoreEvents - startPerfTime,
       timeToDeleteEvents: timeToDeleteEvents - timeToStoreEvents,
+      timeToFetchEvents: timeToFetchEvents - startPerfTime,
     });
   }
 
@@ -350,6 +375,13 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       this.logger.debug({
         at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
         message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
+      });
+    }
+
+    if (sponsoredBurnEvents.length > 0) {
+      this.logger.debug({
+        at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
+        message: `Found ${sponsoredBurnEvents.length} sponsored burn events on chain ${this.chainId}`,
       });
     }
 
@@ -903,4 +935,41 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       },
     };
   }
+}
+
+function countValues(obj: object): number {
+  return Object.values(obj).reduce(
+    (acc, val) => (Array.isArray(val) ? acc + val.length : acc),
+    0,
+  );
+}
+
+function summaryStoredEvents(storedEvents: StoreEventsResult) {
+  const simplifyEntity = (entity: {
+    id: number;
+    chainId: string;
+    blockNumber: number;
+    transactionHash: string;
+  }) => {
+    return {
+      id: entity.id,
+      chainId: entity.chainId,
+      blockNumber: entity.blockNumber,
+      transactionHash: entity.transactionHash,
+    };
+  };
+
+  return {
+    savedBurnEvents: storedEvents.savedBurnEvents.map((pair) => ({
+      depositForBurn: simplifyEntity(pair.depositForBurnEvent.data),
+      messageSent: simplifyEntity(pair.messageSentEvent.data),
+    })),
+    savedMintEvents: storedEvents.savedMintEvents.map((pair) => ({
+      messageReceived: simplifyEntity(pair.messageReceivedEvent.data),
+      mintAndWithdraw: simplifyEntity(pair.mintAndWithdrawEvent.data),
+    })),
+    savedSponsoredBurnEvents: storedEvents.savedSponsoredBurnEvents.map((e) =>
+      simplifyEntity(e.data),
+    ),
+  };
 }
