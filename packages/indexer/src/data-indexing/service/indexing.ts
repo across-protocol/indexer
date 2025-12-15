@@ -9,13 +9,23 @@ import {
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+  MESSAGE_RECEIVED_EVENT_NAME,
 } from "./constants";
-import { CCTP_DEPOSIT_FOR_BURN_ABI, MESSAGE_SENT_ABI } from "../model/abis";
+import {
+  CCTP_DEPOSIT_FOR_BURN_ABI,
+  CCTP_MESSAGE_SENT_ABI,
+  CCTP_MESSAGE_RECEIVED_ABI,
+} from "../model/abis";
 import {
   transformDepositForBurnEvent,
   transformMessageSentEvent,
+  transformMessageReceivedEvent,
 } from "./tranforming";
-import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storing";
+import {
+  storeDepositForBurnEvent,
+  storeMessageSentEvent,
+  storeMessageReceivedEvent,
+} from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 
@@ -68,11 +78,22 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           address: request.testNet
             ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
             : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-          abi: MESSAGE_SENT_ABI,
+          abi: CCTP_MESSAGE_SENT_ABI,
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
         transform: transformMessageSentEvent,
         store: storeMessageSentEvent,
+      },
+      {
+        config: {
+          address: request.testNet
+            ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+            : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+          abi: CCTP_MESSAGE_RECEIVED_ABI,
+          eventName: MESSAGE_RECEIVED_EVENT_NAME,
+        },
+        transform: transformMessageReceivedEvent,
+        store: storeMessageReceivedEvent,
       },
     ],
   };

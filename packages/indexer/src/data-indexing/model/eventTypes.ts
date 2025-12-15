@@ -20,3 +20,12 @@ export interface DepositForBurnArgs {
 export interface MessageSentArgs {
   message: `0x${string}`;
 }
+
+export interface MessageReceivedArgs {
+  caller: `0x${string}`;
+  sourceDomain: number;
+  nonce: `0x${string}`;
+  sender: `0x${string}`;
+  finalityThresholdExecuted: number;
+  messageBody: `0x${string}`;
+}
