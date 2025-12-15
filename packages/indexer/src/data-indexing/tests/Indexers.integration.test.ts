@@ -4,7 +4,7 @@ import { getTestDataSource } from "../../tests/setup";
 import { startArbitrumIndexing } from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
-import { entities } from "@repo/indexer-database";
+import { entities, utils, DataSourceType } from "@repo/indexer-database";
 import {
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
