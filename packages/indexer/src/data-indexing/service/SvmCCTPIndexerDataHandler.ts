@@ -174,11 +174,14 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       fetchResults,
       lastFinalisedBlock,
     );
-    this.logger.debug({
-      at: "Indexer#SvmCCTPIndexerDataHandler#processBlockRange",
-      message: `Stored ${countValues(storedEvents)} events for ${this.getDataIdentifier()}`,
-      storedEvents: summaryStoredEvents(storedEvents),
-    });
+    const countStoredEvents = countValues(storedEvents);
+    if (countStoredEvents > 0) {
+      this.logger.debug({
+        at: "Indexer#SvmCCTPIndexerDataHandler#processBlockRange",
+        message: `Stored ${countStoredEvents} events for ${this.getDataIdentifier()}`,
+        storedEvents: summaryStoredEvents(storedEvents),
+      });
+    }
     const timeToStoreEvents = performance.now();
 
     await this.cctpRepository.deleteUnfinalisedCCTPEvents(
