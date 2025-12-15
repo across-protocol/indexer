@@ -1,9 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class ManualAddDataSourceColumn1765815907451
-  implements MigrationInterface
-{
-  name = "ManualAddDataSourceColumn1765815907451";
+export class AddDataSourceColumn1765815907451 implements MigrationInterface {
+  name = "AddDataSourceColumn1765815907451";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
