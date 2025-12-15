@@ -28,10 +28,10 @@ describe("Indexer Integration (Real Transaction Data)", () => {
   beforeEach(async () => {
     dataSource = await getTestDataSource();
     logger = {
-      debug: sinon.stub(),
-      info: sinon.stub(),
-      warn: sinon.stub(),
-      error: sinon.stub(),
+      debug: sinon.spy(),
+      info: sinon.spy(),
+      warn: sinon.spy(),
+      error: sinon.spy(),
     } as unknown as Logger;
     blockchainRepository = new dbUtils.BlockchainEventRepository(
       dataSource,

@@ -195,7 +195,7 @@ export class MockWebSocketRPCServer {
       if (params.length > 1 && typeof params[1] === "object") {
         this.subscriptions.set(subId, params[1]);
       } else {
-        // Fallback or explicit empty object
+        // Fallback for empty filter (subscribe to everything)
         this.subscriptions.set(subId, {});
       }
 
