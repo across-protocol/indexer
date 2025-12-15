@@ -23,7 +23,6 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
-    cctpRepository = new CCTPRepository(dataSource, logger);
     provider = createTestRetryProvider(
       CHAIN_IDs.SOLANA,
       logger,
@@ -36,6 +35,7 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
       error: sinon.spy(),
     } as unknown as Logger;
 
+    cctpRepository = new CCTPRepository(dataSource, logger);
     handler = new SvmCCTPIndexerDataHandler(
       logger,
       CHAIN_IDs.SOLANA,
