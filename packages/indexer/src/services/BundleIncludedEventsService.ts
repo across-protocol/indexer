@@ -1,5 +1,5 @@
 import * as across from "@across-protocol/sdk";
-import { getDeployedBlockNumber } from "@across-protocol/contracts";
+import { CHAIN_IDs, getDeployedBlockNumber } from "@across-protocol/contracts";
 import Redis from "ioredis";
 import winston from "winston";
 
@@ -34,6 +34,10 @@ export type BundleConfig = {
   config: Config;
   refundedDepositsStatusService: RefundedDepositsStatusService;
 };
+
+const EXCLUDED_CHAIN_IDS_FROM_BUNDLE_RECONSTRUCTION: number[] = [
+  CHAIN_IDs.REDSTONE,
+];
 
 export class BundleIncludedEventsService extends RepeatableTask {
   private hubPoolClient: across.clients.HubPoolClient;
@@ -187,7 +191,19 @@ export class BundleIncludedEventsService extends RepeatableTask {
     try {
       const startTime = Date.now();
       await Promise.all(
-        Object.values(spokeClients).map((client) => client.update()),
+        Object.values(spokeClients).map(async (client) => {
+          try {
+            await client.update();
+          } catch (error) {
+            logger.debug({
+              at: "Indexer#BundleIncludedEventsService#getEventsIncludedInBundle",
+              message: `Failed to update spoke client for chain ${client.chainId} and bundle ${bundle.id}`,
+              error,
+              errorJson: JSON.stringify(error),
+            });
+            throw error;
+          }
+        }),
       );
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -377,6 +393,9 @@ export class BundleIncludedEventsService extends RepeatableTask {
   ) {
     const clients = await Promise.all(
       lookbackRange.map(async ({ chainId, startBlock, endBlock }) => {
+        if (EXCLUDED_CHAIN_IDS_FROM_BUNDLE_RECONSTRUCTION.includes(chainId)) {
+          return [chainId, null];
+        }
         const chainIsSvm = across.utils.chainIsSvm(chainId);
         // We need to instantiate spoke clients using a higher end block than
         // the bundle range as deposits which fills are included in this bundle could
