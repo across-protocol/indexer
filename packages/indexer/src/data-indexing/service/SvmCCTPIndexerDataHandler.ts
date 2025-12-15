@@ -378,6 +378,13 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       });
     }
 
+if (sponsoredBurnEvents.length > 0) {
+      this.logger.debug({
+        at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
+        message: `Found ${sponsoredBurnEvents.length} sponsored burn events on chain ${this.chainId}`,
+      });
+    }
+
     return {
       burnEvents,
       sponsoredBurnEvents,
