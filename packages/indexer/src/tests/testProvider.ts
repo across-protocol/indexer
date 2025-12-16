@@ -103,8 +103,19 @@ export class MockWebSocketRPCServer {
     return this.subscriptionPromise;
   }
 
+  private mockedTransactions = new Map<string, any>();
+  private mockedReceipts = new Map<string, any>();
+
   mockBlockResponse(block: any) {
     this.nextBlockResponse = block;
+  }
+
+  mockTransactionResponse(txHash: string, transaction: any) {
+    this.mockedTransactions.set(txHash, transaction);
+  }
+
+  mockTransactionReceiptResponse(txHash: string, receipt: any) {
+    this.mockedReceipts.set(txHash, receipt);
   }
 
   /**
@@ -113,7 +124,6 @@ export class MockWebSocketRPCServer {
    */
   pushEvent(log: any) {
     if (!this.activeSocket) throw new Error("No client connected");
-
     // Iterate over all active subscriptions
     for (const [subId, filter] of this.subscriptions.entries()) {
       // Check if this log matches the subscription's filter
@@ -126,7 +136,9 @@ export class MockWebSocketRPCServer {
             result: log,
           },
         };
-        this.activeSocket.send(JSON.stringify(payload));
+        const replacer = (_: string, value: any) =>
+          typeof value === "bigint" ? `0x${value.toString(16)}` : value;
+        this.activeSocket.send(JSON.stringify(payload, replacer));
       }
     }
   }
@@ -192,6 +204,14 @@ export class MockWebSocketRPCServer {
       respond(this.nextBlockResponse);
     } else if (req.method === "eth_chainId") {
       respond("0xa4b1"); // Arbitrum One Chain ID
+    } else if (req.method === "eth_getTransactionByHash") {
+      const txHash = req.params[0];
+      const tx = this.mockedTransactions.get(txHash);
+      respond(tx || null);
+    } else if (req.method === "eth_getTransactionReceipt") {
+      const txHash = req.params[0];
+      const receipt = this.mockedReceipts.get(txHash);
+      respond(receipt || null);
     } else {
       respond(null);
     }

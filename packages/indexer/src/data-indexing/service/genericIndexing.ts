@@ -1,7 +1,7 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
 import { createWebSocketClient } from "../adapter/websocket";
 import { processEvent } from "./genericEventProcessing";
-import { Storer, Transformer } from "../model/genericTypes";
+import { Storer, Transformer, Filter } from "../model/genericTypes";
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
 import * as chains from "viem/chains";
@@ -36,6 +36,7 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
     config: EventConfig;
     transform: Transformer<TPayload, TEventEntity>;
     store: Storer<TEventEntity, TDb>;
+    filter?: Filter<TEventEntity, TPayload>;
   }>;
 }
 
@@ -140,7 +141,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const { config, transform, store } = eventItem;
+        const { config, transform, store, filter } = eventItem;
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
           chainId: indexerConfig.chainId,
@@ -154,6 +155,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
               source: eventSource,
               transform,
               store,
+              filter,
               logger,
             });
           },

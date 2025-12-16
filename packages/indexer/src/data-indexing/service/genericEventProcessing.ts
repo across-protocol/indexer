@@ -1,4 +1,9 @@
-import { EventSource, Storer, Transformer } from "../model/genericTypes";
+import {
+  EventSource,
+  Storer,
+  Transformer,
+  Filter,
+} from "../model/genericTypes";
 import { Logger } from "winston";
 
 /**
@@ -26,6 +31,8 @@ export interface GenericEventProcessorRequest<TEntity, TDb, TPayload> {
   transform: Transformer<TPayload, TEntity>;
   /** The function to store the entity in the database. */
   store: Storer<TEntity, TDb>;
+  /** The function to filter the entity. */
+  filter?: Filter<TEntity, TPayload>;
   /** An optional logger instance. */
   logger?: Logger;
 }
@@ -55,6 +62,7 @@ export const processEvent = async <TEntity, TDb, TPayload>(
     source,
     transform,
     store,
+    filter,
     logger = console as unknown as Logger,
   } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
@@ -67,6 +75,10 @@ export const processEvent = async <TEntity, TDb, TPayload>(
     const payload = await source();
     // Transform
     const entity = await transform(payload);
+    // Filter
+    if (filter && !(await filter(entity, payload))) {
+      return;
+    }
     // Store (Asynchronous I/O operation)
     const storedItems = await store(entity, db);
 

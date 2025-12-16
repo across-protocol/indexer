@@ -1,5 +1,5 @@
 import { IndexerConfig, startIndexing } from "./genericIndexing";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { Entity } from "typeorm";
 import {
@@ -18,6 +18,7 @@ import {
 import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
+import { filterSwapApiData, createSwapApiFilter } from "./filtering";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -41,38 +42,46 @@ export interface StartIndexerRequest {
  */
 export async function startArbitrumIndexing(request: StartIndexerRequest) {
   // Destructure the request object
-  const { repo, rpcUrl, logger, sigterm } = request;
+  const { repo, rpcUrl, logger, sigterm, testNet } = request;
+
+  // Create a client for filtering logic (fetching transactions)
+  // We reuse the WebSocket client factory as it provides a robust Viem client
+  // We use the correct chain ID based on testNet flag
+  const chainId = testNet ? CHAIN_IDs.ARBITRUM_SEPOLIA : CHAIN_IDs.ARBITRUM;
+
   // Concrete Configuration
-  // Define the specific parameters for the Arbitrum Mainnet indexer.
+  // Define the specific parameters for the Arbitrum indexer.
   const indexerConfig: IndexerConfig<
     Partial<typeof Entity>,
     dbUtils.BlockchainEventRepository,
     IndexerEventPayload
   > = {
-    chainId: request.testNet ? CHAIN_IDs.ARBITRUM_SEPOLIA : CHAIN_IDs.ARBITRUM,
+    chainId,
     rpcUrl,
     events: [
       {
         config: {
-          address: request.testNet
+          address: testNet
             ? TOKEN_MESSENGER_ADDRESS_TESTNET
             : TOKEN_MESSENGER_ADDRESS_MAINNET,
           abi: CCTP_DEPOSIT_FOR_BURN_ABI,
           eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
         },
-        transform: transformDepositForBurnEvent, // The specific transformation function for DepositForBurn events
+        transform: (payload) => transformDepositForBurnEvent(payload, logger), // The specific transformation function for DepositForBurn events
         store: storeDepositForBurnEvent, // The specific storage function for DepositForBurn events
+        filter: filterSwapApiData,
       },
       {
         config: {
-          address: request.testNet
+          address: testNet
             ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
             : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
           abi: MESSAGE_SENT_ABI,
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
-        transform: transformMessageSentEvent,
+        transform: (payload) => transformMessageSentEvent(payload, logger),
         store: storeMessageSentEvent,
+        filter: (_, payload) => createSwapApiFilter(payload, logger),
       },
     ],
   };

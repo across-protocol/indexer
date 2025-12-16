@@ -34,3 +34,16 @@ export type Storer<TEntity, TDb> = (
   entity: TEntity,
   db: TDb,
 ) => Promise<SaveQueryResult<TEntity>[]>;
+
+/**
+ * A function that determines if an event should be processed and stored.
+ * @template TEntity The type of the structured entity to be filtered.
+ * @template TPayload The type of the raw payload.
+ * @param entity The entity returned by the `Transformer`.
+ * @param payload The raw payload.
+ * @returns A Promise that resolves to true if the event should be processed, false otherwise.
+ */
+export type Filter<TEntity, TPayload = any> = (
+  entity: TEntity,
+  payload: TPayload,
+) => Promise<boolean> | boolean;

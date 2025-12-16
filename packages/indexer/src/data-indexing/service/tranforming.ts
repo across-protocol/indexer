@@ -6,11 +6,16 @@ import {
   decodeMessage, // New import
 } from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../../utils";
-import { Transformer } from "../model/genericTypes";
 import { getFinalisedBlockBufferDistance } from "./constants";
 import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
+import {
+  TransactionReceipt,
+  parseEventLogs,
+  ParseEventLogsReturnType,
+  Abi,
+} from "viem";
 
 /**
  * A generic transformer for addresses.
@@ -30,10 +35,7 @@ function transformAddress(address: string, chainId: number): string {
  * @param logger An optional logger instance. Defaults to console if not provided.
  * @returns A partial entity with base fields populated.
  */
-function baseTransformer(
-  payload: IndexerEventPayload,
-  logger: Logger = console as unknown as Logger,
-) {
+function baseTransformer(payload: IndexerEventPayload, logger: Logger) {
   const { log: logItem, chainId, blockTimestamp, currentBlockHeight } = payload;
   const {
     transactionHash,
@@ -80,10 +82,10 @@ function baseTransformer(
  * @param logger An optional logger instance. Defaults to console if not provided.
  * @returns A partial `DepositForBurn` entity ready for storage.
  */
-export const transformDepositForBurnEvent: Transformer<
-  IndexerEventPayload,
-  Partial<entities.DepositForBurn>
-> = (payload, logger: Logger = console as unknown as Logger) => {
+export const transformDepositForBurnEvent = (
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.DepositForBurn> => {
   const rawArgs = getRawArgs(payload, logger);
   const args = rawArgs as unknown as DepositForBurnArgs;
   const base = baseTransformer(payload, logger);
@@ -118,10 +120,10 @@ export const transformDepositForBurnEvent: Transformer<
   };
 };
 
-export const transformMessageSentEvent: Transformer<
-  IndexerEventPayload,
-  Partial<entities.MessageSent>
-> = (payload, logger: Logger = console as unknown as Logger) => {
+export const transformMessageSentEvent = (
+  payload: IndexerEventPayload,
+  logger: Logger = console as unknown as Logger,
+): Partial<entities.MessageSent> => {
   const rawArgs = getRawArgs(payload, logger);
 
   const args = rawArgs as unknown as MessageSentArgs;
@@ -172,4 +174,23 @@ const getRawArgs = <TEvent>(payload: IndexerEventPayload, logger: Logger) => {
   }
 
   return rawArgs as TEvent;
+};
+
+/**
+ * extracts and decodes a specific event from a transaction receipt's logs.
+ * @param receipt The transaction receipt.
+ * @param abi The Abi containing the event definition.
+ * @returns The decoded event arguments, or undefined if not found.
+ */
+export const decodeEventFromReceipt = <T>(
+  receipt: TransactionReceipt,
+  abi: Abi,
+  eventName: string,
+): T | undefined => {
+  const logs = parseEventLogs({
+    abi,
+    logs: receipt.logs,
+  });
+  const log = logs.find((log) => log.eventName === eventName);
+  return (log?.args as T) ?? undefined;
 };

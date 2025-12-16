@@ -4,6 +4,8 @@ import {
   type PublicClient,
   type Transport,
   type Chain,
+  type Transaction,
+  TransactionReceipt,
 } from "viem";
 import { Logger } from "winston";
 
@@ -49,6 +51,10 @@ export interface IndexerEventPayload {
   currentBlockHeight: bigint;
   /** The log that was captured. */
   log: Log;
+  /** The transaction that generated the event. */
+  transaction?: Transaction;
+  /** The receipt of the transaction that generated the event. */
+  transactionReceipt?: TransactionReceipt;
 }
 
 /**
@@ -99,22 +105,62 @@ export const subscribeToEvent = <TPayload>(
     eventName: config.eventName,
     onLogs: async (logs: Log[]) => {
       // Create a temporary cache for this batch to avoid duplicate requests
-      const blockTimeCache = new Map<bigint, bigint>();
+      // Cache stores timestamp and the transactions list
+      const blockCache = new Map<
+        bigint,
+        { timestamp: bigint; transactions: Transaction[] }
+      >();
       // Viem receives a batch of logs (array). We iterate and push them individually.
       for (const logItem of logs) {
         try {
           // Skip pending logs that don't have a block number yet
-          if (!logItem.blockNumber) continue;
+          if (!logItem.blockNumber) {
+            continue;
+          }
 
           // Check cache first, otherwise fetch from RPC
-          let blockTimestamp = blockTimeCache.get(logItem.blockNumber);
+          let cachedBlock = blockCache.get(logItem.blockNumber);
+          let blockTimestamp = cachedBlock?.timestamp;
 
-          if (!blockTimestamp) {
+          // We essentially need two things:
+          // 1. Block Timestamp (for the event payload)
+          // 2. Transaction (for filtering and transforming)
+          // We can get both by fetching the block with transactions.
+          // Note: We use a cache to avoid fetching the same block multiple times for different logs in the same batch.
+
+          let transaction: Transaction | undefined;
+
+          if (!cachedBlock) {
             const block = await client.getBlock({
               blockNumber: logItem.blockNumber,
+              includeTransactions: true,
             });
             blockTimestamp = block.timestamp;
-            blockTimeCache.set(logItem.blockNumber, blockTimestamp);
+            cachedBlock = {
+              timestamp: blockTimestamp,
+              transactions: block.transactions,
+            };
+            blockCache.set(logItem.blockNumber, cachedBlock);
+          }
+
+          if (cachedBlock && cachedBlock.transactions) {
+            // Find the transaction that corresponds to the log
+            const tx = cachedBlock.transactions.find(
+              (t: any) => t.hash === logItem.transactionHash,
+            );
+            if (tx) {
+              transaction = tx;
+            }
+          }
+
+          // Fetch transaction receipt
+          // Filtering and transformation functions often require the transaction receipt
+          // To avoid fetching the receipt multiple times, we fetch it here and pass it to the functions
+          let transactionReceipt: TransactionReceipt | undefined;
+          if (logItem.transactionHash) {
+            transactionReceipt = await client.getTransactionReceipt({
+              hash: logItem.transactionHash,
+            });
           }
 
           const payload = {
@@ -124,6 +170,8 @@ export const subscribeToEvent = <TPayload>(
             blockTimestamp,
             // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
             currentBlockHeight: logItem.blockNumber,
+            transaction,
+            transactionReceipt,
           } as TPayload;
           // Trigger the side effect (Forward it to an event processor or message queue)
           logger.debug({
