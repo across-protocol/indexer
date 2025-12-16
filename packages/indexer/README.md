@@ -98,24 +98,24 @@ BUNDLE_EVENTS_SERVICE_START_BLOCK_NUMBER=
 INDEXING_DELAY_SECONDS=
 ```
 
-## Indexer Sandbox
+## Websocket Indexer
 
-The Indexer Sandbox provides a lightweight, isolated environment for developing and testing the push-based indexing system. It runs on `MainSandbox` in `src/main.ts` and is designed for rapid iteration.
+The Websocket Indexer provides a high-performance, push-based indexing system. It runs as an integrated service within the main indexer application.
 
 ### Architecture Overview
 
-The sandbox implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
+The Websocket Indexer implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
 
 The main components are:
 - **WebSocket Listener**: Establishes a single WebSocket connection per chain, subscribing to all relevant events. It's a generic service that publishes raw event data.
-- **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In the sandbox, this is called directly by the listener.
+- **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In this implementation, this is called directly by the listener.
 - **Reconciliation Service**: Periodically validates indexed data against the blockchain to ensure data integrity, handling block reorgs and filling gaps.
 
 This decoupled approach improves scalability, reduces resource consumption, and enhances data integrity.
 
 #### Data Flow Diagram
 
-The following diagram illustrates the data flow. Note that while the full architecture can use a message queue (MQ) for maximum resilience, the sandbox implementation features a more direct communication path where the **Listener calls the Processor directly**, and the processor runs independently in the background.
+The following diagram illustrates the data flow. Note that while the full architecture can use a message queue (MQ) for maximum resilience, the current implementation features a more direct communication path where the **Listener calls the Processor directly**, and the processor runs independently in the background.
 
 ```mermaid
 sequenceDiagram
@@ -157,18 +157,25 @@ sequenceDiagram
 ```
 
 ### Getting Started
-
-To run the indexer sandbox, execute the following command from the **root** of the monorepo:
+To run the websocket indexer, execute the following command from the **root** of the monorepo:
 
 ```bash
-pnpm start:indexer-sandbox
+# Enable the WebSocket indexer via environment variable
+ENABLE_WEBSOCKET_INDEXER=true pnpm start:indexer
 ```
 
-This will start the sandbox environment defined in `src/main.ts` under the `MainSandbox` function.
+You can also specify which chains to index using `WS_INDEXER_CHAIN_IDS`.
+
+```bash
+# Example: Index Arbitrum One and Arbitrum Sepolia
+ENABLE_WEBSOCKET_INDEXER=true WS_INDEXER_CHAIN_IDS=42161,421614 pnpm start:indexer
+```
+
+This will start the websocket indexer services as part of the main application startup defined in `src/data-indexing/service/indexing.ts`.
 
 ### Development Guide
 
-The sandbox is designed to be easily extensible. Follow these steps to add new chains or events.
+The websocket indexer is designed to be easily extensible. Follow these steps to add new chains or events.
 
 #### How to Add a New Chain
 
@@ -176,7 +183,7 @@ To index a new blockchain, you need to create a dedicated startup function for i
 
 1.  **Create a new function**: For example, `startOptimismIndexer`. This function will contain the specific configuration for that chain.
 2.  **Define the Configuration**: Inside this function, create an `IndexerConfig` object with the `chainId` and `rpcUrl`.
-3.  **Call the new function**: Update the `MainSandbox` function in `src/main.ts` to call your new `startOptimismIndexer` function.
+3.  **Call the new function**: Update the `startIndexing` function in `src/data-indexing/service/indexing.ts` to call your new `startOptimismIndexer` function.
 
 #### How to Add a New Event
 
@@ -225,8 +232,8 @@ To add a new event, you would:
 2.  Define a new `store` function (e.g., `storeMyEvent`).
 3.  Add a new object to the `events` array with the corresponding `config`, `transform`, and `store` values.
 
-### Testing the Sandbox
-Tests for the indexer sandbox are part of the integration test suite. The primary test file is located at `packages/indexer/src/data-indexing/tests/Indexers.integration.test.ts`.
+### Testing
+Tests for the websocket indexer are part of the integration test suite. The primary test file is located at `packages/indexer/src/data-indexing/tests/Indexers.integration.test.ts`.
 
 To run the tests, execute the integration test command from the `packages/indexer` directory:
 ```bash
