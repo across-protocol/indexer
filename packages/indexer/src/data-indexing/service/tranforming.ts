@@ -122,7 +122,7 @@ export const transformDepositForBurnEvent = (
 
 export const transformMessageSentEvent = (
   payload: IndexerEventPayload,
-  logger: Logger = console as unknown as Logger,
+  logger: Logger,
 ): Partial<entities.MessageSent> => {
   const rawArgs = getRawArgs(payload, logger);
 

@@ -164,7 +164,7 @@ describe("Websocket Subscription", () => {
     startArbitrumIndexing({
       repo: blockchainRepository,
       rpcUrl,
-      logger: console as unknown as Logger,
+      logger,
       sigterm: abortController.signal,
       testNet: false,
     });

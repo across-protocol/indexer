@@ -1,3 +1,4 @@
+import Bottleneck from "bottleneck";
 import {
   parseAbi,
   type Log,
@@ -64,6 +65,8 @@ export interface IndexerEventPayload {
 export interface SubscribeToEventRequest<TPayload> {
   /** The Viem public client instance. */
   client: PublicClient<Transport, Chain>;
+  /** The queue to use for processing events. */
+  processingQueue: Bottleneck;
   /** The ID of the blockchain chain. */
   chainId: number;
   /** The configuration for the event to subscribe to. */
@@ -75,7 +78,20 @@ export interface SubscribeToEventRequest<TPayload> {
    */
   onFatalError: (error: Error) => void;
   /** An optional logger instance. */
-  logger?: Logger;
+  logger: Logger;
+}
+
+/**
+ * Request object for processing a batch of logs.
+ * @template TPayload The type of the event payload.
+ */
+export interface ProcessLogBatchArgs<TPayload> {
+  logs: Log[];
+  config: EventConfig;
+  chainId: number;
+  client: PublicClient<Transport, Chain>;
+  onEvent: (payload: TPayload) => void;
+  logger: Logger;
 }
 
 /**
@@ -88,11 +104,12 @@ export const subscribeToEvent = <TPayload>(
 ) => {
   const {
     client,
+    processingQueue,
     chainId,
     config,
     onEvent,
     onFatalError,
-    logger = console as unknown as Logger,
+    logger,
   } = request;
   // Viem requires parsing the human-readable string array into a typed ABI
   const parsedAbi = parseAbi(config.abi);
@@ -103,93 +120,18 @@ export const subscribeToEvent = <TPayload>(
     address: config.address,
     abi: parsedAbi,
     eventName: config.eventName,
-    onLogs: async (logs: Log[]) => {
-      // Create a temporary cache for this batch to avoid duplicate requests
-      // Cache stores timestamp and the transactions list
-      const blockCache = new Map<
-        bigint,
-        { timestamp: bigint; transactions: Transaction[] }
-      >();
-      // Viem receives a batch of logs (array). We iterate and push them individually.
-      for (const logItem of logs) {
-        try {
-          // Skip pending logs that don't have a block number yet
-          if (!logItem.blockNumber) {
-            continue;
-          }
-
-          // Check cache first, otherwise fetch from RPC
-          let cachedBlock = blockCache.get(logItem.blockNumber);
-          let blockTimestamp = cachedBlock?.timestamp;
-
-          // We essentially need two things:
-          // 1. Block Timestamp (for the event payload)
-          // 2. Transaction (for filtering and transforming)
-          // We can get both by fetching the block with transactions.
-          // Note: We use a cache to avoid fetching the same block multiple times for different logs in the same batch.
-
-          let transaction: Transaction | undefined;
-
-          if (!cachedBlock) {
-            const block = await client.getBlock({
-              blockNumber: logItem.blockNumber,
-              includeTransactions: true,
-            });
-            blockTimestamp = block.timestamp;
-            cachedBlock = {
-              timestamp: blockTimestamp,
-              transactions: block.transactions,
-            };
-            blockCache.set(logItem.blockNumber, cachedBlock);
-          }
-
-          if (cachedBlock && cachedBlock.transactions) {
-            // Find the transaction that corresponds to the log
-            const tx = cachedBlock.transactions.find(
-              (t: any) => t.hash === logItem.transactionHash,
-            );
-            if (tx) {
-              transaction = tx;
-            }
-          }
-
-          // Fetch transaction receipt
-          // Filtering and transformation functions often require the transaction receipt
-          // To avoid fetching the receipt multiple times, we fetch it here and pass it to the functions
-          let transactionReceipt: TransactionReceipt | undefined;
-          if (logItem.transactionHash) {
-            transactionReceipt = await client.getTransactionReceipt({
-              hash: logItem.transactionHash,
-            });
-          }
-
-          const payload = {
-            chainId,
-            eventName: config.eventName,
-            log: logItem,
-            blockTimestamp,
-            // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
-            currentBlockHeight: logItem.blockNumber,
-            transaction,
-            transactionReceipt,
-          } as TPayload;
-          // Trigger the side effect (Forward it to an event processor or message queue)
-          logger.debug({
-            at: "genericEventListener#processLog",
-            message: `Received Log for ${config.eventName} in tx ${logItem.transactionHash}`,
-            chainId,
-            blockTimestamp,
-            contractAddress: config.address,
-          });
-          onEvent(payload);
-        } catch (error) {
-          logger.error({
-            at: "genericEventListener#processLog",
-            message: "Error processing log batch",
-            error,
-          });
-        }
-      }
+    onLogs: (logs: Log[]) => {
+      // Fire and forget: Add the batch processing to the queue
+      processingQueue.schedule(() =>
+        processLogBatch({
+          logs,
+          config,
+          chainId,
+          client,
+          onEvent,
+          logger,
+        }),
+      );
     },
     onError: (error: Error) => {
       logger.error({
@@ -206,3 +148,108 @@ export const subscribeToEvent = <TPayload>(
 
   return unwatch;
 };
+
+/**
+ * Processes a batch of logs efficiently by pre-fetching all required data in parallel.
+ *
+ * This function iterates over the logs in the batch and:
+ * 1. Fetches the block and transactions for each log (deduplicated by block number).
+ * 2. Fetches the transaction receipt for each log (deduplicated by tx hash).
+ * 3. Constructs the payload.
+ * 4. Calls the `onEvent` callback.
+ *
+ * All network requests are initiated in parallel to maximize throughput.
+ * Internal caches are used to prevent redundant RPC calls for logs in the same block or transaction.
+ *
+ * @param args - The arguments object containing logs, config, client, etc.
+ */
+async function processLogBatch<TPayload>(
+  args: ProcessLogBatchArgs<TPayload>,
+): Promise<void> {
+  const { logs, config, chainId, client, onEvent, logger } = args;
+
+  // Create caches for this batch to avoid duplicate requests/parallel fetching
+  const blockCache = new Map<
+    bigint,
+    Promise<{ timestamp: bigint; transactions: Transaction[] }>
+  >();
+  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
+
+  // Process all logs in parallel
+  await Promise.all(
+    logs.map(async (logItem) => {
+      try {
+        // Skip pending logs that don't have a block number yet
+        if (!logItem.blockNumber) {
+          return;
+        }
+
+        // --- Fetch Block & Transactions (Deduplicated) ---
+        let blockPromise = blockCache.get(logItem.blockNumber);
+        if (!blockPromise) {
+          blockPromise = client
+            .getBlock({
+              blockNumber: logItem.blockNumber,
+              includeTransactions: true,
+            })
+            .then((block) => ({
+              timestamp: block.timestamp,
+              transactions: block.transactions,
+            }));
+          blockCache.set(logItem.blockNumber, blockPromise);
+        }
+        const { timestamp: blockTimestamp, transactions } = await blockPromise;
+
+        // --- Find Transaction ---
+        let transaction: Transaction | undefined;
+        if (transactions) {
+          transaction = transactions.find(
+            (t: any) => t.hash === logItem.transactionHash,
+          );
+        }
+
+        // --- Fetch Transaction Receipt (Deduplicated) ---
+        let transactionReceipt: TransactionReceipt | undefined;
+        if (logItem.transactionHash) {
+          let receiptPromise = receiptCache.get(logItem.transactionHash);
+          if (!receiptPromise) {
+            receiptPromise = client.getTransactionReceipt({
+              hash: logItem.transactionHash,
+            });
+            receiptCache.set(logItem.transactionHash, receiptPromise);
+          }
+          transactionReceipt = await receiptPromise;
+        }
+
+        const payload = {
+          chainId,
+          eventName: config.eventName,
+          log: logItem,
+          blockTimestamp,
+          // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
+          currentBlockHeight: logItem.blockNumber,
+          transaction,
+          transactionReceipt,
+        } as TPayload;
+
+        // Trigger the side effect (Forward it to an event processor or message queue)
+        logger.debug({
+          at: "genericEventListener#processLog",
+          message: `Received Log for ${config.eventName} in tx ${logItem.transactionHash}`,
+          chainId,
+          blockTimestamp,
+          contractAddress: config.address,
+        });
+        onEvent(payload);
+      } catch (error) {
+        logger.error({
+          at: "genericEventListener#processLog",
+          message: "Error processing log item",
+          error,
+          logIndex: logItem.logIndex,
+          txHash: logItem.transactionHash,
+        });
+      }
+    }),
+  );
+}

@@ -5,6 +5,7 @@ import { Storer, Transformer, Filter } from "../model/genericTypes";
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
 import * as chains from "viem/chains";
+import Bottleneck from "bottleneck";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -52,7 +53,7 @@ export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
   /** The configuration for the indexer subsystem. */
   indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload>;
   /** An optional logger instance. */
-  logger?: Logger;
+  logger: Logger;
   /** An optional AbortSignal to gracefully shut down the indexer. */
   sigterm?: AbortSignal;
 }
@@ -70,12 +71,7 @@ export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
 export async function startIndexing<TEventEntity, TDb, TPayload>(
   request: StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload>,
 ) {
-  const {
-    db,
-    indexerConfig,
-    sigterm,
-    logger = console as unknown as Logger,
-  } = request;
+  const { db, indexerConfig, sigterm, logger } = request;
   // Upon receiving an error we wait some period of time before retrying to start the listener again
   // The time period has an exponential backoff mechanism to it, to avoid spamming the restart functionality
   // The maximum amount of time we wait for is 1 minute between retries
@@ -84,6 +80,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
 
   // Track active resources for cleanup
   let viemClient: PublicClient<Transport, Chain>;
+  // Setup the Queue
+  // We use this queue to unblock our websocket listeners
+  // The onLog call would otherwise block the websocket from receiving new events until it is done
+  const processingQueue = new Bottleneck({ maxConcurrent: 10 });
   let unwatchFunctions: Array<() => void> = [];
 
   // --- Helper: Cleanup active connections ---
@@ -144,6 +144,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
         const { config, transform, store, filter } = eventItem;
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
+          processingQueue,
           chainId: indexerConfig.chainId,
           config,
           // This function defines what happens after we receive an event from the websocket RPC provider
