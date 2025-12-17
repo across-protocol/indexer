@@ -694,9 +694,10 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       if (!result.isValid || !result.decodedHookData) {
         continue;
       }
-
+      const isProductionChain = isProductionNetwork(destinationChainId);
       const originChainId = getCctpDestinationChainFromDomain(
         messageReceivedEvent.data.sourceDomain,
+        isProductionChain,
       );
 
       hypercoreWithdrawals.push({
