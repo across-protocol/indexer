@@ -17,12 +17,12 @@ import { safeJsonStringify } from "../../utils";
  * Checks if a DepositForBurn event should be indexed.
  * It checks if the destination caller is whitelisted OR if the transaction calldata contains the Swap API marker.
  *
- * @param entity The entity to check.
+ * @param args The event arguments.
  * @param payload The event payload.
  * @returns True if the event should be indexed.
  */
 export const filterSwapApiData = (
-  entity: Partial<entities.DepositForBurn>,
+  args: DepositForBurnArgs,
   payload: IndexerEventPayload,
 ): boolean => {
   // Setup: Prepare the whitelist
@@ -31,15 +31,7 @@ export const filterSwapApiData = (
   );
 
   // Extract Data
-  const destinationCallerLower = entity.destinationCaller?.toLowerCase();
-
-  // Safety Check: Ensure the payload transaction matches the entity's transaction
-  const entityTxHash = entity.transactionHash?.toLowerCase();
-  const payloadTxHash = payload?.transaction?.hash?.toLowerCase();
-
-  if (!entityTxHash || !payloadTxHash || entityTxHash !== payloadTxHash) {
-    return false; // Mismatch or missing data means we cannot verify the marker
-  }
+  const destinationCallerLower = args.destinationCaller?.toLowerCase();
 
   const txInput = payload?.transaction?.input?.toLowerCase();
 
@@ -89,13 +81,7 @@ export const createSwapApiFilter = async (
   );
 
   if (decodedEvent) {
-    const isMatch = await filterSwapApiData(
-      {
-        destinationCaller: decodedEvent.destinationCaller,
-        transactionHash: receipt.transactionHash,
-      },
-      payload,
-    );
+    const isMatch = await filterSwapApiData(decodedEvent, payload);
     if (isMatch) return true;
   }
   logger.debug({

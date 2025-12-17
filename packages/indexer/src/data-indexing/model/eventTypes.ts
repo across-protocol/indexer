@@ -20,3 +20,5 @@ export interface DepositForBurnArgs {
 export interface MessageSentArgs {
   message: `0x${string}`;
 }
+
+export type EventArgs = DepositForBurnArgs | MessageSentArgs;

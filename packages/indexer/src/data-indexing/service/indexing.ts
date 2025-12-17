@@ -15,10 +15,16 @@ import {
   transformDepositForBurnEvent,
   transformMessageSentEvent,
 } from "./tranforming";
+import { extractRawArgs } from "./preprocessing";
 import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { filterSwapApiData, createSwapApiFilter } from "./filtering";
+import {
+  EventArgs,
+  DepositForBurnArgs,
+  MessageSentArgs,
+} from "../model/eventTypes";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -54,7 +60,8 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
   const indexerConfig: IndexerConfig<
     Partial<typeof Entity>,
     dbUtils.BlockchainEventRepository,
-    IndexerEventPayload
+    IndexerEventPayload,
+    EventArgs
   > = {
     chainId,
     rpcUrl,
@@ -67,9 +74,16 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           abi: CCTP_DEPOSIT_FOR_BURN_ABI,
           eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
         },
-        transform: (payload) => transformDepositForBurnEvent(payload, logger), // The specific transformation function for DepositForBurn events
-        store: storeDepositForBurnEvent, // The specific storage function for DepositForBurn events
-        filter: filterSwapApiData,
+        preprocess: extractRawArgs<DepositForBurnArgs>,
+        filter: (args, payload) =>
+          filterSwapApiData(args as DepositForBurnArgs, payload),
+        transform: (args, payload) =>
+          transformDepositForBurnEvent(
+            args as DepositForBurnArgs,
+            payload,
+            logger,
+          ),
+        store: storeDepositForBurnEvent,
       },
       {
         config: {
@@ -79,9 +93,11 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           abi: MESSAGE_SENT_ABI,
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
-        transform: (payload) => transformMessageSentEvent(payload, logger),
-        store: storeMessageSentEvent,
+        preprocess: extractRawArgs<MessageSentArgs>,
         filter: (_, payload) => createSwapApiFilter(payload, logger),
+        transform: (args, payload) =>
+          transformMessageSentEvent(args as MessageSentArgs, payload, logger),
+        store: storeMessageSentEvent,
       },
     ],
   };

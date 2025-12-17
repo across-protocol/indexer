@@ -1,7 +1,12 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
 import { createWebSocketClient } from "../adapter/websocket";
 import { processEvent } from "./genericEventProcessing";
-import { Storer, Transformer, Filter } from "../model/genericTypes";
+import {
+  Storer,
+  Transformer,
+  Filter,
+  Preprocessor,
+} from "../model/genericTypes";
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
 import * as chains from "viem/chains";
@@ -22,8 +27,9 @@ import Bottleneck from "bottleneck";
  * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  */
-export interface IndexerConfig<TEventEntity, TDb, TPayload> {
+export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
   /** The ID of the blockchain to connect to. */
   chainId: number;
   /** The WebSocket RPC URL for the blockchain. */
@@ -35,9 +41,10 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
    */
   events: Array<{
     config: EventConfig;
-    transform: Transformer<TPayload, TEventEntity>;
+    preprocess: Preprocessor<TPayload, TPreprocessed>;
+    transform: Transformer<TPreprocessed, TPayload, TEventEntity>;
     store: Storer<TEventEntity, TDb>;
-    filter?: Filter<TEventEntity, TPayload>;
+    filter?: Filter<TPreprocessed, TPayload>;
   }>;
 }
 
@@ -46,12 +53,18 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
  * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  */
-export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
+export interface StartIndexingSubsystemRequest<
+  TEventEntity,
+  TDb,
+  TPayload,
+  TPreprocessed,
+> {
   /** The database instance. */
   db: TDb;
   /** The configuration for the indexer subsystem. */
-  indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload>;
+  indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed>;
   /** An optional logger instance. */
   logger: Logger;
   /** An optional AbortSignal to gracefully shut down the indexer. */
@@ -65,11 +78,17 @@ export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
  * @template TEntity The type of the structured database entity (e.g., `UniTransfer`).
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  *
  * @param request The request object containing the database instance, indexer configuration, and the logger.
  */
-export async function startIndexing<TEventEntity, TDb, TPayload>(
-  request: StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload>,
+export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
+  request: StartIndexingSubsystemRequest<
+    TEventEntity,
+    TDb,
+    TPayload,
+    TPreprocessed
+  >,
 ) {
   const { db, indexerConfig, sigterm, logger } = request;
   // Upon receiving an error we wait some period of time before retrying to start the listener again
@@ -141,7 +160,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const { config, transform, store, filter } = eventItem;
+        const { config, transform, store, filter, preprocess } = eventItem;
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
           processingQueue,
@@ -151,9 +170,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
           // In this case we directly call the event processor and have it running in the background to not block the websocket from receiving new events
           onEvent: (payload) => {
             const eventSource = async () => Promise.resolve(payload);
-            processEvent<TEventEntity, TDb, TPayload>({
+            processEvent<TEventEntity, TDb, TPayload, TPreprocessed>({
               db,
               source: eventSource,
+              preprocess,
               transform,
               store,
               filter,
