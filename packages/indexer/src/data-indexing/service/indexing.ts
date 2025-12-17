@@ -121,7 +121,7 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
 /**
  * Request object for the generic startIndexing entry point.
  */
-export interface MasterIndexerRequest {
+export interface StartIndexersRequest {
   repo: dbUtils.BlockchainEventRepository;
   logger: Logger;
   /** Map of ChainID to list of RPC URLs */
@@ -136,7 +136,7 @@ export interface MasterIndexerRequest {
  * Iterates over provided chains, checks for available RPC providers, and starts the corresponding indexer.
  * @returns A list of promises (handlers) for each started indexer.
  */
-export function startIndexing(request: MasterIndexerRequest): Promise<void>[] {
+export function startIndexing(request: StartIndexersRequest): Promise<void>[] {
   const { providers, logger, chainIds } = request;
 
   const handlers: Promise<void>[] = [];
