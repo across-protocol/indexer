@@ -7,7 +7,11 @@ import {
 } from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
-import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
+import {
+  DepositForBurnArgs,
+  MessageReceivedArgs,
+  MessageSentArgs,
+} from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
 import {
@@ -52,13 +56,16 @@ function baseTransformer(payload: IndexerEventPayload, logger: Logger) {
     transactionIndex === null ||
     blockHash === null
   ) {
+    const formattedPayload = JSON.stringify(payload, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    );
     logger.error({
       at: "transformers#baseTransformer",
-      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${JSON.stringify(payload)}`,
+      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${formattedPayload}`,
       notificationPath: "across-indexer-error",
     });
     throw new Error(
-      `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${JSON.stringify(payload)}`,
+      `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${formattedPayload}`,
     );
   }
 
@@ -109,12 +116,12 @@ export const transformDepositForBurnEvent = (
     ...base,
     amount: preprocessed.amount.toString(),
     burnToken: preprocessed.burnToken,
-    depositor: preprocessed.depositor,
-    destinationCaller,
+    depositor: preprocessed.depositor.toLowerCase(),
+    destinationCaller: destinationCaller.toLowerCase(),
     maxFee: preprocessed.maxFee.toString(),
     destinationDomain: preprocessed.destinationDomain,
-    destinationTokenMessenger: tokenMessenger,
-    mintRecipient,
+    destinationTokenMessenger: tokenMessenger.toLowerCase(),
+    mintRecipient: mintRecipient.toLowerCase(),
     minFinalityThreshold: preprocessed.minFinalityThreshold,
     hookData: preprocessed.hookData,
   };
@@ -148,9 +155,9 @@ export const transformMessageSentEvent = (
     sourceDomain: decodedMessage.sourceDomain,
     destinationDomain: decodedMessage.destinationDomain,
     nonce: decodedMessage.nonce,
-    sender: sender,
-    recipient: recipient,
-    destinationCaller: destinationCaller,
+    sender: sender.toLowerCase(),
+    recipient: recipient.toLowerCase(),
+    destinationCaller: destinationCaller.toLowerCase(),
     minFinalityThreshold: decodedMessage.minFinalityThreshold,
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
@@ -174,4 +181,33 @@ export const decodeEventFromReceipt = <T>(
   });
   const log = logs.find((log) => log.eventName === eventName);
   return (log?.args as T) ?? undefined;
+};
+
+/**
+ * Transforms a raw `MessageReceived` event payload into a partial `MessageReceived` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `MessageReceived` entity ready for storage.
+ */
+export const transformMessageReceivedEvent = (
+  preprocessed: MessageReceivedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.MessageReceived> => {
+  const base = baseTransformer(payload, logger);
+  return {
+    ...base,
+    caller: preprocessed.caller.toLowerCase(),
+    sourceDomain: preprocessed.sourceDomain,
+    nonce: preprocessed.nonce,
+    sender: transformAddress(
+      preprocessed.sender,
+      getCctpDestinationChainFromDomain(preprocessed.sourceDomain),
+    ).toLowerCase(),
+    finalityThresholdExecuted: preprocessed.finalityThresholdExecuted,
+    messageBody: preprocessed.messageBody,
+  };
 };

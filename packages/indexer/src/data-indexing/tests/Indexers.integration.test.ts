@@ -141,6 +141,8 @@ describe("Websocket Subscription", () => {
       await dataSource.destroy();
     }
     abortController.abort();
+    // Give the indexer loop a moment to exit and close its connections cleanly
+    await new Promise((resolve) => setTimeout(resolve, 100));
     server.stop();
     sinon.restore();
   });
@@ -170,7 +172,7 @@ describe("Websocket Subscription", () => {
     });
 
     // Wait for the indexer to subscribe
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(3);
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -233,7 +235,7 @@ describe("Websocket Subscription", () => {
       testNet: false,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(3);
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -270,5 +272,68 @@ describe("Websocket Subscription", () => {
     });
 
     expect(savedEvent!.blockTimestamp.toISOString()).to.exist;
+  }).timeout(20000);
+  it("should ingest the MessageReceived event from Arbitrum tx 0x3846...f049", async () => {
+    // Real Transaction Data taken from:
+    // https://arbiscan.io/tx/0x384656c6c3243982e130b3f7024f8677a5791ea8cab9e11cf7013abb7b03f049#eventlog#36
+    const txHash =
+      "0x384656c6c3243982e130b3f7024f8677a5791ea8cab9e11cf7013abb7b03f049";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Start the Indexer
+    startArbitrumIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      testNet: false, // Arbitrum One
+    });
+
+    await server.waitForSubscription(3);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    const messageBody =
+      "00000001C6FA7AF3BEDBAD3A3D65F36AABC97431B1BBE4C2D2F6E0E47CA60203452F5D61000000000000000000000000AEECE9A1F996226C026BB05E7561830872385A59000000000000000000000000000000000000000000000000000000037E11D600455B0EAACAC3285754B398CE32FA37EF6846ACBE1D7A09E0A8EF006FF7110412000000000000000000000000000000000000000000000000000000000016E361000000000000000000000000000000000000000000000000000000000016E36000000000000000000000000000000000000000000000000000000000016DBBAF";
+
+    // Wait for async processing
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Verify Persistence
+    const messageReceivedRepo = dataSource.getRepository(
+      entities.MessageReceived,
+    );
+    const savedEvent = await messageReceivedRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    // Basic Existence Check
+    expect(savedEvent).to.exist;
+
+    // Detailed Field Verification
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 7,
+      logIndex: 36,
+      finalised: false,
+
+      // Specific Event Data
+      caller: "0x72adb07a487f38321b6665c02d289c413610b081",
+      nonce:
+        "0xbf423e1a36b969577de2b0b84e5d80f9386e452f6e1325497fad900b3905fdbe", // Lowercase for db consistency
+      sourceDomain: 5,
+      // The origin is Solana
+      sender: "cctpv2vpzjs2u2bbsuoscuikbyjnpfmbfsvvujdgumqe", // Transformed from bytes32 to address for domain 5
+      finalityThresholdExecuted: 1000,
+      messageBody: "0x" + messageBody.toLowerCase(),
+    });
   }).timeout(20000);
 });

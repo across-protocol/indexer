@@ -45,3 +45,18 @@ export const storeMessageSentEvent: Storer<
     [],
   );
 };
+
+export const storeMessageReceivedEvent: Storer<
+  Partial<entities.MessageReceived>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.MessageReceived>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.MessageReceived>(
+    entities.MessageReceived,
+    [event],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageReceived)[],
+    [],
+  );
+};

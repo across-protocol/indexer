@@ -136,3 +136,4 @@ export const WHITELISTED_FINALIZERS = [
 
 export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
 export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
+export const MESSAGE_RECEIVED_EVENT_NAME = "MessageReceived";
