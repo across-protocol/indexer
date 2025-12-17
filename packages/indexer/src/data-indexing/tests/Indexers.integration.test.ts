@@ -170,7 +170,7 @@ describe("Websocket Subscription", () => {
     });
 
     // Wait for the indexer to subscribe
-    await server.waitForSubscription();
+    await server.waitForSubscription(2);
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -219,9 +219,6 @@ describe("Websocket Subscription", () => {
       "0x063cac1df9697e1f87ee57b7d56a4bdb58447ca9d88c113fd576a44d3c842b1d";
 
     const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
-    const realReceipt = await arbitrumClient.getTransactionReceipt({
-      hash: txHash,
-    });
     const { block, receipt } = await fetchAndMockTransaction(
       server,
       arbitrumClient,
@@ -236,8 +233,7 @@ describe("Websocket Subscription", () => {
       testNet: false,
     });
 
-    await server.waitForSubscription();
-
+    await server.waitForSubscription(2);
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -252,7 +248,7 @@ describe("Websocket Subscription", () => {
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
       chainId: CHAIN_IDs.ARBITRUM,
-      blockNumber: 411182604,
+      blockNumber: Number(block.number),
       transactionHash: txHash,
       transactionIndex: 11,
       logIndex: 11,

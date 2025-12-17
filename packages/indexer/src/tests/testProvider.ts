@@ -50,8 +50,7 @@ export class MockWebSocketRPCServer {
   private nextBlockResponse: any = null;
 
   // Track the subscription handshake state
-  private subscriptionPromise: Promise<void>;
-  private subscriptionResolver: (() => void) | null = null;
+  private waiters: Array<{ count: number; resolve: () => void }> = [];
 
   // Map to store active subscriptions and their filters
   // Key: Subscription ID, Value: Filter options (address, topics)
@@ -65,11 +64,6 @@ export class MockWebSocketRPCServer {
     // Create the server instance, but it doesn't listen until .listen() is called inside start()
     // Setting port: 0 allows the OS to pick a random free port.
     this.wss = new WebSocketServer({ port: 0 });
-
-    // Initialize the promise that waits for 'eth_subscribe'
-    this.subscriptionPromise = new Promise((resolve) => {
-      this.subscriptionResolver = resolve;
-    });
   }
 
   /**
@@ -99,8 +93,13 @@ export class MockWebSocketRPCServer {
    * Waits until the client (Viem) has actually requested a subscription.
    * This prevents race conditions where you push an event before Viem is ready.
    */
-  async waitForSubscription() {
-    return this.subscriptionPromise;
+  async waitForSubscription(count: number = 1) {
+    if (this.subscriptions.size >= count) {
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.waiters.push({ count, resolve });
+    });
   }
 
   private mockedTransactions = new Map<string, any>();
@@ -193,13 +192,14 @@ export class MockWebSocketRPCServer {
       // Respond with the unique ID
       respond(subId);
 
-      // Unblock the test! We know Viem is listening now.
-      if (this.subscriptionResolver) {
-        this.subscriptionResolver();
-        // We set this to null so it doesn't fire again,
-        // satisfying the "wait for connection" pattern.
-        this.subscriptionResolver = null;
-      }
+      // Check waiters
+      this.waiters = this.waiters.filter((waiter) => {
+        if (this.subscriptions.size >= waiter.count) {
+          waiter.resolve();
+          return false; // Remove from list
+        }
+        return true; // Keep in list
+      });
     } else if (req.method === "eth_getBlockByNumber") {
       respond(this.nextBlockResponse);
     } else if (req.method === "eth_chainId") {

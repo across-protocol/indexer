@@ -44,6 +44,7 @@ export interface GenericEventProcessorRequest<TEntity, TDb, TPayload> {
  *
  * - **Source:** It calls the `source` function, which should provide a new event payload.
  * - **Transform:** It passes the received payload to the `transform` function.
+ * - **Filter:** It passes the received payload to the `filter` function.
  * - **Store:** It passes the resulting entity to the `store` function for persistence.
  *
  * This generic design allows the same worker logic to process any type of event,

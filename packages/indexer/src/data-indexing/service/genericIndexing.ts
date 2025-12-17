@@ -83,7 +83,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
   // Setup the Queue
   // We use this queue to unblock our websocket listeners
   // The onLog call would otherwise block the websocket from receiving new events until it is done
-  const processingQueue = new Bottleneck({ maxConcurrent: 10 });
+  const processingQueue = new Bottleneck({ maxConcurrent: null, minTime: 0 });
   let unwatchFunctions: Array<() => void> = [];
 
   // --- Helper: Cleanup active connections ---

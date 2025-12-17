@@ -16,7 +16,6 @@ import { safeJsonStringify } from "../../utils";
 /**
  * Checks if a DepositForBurn event should be indexed.
  * It checks if the destination caller is whitelisted OR if the transaction calldata contains the Swap API marker.
- * This filter does NOT require a transaction receipt or client, as it uses the payload transaction.
  *
  * @param entity The entity to check.
  * @param payload The event payload.
@@ -63,7 +62,6 @@ export const filterSwapApiData = (
  * It uses the transaction receipt from the payload, finds the DepositForBurn event, and checks it against the Swap API criteria.
  * Use this for events other than DepositForBurn itself.
  *
- * @param entity The entity to check (unused here, but required by Filter signature).
  * @param payload The event payload.
  * @param logger logger for logging.
  * @returns True if the event should be indexed.
