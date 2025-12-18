@@ -5,17 +5,17 @@ export class AddDataSourceColumn1765815907451 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "evm"."datasource_type_enum" AS ENUM('WebSocket', 'Polling')`,
+      `CREATE TYPE "evm"."datasource_type_enum" AS ENUM('websocket', 'polling')`,
     );
 
     await queryRunner.query(
-      `ALTER TABLE "evm"."deposit_for_burn" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'Polling'`,
+      `ALTER TABLE "evm"."deposit_for_burn" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."message_sent" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'Polling'`,
+      `ALTER TABLE "evm"."message_sent" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."message_received" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'Polling'`,
+      `ALTER TABLE "evm"."message_received" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
   }
 

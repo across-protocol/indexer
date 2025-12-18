@@ -28,6 +28,6 @@ export type SaveQueryResult<T> = {
 };
 
 export enum DataSourceType {
-  WEB_SOCKET = "WebSocket",
-  POLLING = "Polling",
+  WEB_SOCKET = "websocket",
+  POLLING = "polling",
 }

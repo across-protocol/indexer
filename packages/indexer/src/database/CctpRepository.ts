@@ -326,7 +326,19 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
           finalised: event.blockNumber <= lastFinalisedBlock,
         };
       });
-
+    if (formattedEvents.length > 0) {
+      this.logger.debug({
+        at: "CCTPRepository#formatAndSaveSponsoredBurnEvents",
+        message: `Saving ${formattedEvents.length} sponsored burn events`,
+        events: formattedEvents.map((e) => ({
+          chainId: e.chainId,
+          blockNumber: e.blockNumber,
+          transactionHash: e.transactionHash,
+          logIndex: e.logIndex,
+          finalised: e.finalised,
+        })),
+      });
+    }
     const chunkedEvents = across.utils.chunk(formattedEvents, this.chunkSize);
     const savedEvents = await Promise.all(
       chunkedEvents.map((eventsChunk) =>
@@ -682,9 +694,10 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
       if (!result.isValid || !result.decodedHookData) {
         continue;
       }
-
+      const isProductionChain = isProductionNetwork(destinationChainId);
       const originChainId = getCctpDestinationChainFromDomain(
         messageReceivedEvent.data.sourceDomain,
+        isProductionChain,
       );
 
       hypercoreWithdrawals.push({
