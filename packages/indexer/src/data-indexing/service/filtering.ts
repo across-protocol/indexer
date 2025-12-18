@@ -10,8 +10,9 @@ import { entities } from "@repo/indexer-database";
 import { IndexerEventPayload } from "./genericEventListening";
 import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
 import { decodeEventFromReceipt } from "./tranforming";
-import { DepositForBurnArgs } from "../model/eventTypes";
+import { DepositForBurnArgs, MessageReceivedArgs } from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
+import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
 
 /**
  * Checks if a DepositForBurn event should be indexed.
@@ -21,7 +22,7 @@ import { safeJsonStringify } from "../../utils";
  * @param payload The event payload.
  * @returns True if the event should be indexed.
  */
-export const filterSwapApiData = (
+export const filterDepositForBurnEvents = (
   args: DepositForBurnArgs,
   payload: IndexerEventPayload,
 ): boolean => {
@@ -58,7 +59,7 @@ export const filterSwapApiData = (
  * @param logger logger for logging.
  * @returns True if the event should be indexed.
  */
-export const createSwapApiFilter = async (
+export const createCctpBurnFilter = async (
   payload: IndexerEventPayload,
   logger: Logger,
 ): Promise<boolean> => {
@@ -81,13 +82,40 @@ export const createSwapApiFilter = async (
   );
 
   if (decodedEvent) {
-    const isMatch = await filterSwapApiData(decodedEvent, payload);
-    if (isMatch) return true;
+    const isMatch = await filterDepositForBurnEvents(decodedEvent, payload);
+    return isMatch;
   }
-  logger.debug({
+  // If no DepositForBurn event is found, return false and warn the user about this behaviour
+  // Strictly speaking this is not an error but a behaviour that is unexpected and should be investigated
+  logger.warn({
     at: "createSwapApiFilter",
     message: "Expected DepositForBurn event in receipt but could not find it",
     payload: safeJsonStringify(payload),
   });
   return false;
+};
+
+/**
+ * Filters MessageReceived events.
+ * Checks if the caller is a whitelisted finalizer or if the message body represents a valid Hypercore withdrawal.
+ *
+ * @param args The event arguments.
+ * @param payload The event payload.
+ * @param logger The logger instance.
+ * @returns True if the event should be indexed.
+ */
+export const filterMessageReceived = (
+  args: MessageReceivedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): boolean => {
+  if (WHITELISTED_FINALIZERS.includes(args.caller)) {
+    return true;
+  }
+  const result = isHypercoreWithdraw(args.messageBody, {
+    logger,
+    chainId: payload.chainId,
+    transactionHash: payload.log.transactionHash ?? undefined,
+  });
+  return result.isValid;
 };

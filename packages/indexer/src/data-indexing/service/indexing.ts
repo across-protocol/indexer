@@ -29,7 +29,11 @@ import {
 } from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
-import { filterSwapApiData, createSwapApiFilter } from "./filtering";
+import {
+  filterDepositForBurnEvents,
+  createCctpBurnFilter,
+  filterMessageReceived,
+} from "./filtering";
 import {
   EventArgs,
   DepositForBurnArgs,
@@ -87,7 +91,7 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
         },
         preprocess: extractRawArgs<DepositForBurnArgs>,
         filter: (args, payload) =>
-          filterSwapApiData(args as DepositForBurnArgs, payload),
+          filterDepositForBurnEvents(args as DepositForBurnArgs, payload),
         transform: (args, payload) =>
           transformDepositForBurnEvent(
             args as DepositForBurnArgs,
@@ -105,7 +109,7 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
         preprocess: extractRawArgs<MessageSentArgs>,
-        filter: (_, payload) => createSwapApiFilter(payload, logger),
+        filter: (_, payload) => createCctpBurnFilter(payload, logger),
         transform: (args, payload) =>
           transformMessageSentEvent(args as MessageSentArgs, payload, logger),
         store: storeMessageSentEvent,
@@ -119,6 +123,8 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           eventName: MESSAGE_RECEIVED_EVENT_NAME,
         },
         preprocess: extractRawArgs<MessageReceivedArgs>,
+        filter: (args, payload) =>
+          filterMessageReceived(args as MessageReceivedArgs, payload, logger),
         transform: (args, payload) =>
           transformMessageReceivedEvent(
             args as MessageReceivedArgs,
