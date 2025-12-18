@@ -1,10 +1,13 @@
 # Indexer
+
 This package is meant to read data from an rpc provider, modify it as necessary and insert into a database.
 
 ## Run
+
 Using Docker:
 
 From the root folder, run:
+
 - `pnpm run dev-env:up`
 - `pnpm run dev-env:run-app:indexer` this command will execute migrations if needed and run the indexer.
 
@@ -20,9 +23,10 @@ This package includes unit, integration, and non-Docker end-to-end (E2E) tests.
 
 **Test File Naming Conventions**:
 To ensure proper test execution with the new commands, please adhere to the following naming conventions for your test files:
-*   **Unit Tests**: Files should end with `*.unit.test.ts`
-*   **Integration Tests**: Files should end with `*.integration.test.ts`
-*   **Docker E2E Tests**: Files should end with `*.e2e.test.ts`
+
+- **Unit Tests**: Files should end with `*.unit.test.ts`
+- **Integration Tests**: Files should end with `*.integration.test.ts`
+- **Docker E2E Tests**: Files should end with `*.e2e.test.ts`
 
 **Configuration**:
 For these tests to run correctly, you need to provide RPC URLs for the testnet chains. Create a `.env.test` file at the **root of the repository** (if it doesn't already exist) and add the necessary RPC provider URLs.
@@ -36,24 +40,25 @@ RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 **Running Tests**:
 Navigate to the `packages/indexer` directory to run the following commands:
 
-*   **Run all tests (Unit, Integration, and E2E)**:
-    ```bash
-    pnpm test
-    ```
-*   **Run only Unit Tests**:
-    ```bash
-    pnpm test:unit
-    ```
-*   **Run only Integration Tests**:
-    ```bash
-    pnpm test:integration
-    ```
-*   **Run only E2E Tests**:
-    ```bash
-    pnpm test:e2e
-    ```
+- **Run all tests (Unit, Integration, and E2E)**:
+  ```bash
+  pnpm test
+  ```
+- **Run only Unit Tests**:
+  ```bash
+  pnpm test:unit
+  ```
+- **Run only Integration Tests**:
+  ```bash
+  pnpm test:integration
+  ```
+- **Run only E2E Tests**:
+  ```bash
+  pnpm test:e2e
+  ```
 
 ## ENV
+
 ```
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
@@ -107,6 +112,7 @@ The Indexer Sandbox provides a lightweight, isolated environment for developing 
 The sandbox implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
 
 The main components are:
+
 - **WebSocket Listener**: Establishes a single WebSocket connection per chain, subscribing to all relevant events. It's a generic service that publishes raw event data.
 - **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In the sandbox, this is called directly by the listener.
 - **Reconciliation Service**: Periodically validates indexed data against the blockchain to ensure data integrity, handling block reorgs and filling gaps.
@@ -138,7 +144,7 @@ sequenceDiagram
     loop Every 5 Minutes OR On Startup
         Reconciler->>DB: Check Last Indexed Block
         DB-->>Reconciler: Return Max Block
-        
+
         opt System Behind Chain Tip (Startup/Downtime)
             Reconciler->>RPC: Batch Fetch Missing Range (Gap Fill)
             Reconciler->>MQ: Publish Catch-up Batch
@@ -147,7 +153,7 @@ sequenceDiagram
         Reconciler->>RPC: GetLogs(Recent Range - SafetyBuffer)
         RPC-->>Reconciler: Return All Finalized Events
         Reconciler->>MQ: Publish Batch (Status: Finalized)
-        
+
         MQ->>Processor: Consume Batch
         activate Processor
         Processor->>DB: UPSERT Finalized Events
@@ -182,14 +188,16 @@ To index a new blockchain, you need to create a dedicated startup function for i
 
 To listen to a new event on an existing chain, you need to add an entry to the `events` array within that chain's `IndexerConfig`.
 
-Each event entry is an object with three key properties:
+Each event entry is an object with key properties:
 
--   `config`: Defines the event to listen for.
-    -   `address`: The contract address emitting the event.
-    -   `abi`: The ABI of the event.
-    -   `eventName`: The name of the event.
--   `transform`: A function that takes the raw event log and transforms it into the desired database entity format.
--   `store`: A function that saves the transformed event data to the database.
+- `config`: Defines the event to listen for.
+  - `address`: The contract address emitting the event.
+  - `abi`: The ABI of the event.
+  - `eventName`: The name of the event.
+- `preprocess`: (Optional) A function to extract raw arguments from the event log before filtering.
+- `filter`: (Optional) A function to determine if the event should be processed based on its arguments.
+- `transform`: A function that takes the raw event log and transforms it into the desired database entity format.
+- `store`: A function that saves the transformed event data to the database.
 
 **Example: Adding a `DepositForBurn` Event**
 
@@ -212,8 +220,11 @@ const ethConfig: IndexerConfig<
         abi: CCTP_DEPOSIT_FOR_BURN_ABI,
         eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
       },
-      transform: depositForBurnTransformer, // The specific transformation function
-      store: storeDepositForBurnEvent,       // The specific storage function
+      preprocess: extractRawArgs<DepositForBurnArgs>,
+      filter: (args, payload) => filterDepositForBurnEvents(args, payload),
+      transform: (args, payload) =>
+        transformDepositForBurnEvent(args, payload, logger),
+      store: storeDepositForBurnEvent,
     },
     // To add another event, add a new object here
   ],
@@ -221,15 +232,19 @@ const ethConfig: IndexerConfig<
 ```
 
 To add a new event, you would:
+
 1.  Define a new `transform` function (e.g., `myEventTransformer`).
 2.  Define a new `store` function (e.g., `storeMyEvent`).
 3.  Add a new object to the `events` array with the corresponding `config`, `transform`, and `store` values.
 
 ### Testing the Sandbox
+
 Tests for the indexer sandbox are part of the integration test suite. The primary test file is located at `packages/indexer/src/data-indexing/tests/Indexers.integration.test.ts`.
 
 To run the tests, execute the integration test command from the `packages/indexer` directory:
+
 ```bash
 pnpm test:integration
 ```
+
 This will validate the functionality of the chain-specific indexers, like `startArbitrumIndexer`, ensuring that events are correctly processed and stored.
