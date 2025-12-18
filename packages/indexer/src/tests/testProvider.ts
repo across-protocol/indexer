@@ -44,6 +44,11 @@ export function createTestRetryProvider(
   }) as across.providers.RetryProvider;
 }
 
+interface SubscriptionFilter {
+  address?: string;
+  topics?: any[];
+}
+
 export class MockWebSocketRPCServer {
   public wss: WebSocketServer;
   private activeSocket: WebSocket | null = null;
@@ -55,10 +60,7 @@ export class MockWebSocketRPCServer {
 
   // Map to store active subscriptions and their filters
   // Key: Subscription ID, Value: Filter options (address, topics)
-  private subscriptions: Map<
-    string,
-    { address?: string | string[]; topics?: any[] }
-  > = new Map();
+  private subscriptions: Map<string, SubscriptionFilter> = new Map();
   private subscriptionCounter = 0;
 
   constructor() {
@@ -87,6 +89,10 @@ export class MockWebSocketRPCServer {
       this.wss.on("connection", (ws) => {
         this.activeSocket = ws;
         ws.on("message", (msg) => this.handleMessage(ws, msg));
+        // Handle socket errors to prevent them from bubbling up as unhandled events
+        ws.on("error", (err) => {
+          // excessive noise, ignoring mostly as these are expected during teardown
+        });
       });
     });
   }
@@ -133,23 +139,39 @@ export class MockWebSocketRPCServer {
   /**
    * Checks if a log matches the subscription filter (primarily address check).
    */
-  private isLogMatchingFilter(
-    log: any,
-    filter: { address?: string | string[]; topics?: any[] },
-  ): boolean {
+  private isLogMatchingFilter(log: any, filter: SubscriptionFilter): boolean {
     // Check Address (if filter has one)
     if (filter.address) {
       const logAddress = log.address.toLowerCase();
+      if (filter.address.toLowerCase() !== logAddress) {
+        return false;
+      }
+    }
 
-      if (Array.isArray(filter.address)) {
-        // Viem might send an array of addresses
-        const match = filter.address.some(
-          (a) => a.toLowerCase() === logAddress,
-        );
-        if (!match) return false;
-      } else {
-        // Single address string
-        if (filter.address.toLowerCase() !== logAddress) return false;
+    // Check Topics (if filter has one)
+    if (filter.topics && filter.topics.length > 0) {
+      if (!log.topics || log.topics.length === 0) {
+        return false;
+      }
+
+      for (let i = 0; i < filter.topics.length; i++) {
+        const filterTopic = filter.topics[i];
+        const logTopic = log.topics[i];
+
+        // If filter topic is null, it acts as a wildcard -> match anything
+        if (filterTopic === null) continue;
+
+        if (Array.isArray(filterTopic)) {
+          // OR condition: log topic must match one of the filter topics
+          const match = filterTopic.some(
+            (t) => t.toLowerCase() === logTopic.toLowerCase(),
+          );
+          if (!match) return false;
+        } else {
+          // Exact match
+          if (filterTopic.toLowerCase() !== logTopic.toLowerCase())
+            return false;
+        }
       }
     }
 

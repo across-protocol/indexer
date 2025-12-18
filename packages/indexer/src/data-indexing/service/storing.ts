@@ -1,5 +1,5 @@
 import { entities } from "@repo/indexer-database";
-import { utils as dbUtils } from "@repo/indexer-database";
+import { utils as dbUtils, DataSourceType } from "@repo/indexer-database";
 import { Storer } from "../model/genericTypes";
 
 const PK_CHAIN_BLOCK_TX_LOG = [
@@ -25,7 +25,7 @@ export const storeDepositForBurnEvent: Storer<
 ) => {
   return repository.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
     entities.DepositForBurn,
-    [event],
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.DepositForBurn)[],
     [],
   );
@@ -40,8 +40,23 @@ export const storeMessageSentEvent: Storer<
 ) => {
   return repository.saveAndHandleFinalisationBatch<entities.MessageSent>(
     entities.MessageSent,
-    [event],
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
+    [],
+  );
+};
+
+export const storeMessageReceivedEvent: Storer<
+  Partial<entities.MessageReceived>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.MessageReceived>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.MessageReceived>(
+    entities.MessageReceived,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageReceived)[],
     [],
   );
 };

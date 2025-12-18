@@ -8,7 +8,11 @@ import {
 import { formatFromAddressToChainFormat } from "../../utils";
 import { Transformer } from "../model/genericTypes";
 import { getFinalisedBlockBufferDistance } from "./constants";
-import { DepositForBurnArgs, MessageSentArgs } from "../model/eventTypes";
+import {
+  DepositForBurnArgs,
+  MessageReceivedArgs,
+  MessageSentArgs,
+} from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
 
@@ -50,13 +54,16 @@ function baseTransformer(
     transactionIndex === null ||
     blockHash === null
   ) {
+    const formattedPayload = JSON.stringify(payload, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    );
     logger.error({
       at: "transformers#baseTransformer",
-      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${JSON.stringify(payload)}`,
+      message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${formattedPayload}`,
       notificationPath: "across-indexer-error",
     });
     throw new Error(
-      `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${JSON.stringify(payload)}`,
+      `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, Payload: ${formattedPayload}`,
     );
   }
 
@@ -107,12 +114,12 @@ export const transformDepositForBurnEvent: Transformer<
     ...base,
     amount: args.amount.toString(),
     burnToken: args.burnToken,
-    depositor: args.depositor,
-    destinationCaller,
+    depositor: args.depositor.toLowerCase(),
+    destinationCaller: destinationCaller.toLowerCase(),
     maxFee: args.maxFee.toString(),
     destinationDomain: args.destinationDomain,
-    destinationTokenMessenger: tokenMessenger,
-    mintRecipient,
+    destinationTokenMessenger: tokenMessenger.toLowerCase(),
+    mintRecipient: mintRecipient.toLowerCase(),
     minFinalityThreshold: args.minFinalityThreshold,
     hookData: args.hookData,
   };
@@ -148,12 +155,35 @@ export const transformMessageSentEvent: Transformer<
     sourceDomain: decodedMessage.sourceDomain,
     destinationDomain: decodedMessage.destinationDomain,
     nonce: decodedMessage.nonce,
-    sender: sender,
-    recipient: recipient,
-    destinationCaller: destinationCaller,
+    sender: sender.toLowerCase(),
+    recipient: recipient.toLowerCase(),
+    destinationCaller: destinationCaller.toLowerCase(),
     minFinalityThreshold: decodedMessage.minFinalityThreshold,
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
+  };
+};
+
+export const transformMessageReceivedEvent: Transformer<
+  IndexerEventPayload,
+  Partial<entities.MessageReceived>
+> = (payload, logger: Logger = console as unknown as Logger) => {
+  const rawArgs = getRawArgs(payload, logger);
+
+  const args = rawArgs as unknown as MessageReceivedArgs;
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    caller: args.caller.toLowerCase(),
+    sourceDomain: args.sourceDomain,
+    nonce: args.nonce,
+    sender: transformAddress(
+      args.sender,
+      getCctpDestinationChainFromDomain(args.sourceDomain),
+    ).toLowerCase(),
+    finalityThresholdExecuted: args.finalityThresholdExecuted,
+    messageBody: args.messageBody,
   };
 };
 
@@ -161,13 +191,16 @@ const getRawArgs = <TEvent>(payload: IndexerEventPayload, logger: Logger) => {
   const rawArgs = (payload.log as any).args;
 
   if (!rawArgs) {
+    const formattedPayload = JSON.stringify(payload, (_, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    );
     logger.error({
       at: "transformers#messageSentTransformer",
-      message: `Event missing 'args'. Payload: ${JSON.stringify(payload)}`,
+      message: `Event missing 'args'. Payload: ${formattedPayload}`,
       notificationPath: "across-indexer-error",
     });
     throw new Error(
-      `MessageSent event missing 'args'. Payload: ${JSON.stringify(payload)}`,
+      `MessageSent event missing 'args'. Payload: ${formattedPayload}`,
     );
   }
 
