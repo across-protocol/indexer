@@ -10,14 +10,17 @@ import { SaveQueryResult } from "@repo/indexer-database";
 export type EventSource<TPayload> = () => Promise<TPayload>;
 
 /**
- * A function that transforms a raw event into a structured database entity.
+ * A function that transforms a preprocessed event into a structured database entity.
  * This should be a pure function with no side effects, as per the design principles.
+ * @template TPreprocessed The type of the preprocessed data.
  * @template TPayload The type of the raw input event.
  * @template TEntity The type of the structured output entity.
+ * @param preprocessed The preprocessed data.
  * @param payload The raw payload from the `EventSource`.
  * @returns The transformed entity, or a Promise that resolves with it.
  */
-export type Transformer<TPayload, TEntity> = (
+export type Transformer<TPreprocessed, TPayload, TEntity> = (
+  preprocessed: TPreprocessed,
   payload: TPayload,
 ) => TEntity | Promise<TEntity>;
 
@@ -34,3 +37,27 @@ export type Storer<TEntity, TDb> = (
   entity: TEntity,
   db: TDb,
 ) => Promise<SaveQueryResult<TEntity>[]>;
+
+/**
+ * A function that determines if an event should be processed and stored.
+ * @template TPreprocessed The type of the preprocessed data.
+ * @template TPayload The type of the raw payload.
+ * @param preprocessed The preprocessed data.
+ * @param payload The raw payload.
+ * @returns A Promise that resolves to true if the event should be processed, false otherwise.
+ */
+export type Filter<TPreprocessed, TPayload = any> = (
+  preprocessed: TPreprocessed,
+  payload: TPayload,
+) => Promise<boolean> | boolean;
+
+/**
+ * A function that preprocesses the raw payload into a structured/decoded object.
+ * @template TPayload The type of the raw payload.
+ * @template TPreprocessed The type of the output preprocessed data.
+ * @param payload The raw payload.
+ * @returns The preprocessed data.
+ */
+export type Preprocessor<TPayload, TPreprocessed> = (
+  payload: TPayload,
+) => Promise<TPreprocessed> | TPreprocessed;

@@ -19,7 +19,7 @@ import { Logger } from "winston";
 export const createWebSocketClient = (
   chainId: number,
   rpcUrl: string,
-  logger: Logger = console as unknown as Logger,
+  logger: Logger,
 ): PublicClient<Transport, Chain> => {
   // Use the helper to get the official chain object
   const chain = getChain(chainId, logger);
@@ -40,10 +40,7 @@ export const createWebSocketClient = (
  * @param logger An optional logger instance or console.
  * @returns The Chain object if found, otherwise throws an error.
  */
-export const getChain = (
-  chainId: number,
-  logger: Logger = console as unknown as Logger,
-): Chain => {
+export const getChain = (chainId: number, logger: Logger): Chain => {
   // Convert the map of exports into an array of Chain objects
   const allChains = Object.values(chains);
 
