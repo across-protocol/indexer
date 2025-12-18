@@ -40,7 +40,6 @@ describe("CCTPIndexerDataHandler", () => {
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
-
     logger = {
       debug: sinon.spy(),
       info: sinon.spy(),
@@ -475,5 +474,75 @@ describe("CCTPIndexerDataHandler", () => {
     // Date Assertion
     // We check that it is a valid date object, rather than a specific ms timestamp
     expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
+  }).timeout(10000);
+
+  it("should fetch burn and sponsored burn events to Lighter", async () => {
+    // https://arbiscan.io/tx/0x2f866714d04523775153be07f0680ae6c3f28f08af8fa574317e2d16e826aa54
+    const transactionHash =
+      "0xef55d3110094488b943525fd6609e7918328009168e661658b5fb858434b78a0";
+    const blockNumber = 411671197;
+    // // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    setupTestForChainId(CHAIN_IDs.ARBITRUM);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const sponsoredDepositForBurnRepository = dataSource.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const savedSponsoredEvent = await sponsoredDepositForBurnRepository.findOne(
+      {
+        where: { transactionHash: transactionHash },
+      },
+    );
+    const depositForBurnRepository = dataSource.getRepository(
+      entities.DepositForBurn,
+    );
+    const savedBurnEvent = await depositForBurnRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    expect(savedBurnEvent).to.exist;
+    expect(savedBurnEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedBurnEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedSponsoredEvent).to.exist;
+    expect(savedSponsoredEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedSponsoredEvent!.blockNumber).to.equal(blockNumber);
+  }).timeout(10000);
+
+  it("should fetch mint events on Lighter", async () => {
+    const transactionHash =
+      "0x347753987aac08486f047b47795c7e2d874cfbecfbba1869146177e54a2e9095";
+    const blockNumber = 24021731;
+    setupTestForChainId(CHAIN_IDs.MAINNET);
+
+    const blockRange: BlockRange = {
+      from: blockNumber,
+      to: blockNumber,
+    };
+    await handler.processBlockRange(blockRange, blockNumber);
+
+    const messageReceivedRepository = dataSource.getRepository(
+      entities.MessageReceived,
+    );
+    const savedMessageReceivedEvent = await messageReceivedRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    const mintAndWithdrawRepository = dataSource.getRepository(
+      entities.MintAndWithdraw,
+    );
+    const savedMintEvent = await mintAndWithdrawRepository.findOne({
+      where: { transactionHash: transactionHash },
+    });
+    expect(savedMintEvent).to.exist;
+    expect(savedMintEvent!.transactionHash).to.equal(transactionHash);
+    expect(savedMintEvent!.blockNumber).to.equal(blockNumber);
+    expect(savedMessageReceivedEvent).to.exist;
+    expect(savedMessageReceivedEvent!.transactionHash).to.equal(
+      transactionHash,
+    );
+    expect(savedMessageReceivedEvent!.blockNumber).to.equal(blockNumber);
   }).timeout(10000);
 });
