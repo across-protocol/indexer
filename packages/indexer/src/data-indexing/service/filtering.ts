@@ -83,9 +83,11 @@ export const createCctpBurnFilter = async (
 
   if (decodedEvent) {
     const isMatch = await filterDepositForBurnEvents(decodedEvent, payload);
-    if (isMatch) return true;
+    return isMatch;
   }
-  logger.debug({
+  // If no DepositForBurn event is found, return false and warn the user about this behaviour
+  // Strictly speaking this is not an error but a behaviour that is unexpected and should be investigated
+  logger.warn({
     at: "createSwapApiFilter",
     message: "Expected DepositForBurn event in receipt but could not find it",
     payload: safeJsonStringify(payload),
