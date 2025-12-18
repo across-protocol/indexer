@@ -9,6 +9,7 @@ import {
   Unique,
 } from "typeorm";
 import { CctpFinalizerJob } from "../CctpFinalizerJob";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_depositForBurn_chain_block_txn_log", [
@@ -70,6 +71,9 @@ export class DepositForBurn {
 
   @Column()
   finalised: boolean;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @Column()
   blockTimestamp: Date;
