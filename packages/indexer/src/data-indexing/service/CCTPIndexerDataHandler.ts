@@ -59,6 +59,7 @@ import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
+import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -111,15 +112,6 @@ const MESSAGE_TRANSMITTER_ADDRESS_MAINNET: string =
   "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64";
 const MESSAGE_TRANSMITTER_ADDRESS_TESTNET: string =
   "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275";
-
-const SWAP_API_CALLDATA_MARKER = "73c0de";
-const WHITELISTED_FINALIZERS = [
-  "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
-  "0x72adB07A487f38321b6665c02D289C413610B081",
-  "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd",
-  "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f", // CCTPHyperEVMSponsoredCCTPDstPeriphery
-  "0x5616194d65638086a3191B1fEF436f503ff329eC", // CCTPDstPeriphery Mainnet
-];
 
 // Convert whitelisted finalizers to bytes32 format for comparison with destinationCaller
 const WHITELISTED_FINALIZERS_BYTES32 = WHITELISTED_FINALIZERS.map((address) =>
