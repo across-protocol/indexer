@@ -24,7 +24,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.POLYGON]: 128,
   [CHAIN_IDs.REDSTONE]: 60,
   [CHAIN_IDs.SCROLL]: 40,
-  [CHAIN_IDs.SOLANA]: 40,
+  [CHAIN_IDs.SOLANA]: 240,
   [CHAIN_IDs.SONEIUM]: 60,
   [CHAIN_IDs.UNICHAIN]: 60,
   [CHAIN_IDs.WORLD_CHAIN]: 60,
@@ -136,3 +136,4 @@ export const WHITELISTED_FINALIZERS = [
 
 export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
 export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
+export const MESSAGE_RECEIVED_EVENT_NAME = "MessageReceived";

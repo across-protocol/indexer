@@ -9,14 +9,24 @@ import {
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+  MESSAGE_RECEIVED_EVENT_NAME,
 } from "./constants";
-import { CCTP_DEPOSIT_FOR_BURN_ABI, MESSAGE_SENT_ABI } from "../model/abis";
+import {
+  CCTP_DEPOSIT_FOR_BURN_ABI,
+  CCTP_MESSAGE_SENT_ABI,
+  CCTP_MESSAGE_RECEIVED_ABI,
+} from "../model/abis";
 import {
   transformDepositForBurnEvent,
   transformMessageSentEvent,
+  transformMessageReceivedEvent,
 } from "./tranforming";
 import { extractRawArgs } from "./preprocessing";
-import { storeDepositForBurnEvent, storeMessageSentEvent } from "./storing";
+import {
+  storeDepositForBurnEvent,
+  storeMessageSentEvent,
+  storeMessageReceivedEvent,
+} from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { filterSwapApiData, createSwapApiFilter } from "./filtering";
@@ -24,6 +34,7 @@ import {
   EventArgs,
   DepositForBurnArgs,
   MessageSentArgs,
+  MessageReceivedArgs,
 } from "../model/eventTypes";
 
 /**
@@ -90,7 +101,7 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
           address: testNet
             ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
             : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-          abi: MESSAGE_SENT_ABI,
+          abi: CCTP_MESSAGE_SENT_ABI,
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
         preprocess: extractRawArgs<MessageSentArgs>,
@@ -98,6 +109,23 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
         transform: (args, payload) =>
           transformMessageSentEvent(args as MessageSentArgs, payload, logger),
         store: storeMessageSentEvent,
+      },
+      {
+        config: {
+          address: request.testNet
+            ? MESSAGE_TRANSMITTER_ADDRESS_TESTNET
+            : MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+          abi: CCTP_MESSAGE_RECEIVED_ABI,
+          eventName: MESSAGE_RECEIVED_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<MessageReceivedArgs>,
+        transform: (args, payload) =>
+          transformMessageReceivedEvent(
+            args as MessageReceivedArgs,
+            payload,
+            logger,
+          ),
+        store: storeMessageReceivedEvent,
       },
     ],
   };
