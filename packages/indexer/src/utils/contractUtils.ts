@@ -362,20 +362,31 @@ function getBetaContractAddress(
  */
 export const getSponsoredCCTPDstPeripheryAddress = (
   chainId: number = CHAIN_IDs.HYPEREVM,
-) => getBetaContractAddress("SponsoredCCTPDstPeriphery", chainId);
+) => {
+  if (chainId === CHAIN_IDs.MAINNET) {
+    // Temporary until deployments are added to the contracts package
+    return "0x5616194d65638086a3191B1fEF436f503ff329eC";
+  }
+  return getBetaContractAddress("SponsoredCCTPDstPeriphery", chainId);
+};
 
 /**
  * Gets the Sponsored CCTP Source Periphery address.
  * * @param {number} chainId - The chain ID to fetch the address for.
  * @returns {string} The deployed contract address.
  */
-export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) =>
-  getBetaContractAddress(
+export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) => {
+  if (chainId === CHAIN_IDs.ARBITRUM) {
+    // temporary for staging testing
+    return "0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7";
+  }
+  return getBetaContractAddress(
     sdk.utils.chainIsSvm(chainId)
       ? "SponsoredCctpSrcPeriphery"
       : "SponsoredCCTPSrcPeriphery",
     chainId,
   );
+};
 
 /**
  * Gets the Sponsored OFT Source Periphery address.
