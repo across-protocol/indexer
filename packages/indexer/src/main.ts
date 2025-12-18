@@ -36,7 +36,7 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
-import { startArbitrumIndexing } from "./data-indexing/service/indexing";
+import { startIndexing } from "./data-indexing/service/indexing";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -66,74 +66,6 @@ async function initializeRedis(
       reject(err);
     });
   });
-}
-
-export async function MainSandbox(
-  config: parseEnv.Config,
-  logger: winston.Logger,
-) {
-  const { postgresConfig } = config;
-  const postgres = await connectToDatabase(postgresConfig, logger);
-
-  try {
-    // Resolve Arbitrum RPC URL
-    // The Config object doesn't hold RPCs directly, so we parse them from env
-    // using the helper function defined in your parseEnv file.
-    const allProviders = parseEnv.parseProvidersUrls();
-    const arbitrumChainId = CHAIN_IDs.ARBITRUM; // 42161
-    const arbProviders = allProviders.get(arbitrumChainId);
-
-    if (!arbProviders || arbProviders.length === 0 || !arbProviders[0]) {
-      throw new Error(
-        `No RPC provider found for Arbitrum (Chain ID ${arbitrumChainId}). Please set RPC_PROVIDER_URLS_${arbitrumChainId} in .env`,
-      );
-    }
-    const rpcUrl = arbProviders[0]; // Take the first available provider
-
-    // Setup Repository
-    const repo = new dbUtils.BlockchainEventRepository(postgres, logger);
-
-    // Setup Shutdown Handling
-    const abortController = new AbortController();
-
-    const handleShutdown = (signal: string) => {
-      logger.info({ message: `Received ${signal}. Shutting down sandbox...` });
-      abortController.abort();
-    };
-
-    process.on("SIGINT", () => handleShutdown("SIGINT"));
-    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
-
-    // Start the Indexer
-    logger.info({
-      at: "Indexer#Main",
-      message: `Starting Indexer on chain ${arbitrumChainId}...`,
-    });
-
-    // This promise will resolve only when abortController.abort() is called
-    // and the indexer has finished its cleanup routine.
-    await startArbitrumIndexing({
-      repo,
-      rpcUrl,
-      logger,
-      sigterm: abortController.signal,
-    });
-
-    logger.info({ at: "Indexer#Main", message: "Indexer finished execution." });
-  } catch (error) {
-    logger.error({
-      message: "Fatal error in MainSandbox",
-      error: (error as Error).message,
-      stack: (error as Error).stack,
-    });
-    process.exitCode = 1;
-  } finally {
-    // Final Cleanup
-    if (postgres.isInitialized) {
-      logger.info({ message: "Closing database connection..." });
-      await postgres.destroy();
-    }
-  }
 }
 
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
@@ -247,6 +179,32 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
+  // WebSocket Indexer setup
+  const wsIndexerPromises: Promise<void>[] = [];
+  const abortController = new AbortController();
+
+  if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
+    const allProviders = parseEnv.parseProvidersUrls();
+
+    // Determine which chains to index via WebSocket
+    let wsChainIds: number[] = []; // Default to Arbitrum
+    if (process.env.WS_INDEXER_CHAIN_IDS) {
+      wsChainIds = process.env.WS_INDEXER_CHAIN_IDS.split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n));
+    }
+
+    // Start all configured WS indexers
+    const handlers = startIndexing({
+      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      logger,
+      providers: allProviders,
+      sigterm: abortController.signal,
+      chainIds: wsChainIds,
+    });
+    wsIndexerPromises.push(...handlers);
+  }
+
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
@@ -263,6 +221,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
+      abortController.abort(); // Signal WS indexers to stop
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -287,6 +246,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
+    ...wsIndexerResults
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
@@ -294,6 +254,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
+    ...wsIndexerPromises,
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -311,6 +272,9 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         oftIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
+      wsIndexerRunSuccess: wsIndexerResults.every(
+        (r) => r.status === "fulfilled",
+      ),
     },
   });
   await integratorIdWorker.close();

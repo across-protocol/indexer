@@ -335,6 +335,7 @@ describe("Websocket Subscription", () => {
       sender: "cctpv2vpzjs2u2bbsuoscuikbyjnpfmbfsvvujdgumqe", // Transformed from bytes32 to address for domain 5
       finalityThresholdExecuted: 1000,
       messageBody: "0x" + messageBody.toLowerCase(),
+      dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);
 });

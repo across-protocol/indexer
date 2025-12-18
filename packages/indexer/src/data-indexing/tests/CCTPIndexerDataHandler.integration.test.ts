@@ -40,14 +40,14 @@ describe("CCTPIndexerDataHandler", () => {
 
   beforeEach(async () => {
     dataSource = await getTestDataSource();
-    cctpRepository = new CCTPRepository(dataSource, logger);
-
     logger = {
       debug: sinon.spy(),
       info: sinon.spy(),
       warn: sinon.spy(),
       error: sinon.spy(),
     } as unknown as Logger;
+
+    cctpRepository = new CCTPRepository(dataSource, logger);
   });
 
   afterEach(async () => {

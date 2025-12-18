@@ -1,4 +1,7 @@
-import { IndexerConfig, startIndexing } from "./genericIndexing";
+import {
+  IndexerConfig,
+  startIndexing as startGenericIndexing,
+} from "./genericIndexing";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { Entity } from "typeorm";
@@ -136,12 +139,77 @@ export async function startArbitrumIndexing(request: StartIndexerRequest) {
     ],
   };
 
+  logger.info({
+    at: "indexing#startArbitrumIndexing",
+    message: `Starting indexing for Arbitrum Mainnet`,
+    chainId: indexerConfig.chainId,
+    events: indexerConfig.events,
+  });
+
   // Assembly and Startup
   // Start the generic indexer subsystem with our concrete configuration and functions.
-  await startIndexing({
+  await startGenericIndexing({
     db: repo,
     indexerConfig,
     logger,
     sigterm,
   });
+}
+
+/**
+ * Request object for the generic startIndexing entry point.
+ */
+export interface StartIndexersRequest {
+  repo: dbUtils.BlockchainEventRepository;
+  logger: Logger;
+  /** Map of ChainID to list of RPC URLs */
+  providers: Map<number, string[]>;
+  sigterm?: AbortSignal;
+  /** List of chains to start indexing for */
+  chainIds: number[];
+}
+
+/**
+ * Entry point to start all configured WebSocket indexers.
+ * Iterates over provided chains, checks for available RPC providers, and starts the corresponding indexer.
+ * @returns A list of promises (handlers) for each started indexer.
+ */
+export function startIndexing(request: StartIndexersRequest): Promise<void>[] {
+  const { providers, logger, chainIds } = request;
+
+  const handlers: Promise<void>[] = [];
+
+  for (const chainId of chainIds) {
+    // Check if we have providers for this chain
+    const chainProviders = providers.get(chainId);
+    if (chainProviders && chainProviders.length > 0 && chainProviders[0]) {
+      const rpcUrl = chainProviders[0];
+      switch (chainId) {
+        case CHAIN_IDs.ARBITRUM || CHAIN_IDs.ARBITRUM_SEPOLIA:
+          handlers.push(
+            startArbitrumIndexing({
+              repo: request.repo,
+              rpcUrl,
+              logger: request.logger,
+              sigterm: request.sigterm,
+              testNet: chainId === CHAIN_IDs.ARBITRUM_SEPOLIA,
+            }),
+          );
+          break;
+        default:
+          logger.warn({
+            at: "indexing#startIndexing",
+            message: `No specific indexing function found for chainId ${chainId}`,
+          });
+          break;
+      }
+    } else {
+      logger.warn({
+        at: "indexing#startIndexing",
+        message: `No RPC provider found for chainId ${chainId}`,
+      });
+    }
+  }
+
+  return handlers;
 }
