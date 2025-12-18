@@ -173,7 +173,7 @@ describe("Websocket Subscription", () => {
     });
 
     // Wait for the indexer to subscribe
-    await server.waitForSubscription(3);
+    await server.waitForSubscription();
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -236,7 +236,7 @@ describe("Websocket Subscription", () => {
       testNet: false,
     });
 
-    await server.waitForSubscription(3);
+    await server.waitForSubscription();
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
