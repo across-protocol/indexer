@@ -5,7 +5,7 @@ import {
   getCctpDestinationChainFromDomain,
   decodeMessage, // New import
 } from "../adapter/cctp-v2/service";
-import { formatFromAddressToChainFormat } from "../../utils";
+import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
 import {
   DepositForBurnArgs,
@@ -56,9 +56,7 @@ function baseTransformer(payload: IndexerEventPayload, logger: Logger) {
     transactionIndex === null ||
     blockHash === null
   ) {
-    const formattedPayload = JSON.stringify(payload, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v,
-    );
+    const formattedPayload = safeJsonStringify(payload);
     logger.error({
       at: "transformers#baseTransformer",
       message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${formattedPayload}`,

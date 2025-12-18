@@ -4,7 +4,8 @@ import { getTestDataSource } from "../../tests/setup";
 import { startArbitrumIndexing } from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
-import { entities } from "@repo/indexer-database";
+import { entities, utils, DataSourceType } from "@repo/indexer-database";
+import { MESSAGE_TRANSMITTER_ADDRESS_MAINNET } from "../service/constants";
 import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
@@ -122,7 +123,7 @@ describe("Websocket Subscription", () => {
       debug: sinon.spy(),
       info: sinon.spy(),
       warn: sinon.spy(),
-      error: sinon.spy(),
+      error: console.error,
     } as unknown as Logger;
     blockchainRepository = new dbUtils.BlockchainEventRepository(
       dataSource,
@@ -198,11 +199,11 @@ describe("Websocket Subscription", () => {
       burnToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
       amount: 1000000, // 1 USDC (6 decimals)
       maxFee: 100,
-      depositor: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
-      mintRecipient: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
+      depositor: "0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b",
+      mintRecipient: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
       destinationDomain: 19,
-      destinationTokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-      destinationCaller: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
+      destinationTokenMessenger: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
+      destinationCaller: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
 
       minFinalityThreshold: 1000,
 
@@ -260,9 +261,9 @@ describe("Websocket Subscription", () => {
       destinationDomain: 19,
       nonce:
         "0x0000000000000000000000000000000000000000000000000000000000000000",
-      sender: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-      recipient: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-      destinationCaller: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
+      sender: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
+      recipient: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
+      destinationCaller: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
       minFinalityThreshold: 1000,
       finalityThresholdExecuted: 0,
       messageBody:
@@ -295,7 +296,7 @@ describe("Websocket Subscription", () => {
       testNet: false, // Arbitrum One
     });
 
-    await server.waitForSubscription(3);
+    await server.waitForSubscription();
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 

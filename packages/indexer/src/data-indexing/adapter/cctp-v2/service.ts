@@ -112,13 +112,15 @@ export function isProductionNetwork(chainId: number): boolean {
   return chainId in PRODUCTION_NETWORKS;
 }
 
-export function getCctpDestinationChainFromDomain(domain: number): number {
+export function getCctpDestinationChainFromDomain(
+  domain: number,
+  productionNetworks: boolean = true,
+): number {
   if (domain === CCTP_NO_DOMAIN) {
     throw new Error(
       "Cannot input CCTP_NO_DOMAIN to getCctpDestinationChainFromDomain",
     );
   }
-  const productionNetworks = isProductionNetwork(domain);
   // Test and Production networks use the same CCTP domain, so we need to use the flag passed in to
   // determine whether to use the Test or Production networks.
   const networks = productionNetworks ? PRODUCTION_NETWORKS : TEST_NETWORKS;
