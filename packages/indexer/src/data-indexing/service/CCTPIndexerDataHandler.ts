@@ -172,7 +172,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const timeToStoreEvents = performance.now();
 
     const sponsoredCCTPDstPeripheryAddress =
-      getSponsoredCCTPDstPeripheryAddress();
+      getSponsoredCCTPDstPeripheryAddress(this.chainId);
 
     if (!sponsoredCCTPDstPeripheryAddress) {
       this.logger.debug({
@@ -208,7 +208,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const sponsoredCCTPSrcPeripheryAddress =
       getSponsoredCCTPSrcPeripheryAddress(this.chainId);
     const sponsoredCCTPDstPeripheryAddress =
-      getSponsoredCCTPDstPeripheryAddress();
+      getSponsoredCCTPDstPeripheryAddress(this.chainId);
 
     const tokenMessengerAddress =
       this.chainId in TEST_NETWORKS
