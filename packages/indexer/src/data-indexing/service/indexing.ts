@@ -78,16 +78,14 @@ export async function startChainIndexing<
   const { repo, rpcUrl, logger, sigterm, chainId, protocols } = request;
 
   const testNet = chainId in TEST_NETWORKS;
-  // 1. Aggregate events from all supported protocols.
+  // Aggregate events from all supported protocols.
   // We pass the logger and testNet flag to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
   const events = protocols.flatMap((protocol) =>
     protocol.getEventHandlers(!!testNet, logger),
   );
 
-  // 2. Build the concrete configuration
-  // We explicitly cast 'events' to the expected type of IndexerConfig.
-  // This is safe because the SupportedProtocol interface guarantees internal consistency.
+  // Build the concrete configuration
   const indexerConfig: IndexerConfig<
     TEventEntity,
     TDb,
@@ -96,7 +94,7 @@ export async function startChainIndexing<
   > = {
     chainId,
     rpcUrl,
-    events: events as any, // Cast required to merge heterogeneous event types
+    events,
   };
 
   logger.info({
@@ -104,11 +102,9 @@ export async function startChainIndexing<
     message: `Starting indexing for chain ${chainId}`,
     protocolCount: protocols.length,
     totalEvents: events.length,
-    // Optional: Log protocol names if you added a 'name' field to your interface
-    // protocolNames: protocols.map(p => p.name)
   });
 
-  // 3. Start the generic indexer subsystem
+  // Start the generic indexer subsystem
   await startGenericIndexing({
     db: repo,
     indexerConfig,
