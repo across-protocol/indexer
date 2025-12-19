@@ -29,3 +29,8 @@ export interface MessageReceivedArgs {
   finalityThresholdExecuted: number;
   messageBody: `0x${string}`;
 }
+
+export type EventArgs =
+  | DepositForBurnArgs
+  | MessageSentArgs
+  | MessageReceivedArgs;

@@ -5,8 +5,7 @@ import {
   getCctpDestinationChainFromDomain,
   decodeMessage, // New import
 } from "../adapter/cctp-v2/service";
-import { formatFromAddressToChainFormat } from "../../utils";
-import { Transformer } from "../model/genericTypes";
+import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
 import {
   DepositForBurnArgs,
@@ -15,6 +14,12 @@ import {
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
+import {
+  TransactionReceipt,
+  parseEventLogs,
+  ParseEventLogsReturnType,
+  Abi,
+} from "viem";
 
 /**
  * A generic transformer for addresses.
@@ -34,10 +39,7 @@ function transformAddress(address: string, chainId: number): string {
  * @param logger An optional logger instance. Defaults to console if not provided.
  * @returns A partial entity with base fields populated.
  */
-function baseTransformer(
-  payload: IndexerEventPayload,
-  logger: Logger = console as unknown as Logger,
-) {
+function baseTransformer(payload: IndexerEventPayload, logger: Logger) {
   const { log: logItem, chainId, blockTimestamp, currentBlockHeight } = payload;
   const {
     transactionHash,
@@ -54,9 +56,7 @@ function baseTransformer(
     transactionIndex === null ||
     blockHash === null
   ) {
-    const formattedPayload = JSON.stringify(payload, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v,
-    );
+    const formattedPayload = safeJsonStringify(payload);
     logger.error({
       at: "transformers#baseTransformer",
       message: `Log incomplete. TxHash: ${transactionHash}, Index: ${logIndex}, TxIndex: ${transactionIndex}, BlockHash: ${blockHash} Payload: ${formattedPayload}`,
@@ -83,57 +83,55 @@ function baseTransformer(
  * Transforms a raw `DepositForBurn` event payload into a partial `DepositForBurn` entity.
  * The 'finalised' property is set by the `baseTransformer` based on the event's block number
  * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
  * @param payload The event payload containing the raw log.
  * @param logger An optional logger instance. Defaults to console if not provided.
  * @returns A partial `DepositForBurn` entity ready for storage.
  */
-export const transformDepositForBurnEvent: Transformer<
-  IndexerEventPayload,
-  Partial<entities.DepositForBurn>
-> = (payload, logger: Logger = console as unknown as Logger) => {
-  const rawArgs = getRawArgs(payload, logger);
-  const args = rawArgs as unknown as DepositForBurnArgs;
+export const transformDepositForBurnEvent = (
+  preprocessed: DepositForBurnArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.DepositForBurn> => {
   const base = baseTransformer(payload, logger);
   const destinationChainId = getCctpDestinationChainFromDomain(
-    args.destinationDomain,
+    preprocessed.destinationDomain,
   );
   const mintRecipient = transformAddress(
-    args.mintRecipient,
+    preprocessed.mintRecipient,
     destinationChainId,
   );
   const tokenMessenger = transformAddress(
-    args.destinationTokenMessenger,
+    preprocessed.destinationTokenMessenger,
     destinationChainId,
   );
   const destinationCaller = transformAddress(
-    args.destinationCaller,
+    preprocessed.destinationCaller,
     destinationChainId,
   );
 
   return {
     ...base,
-    amount: args.amount.toString(),
-    burnToken: args.burnToken,
-    depositor: args.depositor.toLowerCase(),
+    amount: preprocessed.amount.toString(),
+    burnToken: preprocessed.burnToken,
+    depositor: preprocessed.depositor.toLowerCase(),
     destinationCaller: destinationCaller.toLowerCase(),
-    maxFee: args.maxFee.toString(),
-    destinationDomain: args.destinationDomain,
+    maxFee: preprocessed.maxFee.toString(),
+    destinationDomain: preprocessed.destinationDomain,
     destinationTokenMessenger: tokenMessenger.toLowerCase(),
     mintRecipient: mintRecipient.toLowerCase(),
-    minFinalityThreshold: args.minFinalityThreshold,
-    hookData: args.hookData,
+    minFinalityThreshold: preprocessed.minFinalityThreshold,
+    hookData: preprocessed.hookData,
   };
 };
 
-export const transformMessageSentEvent: Transformer<
-  IndexerEventPayload,
-  Partial<entities.MessageSent>
-> = (payload, logger: Logger = console as unknown as Logger) => {
-  const rawArgs = getRawArgs(payload, logger);
-
-  const args = rawArgs as unknown as MessageSentArgs;
+export const transformMessageSentEvent = (
+  preprocessed: MessageSentArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.MessageSent> => {
   const base = baseTransformer(payload, logger);
-  const decodedMessage = decodeMessage(arrayify(args.message));
+  const decodedMessage = decodeMessage(arrayify(preprocessed.message));
   const destinationChainId = getCctpDestinationChainFromDomain(
     decodedMessage.destinationDomain,
   );
@@ -150,7 +148,7 @@ export const transformMessageSentEvent: Transformer<
 
   return {
     ...base,
-    message: args.message,
+    message: preprocessed.message,
     version: decodedMessage.version,
     sourceDomain: decodedMessage.sourceDomain,
     destinationDomain: decodedMessage.destinationDomain,
@@ -164,45 +162,50 @@ export const transformMessageSentEvent: Transformer<
   };
 };
 
-export const transformMessageReceivedEvent: Transformer<
-  IndexerEventPayload,
-  Partial<entities.MessageReceived>
-> = (payload, logger: Logger = console as unknown as Logger) => {
-  const rawArgs = getRawArgs(payload, logger);
-
-  const args = rawArgs as unknown as MessageReceivedArgs;
-  const base = baseTransformer(payload, logger);
-
-  return {
-    ...base,
-    caller: args.caller.toLowerCase(),
-    sourceDomain: args.sourceDomain,
-    nonce: args.nonce,
-    sender: transformAddress(
-      args.sender,
-      getCctpDestinationChainFromDomain(args.sourceDomain),
-    ).toLowerCase(),
-    finalityThresholdExecuted: args.finalityThresholdExecuted,
-    messageBody: args.messageBody,
-  };
+/**
+ * extracts and decodes a specific event from a transaction receipt's logs.
+ * @param receipt The transaction receipt.
+ * @param abi The Abi containing the event definition.
+ * @returns The decoded event arguments, or undefined if not found.
+ */
+export const decodeEventFromReceipt = <T>(
+  receipt: TransactionReceipt,
+  abi: Abi,
+  eventName: string,
+): T | undefined => {
+  const logs = parseEventLogs({
+    abi,
+    logs: receipt.logs,
+  });
+  const log = logs.find((log) => log.eventName === eventName);
+  return (log?.args as T) ?? undefined;
 };
 
-const getRawArgs = <TEvent>(payload: IndexerEventPayload, logger: Logger) => {
-  const rawArgs = (payload.log as any).args;
-
-  if (!rawArgs) {
-    const formattedPayload = JSON.stringify(payload, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v,
-    );
-    logger.error({
-      at: "transformers#messageSentTransformer",
-      message: `Event missing 'args'. Payload: ${formattedPayload}`,
-      notificationPath: "across-indexer-error",
-    });
-    throw new Error(
-      `MessageSent event missing 'args'. Payload: ${formattedPayload}`,
-    );
-  }
-
-  return rawArgs as TEvent;
+/**
+ * Transforms a raw `MessageReceived` event payload into a partial `MessageReceived` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `MessageReceived` entity ready for storage.
+ */
+export const transformMessageReceivedEvent = (
+  preprocessed: MessageReceivedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.MessageReceived> => {
+  const base = baseTransformer(payload, logger);
+  return {
+    ...base,
+    caller: preprocessed.caller.toLowerCase(),
+    sourceDomain: preprocessed.sourceDomain,
+    nonce: preprocessed.nonce,
+    sender: transformAddress(
+      preprocessed.sender,
+      getCctpDestinationChainFromDomain(preprocessed.sourceDomain),
+    ).toLowerCase(),
+    finalityThresholdExecuted: preprocessed.finalityThresholdExecuted,
+    messageBody: preprocessed.messageBody,
+  };
 };
