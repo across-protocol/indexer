@@ -9,7 +9,6 @@ import {
 } from "../model/genericTypes";
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
-import * as chains from "viem/chains";
 import Bottleneck from "bottleneck";
 
 /**
@@ -21,6 +20,26 @@ import Bottleneck from "bottleneck";
  * - The WebSocket Listener (Producer)
  * - The Event Processors (Consumers)
  */
+
+/**
+ * An event handler for a specific event.
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the event payload from the event listener.
+ * @template TEventEntity The type of the structured database entity.
+ * @template TPreprocessed The type of the preprocessed data.
+ */
+export interface IndexerEventHandler<
+  TDb,
+  TPayload,
+  TEventEntity,
+  TPreprocessed,
+> {
+  config: EventConfig;
+  preprocess: Preprocessor<TPayload, TPreprocessed>;
+  transform: Transformer<TPreprocessed, TPayload, TEventEntity>;
+  store: Storer<TEventEntity, TDb>;
+  filter?: Filter<TPreprocessed, TPayload>;
+}
 
 /**
  * Configuration for a complete indexing subsystem.
@@ -39,13 +58,9 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
    * function to convert the raw event payload to an entity, and a `Storer` function
    * to persist the entity to the database.
    */
-  events: Array<{
-    config: EventConfig;
-    preprocess: Preprocessor<TPayload, TPreprocessed>;
-    transform: Transformer<TPreprocessed, TPayload, TEventEntity>;
-    store: Storer<TEventEntity, TDb>;
-    filter?: Filter<TPreprocessed, TPayload>;
-  }>;
+  events: Array<
+    IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
+  >;
 }
 
 /**

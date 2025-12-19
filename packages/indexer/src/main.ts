@@ -36,7 +36,7 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
-import { startIndexing } from "./data-indexing/service/indexing";
+import { startWebSocketIndexing } from "./data-indexing/service/indexing";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -195,7 +195,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     }
 
     // Start all configured WS indexers
-    const handlers = startIndexing({
+    const handlers = startWebSocketIndexing({
       repo: new dbUtils.BlockchainEventRepository(postgres, logger),
       logger,
       providers: allProviders,
