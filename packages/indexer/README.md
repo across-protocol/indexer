@@ -177,80 +177,55 @@ You can also specify which chains to index using `WS_INDEXER_CHAIN_IDS`.
 ENABLE_WEBSOCKET_INDEXER=true WS_INDEXER_CHAIN_IDS=42161,421614 pnpm start:indexer
 ```
 
-This will start the websocket indexer services as part of the main application startup defined in `src/data-indexing/service/indexing.ts`.
+This will start the websocket indexer services as part of the main application startup. The system is configured via `src/data-indexing/service/config.ts`.
 
 ### Development Guide
 
-The websocket indexer is designed to be easily extensible. Follow these steps to add new chains or events.
+The websocket indexer uses a configuration-driven architecture centrally managed in `src/data-indexing/service/config.ts`.
 
 #### How to Add a New Chain
 
-To index a new blockchain, you need to create a dedicated startup function for it, similar to `startArbitrumIndexer` in `src/data-indexing/service/indexers.ts`.
+To index a new blockchain:
 
-1.  **Create a new function**: For example, `startOptimismIndexer`. This function will contain the specific configuration for that chain.
-2.  **Define the Configuration**: Inside this function, create an `IndexerConfig` object with the `chainId` and `rpcUrl`.
-3.  **Call the new function**: Update the `startIndexing` function in `src/data-indexing/service/indexing.ts` to call your new `startOptimismIndexer` function.
-
-#### How to Add a New Event
-
-To listen to a new event on an existing chain, you need to add an entry to the `events` array within that chain's `IndexerConfig`.
-
-Each event entry is an object with key properties:
-
-- `config`: Defines the event to listen for.
-  - `address`: The contract address emitting the event.
-  - `abi`: The ABI of the event.
-  - `eventName`: The name of the event.
-- `preprocess`: (Optional) A function to extract raw arguments from the event log before filtering.
-- `filter`: (Optional) A function to determine if the event should be processed based on its arguments.
-- `transform`: A function that takes the raw event log and transforms it into the desired database entity format.
-- `store`: A function that saves the transformed event data to the database.
-
-**Example: Adding a `DepositForBurn` Event**
-
-The following example from `startArbitrumIndexer` shows how to configure the indexer to listen for CCTP's `DepositForBurn` event.
+1.  Open `src/data-indexing/service/config.ts`.
+2.  Add the new chain ID to the `CHAIN_PROTOCOLS` object.
+3.  Assign it the list of protocols you want to index (e.g., `[CCTP_PROTOCOL]`).
 
 ```typescript
-// Located in: src/data-indexing/service/indexers.ts
-
-const ethConfig: IndexerConfig<
-  Partial<typeof Entity>,
-  dbUtils.BlockchainEventRepository,
-  IndexerEventPayload
-> = {
-  chainId: CHAIN_IDs.ARBITRUM,
-  rpcUrl,
-  events: [
-    {
-      config: {
-        address: TOKEN_MESSENGER_ADDRESS_MAINNET,
-        abi: CCTP_DEPOSIT_FOR_BURN_ABI,
-        eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
-      },
-      preprocess: extractRawArgs<DepositForBurnArgs>,
-      filter: (args, payload) => filterDepositForBurnEvents(args, payload),
-      transform: (args, payload) =>
-        transformDepositForBurnEvent(args, payload, logger),
-      store: storeDepositForBurnEvent,
-    },
-    // To add another event, add a new object here
-  ],
+export const CHAIN_PROTOCOLS: Record<number, SupportedProtocols<...>> = {
+  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL], // Added Optimism
 };
 ```
 
-To add a new event, you would:
+#### How to Add a New Event
 
-1.  Define a new `transform` function (e.g., `myEventTransformer`).
-2.  Define a new `store` function (e.g., `storeMyEvent`).
-3.  Add a new object to the `events` array with the corresponding `config`, `transform`, and `store` values.
+To listen to a new event (or protocol):
+
+1.  Define a new `SupportedProtocols` object (or update an existing one like `CCTP_PROTOCOL`).
+2.  Implement the `getEventHandlers` function.
+3.  Return an array of event handler configurations, where each handler includes:
+    *   `config`: Contract address, ABI, and event name.
+    *   `preprocess`, `filter`, `transform`, `store`: The pure functions for the pipeline.
+
+```typescript
+export const MY_NEW_PROTOCOL: SupportedProtocols<...> = {
+  getEventHandlers: (testNet, logger) => [
+    {
+      config: { ... },
+      preprocess: ...,
+      filter: ...,
+      transform: ...,
+      store: ...
+    }
+  ]
+};
+```
 
 ### Testing
-Tests for the websocket indexer are part of the integration test suite. The primary test file is located at `packages/indexer/src/data-indexing/tests/Indexers.integration.test.ts`.
 
-To run the tests, execute the integration test command from the `packages/indexer` directory:
+Tests for the websocket indexer are part of the integration test suite.
 
 ```bash
 pnpm test:integration
 ```
-
-This will validate the functionality of the chain-specific indexers, like `startArbitrumIndexer`, ensuring that events are correctly processed and stored.
