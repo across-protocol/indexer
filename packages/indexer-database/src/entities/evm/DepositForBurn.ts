@@ -20,6 +20,7 @@ import { DataSourceType } from "../../model";
 ])
 @Index("IX_depositForBurn_finalised", ["finalised"])
 @Index("IX_depositForBurn_deletedAt", ["deletedAt"])
+@Index("IX_depositForBurn_chainId_blockNumber", ["chainId", "blockNumber"])
 export class DepositForBurn {
   @PrimaryGeneratedColumn()
   id: number;
