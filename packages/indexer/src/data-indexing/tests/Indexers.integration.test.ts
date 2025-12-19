@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
-import { startArbitrumIndexing } from "../service/indexing";
+import { startChainIndexing } from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { entities, utils, DataSourceType } from "@repo/indexer-database";
@@ -11,6 +11,7 @@ import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { createPublicClient, http, PublicClient } from "viem";
 import { arbitrum, arbitrumSepolia } from "viem/chains";
+import { CCTP_PROTOCOL } from "../service/config";
 
 // Setup real clients for fetching data
 // Setup generic client for fetching data
@@ -164,12 +165,13 @@ describe("Websocket Subscription", () => {
     );
 
     // Start the Indexer with the real repository
-    startArbitrumIndexing({
+    startChainIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
-      testNet: false,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [CCTP_PROTOCOL],
     });
 
     // Wait for the indexer to subscribe
@@ -228,12 +230,13 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    startArbitrumIndexing({
+    startChainIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
-      testNet: false,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [CCTP_PROTOCOL],
     });
 
     await server.waitForSubscription();
@@ -288,12 +291,13 @@ describe("Websocket Subscription", () => {
     );
 
     // Start the Indexer
-    startArbitrumIndexing({
+    startChainIndexing({
       repo: blockchainRepository,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
-      testNet: false, // Arbitrum One
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [CCTP_PROTOCOL],
     });
 
     await server.waitForSubscription();

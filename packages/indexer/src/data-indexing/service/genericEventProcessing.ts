@@ -115,7 +115,6 @@ export const processEvent = async <
             `${(entry.data as any).constructor.name}#${(entry.data as any).id}`,
         )
         .join(", ")}`,
-      notificationPath: "across-indexer-error",
     });
   } catch (error) {
     logger.error({
