@@ -301,6 +301,39 @@ export class DepositsService {
       oftSentQueryBuilder.andWhere("1 = 0");
     }
 
+    if (params.startBlock) {
+      fundsDepositedQueryBuilder.andWhere(
+        "deposit.blockNumber >= :startBlock",
+        {
+          startBlock: params.startBlock,
+        },
+      );
+      depositForBurnQueryBuilder.andWhere(
+        "depositForBurn.blockNumber >= :startBlock",
+        {
+          startBlock: params.startBlock,
+        },
+      );
+      oftSentQueryBuilder.andWhere("oftSent.blockNumber >= :startBlock", {
+        startBlock: params.startBlock,
+      });
+    }
+
+    if (params.endBlock) {
+      fundsDepositedQueryBuilder.andWhere("deposit.blockNumber <= :endBlock", {
+        endBlock: params.endBlock,
+      });
+      depositForBurnQueryBuilder.andWhere(
+        "depositForBurn.blockNumber <= :endBlock",
+        {
+          endBlock: params.endBlock,
+        },
+      );
+      oftSentQueryBuilder.andWhere("oftSent.blockNumber <= :endBlock", {
+        endBlock: params.endBlock,
+      });
+    }
+
     // Calculate upper bound for fetching records from each query
     // We fetch more than needed to ensure we have enough after sorting
     const skip = params.skip || 0;

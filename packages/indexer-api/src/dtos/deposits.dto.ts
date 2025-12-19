@@ -38,6 +38,8 @@ export const DepositsParams = s.object({
   integratorId: s.optional(s.string()),
   status: s.optional(s.enums(Object.values(entities.RelayStatus))),
   depositType: s.optional(DepositType), // Filter by deposit type: "across" (V3FundsDeposited), "cctp" (DepositForBurn), or "oft" (OFTSent)
+  startBlock: s.optional(stringToInt),
+  endBlock: s.optional(stringToInt),
   // some kind of pagination options, skip could be the start point
   skip: s.optional(stringToInt),
   // pagination limit, how many to return after the start, note we convert string to number
