@@ -47,13 +47,18 @@ import { CHAIN_IDs } from "@across-protocol/constants";
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
  */
-export interface SupportedProtocol<TEventEntity, TDb, TPayload, TPreprocessed> {
+export interface SupportedProtocols<
+  TEventEntity,
+  TDb,
+  TPayload,
+  TPreprocessed,
+> {
   /**
    * Returns the list of event configurations for this protocol.
    * "TPreprocessed extends any" forces TypeScript to distribute the Union.
    * It means: "Allow an array where items can be Handler<Deposit> OR Handler<Message>".
    */
-  getEvents: (
+  getEventHandlers: (
     testNet: boolean,
     logger: Logger,
   ) => Array<
@@ -70,13 +75,13 @@ export interface SupportedProtocol<TEventEntity, TDb, TPayload, TPreprocessed> {
  * @template IndexerEventPayload The type of the event payload from the event listener.
  * @template EventArgs The type of the preprocessed data.
  */
-export const CCTP_PROTOCOL: SupportedProtocol<
+export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
   EventArgs
 > = {
-  getEvents: (testNet: boolean, logger: Logger) => [
+  getEventHandlers: (testNet: boolean, logger: Logger) => [
     {
       config: {
         address: testNet
@@ -127,11 +132,11 @@ export const CCTP_PROTOCOL: SupportedProtocol<
 
 /**
  * Configuration for supported protocols on different chains.
- * @template Record<number, SupportedProtocol<Partial<typeof Entity>, BlockchainEventRepository, IndexerEventPayload, EventArgs>[]> The type of the supported protocols.
+ * @template Record<number, SupportedProtocols<Partial<typeof Entity>, BlockchainEventRepository, IndexerEventPayload, EventArgs>[]> The type of the supported protocols.
  */
 export const CHAIN_PROTOCOLS: Record<
   number,
-  SupportedProtocol<
+  SupportedProtocols<
     Partial<typeof Entity>,
     BlockchainEventRepository,
     IndexerEventPayload,

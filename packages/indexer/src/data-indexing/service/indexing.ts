@@ -43,7 +43,7 @@ import {
   MessageSentArgs,
   MessageReceivedArgs,
 } from "../model/eventTypes";
-import { CHAIN_PROTOCOLS, SupportedProtocol } from "./config";
+import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -66,7 +66,7 @@ export interface StartIndexerRequest<
   sigterm?: AbortSignal;
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
-  protocols: SupportedProtocol<TEventEntity, TDb, TPayload, TPreprocessed>[];
+  protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
 }
 
 export async function startChainIndexing<
@@ -82,7 +82,7 @@ export async function startChainIndexing<
   // We pass the logger and testNet flag to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
   const events = protocols.flatMap((protocol) =>
-    protocol.getEvents(!!testNet, logger),
+    protocol.getEventHandlers(!!testNet, logger),
   );
 
   // 2. Build the concrete configuration
