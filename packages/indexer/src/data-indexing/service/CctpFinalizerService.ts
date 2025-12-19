@@ -5,7 +5,7 @@ import { RepeatableTask } from "../../generics";
 import { DataSource, entities } from "@repo/indexer-database";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { PubSubService } from "../../pubsub/service";
-import { Config } from "../../parseEnv";
+import { Config, CctpFinalizerMode } from "../../parseEnv";
 import {
   fetchAttestationsForTxn,
   getCctpDestinationChainFromDomain,
@@ -33,9 +33,10 @@ export class CctpFinalizerServiceManager {
         this.logger,
         this.postgres,
         this.pubSubService,
+        this.config,
       );
       await this.lighterFinalizerService.start(CCTP_FINALIZER_DELAY_SECONDS);
-      if (!this.config.enableCctpFinalizer) {
+      if (this.config.cctpFinalizerMode === CctpFinalizerMode.Off) {
         this.logger.warn({
           at: "Indexer#CctpFinalizerServiceManager#start",
           message: "CCTP finalizer is disabled",
@@ -48,7 +49,9 @@ export class CctpFinalizerServiceManager {
         this.logger,
         this.postgres,
         this.pubSubService,
+        this.config,
       );
+      // Start the service if we are not in 'off' mode (implied by the early return above)
       await this.service.start(CCTP_FINALIZER_DELAY_SECONDS);
     } catch (error) {
       this.logger.error({
@@ -74,6 +77,7 @@ class LighterCctpFinalizerService extends RepeatableTask {
     logger: winston.Logger,
     private readonly postgres: DataSource,
     private readonly pubSubService: PubSubService,
+    private readonly config: Config,
   ) {
     super(logger, "lighter-cctp-finalizer-service");
   }
@@ -214,27 +218,32 @@ class LighterCctpFinalizerService extends RepeatableTask {
           { chainId, blockNumber: burnEvent.blockNumber, transactionHash },
         )
         .execute();
-      this.logger.debug({
-        at: "LighterCctpFinalizerService#publishBurnEvent",
-        message: "Publishing burn event to pubsub",
-        chainId,
-        transactionHash,
-        minFinalityThreshold,
-        blockTimestamp,
-        attestationTimeSeconds,
-        elapsedSeconds,
-      });
-      const destinationChainId = getCctpDestinationChainFromDomain(
-        burnEvent.destinationDomain,
-      );
-      await this.pubSubService.publishCctpFinalizerMessage(
-        transactionHash,
-        Number(chainId),
-        message,
-        attestation,
-        destinationChainId,
-        signature,
-      );
+
+      if (this.config.cctpFinalizerMode === CctpFinalizerMode.Full) {
+        this.logger.debug({
+          at: "LighterCctpFinalizerService#publishBurnEvent",
+          message: "Publishing burn event to pubsub",
+          chainId,
+          transactionHash,
+          minFinalityThreshold,
+          blockTimestamp,
+          attestationTimeSeconds,
+          elapsedSeconds,
+        });
+
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          burnEvent.destinationDomain,
+        );
+
+        await this.pubSubService.publishCctpFinalizerMessage(
+          transactionHash,
+          Number(chainId),
+          message,
+          attestation,
+          destinationChainId,
+          signature,
+        );
+      }
 
       const jobValues: {
         attestation: string;
@@ -278,6 +287,7 @@ class CctpFinalizerService extends RepeatableTask {
     logger: winston.Logger,
     private readonly postgres: DataSource,
     private readonly pubSubService: PubSubService,
+    private readonly config: Config,
   ) {
     super(logger, "cctp-finalizer-service");
   }
@@ -426,27 +436,30 @@ class CctpFinalizerService extends RepeatableTask {
           { chainId, blockNumber: burnEvent.blockNumber, transactionHash },
         )
         .execute();
-      this.logger.debug({
-        at: "CctpFinalizerService#publishBurnEvent",
-        message: "Publishing burn event to pubsub",
-        chainId,
-        transactionHash,
-        minFinalityThreshold,
-        blockTimestamp,
-        attestationTimeSeconds,
-        elapsedSeconds,
-      });
-      const destinationChainId = getCctpDestinationChainFromDomain(
-        burnEvent.destinationDomain,
-      );
-      await this.pubSubService.publishCctpFinalizerMessage(
-        transactionHash,
-        Number(chainId),
-        message,
-        attestation,
-        destinationChainId,
-        signature,
-      );
+
+      if (this.config.cctpFinalizerMode === CctpFinalizerMode.Full) {
+        this.logger.debug({
+          at: "CctpFinalizerService#publishBurnEvent",
+          message: "Publishing burn event to pubsub",
+          chainId,
+          transactionHash,
+          minFinalityThreshold,
+          blockTimestamp,
+          attestationTimeSeconds,
+          elapsedSeconds,
+        });
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          burnEvent.destinationDomain,
+        );
+        await this.pubSubService.publishCctpFinalizerMessage(
+          transactionHash,
+          Number(chainId),
+          message,
+          attestation,
+          destinationChainId,
+          signature,
+        );
+      }
 
       const jobValues: {
         attestation: string;
