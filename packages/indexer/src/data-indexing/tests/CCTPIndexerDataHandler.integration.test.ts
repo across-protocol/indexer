@@ -484,6 +484,13 @@ describe("CCTPIndexerDataHandler", () => {
     // // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
     setupTestForChainId(CHAIN_IDs.ARBITRUM);
 
+    // We need to stub the contract address as the event we are fetching is exclusive to this address and the contract address can change with bumps of the across contracts beta package
+    stubContractUtils(
+      "SponsoredCCTPSrcPeriphery",
+      "0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7",
+      CHAIN_IDs.ARBITRUM,
+    );
+
     const blockRange: BlockRange = {
       from: blockNumber,
       to: blockNumber,
