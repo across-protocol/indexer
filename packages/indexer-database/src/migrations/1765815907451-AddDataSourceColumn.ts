@@ -17,6 +17,9 @@ export class AddDataSourceColumn1765815907451 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "evm"."message_received" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."mint_and_withdraw" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -29,7 +32,9 @@ export class AddDataSourceColumn1765815907451 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "evm"."deposit_for_burn" DROP COLUMN "dataSource"`,
     );
-
+    await queryRunner.query(
+      `ALTER TABLE "evm"."mint_and_withdraw" DROP COLUMN "dataSource"`,
+    );
     await queryRunner.query(`DROP TYPE "evm"."datasource_type_enum"`);
   }
 }

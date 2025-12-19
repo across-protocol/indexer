@@ -30,7 +30,15 @@ export interface MessageReceivedArgs {
   messageBody: `0x${string}`;
 }
 
+export interface MintAndWithdrawArgs {
+  mintRecipient: `0x${string}`;
+  amount: bigint;
+  mintToken: `0x${string}`;
+  feeCollected: bigint;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
-  | MessageReceivedArgs;
+  | MessageReceivedArgs
+  | MintAndWithdrawArgs;
