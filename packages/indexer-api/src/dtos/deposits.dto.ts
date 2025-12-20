@@ -158,6 +158,7 @@ export type DepositReturnType = {
 
   // from fill
   relayer?: string;
+  fillBlockNumber?: number;
   fillBlockTimestamp?: Date;
   fillTx?: string | null; // Renamed from fillTransactionHash
 
