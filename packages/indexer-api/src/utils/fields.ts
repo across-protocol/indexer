@@ -46,6 +46,7 @@ export const RelayHashInfoFields = [
 
 export const FilledRelayFields = [
   `fill.relayer::varchar as "relayer"`,
+  `fill."blockNumber"::integer as "fillBlockNumber"`,
   `fill."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
   `fill."transactionHash"::varchar as "fillTx"`, // Renamed field
 ];
@@ -102,6 +103,7 @@ export const DepositForBurnRelayHashInfoFields = [
 
 export const DepositForBurnFilledRelayFields = [
   `NULL::varchar as "relayer"`,
+  `"mintAndWithdraw"."blockNumber"::integer as "fillBlockNumber"`,
   `"mintAndWithdraw"."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
   `"mintAndWithdraw"."transactionHash"::varchar as "fillTx"`,
 ];
@@ -159,6 +161,7 @@ export const OftSentRelayHashInfoFields = [
 
 export const OftSentFilledRelayFields = [
   `NULL::varchar as "relayer"`,
+  `"oftReceived"."blockNumber"::integer as "fillBlockNumber"`,
   `"oftReceived"."blockTimestamp"::timestamp as "fillBlockTimestamp"`,
   `"oftReceived"."transactionHash"::varchar as "fillTx"`,
 ];
