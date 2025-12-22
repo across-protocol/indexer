@@ -245,6 +245,9 @@ describe("Deposits Service Tests", () => {
       swapData.swapTokenAmount,
     );
     expect(queriedDeposit?.relayer).to.equal(filledRelayData.relayer);
+    expect(queriedDeposit?.fillBlockNumber).to.equal(
+      filledRelayData.blockNumber,
+    );
     expect(queriedDeposit?.status).to.equal(relayHashInfoData.status);
   });
 
@@ -478,6 +481,7 @@ describe("Deposits Service Tests", () => {
     expect(cctpDeposit?.inputAmount).to.equal("1000000");
     expect(cctpDeposit?.depositor).to.equal("0xdepositor");
     expect(cctpDeposit?.recipient).to.equal("0xrecipient");
+    expect(cctpDeposit?.fillBlockNumber).to.equal(2000);
   });
 
   it("should return OFTSent deposits with OFTReceived", async () => {
@@ -528,5 +532,6 @@ describe("Deposits Service Tests", () => {
     expect(oftDeposit?.depositor).to.equal("0xfrom");
     expect(oftDeposit?.inputAmount).to.equal("3000000");
     expect(oftDeposit?.outputAmount).to.equal("2900000");
+    expect(oftDeposit?.fillBlockNumber).to.equal(4000);
   });
 });
