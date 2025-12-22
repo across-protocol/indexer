@@ -19,8 +19,8 @@ describe("Beta Contract Accessors (using provided JSON)", () => {
       expect(utils.isValidEvmAddress(result!.toLowerCase())).to.be.true;
     });
 
-    it("should return undefined if accessed on a chain where it doesn't exist (e.g., Mainnet 1)", () => {
-      expect(getSponsoredCCTPDstPeripheryAddress(1)).to.be.undefined;
+    it("should return undefined if accessed on a chain where it doesn't exist (e.g., Arbitrum 42161)", () => {
+      expect(getSponsoredCCTPDstPeripheryAddress(42161)).to.be.undefined;
     });
   });
 

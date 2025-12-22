@@ -362,7 +362,13 @@ function getBetaContractAddress(
  */
 export const getSponsoredCCTPDstPeripheryAddress = (
   chainId: number = CHAIN_IDs.HYPEREVM,
-) => getBetaContractAddress("SponsoredCCTPDstPeriphery", chainId);
+) => {
+  if (chainId === CHAIN_IDs.MAINNET) {
+    // Temporary until deployments are added to the contracts package
+    return "0x5616194d65638086a3191B1fEF436f503ff329eC";
+  }
+  return getBetaContractAddress("SponsoredCCTPDstPeriphery", chainId);
+};
 
 /**
  * Gets the Sponsored CCTP Source Periphery address.
