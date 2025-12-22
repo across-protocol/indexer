@@ -375,18 +375,13 @@ export const getSponsoredCCTPDstPeripheryAddress = (
  * * @param {number} chainId - The chain ID to fetch the address for.
  * @returns {string} The deployed contract address.
  */
-export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) => {
-  if (chainId === CHAIN_IDs.ARBITRUM) {
-    // temporary for staging testing
-    return "0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7";
-  }
-  return getBetaContractAddress(
+export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) =>
+  getBetaContractAddress(
     sdk.utils.chainIsSvm(chainId)
       ? "SponsoredCctpSrcPeriphery"
       : "SponsoredCCTPSrcPeriphery",
     chainId,
   );
-};
 
 /**
  * Gets the Sponsored OFT Source Periphery address.
