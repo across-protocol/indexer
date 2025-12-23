@@ -898,7 +898,8 @@ export class DepositsService {
       if (destinationChainId === CHAIN_IDs.HYPEREVM) {
         actionsTargetChainId = CHAIN_IDs.HYPERCORE;
       } else if (destinationChainId === CHAIN_IDs.MAINNET) {
-        actionsTargetChainId = 2337;
+        // after FE supports it, it should be changed to 2337
+        actionsTargetChainId = null;
       }
     }
 
