@@ -11,6 +11,7 @@ import {
   DepositForBurnArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  MintAndWithdrawArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
@@ -207,5 +208,24 @@ export const transformMessageReceivedEvent = (
     ).toLowerCase(),
     finalityThresholdExecuted: preprocessed.finalityThresholdExecuted,
     messageBody: preprocessed.messageBody,
+  };
+};
+
+export const transformMintAndWithdrawEvent = (
+  preprocessed: MintAndWithdrawArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.MintAndWithdraw> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = parseInt(base.chainId);
+  const mintRecipient = transformAddress(preprocessed.mintRecipient, chainId);
+  const mintToken = transformAddress(preprocessed.mintToken, chainId);
+
+  return {
+    ...base,
+    mintRecipient: mintRecipient.toLowerCase(),
+    amount: preprocessed.amount.toString(),
+    mintToken: mintToken.toLowerCase(),
+    feeCollected: preprocessed.feeCollected.toString(),
   };
 };

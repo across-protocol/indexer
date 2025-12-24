@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_mintAndWithdraw_chain_block_txn_log", [
@@ -32,6 +33,9 @@ export class MintAndWithdraw {
 
   @Column({ type: "decimal" })
   feeCollected: string;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @Column({ type: "bigint" })
   chainId: string;
