@@ -103,25 +103,25 @@ BUNDLE_EVENTS_SERVICE_START_BLOCK_NUMBER=
 INDEXING_DELAY_SECONDS=
 ```
 
-## Indexer Sandbox
+## Websocket Indexer
 
-The Indexer Sandbox provides a lightweight, isolated environment for developing and testing the push-based indexing system. It runs on `MainSandbox` in `src/main.ts` and is designed for rapid iteration.
+The Websocket Indexer provides a high-performance, push-based indexing system. It runs as an integrated service within the main indexer application.
 
 ### Architecture Overview
 
-The sandbox implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
+The Websocket Indexer implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
 
 The main components are:
 
 - **WebSocket Listener**: Establishes a single WebSocket connection per chain, subscribing to all relevant events. It's a generic service that publishes raw event data.
-- **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In the sandbox, this is called directly by the listener.
+- **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In this implementation, this is called directly by the listener.
 - **Reconciliation Service**: Periodically validates indexed data against the blockchain to ensure data integrity, handling block reorgs and filling gaps.
 
 This decoupled approach improves scalability, reduces resource consumption, and enhances data integrity.
 
 #### Data Flow Diagram
 
-The following diagram illustrates the data flow. Note that while the full architecture can use a message queue (MQ) for maximum resilience, the sandbox implementation features a more direct communication path where the **Listener calls the Processor directly**, and the processor runs independently in the background.
+The following diagram illustrates the data flow. Note that while the full architecture can use a message queue (MQ) for maximum resilience, the current implementation features a more direct communication path where the **Listener calls the Processor directly**, and the processor runs independently in the background.
 
 ```mermaid
 sequenceDiagram
@@ -163,88 +163,69 @@ sequenceDiagram
 ```
 
 ### Getting Started
-
-To run the indexer sandbox, execute the following command from the **root** of the monorepo:
+To run the websocket indexer, execute the following command from the **root** of the monorepo:
 
 ```bash
-pnpm start:indexer-sandbox
+# Enable the WebSocket indexer via environment variable
+ENABLE_WEBSOCKET_INDEXER=true pnpm start:indexer
 ```
 
-This will start the sandbox environment defined in `src/main.ts` under the `MainSandbox` function.
+You can also specify which chains to index using `WS_INDEXER_CHAIN_IDS`.
+
+```bash
+# Example: Index Arbitrum One and Arbitrum Sepolia
+ENABLE_WEBSOCKET_INDEXER=true WS_INDEXER_CHAIN_IDS=42161,421614 pnpm start:indexer
+```
+
+This will start the websocket indexer services as part of the main application startup. The system is configured via `src/data-indexing/service/config.ts`.
 
 ### Development Guide
 
-The sandbox is designed to be easily extensible. Follow these steps to add new chains or events.
+The websocket indexer uses a configuration-driven architecture centrally managed in `src/data-indexing/service/config.ts`.
 
 #### How to Add a New Chain
 
-To index a new blockchain, you need to create a dedicated startup function for it, similar to `startArbitrumIndexer` in `src/data-indexing/service/indexers.ts`.
+To index a new blockchain:
 
-1.  **Create a new function**: For example, `startOptimismIndexer`. This function will contain the specific configuration for that chain.
-2.  **Define the Configuration**: Inside this function, create an `IndexerConfig` object with the `chainId` and `rpcUrl`.
-3.  **Call the new function**: Update the `MainSandbox` function in `src/main.ts` to call your new `startOptimismIndexer` function.
-
-#### How to Add a New Event
-
-To listen to a new event on an existing chain, you need to add an entry to the `events` array within that chain's `IndexerConfig`.
-
-Each event entry is an object with key properties:
-
-- `config`: Defines the event to listen for.
-  - `address`: The contract address emitting the event.
-  - `abi`: The ABI of the event.
-  - `eventName`: The name of the event.
-- `preprocess`: (Optional) A function to extract raw arguments from the event log before filtering.
-- `filter`: (Optional) A function to determine if the event should be processed based on its arguments.
-- `transform`: A function that takes the raw event log and transforms it into the desired database entity format.
-- `store`: A function that saves the transformed event data to the database.
-
-**Example: Adding a `DepositForBurn` Event**
-
-The following example from `startArbitrumIndexer` shows how to configure the indexer to listen for CCTP's `DepositForBurn` event.
+1.  Open `src/data-indexing/service/config.ts`.
+2.  Add the new chain ID to the `CHAIN_PROTOCOLS` object.
+3.  Assign it the list of protocols you want to index (e.g., `[CCTP_PROTOCOL]`).
 
 ```typescript
-// Located in: src/data-indexing/service/indexers.ts
-
-const ethConfig: IndexerConfig<
-  Partial<typeof Entity>,
-  dbUtils.BlockchainEventRepository,
-  IndexerEventPayload
-> = {
-  chainId: CHAIN_IDs.ARBITRUM,
-  rpcUrl,
-  events: [
-    {
-      config: {
-        address: TOKEN_MESSENGER_ADDRESS_MAINNET,
-        abi: CCTP_DEPOSIT_FOR_BURN_ABI,
-        eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
-      },
-      preprocess: extractRawArgs<DepositForBurnArgs>,
-      filter: (args, payload) => filterDepositForBurnEvents(args, payload),
-      transform: (args, payload) =>
-        transformDepositForBurnEvent(args, payload, logger),
-      store: storeDepositForBurnEvent,
-    },
-    // To add another event, add a new object here
-  ],
+export const CHAIN_PROTOCOLS: Record<number, SupportedProtocols<...>> = {
+  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL], // Added Optimism
 };
 ```
 
-To add a new event, you would:
+#### How to Add a New Event
 
-1.  Define a new `transform` function (e.g., `myEventTransformer`).
-2.  Define a new `store` function (e.g., `storeMyEvent`).
-3.  Add a new object to the `events` array with the corresponding `config`, `transform`, and `store` values.
+To listen to a new event (or protocol):
 
-### Testing the Sandbox
+1.  Define a new `SupportedProtocols` object (or update an existing one like `CCTP_PROTOCOL`).
+2.  Implement the `getEventHandlers` function.
+3.  Return an array of event handler configurations, where each handler includes:
+    *   `config`: Contract address, ABI, and event name.
+    *   `preprocess`, `filter`, `transform`, `store`: The pure functions for the pipeline.
 
-Tests for the indexer sandbox are part of the integration test suite. The primary test file is located at `packages/indexer/src/data-indexing/tests/Indexers.integration.test.ts`.
+```typescript
+export const MY_NEW_PROTOCOL: SupportedProtocols<...> = {
+  getEventHandlers: (testNet, logger) => [
+    {
+      config: { ... },
+      preprocess: ...,
+      filter: ...,
+      transform: ...,
+      store: ...
+    }
+  ]
+};
+```
 
-To run the tests, execute the integration test command from the `packages/indexer` directory:
+### Testing
+
+Tests for the websocket indexer are part of the integration test suite.
 
 ```bash
 pnpm test:integration
 ```
-
-This will validate the functionality of the chain-specific indexers, like `startArbitrumIndexer`, ensuring that events are correctly processed and stored.
