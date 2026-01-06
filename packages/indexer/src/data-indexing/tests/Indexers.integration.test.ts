@@ -10,7 +10,7 @@ import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { createPublicClient, http, PublicClient } from "viem";
-import { arbitrum, arbitrumSepolia, mainnet } from "viem/chains";
+import { arbitrum, arbitrumSepolia, mainnet, optimism } from "viem/chains";
 import { CCTP_PROTOCOL } from "../service/config";
 
 // Setup real clients for fetching data
@@ -34,13 +34,18 @@ const getTestPublicClient = (chainId: number): PublicClient => {
     transportUrl =
       process.env.RPC_PROVIDER_URLS_1?.split(",")[0] ||
       "https://eth.llamarpc.com";
+  } else if (chainId === CHAIN_IDs.OPTIMISM) {
+    chain = optimism;
+    transportUrl =
+      process.env.RPC_PROVIDER_URLS_10?.split(",")[0] ||
+      "https://mainnet.optimism.io";
   } else {
     throw new Error(`Unsupported chainId for test client: ${chainId}`);
   }
   return createPublicClient({
     chain,
     transport: http(transportUrl),
-  });
+  }) as PublicClient;
 };
 
 const fetchAndMockTransaction = async (
@@ -385,8 +390,58 @@ describe("Websocket Subscription", () => {
       chainId: CHAIN_IDs.MAINNET,
       blockNumber: Number(block.number),
       transactionHash: txHash,
-      // Values provided by user
       burnToken: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      amount: 1000000,
+      depositor: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      mintRecipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      destinationDomain: 3,
+      destinationTokenMessenger: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
+      destinationCaller: "0x72adb07a487f38321b6665c02d289c413610b081",
+      maxFee: 100,
+      minFinalityThreshold: 1000,
+      hookData: "0x",
+    });
+  }).timeout(20000);
+
+  it("should ingest the DepositForBurn event from Optimism tx 0x56e0...99c3", async () => {
+    const txHash =
+      "0x56e01f96998b7a7074a6866aacf3fb987a1802c7abeb96d6354f8b9b699c3941";
+
+    const client = getTestPublicClient(CHAIN_IDs.OPTIMISM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      client,
+      txHash,
+    );
+
+    // Start the Indexer
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.OPTIMISM,
+      protocols: [CCTP_PROTOCOL],
+    });
+
+    await server.waitForSubscription();
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const depositRepo = dataSource.getRepository(entities.DepositForBurn);
+    const savedEvent = await depositRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.OPTIMISM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      burnToken: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
       amount: 1000000,
       depositor: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
       mintRecipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
