@@ -12,14 +12,14 @@ import {
   isProductionNetwork,
 } from "../adapter/cctp-v2/service";
 
+export const CCTP_FINALIZER_DELAY_SECONDS = 10;
+export const CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS = 5 * 60; // 5 minutes
 const UNFILLED_BURN_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
-
 const UNFILLED_BURN_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
 
-export const CCTP_FINALIZER_DELAY_SECONDS = 10;
-
 export class CctpFinalizerServiceManager {
-  private service: RepeatableTask;
+  private finalizerService: RepeatableTask;
+  private monitorService: RepeatableTask;
   private pubSubService: PubSubService;
 
   constructor(
@@ -40,12 +40,20 @@ export class CctpFinalizerServiceManager {
       }
 
       this.pubSubService = new PubSubService(this.config);
-      this.service = new CctpFinalizerService(
+      this.finalizerService = new CctpFinalizerService(
         this.logger,
         this.postgres,
         this.pubSubService,
       );
-      await this.service.start(CCTP_FINALIZER_DELAY_SECONDS);
+      this.monitorService = new CctpUnfinalizedBurnMonitorService(
+        this.logger,
+        this.postgres,
+      );
+
+      await Promise.all([
+        this.finalizerService.start(CCTP_FINALIZER_DELAY_SECONDS),
+        this.monitorService.start(CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS),
+      ]);
     } catch (error) {
       this.logger.error({
         at: "Indexer#CctpFinalizerServiceManager#start",
@@ -58,7 +66,8 @@ export class CctpFinalizerServiceManager {
   }
 
   public async stopGracefully() {
-    this.service?.stop();
+    this.finalizerService?.stop();
+    this.monitorService?.stop();
   }
 }
 
@@ -135,9 +144,6 @@ class CctpFinalizerService extends RepeatableTask {
           await this.publishBurnEvent(burnEvent);
         }
       }
-
-      // Check for burn events that should have been finalized but haven't been
-      await this.checkForUnfinalizedBurnEvents();
     } catch (error) {
       this.logger.error({
         at: "CctpFinalizerService#taskLogic",
@@ -152,96 +158,6 @@ class CctpFinalizerService extends RepeatableTask {
   protected initialize(): Promise<void> {
     // Empty because there's no need to initialize dependencies for now.
     return Promise.resolve();
-  }
-
-  /**
-   * Checks for CCTP burn events that have been published to the finalizer but haven't
-   * been finalized on the destination chain within the expected time threshold.
-   * Logs an error for each unfinalized burn event found.
-   */
-  private async checkForUnfinalizedBurnEvents(): Promise<void> {
-    try {
-      const now = Date.now();
-      const minAgeTime = new Date(now - UNFILLED_BURN_THRESHOLD_SECONDS * 1000);
-      const maxAgeTime = new Date(now - UNFILLED_BURN_MAX_AGE_SECONDS * 1000);
-
-      // Find CctpFinalizerJobs created within the window (between maxAgeTime and minAgeTime)
-      // and check if they have a corresponding MessageReceived event on the destination chain
-      const stuckJobs = await this.postgres
-        .createQueryBuilder(entities.CctpFinalizerJob, "job")
-        .innerJoinAndSelect("job.burnEvent", "burnEvent")
-        .leftJoin(
-          entities.MessageSent,
-          "messageSent",
-          "messageSent.transactionHash = burnEvent.transactionHash AND messageSent.chainId = burnEvent.chainId",
-        )
-        .where("job.createdAt < :minAgeTime", { minAgeTime })
-        .andWhere("job.createdAt > :maxAgeTime", { maxAgeTime })
-        .andWhere("burnEvent.deletedAt IS NULL")
-        .addSelect("messageSent.sourceDomain", "sourceDomain")
-        .addSelect("messageSent.nonce", "nonce")
-        .addSelect("messageSent.destinationDomain", "destinationDomain")
-        .getRawAndEntities();
-
-      for (let i = 0; i < stuckJobs.entities.length; i++) {
-        const job = stuckJobs.entities[i]!;
-        const raw = stuckJobs.raw[i];
-
-        if (!raw?.nonce || !raw?.sourceDomain || !raw?.destinationDomain) {
-          // Skip if we couldn't find the MessageSent event (this should never happen)
-          continue;
-        }
-
-        const { nonce, sourceDomain, destinationDomain } = raw;
-
-        const isProduction = isProductionNetwork(Number(job.burnEvent.chainId));
-        const destinationChainId = getCctpDestinationChainFromDomain(
-          destinationDomain,
-          isProduction,
-        );
-
-        const messageReceived = await this.postgres
-          .createQueryBuilder(entities.MessageReceived, "mr")
-          .where("mr.sourceDomain = :sourceDomain", { sourceDomain })
-          .andWhere("mr.nonce = :nonce", { nonce })
-          .andWhere("mr.chainId = :destinationChainId", {
-            destinationChainId: destinationChainId.toString(),
-          })
-          .andWhere("mr.deletedAt IS NULL")
-          .getOne();
-
-        if (!messageReceived) {
-          const elapsedMinutes = Math.round(
-            (Date.now() - job.createdAt.getTime()) / 1000 / 60,
-          );
-
-          this.logger.error({
-            at: "CctpFinalizerService#checkForUnfinalizedBurnEvents",
-            message: `CCTP burn event has not been finalized after ${elapsedMinutes} minutes`,
-            notificationPath: "across-indexer-error",
-            sourceChainId: job.burnEvent.chainId,
-            destinationChainId,
-            burnTransactionHash: job.burnEvent.transactionHash,
-            burnBlockNumber: job.burnEvent.blockNumber,
-            amount: job.burnEvent.amount,
-            depositor: job.burnEvent.depositor,
-            mintRecipient: job.burnEvent.mintRecipient,
-            sourceDomain,
-            nonce,
-            jobCreatedAt: job.createdAt,
-            elapsedMinutes,
-          });
-        }
-      }
-    } catch (error) {
-      this.logger.error({
-        at: "CctpFinalizerService#checkForUnfinalizedBurnEvents",
-        message: "Error checking for unfinalized burn events",
-        notificationPath: "across-indexer-error",
-        errorJson: JSON.stringify(error),
-        error,
-      });
-    }
   }
 
   private async publishBurnEvent(
@@ -364,6 +280,98 @@ class CctpFinalizerService extends RepeatableTask {
         error,
       });
     }
+  }
+}
+
+/**
+ * @description Monitors for CCTP burn events that have been published to the finalizer
+ * but haven't been finalized on the destination chain within the expected timeframe.
+ * Runs every 5 minutes to detect and alert on stuck burns.
+ */
+class CctpUnfinalizedBurnMonitorService extends RepeatableTask {
+  constructor(
+    logger: winston.Logger,
+    private readonly postgres: DataSource,
+  ) {
+    super(logger, "cctp-unfinalized-burn-monitor");
+  }
+
+  protected async taskLogic(): Promise<void> {
+    try {
+      const now = Date.now();
+      const minAgeTime = new Date(now - UNFILLED_BURN_THRESHOLD_SECONDS * 1000);
+      const maxAgeTime = new Date(now - UNFILLED_BURN_MAX_AGE_SECONDS * 1000);
+
+      const unfinalizedBurns = await this.postgres
+        .createQueryBuilder(entities.CctpFinalizerJob, "job")
+        .innerJoinAndSelect("job.burnEvent", "burnEvent")
+        .innerJoin(
+          entities.MessageSent,
+          "messageSent",
+          "messageSent.transactionHash = burnEvent.transactionHash AND messageSent.chainId = burnEvent.chainId",
+        )
+        .leftJoin(
+          entities.MessageReceived,
+          "messageReceived",
+          "messageReceived.sourceDomain = messageSent.sourceDomain AND messageReceived.nonce = messageSent.nonce",
+        )
+        .where("job.createdAt < :minAgeTime", { minAgeTime })
+        .andWhere("job.createdAt > :maxAgeTime", { maxAgeTime })
+        .andWhere("messageReceived.id IS NULL")
+        .addSelect("messageSent.sourceDomain", "sourceDomain")
+        .addSelect("messageSent.nonce", "nonce")
+        .addSelect("messageSent.destinationDomain", "destinationDomain")
+        .getRawAndEntities();
+
+      for (let i = 0; i < unfinalizedBurns.entities.length; i++) {
+        const job = unfinalizedBurns.entities[i]!;
+        const raw = unfinalizedBurns.raw[i];
+
+        if (!raw?.sourceDomain || !raw?.destinationDomain) {
+          continue;
+        }
+
+        const { nonce, sourceDomain, destinationDomain } = raw;
+        const isProduction = isProductionNetwork(Number(job.burnEvent.chainId));
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          destinationDomain,
+          isProduction,
+        );
+
+        const elapsedMinutes = Math.round(
+          (now - job.createdAt.getTime()) / 1000 / 60,
+        );
+
+        this.logger.error({
+          at: "CctpUnfinalizedBurnMonitorService#taskLogic",
+          message: `CCTP burn event has not been finalized after ${elapsedMinutes} minutes`,
+          notificationPath: "across-indexer-error",
+          sourceChainId: job.burnEvent.chainId,
+          destinationChainId,
+          burnTransactionHash: job.burnEvent.transactionHash,
+          burnBlockNumber: job.burnEvent.blockNumber,
+          amount: job.burnEvent.amount,
+          depositor: job.burnEvent.depositor,
+          mintRecipient: job.burnEvent.mintRecipient,
+          sourceDomain,
+          nonce,
+          jobCreatedAt: job.createdAt,
+          elapsedMinutes,
+        });
+      }
+    } catch (error) {
+      this.logger.error({
+        at: "CctpUnfinalizedBurnMonitorService#taskLogic",
+        message: "Error checking for unfinalized burn events",
+        notificationPath: "across-indexer-error",
+        errorJson: JSON.stringify(error),
+        error,
+      });
+    }
+  }
+
+  protected initialize(): Promise<void> {
+    return Promise.resolve();
   }
 }
 
