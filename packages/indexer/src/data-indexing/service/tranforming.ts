@@ -115,7 +115,7 @@ export const transformDepositForBurnEvent = (
   return {
     ...base,
     amount: preprocessed.amount.toString(),
-    burnToken: preprocessed.burnToken,
+    burnToken: preprocessed.burnToken.toLowerCase(),
     depositor: preprocessed.depositor.toLowerCase(),
     destinationCaller: destinationCaller.toLowerCase(),
     maxFee: preprocessed.maxFee.toString(),
