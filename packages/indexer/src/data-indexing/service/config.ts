@@ -61,15 +61,9 @@ import {
   OFT_SENT_ABI,
   OFT_RECEIVED_ABI,
 } from "../model/abis";
-import {
-  OFT_SENT_EVENT_NAME,
-  OFT_RECEIVED_EVENT_NAME,
-} from "./constants";
+import { OFT_SENT_EVENT_NAME, OFT_RECEIVED_EVENT_NAME } from "./constants";
 import { OFTSentArgs, OFTReceivedArgs } from "../model/eventTypes";
-import {
-  filterOFTSentEvents,
-  filterOFTReceivedEvents,
-} from "./filtering";
+import { filterOFTSentEvents, filterOFTReceivedEvents } from "./filtering";
 import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
