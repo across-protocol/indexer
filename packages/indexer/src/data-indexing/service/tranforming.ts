@@ -331,7 +331,7 @@ export const transformOFTReceivedEvent = (
     chainId: base.chainId.toString(),
     guid: preprocessed.guid,
     srcEid: preprocessed.srcEid,
-    toAddress: preprocessed.toAddress.toLowerCase(),
+    toAddress: preprocessed.toAddress,
     amountReceivedLD: preprocessed.amountReceivedLD.toString(),
     token: tokenAddress,
   };

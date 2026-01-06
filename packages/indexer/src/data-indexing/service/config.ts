@@ -50,13 +50,31 @@ import {
   storeMintAndWithdrawEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
+  storeOFTSentEvent,
+  storeOFTReceivedEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
 import {
   SWAP_FLOW_FINALIZED_ABI,
   SWAP_FLOW_INITIALIZED_ABI,
+  OFT_SENT_ABI,
+  OFT_RECEIVED_ABI,
 } from "../model/abis";
+import {
+  OFT_SENT_EVENT_NAME,
+  OFT_RECEIVED_EVENT_NAME,
+} from "./constants";
+import { OFTSentArgs, OFTReceivedArgs } from "../model/eventTypes";
+import {
+  filterOFTSentEvents,
+  filterOFTReceivedEvents,
+} from "./filtering";
+import {
+  transformOFTSentEvent,
+  transformOFTReceivedEvent,
+} from "./tranforming";
+import { getOftChainConfiguration } from "../adapter/oft/service";
 /**
  * Configuration for a complete indexing subsystem.
  * @template TEventEntity The type of the structured database entity.
@@ -205,6 +223,54 @@ export const SPONSORED_BRIDGING_PROTOCOL: SupportedProtocols<
 };
 
 /**
+ * Configuration for OFT (Omnichain Fungible Token) protocol.
+ * Unlike CCTP, OFT uses chain-specific adapter addresses that are looked up dynamically
+ * using the chainId parameter passed to getEventHandlers.
+ */
+export const OFT_PROTOCOL: SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: (logger: Logger, chainId: number) => {
+    // Get chain-specific OFT configuration
+    const oftConfig = getOftChainConfiguration(chainId);
+    const adapterAddress = oftConfig.tokens[0]!.adapter;
+    const tokenAddress = oftConfig.tokens[0]!.token;
+
+    return [
+      {
+        config: {
+          address: adapterAddress as `0x${string}`,
+          abi: OFT_SENT_ABI,
+          eventName: OFT_SENT_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<OFTSentArgs>,
+        filter: (args: OFTSentArgs, payload: IndexerEventPayload) =>
+          filterOFTSentEvents(args, payload),
+        transform: (args: OFTSentArgs, payload: IndexerEventPayload) =>
+          transformOFTSentEvent(args, payload, logger, tokenAddress),
+        store: storeOFTSentEvent,
+      },
+      {
+        config: {
+          address: adapterAddress as `0x${string}`,
+          abi: OFT_RECEIVED_ABI,
+          eventName: OFT_RECEIVED_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<OFTReceivedArgs>,
+        filter: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
+          filterOFTReceivedEvents(args, payload),
+        transform: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
+          transformOFTReceivedEvent(args, payload, logger, tokenAddress),
+        store: storeOFTReceivedEvent,
+      },
+    ];
+  },
+};
+
+/**
  * Configuration for supported protocols on different chains.
  * @template Record<number, SupportedProtocols<Partial<typeof Entity>, BlockchainEventRepository, IndexerEventPayload, EventArgs>[]> The type of the supported protocols.
  */
@@ -217,7 +283,7 @@ export const CHAIN_PROTOCOLS: Record<
     EventArgs
   >[]
 > = {
-  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL, OFT_PROTOCOL],
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: [CCTP_PROTOCOL],
   [CHAIN_IDs.HYPEREVM]: [CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL],
   [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL],
