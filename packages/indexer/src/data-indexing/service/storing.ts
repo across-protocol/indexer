@@ -60,3 +60,33 @@ export const storeMessageReceivedEvent: Storer<
     [],
   );
 };
+
+export const storeSwapFlowInitializedEvent: Storer<
+  Partial<entities.SwapFlowInitialized>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.SwapFlowInitialized>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.SwapFlowInitialized>(
+    entities.SwapFlowInitialized,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowInitialized)[],
+    [],
+  );
+};
+
+export const storeSwapFlowFinalizedEvent: Storer<
+  Partial<entities.SwapFlowFinalized>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.SwapFlowFinalized>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.SwapFlowFinalized>(
+    entities.SwapFlowFinalized,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowFinalized)[],
+    [],
+  );
+};
