@@ -1,4 +1,5 @@
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
+import { getSponsoredCCTPDstPeripheryAddress } from "../../utils/contractUtils";
 import {
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
