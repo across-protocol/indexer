@@ -406,6 +406,7 @@ describe("Websocket Subscription", () => {
       coreAmountIn: 1099890000,
       minAmountToSend: 1100000000,
       maxAmountToSend: 1100000000,
+      dataSource: "websocket",
     });
   }).timeout(20000);
 
@@ -458,6 +459,7 @@ describe("Websocket Subscription", () => {
       finalToken: "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb",
       totalSent: 1100000000,
       evmAmountSponsored: 11539,
+      dataSource: "websocket",
     });
   }).timeout(20000);
   it("should ingest the DepositForBurn event from Ethereum tx 0x1945...ee93", async () => {

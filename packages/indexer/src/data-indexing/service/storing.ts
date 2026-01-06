@@ -92,7 +92,7 @@ export const storeSwapFlowInitializedEvent: Storer<
 ) => {
   return repository.saveAndHandleFinalisationBatch<entities.SwapFlowInitialized>(
     entities.SwapFlowInitialized,
-    [{ ...event }],
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowInitialized)[],
     [],
   );
@@ -107,7 +107,7 @@ export const storeSwapFlowFinalizedEvent: Storer<
 ) => {
   return repository.saveAndHandleFinalisationBatch<entities.SwapFlowFinalized>(
     entities.SwapFlowFinalized,
-    [{ ...event }],
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowFinalized)[],
     [],
   );
