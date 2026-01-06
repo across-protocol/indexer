@@ -145,5 +145,6 @@ export const CHAIN_PROTOCOLS: Record<
 > = {
   [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.MAINNET]: [CCTP_PROTOCOL],
   // Add new chains here...
 };
