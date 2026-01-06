@@ -27,3 +27,15 @@ export const SWAP_FLOW_FINALIZED_ABI = [
 export const SWAP_FLOW_INITIALIZED_ABI = [
   "event SwapFlowInitialized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 coreAmountIn,uint64 minAmountToSend,uint64 maxAmountToSend)",
 ];
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific ABIs for the Omnichain Fungible Token (OFT) Protocol.
+ * ================================================================================== */
+export const OFT_SENT_ABI = [
+  "event OFTSent(bytes32 indexed guid, uint32 dstEid, address indexed fromAddress, uint256 amountSentLD, uint256 amountReceivedLD)",
+];
+
+export const OFT_RECEIVED_ABI = [
+  "event OFTReceived(bytes32 indexed guid, uint32 srcEid, address indexed toAddress, uint256 amountReceivedLD)",
+];

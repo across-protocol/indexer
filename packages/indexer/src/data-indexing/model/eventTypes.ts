@@ -61,10 +61,32 @@ export interface SwapFlowInitializedArgs {
   maxAmountToSend: bigint;
 }
 
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Omnichain Fungible Token (OFT) Protocol.
+ * ================================================================================== */
+
+export interface OFTSentArgs {
+  guid: `0x${string}`;
+  dstEid: number;
+  fromAddress: `0x${string}`;
+  amountSentLD: bigint;
+  amountReceivedLD: bigint;
+}
+
+export interface OFTReceivedArgs {
+  guid: `0x${string}`;
+  srcEid: number;
+  toAddress: `0x${string}`;
+  amountReceivedLD: bigint;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
   | MessageReceivedArgs
   | MintAndWithdrawArgs
   | SwapFlowFinalizedArgs
-  | SwapFlowInitializedArgs;
+  | SwapFlowInitializedArgs
+  | OFTSentArgs
+  | OFTReceivedArgs;
