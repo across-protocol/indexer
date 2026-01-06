@@ -12,6 +12,11 @@ import {
   getCctpDomainForChainId,
   isProductionNetwork,
 } from "../adapter/cctp-v2/service";
+import { utils } from "@across-protocol/sdk";
+import {
+  formatFromAddressToChainFormat,
+  getSponsoredCCTPDstPeripheryAddress,
+} from "../../utils";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
 
@@ -64,9 +69,9 @@ export class CctpFinalizerServiceManager {
  * It publishes CCTP burn events info to the pubsub topic so that the finalization bot can
  * finalize the burn events indexed by the indexer. This service doesn't deal with
  * submitting the finalization transaction onchain, it just publishes the messages
- * to the the pubsub topic.
+ * to the pubsub topic.
  */
-class CctpFinalizerService extends RepeatableTask {
+export class CctpFinalizerService extends RepeatableTask {
   constructor(
     logger: winston.Logger,
     private readonly postgres: DataSource,
@@ -128,8 +133,24 @@ class CctpFinalizerService extends RepeatableTask {
             sponsoredEvent.id,
           );
         } else {
-          // Otherwise, publish without signature
-          await this.publishBurnEvent(burnEvent);
+          // If not found, check if it SHOULD have been found
+          const isSponsoredDeposit = isSponsoredCCTPDeposit(
+            getCctpDestinationChainFromDomain(burnEvent.destinationDomain),
+            burnEvent.destinationCaller,
+            burnEvent.mintRecipient,
+          );
+          if (isSponsoredDeposit) {
+            // If this sponsored event then does not exist log an error.
+            this.logger.error({
+              at: "CctpFinalizerService#taskLogic",
+              message:
+                "Sponsored event defined by addresses but not found in DB",
+              burnEvent,
+            });
+          } else {
+            // Otherwise, publish without signature
+            await this.publishBurnEvent(burnEvent);
+          }
         }
       }
     } catch (error) {
@@ -302,4 +323,30 @@ function getAttestationTime(chainId: number, finalityThreshold: number) {
     );
   }
   return attestationTime;
+}
+
+export function isSponsoredCCTPDeposit(
+  destinationChainId: number,
+  destinationCaller: string,
+  mintRecipient: string,
+): boolean {
+  const sponsoredCCTPDstPeripheryAddress =
+    getSponsoredCCTPDstPeripheryAddress(destinationChainId);
+
+  if (!sponsoredCCTPDstPeripheryAddress) return false;
+
+  const sponsoredCCTPDstPeripheryAddressBytes = formatFromAddressToChainFormat(
+    utils.toAddressType(
+      sponsoredCCTPDstPeripheryAddress.toLowerCase(),
+      destinationChainId,
+    ),
+    destinationChainId,
+  ).toLowerCase();
+
+  const mintRecipientBytes = mintRecipient.toLowerCase();
+  const destinationCallerBytes = destinationCaller.toLowerCase();
+  return (
+    destinationCallerBytes === sponsoredCCTPDstPeripheryAddressBytes &&
+    mintRecipientBytes === sponsoredCCTPDstPeripheryAddressBytes
+  );
 }
