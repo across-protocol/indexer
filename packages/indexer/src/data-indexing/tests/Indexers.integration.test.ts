@@ -12,7 +12,11 @@ import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { createPublicClient, http, PublicClient } from "viem";
 import { arbitrum, arbitrumSepolia, hyperEvm, mainnet } from "viem/chains";
-import { CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL } from "../service/config";
+import {
+  CCTP_PROTOCOL,
+  SPONSORED_BRIDGING_PROTOCOL,
+  SPONSORED_CCTP_PROTOCOL,
+} from "../service/config";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -505,6 +509,77 @@ describe("Websocket Subscription", () => {
       maxFee: 100,
       minFinalityThreshold: 1000,
       hookData: "0x",
+    });
+  }).timeout(20000);
+
+  it("should ingest sponsored CCTP events from Arbitrum tx 0xef55...78a0", async () => {
+    // Tx: https://arbiscan.io/tx/0xef55d3110094488b943525fd6609e7918328009168e661658b5fb858434b78a0
+    const txHash =
+      "0xef55d3110094488b943525fd6609e7918328009168e661658b5fb858434b78a0";
+
+    const client = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    // Stub contract Utils for finding the sponsored event from the periphery address
+    // The previous test suite (CCTPIndexerDataHandler) used:
+    // SponsoredCCTPSrcPeriphery: 0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPSrcPeripheryAddress")
+      .returns("0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7");
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      client,
+      txHash,
+    );
+
+    // Start the Indexer
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+    });
+
+    await server.waitForSubscription(4);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify DepositForBurn Persistence
+    const depositRepo = dataSource.getRepository(entities.DepositForBurn);
+    const savedEvent = await depositRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(txHash);
+
+    // Verify SponsoredDepositForBurn Persistence
+    const sponsoredRepo = dataSource.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const savedSponsoredEvent = await sponsoredRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedSponsoredEvent).to.exist;
+    expect(savedSponsoredEvent!).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      quoteNonce:
+        "0x333d757477a9ebed33ed12e6320a8414d034cd86ca2acd292d9b687a99bdb866",
+      originSender: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      finalRecipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      quoteDeadline: new Date(1765996920 * 1000),
+      maxBpsToSponsor: 0,
+      maxUserSlippageBps: 50,
+      finalToken: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      signature:
+        "0x1ed01ce81157c25664616c112142037217f5b22318f451eb7f6eb07d2784810a00c1d0f648a6687fcd3dccfe7c37660c7e378dbc0c2a49a917d6b016cdb8f8571c",
+      dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);
 });

@@ -9,7 +9,7 @@ import { Filter } from "../model/genericTypes";
 import { entities } from "@repo/indexer-database";
 import { IndexerEventPayload } from "./genericEventListening";
 import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
-import { decodeEventFromReceipt } from "./tranforming";
+import { decodeEventFromReceipt } from "./preprocessing";
 import { DepositForBurnArgs, MessageReceivedArgs } from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
 import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";

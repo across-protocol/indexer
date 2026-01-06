@@ -54,9 +54,22 @@ export interface SwapFlowInitializedArgs {
   maxAmountToSend: bigint;
 }
 
+export interface SponsoredDepositForBurnArgs {
+  quoteNonce: `0x${string}`;
+  originSender: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  quoteDeadline: bigint;
+  maxBpsToSponsor: bigint;
+  maxUserSlippageBps: bigint;
+  finalToken: `0x${string}`;
+  signature: `0x${string}`;
+  destinationChainId?: number;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
   | MessageReceivedArgs
   | SwapFlowFinalizedArgs
-  | SwapFlowInitializedArgs;
+  | SwapFlowInitializedArgs
+  | SponsoredDepositForBurnArgs;

@@ -7,6 +7,7 @@ import {
   DeleteDateColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_sponsoredDepositForBurn_chain_block_tx_log", [
@@ -74,6 +75,9 @@ export class SponsoredDepositForBurn {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;

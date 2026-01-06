@@ -23,3 +23,7 @@ export const SWAP_FLOW_FINALIZED_ABI = [
 export const SWAP_FLOW_INITIALIZED_ABI = [
   "event SwapFlowInitialized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 coreAmountIn,uint64 minAmountToSend,uint64 maxAmountToSend)",
 ];
+
+export const SPONSORED_DEPOSIT_FOR_BURN_ABI = [
+  "event SponsoredDepositForBurn(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes signature)",
+];

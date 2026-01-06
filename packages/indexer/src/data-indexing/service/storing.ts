@@ -16,6 +16,28 @@ const PK_CHAIN_BLOCK_TX_LOG = [
  * @param repository The BlockchainEventRepository instance.
  * @returns A promise that resolves to the result of the save operation.
  */
+export const storeSponsoredDepositForBurnEvent: Storer<
+  Partial<entities.SponsoredDepositForBurn>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.SponsoredDepositForBurn>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
+    entities.SponsoredDepositForBurn,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET } as any],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredDepositForBurn)[],
+    [],
+  );
+};
+
+/**
+ * Stores a DepositForBurn event in the database.
+ *
+ * @param event The DepositForBurn entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
 export const storeDepositForBurnEvent: Storer<
   Partial<entities.DepositForBurn>,
   dbUtils.BlockchainEventRepository

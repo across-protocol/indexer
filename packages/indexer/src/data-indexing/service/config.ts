@@ -4,6 +4,7 @@ import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
   CCTP_MESSAGE_SENT_ABI,
+  SPONSORED_DEPOSIT_FOR_BURN_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -17,12 +18,16 @@ import {
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
 import { Logger } from "winston";
-import { extractRawArgs } from "./preprocessing";
+import {
+  extractRawArgs,
+  preprocessSponsoredDepositForBurn,
+} from "./preprocessing";
 import {
   DepositForBurnArgs,
   EventArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  SponsoredDepositForBurnArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
@@ -35,6 +40,7 @@ import {
   transformDepositForBurnEvent,
   transformMessageReceivedEvent,
   transformMessageSentEvent,
+  transformSponsoredDepositForBurnEvent,
   transformSwapFlowFinalizedEvent,
   transformSwapFlowInitializedEvent,
 } from "./tranforming";
@@ -42,6 +48,7 @@ import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
   storeMessageSentEvent,
+  storeSponsoredDepositForBurnEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
 } from "./storing";
@@ -144,6 +151,37 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   },
 };
 
+export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: (logger: Logger, chainId: number) => {
+    const handlers = CCTP_PROTOCOL.getEventHandlers(logger, chainId);
+    return [
+      ...handlers,
+      {
+        config: {
+          address: getSponsoredCCTPDstPeripheryAddress(
+            chainId,
+          ) as `0x${string}`,
+          abi: SPONSORED_DEPOSIT_FOR_BURN_ABI,
+          eventName: "SponsoredDepositForBurn",
+        },
+        preprocess: (payload: IndexerEventPayload) =>
+          preprocessSponsoredDepositForBurn(payload, logger),
+        filter: async () => true,
+        transform: (
+          args: SponsoredDepositForBurnArgs,
+          payload: IndexerEventPayload,
+        ) => transformSponsoredDepositForBurnEvent(args, payload, logger),
+        store: storeSponsoredDepositForBurnEvent,
+      },
+    ];
+  },
+};
+
 /**
  * Configuration for Sponsored Bridging Protocol.
  */
@@ -196,7 +234,7 @@ export const CHAIN_PROTOCOLS: Record<
     EventArgs
   >[]
 > = {
-  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.ARBITRUM]: [SPONSORED_CCTP_PROTOCOL],
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: [CCTP_PROTOCOL],
   [CHAIN_IDs.HYPEREVM]: [CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL],
   [CHAIN_IDs.MAINNET]: [CCTP_PROTOCOL],

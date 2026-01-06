@@ -3,7 +3,7 @@ import * as across from "@across-protocol/sdk";
 import { IndexerEventPayload } from "./genericEventListening";
 import {
   getCctpDestinationChainFromDomain,
-  decodeMessage, // New import
+  decodeMessage,
 } from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
@@ -11,17 +11,12 @@ import {
   DepositForBurnArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  SponsoredDepositForBurnArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
-import { arrayify } from "ethers/lib/utils"; // New import
-import {
-  TransactionReceipt,
-  parseEventLogs,
-  ParseEventLogsReturnType,
-  Abi,
-} from "viem";
+import { arrayify } from "ethers/lib/utils";
 
 /**
  * A generic transformer for addresses.
@@ -33,6 +28,8 @@ function transformAddress(address: string, chainId: number): string {
   const addressType = across.utils.toAddressType(address, chainId);
   return formatFromAddressToChainFormat(addressType, chainId);
 }
+
+// ... (baseTransformer remains the same, assuming it is between lines 75 and 123 in original, but I will just target the transformSponsoredDepositForBurnEvent and imports)
 
 /**
  * Creates a base entity from a raw event payload.
@@ -127,6 +124,43 @@ export const transformDepositForBurnEvent = (
   };
 };
 
+export const transformSponsoredDepositForBurnEvent = (
+  preprocessed: SponsoredDepositForBurnArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SponsoredDepositForBurn> => {
+  const base = baseTransformer(payload, logger);
+
+  const destinationChainId = preprocessed.destinationChainId;
+  if (!destinationChainId) {
+    const message = `Failed to decode DepositForBurn event from transaction receipt to decode destination chain id for SponsoredDepositForBurnEvent.`;
+    logger.error({
+      message,
+      payload,
+    });
+    throw new Error(message);
+  }
+  const finalRecipient = transformAddress(
+    preprocessed.finalRecipient,
+    destinationChainId,
+  );
+  const finalToken = transformAddress(
+    preprocessed.finalToken,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    quoteNonce: preprocessed.quoteNonce,
+    originSender: preprocessed.originSender.toLowerCase(),
+    finalRecipient: finalRecipient.toLowerCase(),
+    quoteDeadline: new Date(Number(preprocessed.quoteDeadline) * 1000),
+    maxBpsToSponsor: preprocessed.maxBpsToSponsor.toString(),
+    maxUserSlippageBps: preprocessed.maxUserSlippageBps.toString(),
+    finalToken: finalToken.toLowerCase(),
+    signature: preprocessed.signature,
+  };
+};
 export const transformMessageSentEvent = (
   preprocessed: MessageSentArgs,
   payload: IndexerEventPayload,
@@ -162,25 +196,6 @@ export const transformMessageSentEvent = (
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
   };
-};
-
-/**
- * extracts and decodes a specific event from a transaction receipt's logs.
- * @param receipt The transaction receipt.
- * @param abi The Abi containing the event definition.
- * @returns The decoded event arguments, or undefined if not found.
- */
-export const decodeEventFromReceipt = <T>(
-  receipt: TransactionReceipt,
-  abi: Abi,
-  eventName: string,
-): T | undefined => {
-  const logs = parseEventLogs({
-    abi,
-    logs: receipt.logs,
-  });
-  const log = logs.find((log) => log.eventName === eventName);
-  return (log?.args as T) ?? undefined;
 };
 
 /**
