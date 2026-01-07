@@ -253,9 +253,15 @@ async function processLogBatch<TPayload>(
           contractAddress: config.address,
         });
         onEvent(payload);
+
         metrics?.addGaugeMetric(
           "processLog",
           Date.now() - startProcessingTime,
+          tags,
+        );
+        metrics?.addGaugeMetric(
+          "websocketToBlockLatency",
+          batchStart - Number(blockTimestamp) * 1000,
           tags,
         );
       } catch (error) {

@@ -600,7 +600,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.OPTIMISM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
