@@ -184,7 +184,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const abortController = new AbortController();
 
   if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
-    const allProviders = parseEnv.parseProvidersUrls();
+    const allProviders = parseEnv.parseProvidersUrls("WS_RPC_PROVIDER_URLS_");
 
     // Determine which chains to index via WebSocket
     let wsChainIds: number[] = []; // Default to Arbitrum
