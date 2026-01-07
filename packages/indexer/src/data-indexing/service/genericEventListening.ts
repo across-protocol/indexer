@@ -1,3 +1,4 @@
+import pRetry from "p-retry";
 import Bottleneck from "bottleneck";
 import {
   parseAbi,
@@ -20,6 +21,10 @@ import { Logger } from "winston";
  * - Parsing raw event logs into a standardized, clean format (`IndexerEventPayload`).
  * - Pushing the clean payload into the next stage of the pipeline via a callback.
  */
+
+const MAX_RETRY_TIMEOUT = 60000;
+const RETRY_ATTEMPTS = 10;
+const RETRY_BACKOFF_EXPONENT = 2;
 
 /**
  * Defines the configuration for a single event subscription.
@@ -187,15 +192,32 @@ async function processLogBatch<TPayload>(
         // --- Fetch Block & Transactions (Deduplicated) ---
         let blockPromise = blockCache.get(logItem.blockNumber);
         if (!blockPromise) {
-          blockPromise = client
-            .getBlock({
-              blockNumber: logItem.blockNumber,
-              includeTransactions: true,
-            })
-            .then((block) => ({
-              timestamp: block.timestamp,
-              transactions: block.transactions,
-            }));
+          blockPromise = pRetry(
+            () =>
+              client
+                .getBlock({
+                  blockNumber: logItem.blockNumber!,
+                  includeTransactions: true,
+                })
+                .then((block) => ({
+                  timestamp: block.timestamp,
+                  transactions: block.transactions,
+                })),
+            {
+              retries: RETRY_ATTEMPTS,
+              factor: RETRY_BACKOFF_EXPONENT,
+              maxTimeout: MAX_RETRY_TIMEOUT,
+              onFailedAttempt: (error) => {
+                logger.warn({
+                  at: "genericEventListener#processLogBatch",
+                  message: `Failed to fetch block ${logItem.blockNumber}, retrying...`,
+                  attempt: error.attemptNumber,
+                  retriesLeft: error.retriesLeft,
+                  error,
+                });
+              },
+            },
+          );
           blockCache.set(logItem.blockNumber, blockPromise);
         }
         const { timestamp: blockTimestamp, transactions } = await blockPromise;
@@ -213,9 +235,26 @@ async function processLogBatch<TPayload>(
         if (logItem.transactionHash) {
           let receiptPromise = receiptCache.get(logItem.transactionHash);
           if (!receiptPromise) {
-            receiptPromise = client.getTransactionReceipt({
-              hash: logItem.transactionHash,
-            });
+            receiptPromise = pRetry(
+              () =>
+                client.getTransactionReceipt({
+                  hash: logItem.transactionHash!,
+                }),
+              {
+                retries: RETRY_ATTEMPTS,
+                factor: RETRY_BACKOFF_EXPONENT,
+                maxTimeout: MAX_RETRY_TIMEOUT,
+                onFailedAttempt: (error) => {
+                  logger.warn({
+                    at: "genericEventListener#processLogBatch",
+                    message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
+                    attempt: error.attemptNumber,
+                    retriesLeft: error.retriesLeft,
+                    error,
+                  });
+                },
+              },
+            );
             receiptCache.set(logItem.transactionHash, receiptPromise);
           }
           transactionReceipt = await receiptPromise;
