@@ -30,8 +30,6 @@ function transformAddress(address: string, chainId: number): string {
   return formatFromAddressToChainFormat(addressType, chainId);
 }
 
-// ... (baseTransformer remains the same, assuming it is between lines 75 and 123 in original, but I will just target the transformSponsoredDepositForBurnEvent and imports)
-
 /**
  * Creates a base entity from a raw event payload.
  * This handles common fields that all our entities share.
