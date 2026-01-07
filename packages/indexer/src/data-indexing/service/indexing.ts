@@ -77,12 +77,11 @@ export async function startChainIndexing<
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
   const { repo, rpcUrl, logger, sigterm, chainId, protocols } = request;
 
-  const testNet = chainId in TEST_NETWORKS;
   // Aggregate events from all supported protocols.
-  // We pass the logger and testNet flag to each protocol so they can configure
+  // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
   const events = protocols.flatMap((protocol) =>
-    protocol.getEventHandlers(!!testNet, logger),
+    protocol.getEventHandlers(logger, chainId),
   );
 
   // Build the concrete configuration

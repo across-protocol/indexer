@@ -12,6 +12,8 @@ import {
   MessageReceivedArgs,
   MessageSentArgs,
   MintAndWithdrawArgs,
+  SwapFlowFinalizedArgs,
+  SwapFlowInitializedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
@@ -114,7 +116,7 @@ export const transformDepositForBurnEvent = (
   return {
     ...base,
     amount: preprocessed.amount.toString(),
-    burnToken: preprocessed.burnToken,
+    burnToken: preprocessed.burnToken.toLowerCase(),
     depositor: preprocessed.depositor.toLowerCase(),
     destinationCaller: destinationCaller.toLowerCase(),
     maxFee: preprocessed.maxFee.toString(),
@@ -227,5 +229,46 @@ export const transformMintAndWithdrawEvent = (
     amount: preprocessed.amount.toString(),
     mintToken: mintToken.toLowerCase(),
     feeCollected: preprocessed.feeCollected.toString(),
+  };
+};
+
+export const transformSwapFlowInitializedEvent = (
+  preprocessed: SwapFlowInitializedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SwapFlowInitialized> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    finalRecipient: preprocessed.finalRecipient.toLowerCase(),
+    finalToken: preprocessed.finalToken.toLowerCase(),
+    evmAmountIn: preprocessed.evmAmountIn.toString(),
+    bridgingFeesIncurred: preprocessed.bridgingFeesIncurred.toString(),
+    coreAmountIn: preprocessed.coreAmountIn.toString(),
+    minAmountToSend: preprocessed.minAmountToSend.toString(),
+    maxAmountToSend: preprocessed.maxAmountToSend.toString(),
+    contractAddress: payload.log.address.toLowerCase(),
+  };
+};
+
+export const transformSwapFlowFinalizedEvent = (
+  preprocessed: SwapFlowFinalizedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SwapFlowFinalized> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    finalRecipient: preprocessed.finalRecipient.toLowerCase(),
+    finalToken: preprocessed.finalToken.toLowerCase(),
+    totalSent: preprocessed.totalSent.toString(),
+    evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
+    contractAddress: payload.log.address.toLowerCase(),
   };
 };

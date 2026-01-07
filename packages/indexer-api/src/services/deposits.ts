@@ -2,6 +2,7 @@ import { Redis } from "ioredis";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
+import { utils } from "@across-protocol/sdk";
 import type {
   DepositParams,
   DepositsParams,
@@ -499,6 +500,7 @@ export class DepositsService {
               chainId: deposit.originChainId,
               nonce: deposit.nonce,
               transactionHash: deposit.depositTxHash,
+              destinationDomain: deposit.destinationDomain!,
             },
             deposit.messageReceivedTxHash && deposit.messageReceivedChainId
               ? {
@@ -800,6 +802,7 @@ export class DepositsService {
           chainId: cctpDeposit.chainId,
           nonce: cctpDeposit.nonce,
           transactionHash: cctpDeposit.transactionHash,
+          destinationDomain: cctpDeposit.destinationDomain!,
         },
         cctpDeposit.receivedEvent || null,
         index,
@@ -864,6 +867,7 @@ export class DepositsService {
       chainId: string;
       nonce: string;
       transactionHash: string;
+      destinationDomain: number;
     },
     receivedEvent: {
       transactionHash: string;
@@ -876,6 +880,10 @@ export class DepositsService {
     let fillTx: string | null = null;
     let actionsSucceeded: boolean | null = null;
     let actionsTargetChainId: number | null = null;
+    let destinationChainId = utils.getCctpDestinationChainFromDomain(
+      deposit.destinationDomain,
+      true,
+    );
 
     const sponsoredDepositForBurnEvent = await this.db
       .getRepository(entities.SponsoredDepositForBurn)
@@ -887,8 +895,12 @@ export class DepositsService {
       .getOne();
 
     if (sponsoredDepositForBurnEvent) {
-      // currently all sponsored transfers are to HyperCore
-      actionsTargetChainId = CHAIN_IDs.HYPERCORE;
+      if (destinationChainId === CHAIN_IDs.HYPEREVM) {
+        actionsTargetChainId = CHAIN_IDs.HYPERCORE;
+      } else if (destinationChainId === CHAIN_IDs.MAINNET) {
+        // after FE supports it, it should be changed to 2337
+        actionsTargetChainId = null;
+      }
     }
 
     // If no messageReceived event, the deposit is pending

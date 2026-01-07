@@ -142,7 +142,10 @@ export class MockWebSocketRPCServer {
           },
         };
         const replacer = (_: string, value: any) =>
-          typeof value === "bigint" ? `0x${value.toString(16)}` : value;
+          typeof value === "bigint" || typeof value === "number"
+            ? `0x${value.toString(16)}`
+            : value;
+
         this.activeSocket.send(JSON.stringify(payload, replacer));
       }
     }
@@ -224,8 +227,6 @@ export class MockWebSocketRPCServer {
       });
     } else if (req.method === "eth_getBlockByNumber") {
       respond(this.nextBlockResponse);
-    } else if (req.method === "eth_chainId") {
-      respond("0xa4b1"); // Arbitrum One Chain ID
     } else if (req.method === "eth_getTransactionByHash") {
       const txHash = req.params[0];
       const tx = this.mockedTransactions.get(txHash);

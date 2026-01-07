@@ -37,8 +37,34 @@ export interface MintAndWithdrawArgs {
   feeCollected: bigint;
 }
 
+/* ==================================================================================
+ * SPONSORED BRIDGING FLOW DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Sponsored Bridging Flow.
+ * ================================================================================== */
+
+export interface SwapFlowFinalizedArgs {
+  quoteNonce: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  finalToken: `0x${string}`;
+  totalSent: bigint;
+  evmAmountSponsored: bigint;
+}
+
+export interface SwapFlowInitializedArgs {
+  quoteNonce: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  finalToken: `0x${string}`;
+  evmAmountIn: bigint;
+  bridgingFeesIncurred: bigint;
+  coreAmountIn: bigint;
+  minAmountToSend: bigint;
+  maxAmountToSend: bigint;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
   | MessageReceivedArgs
-  | MintAndWithdrawArgs;
+  | MintAndWithdrawArgs
+  | SwapFlowFinalizedArgs
+  | SwapFlowInitializedArgs;
