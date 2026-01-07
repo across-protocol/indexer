@@ -134,8 +134,10 @@ function parseProviderConfigs(env: Env): ProviderConfig[] {
 
 export function parseProvidersUrls(prefix: string = "RPC_PROVIDER_URLS_") {
   const results: Map<number, string[]> = new Map();
+  const regex = new RegExp(`^${prefix}(\\d+)$`);
+
   for (const [key, value] of Object.entries(process.env)) {
-    const match = key.match(new RegExp(`^${prefix}(\d+)$`));
+    const match = key.match(regex);
     if (match) {
       const chainId = match[1] ? parseNumber(match[1]) : undefined;
       if (chainId && value) {
