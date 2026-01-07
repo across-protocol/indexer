@@ -190,7 +190,9 @@ describe("Websocket Subscription", () => {
     });
 
     // Wait for the indexer to subscribe
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -254,7 +256,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -315,7 +319,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -383,7 +389,10 @@ describe("Websocket Subscription", () => {
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+        .length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -441,7 +450,10 @@ describe("Websocket Subscription", () => {
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+        .length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -488,7 +500,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.MAINNET).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -538,7 +552,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 

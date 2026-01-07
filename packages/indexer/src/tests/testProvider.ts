@@ -99,7 +99,7 @@ export class MockWebSocketRPCServer {
    * Waits until the client (Viem) has actually requested a subscription.
    * This prevents race conditions where you push an event before Viem is ready.
    */
-  async waitForSubscription(count: number = 4) {
+  async waitForSubscription(count: number) {
     if (this.subscriptions.size >= count) {
       return;
     }

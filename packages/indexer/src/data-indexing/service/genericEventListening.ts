@@ -223,7 +223,7 @@ async function processLogBatch<TPayload>(
         // --- Fetch Transaction Receipt (Deduplicated) ---
         let transactionReceipt: TransactionReceipt | undefined;
         if (logItem.transactionHash) {
-          let transactionReceipt = receiptCache.get(logItem.transactionHash);
+          transactionReceipt = receiptCache.get(logItem.transactionHash);
           if (!transactionReceipt) {
             transactionReceipt = await client.getTransactionReceipt({
               hash: logItem.transactionHash,
