@@ -509,4 +509,52 @@ describe("Websocket Subscription", () => {
       hookData: "0x",
     });
   }).timeout(20000);
+  it("should ingest the MintAndWithdraw event from Arbitrum tx 0x3b3d...e813", async () => {
+    // Real Transaction Data
+    const txHash =
+      "0x3b3d12449bc5b30a64e234f3871983ca12ebaaa020998854a8ee94d92bd7e813";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [CCTP_PROTOCOL],
+    });
+
+    await server.waitForSubscription();
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const repo = dataSource.getRepository(entities.MintAndWithdraw);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 2,
+      finalised: false,
+      amount: 1000000,
+      feeCollected: 0,
+      mintRecipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      mintToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+    });
+  }).timeout(20000);
 });
