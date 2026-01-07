@@ -140,7 +140,7 @@ export class CctpFinalizerService extends RepeatableTask {
             burnEvent.mintRecipient,
           );
           if (isSponsoredDeposit) {
-            // If this sponsored event then does not exist log an error.
+            // If this sponsored event does not exist then log an error.
             this.logger.error({
               at: "CctpFinalizerService#taskLogic",
               message:
