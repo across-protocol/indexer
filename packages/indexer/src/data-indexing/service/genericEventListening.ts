@@ -261,7 +261,8 @@ async function processLogBatch<TPayload>(
         );
         metrics?.addGaugeMetric(
           "websocketToBlockLatency",
-          batchStart - Number(blockTimestamp) * 1000,
+          // BlockTimestamp is in seconds, system time is in seconds. We cannot meausre latency that is below a second.
+          (batchStart - Number(blockTimestamp) * 1000) / 1000,
           tags,
         );
       } catch (error) {
