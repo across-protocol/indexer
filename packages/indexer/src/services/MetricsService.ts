@@ -3,7 +3,6 @@ import { MetricIntakeType } from "@datadog/datadog-api-client/dist/packages/data
 import {
   COUNT,
   GAUGE,
-  RATE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
@@ -24,7 +23,7 @@ import {
 export class DataDogMetricsService {
   private apiInstance: v2.MetricsApi;
   private buffer: v2.MetricSeries[] = [];
-  private flushInterval: NodeJS.Timeout;
+  private flushInterval: ReturnType<typeof setInterval>;
   private readonly MAX_BUFFER_SIZE = 100;
   private readonly FLUSH_INTERVAL_MS = 10000;
   private globalTags: string[];
@@ -141,7 +140,7 @@ export class DataDogMetricsService {
    * Closes the metrics service.
    */
   public close() {
-    clearInterval(this.flushInterval);
+    clearInterval(this.flushInterval as NodeJS.Timeout);
     // Attempt one last flush
     this.flush().catch((err) =>
       console.error("Error during final metrics flush:", err),

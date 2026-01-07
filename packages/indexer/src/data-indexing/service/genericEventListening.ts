@@ -206,6 +206,7 @@ async function processLogBatch<TPayload>(
             blockNumber: logItem.blockNumber,
             includeTransactions: true,
           });
+          metrics?.addCountMetric("rpcCallGetBlock", tags);
 
           blockCache.set(logItem.blockNumber, blockInformation);
         }
@@ -227,6 +228,7 @@ async function processLogBatch<TPayload>(
             transactionReceipt = await client.getTransactionReceipt({
               hash: logItem.transactionHash,
             });
+            metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
             receiptCache.set(logItem.transactionHash, transactionReceipt);
           }
         }
