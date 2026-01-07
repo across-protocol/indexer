@@ -37,6 +37,7 @@ import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import { DataDogMetricsService } from "./services/MetricsService";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -179,6 +180,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
+  const metrics = new DataDogMetricsService(
+    config.datadogConfig.tags,
+    config.datadogConfig.enabled,
+  );
+
   // WebSocket Indexer setup
   const wsIndexerPromises: Promise<void>[] = [];
   const abortController = new AbortController();
@@ -201,6 +207,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       providers: allProviders,
       sigterm: abortController.signal,
       chainIds: wsChainIds,
+      metrics,
     });
     wsIndexerPromises.push(...handlers);
   }
@@ -215,6 +222,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close();
       priceWorker?.close();
       swapWorker.close();
+      metrics.close();
       acrossIndexerManager.stopGracefully();
       cctpIndexerManager.stopGracefully();
       oftIndexerManager.stopGracefully();
@@ -225,6 +233,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     } else {
       integratorIdWorker.close();
       swapWorker.close();
+      metrics.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();
@@ -278,6 +287,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   });
   await integratorIdWorker.close();
+  metrics.close();
   redis?.quit();
   postgres?.destroy();
   logger.info({ at: "Indexer#Main", message: "Exiting indexer" });

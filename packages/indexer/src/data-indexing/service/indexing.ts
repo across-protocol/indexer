@@ -44,6 +44,7 @@ import {
   MessageReceivedArgs,
 } from "../model/eventTypes";
 import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
+import { DataDogMetricsService } from "../../services/MetricsService";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -67,6 +68,7 @@ export interface StartIndexerRequest<
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
   protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
+  metrics?: DataDogMetricsService;
 }
 
 export async function startChainIndexing<
@@ -75,7 +77,8 @@ export async function startChainIndexing<
   TPayload,
   TPreprocessed,
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
-  const { repo, rpcUrl, logger, sigterm, chainId, protocols } = request;
+  const { repo, rpcUrl, logger, sigterm, chainId, protocols, metrics } =
+    request;
 
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
@@ -109,6 +112,7 @@ export async function startChainIndexing<
     indexerConfig,
     logger,
     sigterm,
+    metrics,
   });
 }
 
@@ -123,6 +127,7 @@ export interface StartIndexersRequest {
   sigterm?: AbortSignal;
   /** List of chains to start indexing for */
   chainIds: number[];
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -133,7 +138,7 @@ export interface StartIndexersRequest {
 export function startWebSocketIndexing(
   request: StartIndexersRequest,
 ): Promise<void>[] {
-  const { providers, logger, chainIds } = request;
+  const { providers, logger, chainIds, metrics } = request;
   const handlers: Promise<void>[] = [];
 
   for (const chainId of chainIds) {
@@ -167,6 +172,7 @@ export function startWebSocketIndexing(
         sigterm: request.sigterm,
         chainId,
         protocols,
+        metrics,
       }),
     );
   }

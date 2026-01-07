@@ -9,6 +9,7 @@ import {
   TransactionReceipt,
 } from "viem";
 import { Logger } from "winston";
+import { DataDogMetricsService } from "../../services/MetricsService";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -79,6 +80,8 @@ export interface SubscribeToEventRequest<TPayload> {
   onFatalError: (error: Error) => void;
   /** An optional logger instance. */
   logger: Logger;
+  /** An optional metrics service instance. */
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -90,8 +93,10 @@ export interface ProcessLogBatchArgs<TPayload> {
   config: EventConfig;
   chainId: number;
   client: PublicClient<Transport, Chain>;
+
   onEvent: (payload: TPayload) => void;
   logger: Logger;
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -110,6 +115,7 @@ export const subscribeToEvent = <TPayload>(
     onEvent,
     onFatalError,
     logger,
+    metrics,
   } = request;
   // Viem requires parsing the human-readable string array into a typed ABI
   const parsedAbi = parseAbi(config.abi);
@@ -130,6 +136,7 @@ export const subscribeToEvent = <TPayload>(
           client,
           onEvent,
           logger,
+          metrics,
         }),
       );
     },
@@ -166,18 +173,26 @@ export const subscribeToEvent = <TPayload>(
 async function processLogBatch<TPayload>(
   args: ProcessLogBatchArgs<TPayload>,
 ): Promise<void> {
-  const { logs, config, chainId, client, onEvent, logger } = args;
+  const { logs, config, chainId, client, onEvent, logger, metrics } = args;
+  const batchStart = Date.now();
+  const tags = [
+    `websocketIndexer`,
+    `processLogBatch`,
+    `chainId:${chainId}`,
+    `event:${config.eventName}`,
+  ];
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
   const blockCache = new Map<
     bigint,
-    Promise<{ timestamp: bigint; transactions: Transaction[] }>
+    { timestamp: bigint; transactions: Transaction[] }
   >();
-  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
+  const receiptCache = new Map<string, TransactionReceipt>();
 
   // Process all logs in parallel
   await Promise.all(
     logs.map(async (logItem) => {
+      const startProcessingTime = Date.now();
       try {
         // Skip pending logs that don't have a block number yet
         if (!logItem.blockNumber) {
@@ -185,20 +200,16 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Block & Transactions (Deduplicated) ---
-        let blockPromise = blockCache.get(logItem.blockNumber);
-        if (!blockPromise) {
-          blockPromise = client
-            .getBlock({
-              blockNumber: logItem.blockNumber,
-              includeTransactions: true,
-            })
-            .then((block) => ({
-              timestamp: block.timestamp,
-              transactions: block.transactions,
-            }));
-          blockCache.set(logItem.blockNumber, blockPromise);
+        let blockInformation = blockCache.get(logItem.blockNumber);
+        if (!blockInformation) {
+          blockInformation = await client.getBlock({
+            blockNumber: logItem.blockNumber,
+            includeTransactions: true,
+          });
+
+          blockCache.set(logItem.blockNumber, blockInformation);
         }
-        const { timestamp: blockTimestamp, transactions } = await blockPromise;
+        const { timestamp: blockTimestamp, transactions } = blockInformation;
 
         // --- Find Transaction ---
         let transaction: Transaction | undefined;
@@ -211,14 +222,13 @@ async function processLogBatch<TPayload>(
         // --- Fetch Transaction Receipt (Deduplicated) ---
         let transactionReceipt: TransactionReceipt | undefined;
         if (logItem.transactionHash) {
-          let receiptPromise = receiptCache.get(logItem.transactionHash);
-          if (!receiptPromise) {
-            receiptPromise = client.getTransactionReceipt({
+          let transactionReceipt = receiptCache.get(logItem.transactionHash);
+          if (!transactionReceipt) {
+            transactionReceipt = await client.getTransactionReceipt({
               hash: logItem.transactionHash,
             });
-            receiptCache.set(logItem.transactionHash, receiptPromise);
+            receiptCache.set(logItem.transactionHash, transactionReceipt);
           }
-          transactionReceipt = await receiptPromise;
         }
 
         const payload = {
@@ -241,6 +251,11 @@ async function processLogBatch<TPayload>(
           contractAddress: config.address,
         });
         onEvent(payload);
+        metrics?.addGaugeMetric(
+          "processLog",
+          Date.now() - startProcessingTime,
+          tags,
+        );
       } catch (error) {
         logger.error({
           at: "genericEventListener#processLog",
@@ -249,7 +264,9 @@ async function processLogBatch<TPayload>(
           logIndex: logItem.logIndex,
           txHash: logItem.transactionHash,
         });
+        metrics?.addCountMetric("processLogError", tags);
       }
     }),
   );
+  metrics?.addGaugeMetric("processLogBatch", Date.now() - batchStart, tags);
 }
