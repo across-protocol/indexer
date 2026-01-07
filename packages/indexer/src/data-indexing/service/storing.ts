@@ -61,6 +61,21 @@ export const storeMessageReceivedEvent: Storer<
   );
 };
 
+export const storeMintAndWithdrawEvent: Storer<
+  Partial<entities.MintAndWithdraw>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.MintAndWithdraw>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.MintAndWithdraw>(
+    entities.MintAndWithdraw,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MintAndWithdraw)[],
+    [],
+  );
+};
+
 export const storeSwapFlowInitializedEvent: Storer<
   Partial<entities.SwapFlowInitialized>,
   dbUtils.BlockchainEventRepository
