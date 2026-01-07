@@ -4,13 +4,21 @@ import {
   SWAP_API_CALLDATA_MARKER,
   WHITELISTED_FINALIZERS,
   DEPOSIT_FOR_BURN_EVENT_NAME,
+  MESSAGE_RECEIVED_EVENT_NAME,
 } from "./constants";
 import { Filter } from "../model/genericTypes";
 import { entities } from "@repo/indexer-database";
 import { IndexerEventPayload } from "./genericEventListening";
-import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
+import {
+  CCTP_DEPOSIT_FOR_BURN_ABI,
+  CCTP_MESSAGE_RECEIVED_ABI,
+} from "../model/abis";
 import { decodeEventFromReceipt } from "./preprocessing";
-import { DepositForBurnArgs, MessageReceivedArgs } from "../model/eventTypes";
+import {
+  DepositForBurnArgs,
+  MessageReceivedArgs,
+  MintAndWithdrawArgs,
+} from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
 import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
 
@@ -118,4 +126,48 @@ export const filterMessageReceived = (
     transactionHash: payload.log.transactionHash ?? undefined,
   });
   return result.isValid;
+};
+
+/**
+ * Verifies if an event is associated with a CCTP MintAndWithdraw.
+ * It uses the transaction receipt from the payload, finds the MessageReceived event, and checks it.
+ * Use this for MintAndWithdraw events.
+ *
+ * @param payload The event payload.
+ * @param logger logger for logging.
+ * @returns True if the event should be indexed.
+ */
+export const createCctpMintFilter = async (
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Promise<boolean> => {
+  // Check if receipt is present in payload
+  const receipt = payload.transactionReceipt;
+  if (!receipt) {
+    logger.debug({
+      at: "createCctpMintFilter",
+      message: "No transaction receipt found in payload",
+      payload,
+    });
+    return false;
+  }
+
+  // Find MessageReceived log
+  const decodedEvent = decodeEventFromReceipt<MessageReceivedArgs>(
+    receipt,
+    parseAbi(CCTP_MESSAGE_RECEIVED_ABI),
+    MESSAGE_RECEIVED_EVENT_NAME,
+  );
+
+  if (decodedEvent) {
+    const isMatch = filterMessageReceived(decodedEvent, payload, logger);
+    return isMatch;
+  }
+  // If no MessageReceived event is found, return false and warn
+  logger.warn({
+    at: "createCctpMintFilter",
+    message: "Expected MessageReceived event in receipt but could not find it",
+    payload: safeJsonStringify(payload),
+  });
+  return false;
 };

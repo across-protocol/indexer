@@ -30,6 +30,13 @@ export interface MessageReceivedArgs {
   messageBody: `0x${string}`;
 }
 
+export interface MintAndWithdrawArgs {
+  mintRecipient: `0x${string}`;
+  amount: bigint;
+  mintToken: `0x${string}`;
+  feeCollected: bigint;
+}
+
 /* ==================================================================================
  * SPONSORED BRIDGING FLOW DOMAIN LOGIC & CONFIGURATION
  * * Specific event types for the Sponsored Bridging Flow.
@@ -70,6 +77,7 @@ export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
   | MessageReceivedArgs
+  | MintAndWithdrawArgs
   | SwapFlowFinalizedArgs
   | SwapFlowInitializedArgs
   | SponsoredDepositForBurnArgs;
