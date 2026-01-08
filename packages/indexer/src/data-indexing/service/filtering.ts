@@ -13,7 +13,7 @@ import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
 } from "../model/abis";
-import { decodeEventFromReceipt } from "./tranforming";
+import { decodeEventFromReceipt } from "./preprocessing";
 import {
   DepositForBurnArgs,
   MessageReceivedArgs,

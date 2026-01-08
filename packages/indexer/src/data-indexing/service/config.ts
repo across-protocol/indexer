@@ -1,10 +1,18 @@
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
-import { getSponsoredCCTPDstPeripheryAddress } from "../../utils/contractUtils";
+import {
+  getSponsoredCCTPDstPeripheryAddress,
+  getSponsoredCCTPSrcPeripheryAddress,
+} from "../../utils/contractUtils";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
   CCTP_MESSAGE_SENT_ABI,
+  SPONSORED_DEPOSIT_FOR_BURN_ABI,
   CCTP_MINT_AND_WITHDRAW_ABI,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
+  FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
+  ARBITRARY_ACTIONS_EXECUTED_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -15,19 +23,34 @@ import {
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
+  SWAP_FLOW_FINALIZED_EVENT_NAME,
+  SWAP_FLOW_INITIALIZED_EVENT_NAME,
+  SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
+  SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
+  FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
+  ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
+  SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
 import { Logger } from "winston";
-import { extractRawArgs } from "./preprocessing";
+import {
+  extractRawArgs,
+  preprocessSponsoredDepositForBurn,
+} from "./preprocessing";
 import {
   DepositForBurnArgs,
   EventArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  SponsoredDepositForBurnArgs,
   MintAndWithdrawArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
+  SponsoredAccountActivationArgs,
+  SimpleTransferFlowCompletedArgs,
+  FallbackHyperEVMFlowCompletedArgs,
+  ArbitraryActionsExecutedArgs,
 } from "../model/eventTypes";
 import {
   createCctpBurnFilter,
@@ -39,17 +62,27 @@ import {
   transformDepositForBurnEvent,
   transformMessageReceivedEvent,
   transformMessageSentEvent,
+  transformSponsoredDepositForBurnEvent,
   transformMintAndWithdrawEvent,
   transformSwapFlowFinalizedEvent,
   transformSwapFlowInitializedEvent,
+  transformSponsoredAccountActivationEvent,
+  transformSimpleTransferFlowCompletedEvent,
+  transformFallbackHyperEVMFlowCompletedEvent,
+  transformArbitraryActionsExecutedEvent,
 } from "./tranforming";
 import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
   storeMessageSentEvent,
+  storeSponsoredDepositForBurnEvent,
   storeMintAndWithdrawEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
+  storeSponsoredAccountActivationEvent,
+  storeSimpleTransferFlowCompletedEvent,
+  storeFallbackHyperEVMFlowCompletedEvent,
+  storeArbitraryActionsExecutedEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
@@ -57,6 +90,13 @@ import {
   SWAP_FLOW_FINALIZED_ABI,
   SWAP_FLOW_INITIALIZED_ABI,
 } from "../model/abis";
+
+type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
+  TPreprocessed extends any
+    ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
+    : never
+>;
+
 /**
  * Configuration for a complete indexing subsystem.
  * @template TEventEntity The type of the structured database entity.
@@ -78,11 +118,7 @@ export interface SupportedProtocols<
   getEventHandlers: (
     logger: Logger,
     chainId: number,
-  ) => Array<
-    TPreprocessed extends any
-      ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
-      : never
-  >;
+  ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
 }
 
 /**
@@ -166,42 +202,155 @@ export const CCTP_PROTOCOL: SupportedProtocols<
 };
 
 /**
- * Configuration for Sponsored Bridging Protocol.
+ * Returns the list of event handlers for sponsored bridging.
+ * @param sponsorshipContractAddress The address of the contract.
+ * @param logger The logger.
+ * @returns The list of event handlers.
  */
-export const SPONSORED_BRIDGING_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
+export const getSponsoredBridgingEventHandlers = (
+  sponsorshipContractAddress: string,
+  logger: Logger,
+): EventHandlers<
   BlockchainEventRepository,
   IndexerEventPayload,
+  Partial<typeof Entity>,
   EventArgs
-> = {
-  getEventHandlers: (logger: Logger, chainId: number) => [
+> => {
+  return [
     {
       config: {
-        address: getSponsoredCCTPDstPeripheryAddress(chainId) as `0x${string}`,
+        address: sponsorshipContractAddress as `0x${string}`,
         abi: SWAP_FLOW_FINALIZED_ABI,
-        eventName: "SwapFlowFinalized",
+        eventName: SWAP_FLOW_FINALIZED_EVENT_NAME,
       },
       preprocess: extractRawArgs<SwapFlowFinalizedArgs>,
-      filter: async () => true, // No filtering needed
+      filter: async () => true,
       transform: (args: SwapFlowFinalizedArgs, payload: IndexerEventPayload) =>
         transformSwapFlowFinalizedEvent(args, payload, logger),
       store: storeSwapFlowFinalizedEvent,
     },
     {
       config: {
-        address: getSponsoredCCTPDstPeripheryAddress(chainId) as `0x${string}`,
+        address: sponsorshipContractAddress as `0x${string}`,
         abi: SWAP_FLOW_INITIALIZED_ABI,
-        eventName: "SwapFlowInitialized",
+        eventName: SWAP_FLOW_INITIALIZED_EVENT_NAME,
       },
       preprocess: extractRawArgs<SwapFlowInitializedArgs>,
-      filter: async () => true, // No filtering needed
+      filter: async () => true,
       transform: (
         args: SwapFlowInitializedArgs,
         payload: IndexerEventPayload,
       ) => transformSwapFlowInitializedEvent(args, payload, logger),
       store: storeSwapFlowInitializedEvent,
     },
-  ],
+    {
+      config: {
+        address: sponsorshipContractAddress as `0x${string}`,
+        abi: SPONSORED_ACCOUNT_ACTIVATION_ABI,
+        eventName: SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
+      },
+      preprocess: extractRawArgs<SponsoredAccountActivationArgs>,
+      filter: async () => true,
+      transform: (
+        args: SponsoredAccountActivationArgs,
+        payload: IndexerEventPayload,
+      ) => transformSponsoredAccountActivationEvent(args, payload, logger),
+      store: storeSponsoredAccountActivationEvent,
+    },
+    {
+      config: {
+        address: sponsorshipContractAddress as `0x${string}`,
+        abi: SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
+        eventName: SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
+      },
+      preprocess: extractRawArgs<SimpleTransferFlowCompletedArgs>,
+      filter: async () => true,
+      transform: (
+        args: SimpleTransferFlowCompletedArgs,
+        payload: IndexerEventPayload,
+      ) => transformSimpleTransferFlowCompletedEvent(args, payload, logger),
+      store: storeSimpleTransferFlowCompletedEvent,
+    },
+    {
+      config: {
+        address: sponsorshipContractAddress as `0x${string}`,
+        abi: FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
+        eventName: FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
+      },
+      preprocess: extractRawArgs<FallbackHyperEVMFlowCompletedArgs>,
+      filter: async () => true,
+      transform: (
+        args: FallbackHyperEVMFlowCompletedArgs,
+        payload: IndexerEventPayload,
+      ) => transformFallbackHyperEVMFlowCompletedEvent(args, payload, logger),
+      store: storeFallbackHyperEVMFlowCompletedEvent,
+    },
+    {
+      config: {
+        address: sponsorshipContractAddress as `0x${string}`,
+        abi: ARBITRARY_ACTIONS_EXECUTED_ABI,
+        eventName: ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
+      },
+      preprocess: extractRawArgs<ArbitraryActionsExecutedArgs>,
+      filter: async () => true,
+      transform: (
+        args: ArbitraryActionsExecutedArgs,
+        payload: IndexerEventPayload,
+      ) => transformArbitraryActionsExecutedEvent(args, payload, logger),
+      store: storeArbitraryActionsExecutedEvent,
+    },
+  ];
+};
+
+export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: (logger: Logger, chainId: number) => {
+    // First let's get the regular CCTP handlers
+    const handlers = CCTP_PROTOCOL.getEventHandlers(logger, chainId);
+
+    // Now let's see if for the given chainId there exists a sponsored CCTP src periphery
+    const sourceSponsorhipContractAddress = getSponsoredCCTPSrcPeripheryAddress(
+      chainId,
+    ) as `0x${string}`;
+    if (sourceSponsorhipContractAddress) {
+      // If there is a sponsored CCTP src periphery, add the sponsored events from the source chain to the handlers.
+      handlers.push({
+        config: {
+          address: sourceSponsorhipContractAddress,
+          abi: SPONSORED_DEPOSIT_FOR_BURN_ABI,
+          eventName: SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
+        },
+        preprocess: (payload: IndexerEventPayload) =>
+          preprocessSponsoredDepositForBurn(payload, logger),
+        filter: async () => true,
+        transform: (
+          args: SponsoredDepositForBurnArgs,
+          payload: IndexerEventPayload,
+        ) => transformSponsoredDepositForBurnEvent(args, payload, logger),
+        store: storeSponsoredDepositForBurnEvent,
+      });
+    }
+
+    // Now let's see if for the given chainId there exists a sponsored CCTP dst periphery
+    const destinationSponsorhipContractAddress =
+      getSponsoredCCTPDstPeripheryAddress(chainId) as `0x${string}`;
+
+    // If the chain has a sponsored CCTP dst periphery, add the sponsored events from the destination chain to the handlers.
+    if (destinationSponsorhipContractAddress) {
+      handlers.push(
+        ...getSponsoredBridgingEventHandlers(
+          destinationSponsorhipContractAddress,
+          logger,
+        ),
+      );
+    }
+
+    return handlers;
+  },
 };
 
 /**
@@ -217,10 +366,9 @@ export const CHAIN_PROTOCOLS: Record<
     EventArgs
   >[]
 > = {
-  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: [CCTP_PROTOCOL],
-  [CHAIN_IDs.HYPEREVM]: [CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL],
-  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL],
-  [CHAIN_IDs.MAINNET]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.ARBITRUM]: [SPONSORED_CCTP_PROTOCOL],
+  [CHAIN_IDs.HYPEREVM]: [SPONSORED_CCTP_PROTOCOL],
+  [CHAIN_IDs.OPTIMISM]: [SPONSORED_CCTP_PROTOCOL],
+  [CHAIN_IDs.MAINNET]: [SPONSORED_CCTP_PROTOCOL],
   // Add new chains here...
 };
