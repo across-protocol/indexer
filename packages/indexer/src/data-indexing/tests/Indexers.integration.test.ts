@@ -190,7 +190,9 @@ describe("Websocket Subscription", () => {
     });
 
     // Wait for the indexer to subscribe
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -254,7 +256,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -315,7 +319,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -356,7 +362,6 @@ describe("Websocket Subscription", () => {
       messageBody: "0x" + messageBody.toLowerCase(),
     });
   }).timeout(20000);
-
   it("should ingest the SwapFlowInitialized event from HyperEVM tx 0xfd60...4779", async () => {
     // Tx: https://hyperevmscan.io/tx/0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779
     const txHash =
@@ -383,7 +388,10 @@ describe("Websocket Subscription", () => {
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+        .length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -414,7 +422,6 @@ describe("Websocket Subscription", () => {
       dataSource: "websocket",
     });
   }).timeout(20000);
-
   it("should ingest SwapFlowFinalized event from HyperEVM tx 0x15d5...fbd3", async () => {
     // Tx: https://hyperevmscan.io/tx/0x15d5b49cece7e1c90ca03074c809e02ffefa40112f9051aa681d18d856f6fbd3
     const txHash =
@@ -441,7 +448,10 @@ describe("Websocket Subscription", () => {
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+        .length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -488,7 +498,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.MAINNET).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -538,7 +550,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -586,7 +600,9 @@ describe("Websocket Subscription", () => {
       protocols: [CCTP_PROTOCOL],
     });
 
-    await server.waitForSubscription();
+    await server.waitForSubscription(
+      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.OPTIMISM).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
