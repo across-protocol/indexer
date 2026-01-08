@@ -116,13 +116,13 @@ export const transformDepositForBurnEvent = (
   return {
     ...base,
     amount: preprocessed.amount.toString(),
-    burnToken: preprocessed.burnToken.toLowerCase(),
-    depositor: preprocessed.depositor.toLowerCase(),
-    destinationCaller: destinationCaller.toLowerCase(),
+    burnToken: preprocessed.burnToken,
+    depositor: preprocessed.depositor,
+    destinationCaller,
     maxFee: preprocessed.maxFee.toString(),
     destinationDomain: preprocessed.destinationDomain,
-    destinationTokenMessenger: tokenMessenger.toLowerCase(),
-    mintRecipient: mintRecipient.toLowerCase(),
+    destinationTokenMessenger: tokenMessenger,
+    mintRecipient,
     minFinalityThreshold: preprocessed.minFinalityThreshold,
     hookData: preprocessed.hookData,
   };
@@ -156,9 +156,9 @@ export const transformMessageSentEvent = (
     sourceDomain: decodedMessage.sourceDomain,
     destinationDomain: decodedMessage.destinationDomain,
     nonce: decodedMessage.nonce,
-    sender: sender.toLowerCase(),
-    recipient: recipient.toLowerCase(),
-    destinationCaller: destinationCaller.toLowerCase(),
+    sender,
+    recipient,
+    destinationCaller,
     minFinalityThreshold: decodedMessage.minFinalityThreshold,
     finalityThresholdExecuted: decodedMessage.finalityThresholdExecuted,
     messageBody: decodedMessage.messageBody,
@@ -201,13 +201,13 @@ export const transformMessageReceivedEvent = (
   const base = baseTransformer(payload, logger);
   return {
     ...base,
-    caller: preprocessed.caller.toLowerCase(),
+    caller: preprocessed.caller,
     sourceDomain: preprocessed.sourceDomain,
     nonce: preprocessed.nonce,
     sender: transformAddress(
       preprocessed.sender,
       getCctpDestinationChainFromDomain(preprocessed.sourceDomain),
-    ).toLowerCase(),
+    ),
     finalityThresholdExecuted: preprocessed.finalityThresholdExecuted,
     messageBody: preprocessed.messageBody,
   };
@@ -225,9 +225,9 @@ export const transformMintAndWithdrawEvent = (
 
   return {
     ...base,
-    mintRecipient: mintRecipient.toLowerCase(),
+    mintRecipient,
     amount: preprocessed.amount.toString(),
-    mintToken: mintToken.toLowerCase(),
+    mintToken,
     feeCollected: preprocessed.feeCollected.toString(),
   };
 };
@@ -243,14 +243,14 @@ export const transformSwapFlowInitializedEvent = (
     ...base,
     chainId: base.chainId.toString(),
     quoteNonce: preprocessed.quoteNonce,
-    finalRecipient: preprocessed.finalRecipient.toLowerCase(),
-    finalToken: preprocessed.finalToken.toLowerCase(),
+    finalRecipient: preprocessed.finalRecipient,
+    finalToken: preprocessed.finalToken,
     evmAmountIn: preprocessed.evmAmountIn.toString(),
     bridgingFeesIncurred: preprocessed.bridgingFeesIncurred.toString(),
     coreAmountIn: preprocessed.coreAmountIn.toString(),
     minAmountToSend: preprocessed.minAmountToSend.toString(),
     maxAmountToSend: preprocessed.maxAmountToSend.toString(),
-    contractAddress: payload.log.address.toLowerCase(),
+    contractAddress: payload.log.address,
   };
 };
 
@@ -265,10 +265,10 @@ export const transformSwapFlowFinalizedEvent = (
     ...base,
     chainId: base.chainId.toString(),
     quoteNonce: preprocessed.quoteNonce,
-    finalRecipient: preprocessed.finalRecipient.toLowerCase(),
-    finalToken: preprocessed.finalToken.toLowerCase(),
+    finalRecipient: preprocessed.finalRecipient,
+    finalToken: preprocessed.finalToken,
     totalSent: preprocessed.totalSent.toString(),
     evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
-    contractAddress: payload.log.address.toLowerCase(),
+    contractAddress: payload.log.address,
   };
 };
