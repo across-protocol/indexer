@@ -153,14 +153,18 @@ describe("Websocket Subscription", () => {
   /**
    * Cleans up the data source each test.
    */
-  afterEach(async () => {
+  afterEach(async function () {
+    this.timeout(20000);
+
+    // Close the database
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
+
     abortController.abort();
-    // Give the indexer loop a moment to exit and close its connections cleanly
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    server.stop();
+
+    // Stop the server.
+    await server.stop();
     sinon.restore();
   });
 
@@ -187,6 +191,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     // Wait for the indexer to subscribe
@@ -254,6 +259,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -317,6 +323,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -386,6 +393,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -446,6 +454,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_BRIDGING_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -496,6 +505,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.MAINNET,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
