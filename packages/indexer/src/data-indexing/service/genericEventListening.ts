@@ -60,7 +60,7 @@ export interface IndexerEventPayload {
   /** The transaction that generated the event. */
   transaction?: Transaction;
   /** The receipt of the transaction that generated the event. */
-  transactionReceipt?: TransactionReceipt;
+  transactionReceipt?: Promise<TransactionReceipt>;
 }
 
 /**
@@ -172,6 +172,7 @@ async function processLogBatch<TPayload>(
   args: ProcessLogBatchArgs<TPayload>,
 ): Promise<void> {
   const { logs, config, chainId, client, onEvent, logger } = args;
+  const { default: PLazy } = await import("p-lazy");
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
   const blockCache = new Map<
@@ -231,33 +232,39 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Transaction Receipt (Deduplicated) ---
-        let transactionReceipt: TransactionReceipt | undefined;
+        let transactionReceipt: Promise<TransactionReceipt> | undefined;
         if (logItem.transactionHash) {
           let receiptPromise = receiptCache.get(logItem.transactionHash);
           if (!receiptPromise) {
-            receiptPromise = pRetry(
-              () =>
-                client.getTransactionReceipt({
-                  hash: logItem.transactionHash!,
-                }),
-              {
-                retries: RETRY_ATTEMPTS,
-                factor: RETRY_BACKOFF_EXPONENT,
-                maxTimeout: MAX_RETRY_TIMEOUT,
-                onFailedAttempt: (error) => {
-                  logger.warn({
-                    at: "genericEventListener#processLogBatch",
-                    message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
-                    attempt: error.attemptNumber,
-                    retriesLeft: error.retriesLeft,
-                    error,
-                  });
+            // Wrap the transaction receipt fetching in a PLazy to avoid blocking the main thread
+            // We only fetch the receipt if we need it, so we can avoid the extra RPC call (That is what PLazy does)
+            receiptPromise = new PLazy((resolve, reject) => {
+              pRetry(
+                () =>
+                  client.getTransactionReceipt({
+                    hash: logItem.transactionHash!,
+                  }),
+                {
+                  retries: RETRY_ATTEMPTS,
+                  factor: RETRY_BACKOFF_EXPONENT,
+                  maxTimeout: MAX_RETRY_TIMEOUT,
+                  onFailedAttempt: (error) => {
+                    logger.warn({
+                      at: "genericEventListener#processLogBatch",
+                      message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
+                      attempt: error.attemptNumber,
+                      retriesLeft: error.retriesLeft,
+                      error,
+                    });
+                  },
                 },
-              },
-            );
+              )
+                .then(resolve)
+                .catch(reject);
+            });
             receiptCache.set(logItem.transactionHash, receiptPromise);
           }
-          transactionReceipt = await receiptPromise;
+          transactionReceipt = receiptPromise;
         }
 
         const payload = {

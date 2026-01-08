@@ -205,6 +205,9 @@ importers:
       luxon:
         specifier: ^3.5.0
         version: 3.5.0
+      p-lazy:
+        specifier: 3.1.0
+        version: 3.1.0
       p-retry:
         specifier: ^4.6.2
         version: 4.6.2
@@ -6874,6 +6877,10 @@ packages:
 
   p-defer@3.0.0:
     resolution: {integrity: sha512-ugZxsxmtTln604yeYd29EGrNhazN2lywetzpKhfmQjW/VJmhpDmWbiX+h0zL8V91R0UXkhb3KtPmyq9PZw3aYw==}
+    engines: {node: '>=8'}
+
+  p-lazy@3.1.0:
+    resolution: {integrity: sha512-sCJn0Cdahs6G6SX9+DUihVFUhrzDEduzE5xeViVBGtoqy5dBWko7W8T6Kk6TjR2uevRXJO7CShfWrqdH5s3w3g==}
     engines: {node: '>=8'}
 
   p-limit@2.3.0:
@@ -18865,6 +18872,8 @@ snapshots:
   p-cancelable@3.0.0: {}
 
   p-defer@3.0.0: {}
+
+  p-lazy@3.1.0: {}
 
   p-limit@2.3.0:
     dependencies:
