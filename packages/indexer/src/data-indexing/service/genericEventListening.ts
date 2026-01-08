@@ -189,7 +189,7 @@ async function processLogBatch<TPayload>(
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
   const blockCache = new Map<bigint, GetBlockReturnType<Chain, true>>();
-  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
+  const receiptCache = new Map<string, TransactionReceipt>();
 
   // Process all logs in parallel
   await Promise.all(
@@ -242,9 +242,9 @@ async function processLogBatch<TPayload>(
         // --- Fetch Transaction Receipt (Deduplicated) ---
         let transactionReceipt: TransactionReceipt | undefined;
         if (logItem.transactionHash) {
-          let receiptPromise = receiptCache.get(logItem.transactionHash);
-          if (!receiptPromise) {
-            receiptPromise = pRetry(
+          transactionReceipt = receiptCache.get(logItem.transactionHash);
+          if (!transactionReceipt) {
+            transactionReceipt = await pRetry(
               () => {
                 metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
                 return client.getTransactionReceipt({
@@ -266,7 +266,7 @@ async function processLogBatch<TPayload>(
                 },
               },
             );
-            receiptCache.set(logItem.transactionHash, receiptPromise);
+            receiptCache.set(logItem.transactionHash, transactionReceipt);
           }
         }
 
