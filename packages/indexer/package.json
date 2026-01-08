@@ -28,6 +28,7 @@
     "@across-protocol/contracts": "^4.1.14",
     "@across-protocol/contracts-beta": "npm:@across-protocol/contracts@4.1.17-beta.4",
     "@across-protocol/sdk": "^4.3.97",
+    "@datadog/datadog-api-client": "^1.49.0",
     "@google-cloud/pubsub": "^5.2.0",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",

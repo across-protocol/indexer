@@ -8,6 +8,7 @@ import {
   parseWebhookClientsFromString,
 } from "@repo/webhooks";
 import { getNoTtlBlockDistance } from "./web3/constants";
+import * as os from "os";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -24,6 +25,7 @@ export type Config = {
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
+  datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
   coingeckoApiKey?: string;
@@ -65,6 +67,14 @@ export type RetryProviderConfig = {
   timeout: number;
   retries: number;
   retryDelay: number;
+};
+
+export type DatadogConfig = {
+  enabled: boolean;
+  environment: string;
+  dd_api_key: string;
+  dd_app_key: string;
+  tags: string[];
 };
 
 export type Env = Record<string, string | undefined>;
@@ -200,6 +210,43 @@ export function parseRetryProviderEnvs(chainId: number): RetryProviderConfig {
   };
 }
 
+export function parseDatadogConfig(env: Env): DatadogConfig {
+  let enabled = env.DD_ENABLED === "true";
+  const environment = env.DD_ENVIRONMENT || "local";
+  const dd_api_key = env.DD_API_KEY || "";
+  const dd_app_key = env.DD_APP_KEY || "";
+
+  const tags = [`env:${environment}`];
+
+  if (environment === "local") {
+    // Attempt to get machine name from env or os.hostname
+    // This is done so that if we run the indexer locally, we do not mix up metrics from different machines
+    let username;
+    try {
+      username = os.userInfo().username;
+    } catch (error) {
+      // Fallback for environments where userInfo() fails
+      // Let the usern set their own name if they want to
+      username = process.env.USERNAME || "unknown-user";
+    }
+    const machineName = env.MACHINE_NAME || os.hostname();
+    const name = username + "@" + machineName;
+    tags.push(`userIdentity:${name}`);
+  }
+  // If dd_api_key or dd_app_key is empty, disable datadog
+  if (dd_api_key.length === 0 || dd_app_key.length === 0) {
+    enabled = false;
+  }
+
+  return {
+    enabled,
+    environment,
+    dd_api_key,
+    dd_app_key,
+    tags,
+  };
+}
+
 export function envToConfig(env: Env): Config {
   assert(env.HUBPOOL_CHAIN, "Requires HUBPOOL_CHAIN");
   const redisConfig = parseRedisConfig(env);
@@ -234,6 +281,7 @@ export function envToConfig(env: Env): Config {
     : false;
   const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
   const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
+  const datadogConfig = parseDatadogConfig(env);
   const enableBundleIncludedEventsService =
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
       ? env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE === "true"
@@ -295,6 +343,7 @@ export function envToConfig(env: Env): Config {
     enableCctpFinalizer,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,
+    datadogConfig,
     webhookConfig,
     maxBlockRangeSize,
     coingeckoApiKey,
