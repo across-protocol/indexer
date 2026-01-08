@@ -22,6 +22,7 @@ export type Config = {
   enableBundleBuilder: boolean;
   cctpIndexerChainIds: number[];
   enableCctpFinalizer: boolean;
+  cctpFinalizerMode: CctpFinalizerMode;
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
@@ -78,6 +79,12 @@ export type DatadogConfig = {
 };
 
 export type Env = Record<string, string | undefined>;
+
+export enum CctpFinalizerMode {
+  Off = "off",
+  Full = "full",
+  FetchAttestationOnly = "fetch-attestation-only",
+}
 
 export function parseRedisConfig(env: Env): RedisConfig {
   const { REDIS_HOST, REDIS_PORT } = env;
@@ -279,6 +286,26 @@ export function envToConfig(env: Env): Config {
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
     : false;
+  let cctpFinalizerMode: CctpFinalizerMode = CctpFinalizerMode.Off;
+
+  if (env.CCTP_FINALIZER_MODE) {
+    if (
+      env.CCTP_FINALIZER_MODE === "full" ||
+      env.CCTP_FINALIZER_MODE === "fetch-attestation-only" ||
+      env.CCTP_FINALIZER_MODE === "off"
+    ) {
+      cctpFinalizerMode = env.CCTP_FINALIZER_MODE as CctpFinalizerMode;
+    } else {
+      throw new Error(
+        `Invalid CCTP_FINALIZER_MODE: ${env.CCTP_FINALIZER_MODE}. Must be one of 'off', 'full', 'fetch-attestation-only'`,
+      );
+    }
+  } else if (env.ENABLE_CCTP_FINALIZER) {
+    cctpFinalizerMode =
+      env.ENABLE_CCTP_FINALIZER === "true"
+        ? CctpFinalizerMode.Full
+        : CctpFinalizerMode.Off;
+  }
   const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
   const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
   const datadogConfig = parseDatadogConfig(env);
@@ -341,6 +368,7 @@ export function envToConfig(env: Env): Config {
     cctpIndexerChainIds,
     enableOftIndexer,
     enableCctpFinalizer,
+    cctpFinalizerMode,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,
     datadogConfig,
