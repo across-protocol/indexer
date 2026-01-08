@@ -75,7 +75,7 @@ export type DatadogConfig = {
   environment: string;
   dd_api_key: string;
   dd_app_key: string;
-  globalTags: string[];
+  tags: string[];
 };
 
 export type Env = Record<string, string | undefined>;
@@ -246,7 +246,7 @@ export function parseDatadogConfig(env: Env): DatadogConfig {
     environment,
     dd_api_key,
     dd_app_key,
-    globalTags: tags,
+    tags,
   };
 }
 
