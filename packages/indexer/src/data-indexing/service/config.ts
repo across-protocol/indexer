@@ -4,11 +4,13 @@ import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
   CCTP_MESSAGE_SENT_ABI,
+  CCTP_MINT_AND_WITHDRAW_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
   MESSAGE_RECEIVED_EVENT_NAME,
   MESSAGE_SENT_EVENT_NAME,
+  MINT_AND_WITHDRAW_EVENT_NAME,
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
   TOKEN_MESSENGER_ADDRESS_MAINNET,
@@ -23,11 +25,13 @@ import {
   EventArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  MintAndWithdrawArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
 import {
   createCctpBurnFilter,
+  createCctpMintFilter,
   filterDepositForBurnEvents,
   filterMessageReceived,
 } from "./filtering";
@@ -35,6 +39,7 @@ import {
   transformDepositForBurnEvent,
   transformMessageReceivedEvent,
   transformMessageSentEvent,
+  transformMintAndWithdrawEvent,
   transformSwapFlowFinalizedEvent,
   transformSwapFlowInitializedEvent,
 } from "./tranforming";
@@ -42,6 +47,7 @@ import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
   storeMessageSentEvent,
+  storeMintAndWithdrawEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
 } from "./storing";
@@ -140,6 +146,21 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           transformMessageReceivedEvent(args, payload, logger),
         store: storeMessageReceivedEvent,
       },
+      {
+        config: {
+          address: testNet
+            ? TOKEN_MESSENGER_ADDRESS_TESTNET
+            : TOKEN_MESSENGER_ADDRESS_MAINNET,
+          abi: CCTP_MINT_AND_WITHDRAW_ABI,
+          eventName: MINT_AND_WITHDRAW_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<MintAndWithdrawArgs>,
+        filter: (_args: MintAndWithdrawArgs, payload: IndexerEventPayload) =>
+          createCctpMintFilter(payload, logger),
+        transform: (args: MintAndWithdrawArgs, payload: IndexerEventPayload) =>
+          transformMintAndWithdrawEvent(args, payload, logger),
+        store: storeMintAndWithdrawEvent,
+      },
     ];
   },
 };
@@ -199,6 +220,7 @@ export const CHAIN_PROTOCOLS: Record<
   [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: [CCTP_PROTOCOL],
   [CHAIN_IDs.HYPEREVM]: [CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL],
+  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL],
   [CHAIN_IDs.MAINNET]: [CCTP_PROTOCOL],
   // Add new chains here...
 };
