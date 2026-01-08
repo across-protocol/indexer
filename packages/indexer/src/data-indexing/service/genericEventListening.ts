@@ -261,7 +261,10 @@ async function processLogBatch<TPayload>(
         );
         metrics?.addGaugeMetric(
           "websocketToBlockLatency",
-          batchStart - Number(blockTimestamp) * 1000,
+          // The block timestamp is in seconds, the batch start is in milliseconds, so we need to divide the batch start by 1000 to get the same unit.
+          // Converting the block timestamp to milliseconds would be counterproductive as it would be rounded to the nearest second which will give an inaccurate latency measurement.
+          // We cannot measure the latency below a second, so in the data visualization we can only show the latency in seconds.
+          batchStart / 1000 - Number(blockTimestamp),
           tags,
         );
       } catch (error) {
