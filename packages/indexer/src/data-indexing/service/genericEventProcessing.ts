@@ -74,15 +74,7 @@ export const processEvent = async <
 >(
   request: GenericEventProcessorRequest<TEntity, TDb, TPayload, TPreprocessed>,
 ): Promise<void> => {
-  const {
-    db,
-    source,
-    preprocess,
-    transform,
-    store,
-    filter,
-    logger = console as unknown as Logger,
-  } = request;
+  const { db, source, preprocess, transform, store, filter, logger } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
   // sourcing, transformation, or storage of an event. This prevents a single failing
   // event from crashing the entire listening process.
@@ -106,7 +98,7 @@ export const processEvent = async <
     // Store (Asynchronous I/O operation)
     const storedItems = await store(entity, db);
 
-    logger.debug({
+    logger?.debug({
       at: "genericEventProcessor#genericEventProcessor",
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
       message: `Successfully stored event: ${storedItems
@@ -117,7 +109,7 @@ export const processEvent = async <
         .join(", ")}`,
     });
   } catch (error) {
-    logger.error({
+    logger?.error({
       at: "genericEventProcessor#genericEventProcessor",
       message: "Error processing event.",
       notificationPath: "across-indexer-error",

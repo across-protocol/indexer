@@ -12,7 +12,7 @@ const PK_CHAIN_BLOCK_TX_LOG = [
 /**
  * Stores a DepositForBurn event in the database.
  *
- * @param event The DepositForBurn entity to store.
+ * @param event The SponsoredDepositForBurn entity to store.
  * @param repository The BlockchainEventRepository instance.
  * @returns A promise that resolves to the result of the save operation.
  */
