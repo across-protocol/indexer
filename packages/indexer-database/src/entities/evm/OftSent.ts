@@ -16,7 +16,6 @@ import {
 ])
 @Index("IX_oftSent_finalised", ["finalised"])
 @Index("IX_oftSent_deletedAt", ["deletedAt"])
-@Index("IX_oftSent_chainId_blockNumber", ["chainId", "blockNumber"])
 export class OFTSent {
   @PrimaryGeneratedColumn()
   id: number;
