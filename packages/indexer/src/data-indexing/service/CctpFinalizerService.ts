@@ -14,8 +14,6 @@ import {
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
 export const CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS = 5 * 60; // 5 minutes
-const UNFILLED_BURN_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
-const UNFILLED_BURN_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
 
 export class CctpFinalizerServiceManager {
   private finalizerService: RepeatableTask;
@@ -298,10 +296,6 @@ class CctpUnfinalizedBurnMonitorService extends RepeatableTask {
 
   protected async taskLogic(): Promise<void> {
     try {
-      const now = Date.now();
-      const minAgeTime = new Date(now - UNFILLED_BURN_THRESHOLD_SECONDS * 1000);
-      const maxAgeTime = new Date(now - UNFILLED_BURN_MAX_AGE_SECONDS * 1000);
-
       const unfinalizedBurns = await this.postgres
         .createQueryBuilder(entities.CctpFinalizerJob, "job")
         .innerJoinAndSelect("job.burnEvent", "burnEvent")
@@ -315,8 +309,8 @@ class CctpUnfinalizedBurnMonitorService extends RepeatableTask {
           "messageReceived",
           "messageReceived.sourceDomain = messageSent.sourceDomain AND messageReceived.nonce = messageSent.nonce",
         )
-        .where("job.createdAt < :minAgeTime", { minAgeTime })
-        .andWhere("job.createdAt > :maxAgeTime", { maxAgeTime })
+        .where("now() - job.createdAt > interval '30 minutes'")
+        .andWhere("now() - job.createdAt < interval '24 hours'")
         .andWhere("messageReceived.id IS NULL")
         .addSelect("messageSent.sourceDomain", "sourceDomain")
         .addSelect("messageSent.nonce", "nonce")
@@ -339,7 +333,7 @@ class CctpUnfinalizedBurnMonitorService extends RepeatableTask {
         );
 
         const elapsedMinutes = Math.round(
-          (now - job.createdAt.getTime()) / 1000 / 60,
+          (Date.now() - job.createdAt.getTime()) / 1000 / 60,
         );
 
         this.logger.error({
