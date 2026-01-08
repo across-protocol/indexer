@@ -99,7 +99,6 @@ export interface ProcessLogBatchArgs<TPayload> {
   config: EventConfig;
   chainId: number;
   client: PublicClient<Transport, Chain>;
-
   onEvent: (payload: TPayload) => void;
   logger: Logger;
   metrics?: DataDogMetricsService;
