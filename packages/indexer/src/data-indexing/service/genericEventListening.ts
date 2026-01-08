@@ -10,6 +10,7 @@ import {
   TransactionReceipt,
 } from "viem";
 import { Logger } from "winston";
+import PLazy from "p-lazy";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -172,7 +173,6 @@ async function processLogBatch<TPayload>(
   args: ProcessLogBatchArgs<TPayload>,
 ): Promise<void> {
   const { logs, config, chainId, client, onEvent, logger } = args;
-  const { default: PLazy } = await import("p-lazy");
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
   const blockCache = new Map<
