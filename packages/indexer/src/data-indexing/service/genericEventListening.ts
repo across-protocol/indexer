@@ -8,8 +8,10 @@ import {
   type Chain,
   type Transaction,
   TransactionReceipt,
+  GetBlockReturnType,
 } from "viem";
 import { Logger } from "winston";
+import { DataDogMetricsService } from "../../services/MetricsService";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -84,6 +86,8 @@ export interface SubscribeToEventRequest<TPayload> {
   onFatalError: (error: Error) => void;
   /** An optional logger instance. */
   logger: Logger;
+  /** An optional metrics service instance. */
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -95,8 +99,10 @@ export interface ProcessLogBatchArgs<TPayload> {
   config: EventConfig;
   chainId: number;
   client: PublicClient<Transport, Chain>;
+
   onEvent: (payload: TPayload) => void;
   logger: Logger;
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -115,6 +121,7 @@ export const subscribeToEvent = <TPayload>(
     onEvent,
     onFatalError,
     logger,
+    metrics,
   } = request;
   // Viem requires parsing the human-readable string array into a typed ABI
   const parsedAbi = parseAbi(config.abi);
@@ -135,6 +142,7 @@ export const subscribeToEvent = <TPayload>(
           client,
           onEvent,
           logger,
+          metrics,
         }),
       );
     },
@@ -171,18 +179,23 @@ export const subscribeToEvent = <TPayload>(
 async function processLogBatch<TPayload>(
   args: ProcessLogBatchArgs<TPayload>,
 ): Promise<void> {
-  const { logs, config, chainId, client, onEvent, logger } = args;
+  const { logs, config, chainId, client, onEvent, logger, metrics } = args;
+  const batchStart = Date.now();
+  const tags = [
+    `websocketIndexer`,
+    `processLogBatch`,
+    `chainId:${chainId}`,
+    `event:${config.eventName}`,
+  ];
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
-  const blockCache = new Map<
-    bigint,
-    Promise<{ timestamp: bigint; transactions: Transaction[] }>
-  >();
+  const blockCache = new Map<bigint, GetBlockReturnType<Chain, true>>();
   const receiptCache = new Map<string, Promise<TransactionReceipt>>();
 
   // Process all logs in parallel
   await Promise.all(
     logs.map(async (logItem) => {
+      const startProcessingTime = Date.now();
       try {
         // Skip pending logs that don't have a block number yet
         if (!logItem.blockNumber) {
@@ -190,19 +203,16 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Block & Transactions (Deduplicated) ---
-        let blockPromise = blockCache.get(logItem.blockNumber);
-        if (!blockPromise) {
-          blockPromise = pRetry(
-            () =>
-              client
-                .getBlock({
-                  blockNumber: logItem.blockNumber!,
-                  includeTransactions: true,
-                })
-                .then((block) => ({
-                  timestamp: block.timestamp,
-                  transactions: block.transactions,
-                })),
+        let block = blockCache.get(logItem.blockNumber);
+        if (!block) {
+          block = await pRetry(
+            () => {
+              metrics?.addCountMetric("rpcCallGetBlock", tags);
+              return client.getBlock({
+                blockNumber: logItem.blockNumber!,
+                includeTransactions: true,
+              });
+            },
             {
               retries: RETRY_ATTEMPTS,
               factor: RETRY_BACKOFF_EXPONENT,
@@ -218,9 +228,9 @@ async function processLogBatch<TPayload>(
               },
             },
           );
-          blockCache.set(logItem.blockNumber, blockPromise);
+          blockCache.set(logItem.blockNumber, block);
         }
-        const { timestamp: blockTimestamp, transactions } = await blockPromise;
+        const { timestamp: blockTimestamp, transactions } = await block;
 
         // --- Find Transaction ---
         let transaction: Transaction | undefined;
@@ -236,10 +246,12 @@ async function processLogBatch<TPayload>(
           let receiptPromise = receiptCache.get(logItem.transactionHash);
           if (!receiptPromise) {
             receiptPromise = pRetry(
-              () =>
-                client.getTransactionReceipt({
+              () => {
+                metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
+                return client.getTransactionReceipt({
                   hash: logItem.transactionHash!,
-                }),
+                });
+              },
               {
                 retries: RETRY_ATTEMPTS,
                 factor: RETRY_BACKOFF_EXPONENT,
@@ -257,7 +269,6 @@ async function processLogBatch<TPayload>(
             );
             receiptCache.set(logItem.transactionHash, receiptPromise);
           }
-          transactionReceipt = await receiptPromise;
         }
 
         const payload = {
@@ -280,6 +291,20 @@ async function processLogBatch<TPayload>(
           contractAddress: config.address,
         });
         onEvent(payload);
+
+        metrics?.addGaugeMetric(
+          "processLog",
+          Date.now() - startProcessingTime,
+          tags,
+        );
+        metrics?.addGaugeMetric(
+          "websocketToBlockLatency",
+          // The block timestamp is in seconds, the batch start is in milliseconds, so we need to divide the batch start by 1000 to get the same unit.
+          // Converting the block timestamp to milliseconds would be counterproductive as it would be rounded to the nearest second which will give an inaccurate latency measurement.
+          // We cannot measure the latency below a second, so in the data visualization we can only show the latency in seconds.
+          Math.floor(batchStart / 1000 - Number(blockTimestamp)),
+          tags,
+        );
       } catch (error) {
         logger.error({
           at: "genericEventListener#processLog",
@@ -287,8 +312,11 @@ async function processLogBatch<TPayload>(
           error,
           logIndex: logItem.logIndex,
           txHash: logItem.transactionHash,
+          chainId,
         });
+        metrics?.addCountMetric("processLogError", tags);
       }
     }),
   );
+  metrics?.addGaugeMetric("processLogBatch", Date.now() - batchStart, tags);
 }
