@@ -4,6 +4,7 @@ import {
   COUNT,
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { Logger } from "winston";
 
 /**
  * Service for submitting metrics to Datadog.
@@ -87,7 +88,7 @@ export class DataDogMetricsService {
    * @param {string[]} tags - The tags to apply to the metric.
    * @param {MetricIntakeType} type - The type of the metric.
    */
-  private addMetric(
+  public addMetric(
     metricName: string,
     value: number,
     tags: string[],
@@ -147,3 +148,50 @@ export class DataDogMetricsService {
     );
   }
 }
+
+/**
+ * Arguments for the withMetrics wrapper.
+ */
+interface WithMetricsArgs {
+  service?: DataDogMetricsService;
+  metricName: string;
+  tags: string[];
+  type: MetricIntakeType;
+  value?: number;
+  logger: Logger;
+}
+
+/**
+ * Wraps a function with metrics reporting.
+ * @param {Function} fn - The function to wrap.
+ * @param {WithMetricsArgs} args - Arguments for the metric.
+ * @returns {Function} The wrapped function.
+ */
+export const withMetrics = <TArgs extends any[], TReturn>(
+  fn: (...args: TArgs) => TReturn | Promise<TReturn>,
+  args: WithMetricsArgs,
+): ((...args: TArgs) => Promise<TReturn>) => {
+  return async (...argsInput: TArgs) => {
+    const result = await fn(...argsInput);
+    const { service, metricName, tags, type, value, logger } = args;
+
+    if (!service) return result;
+
+    if (type === COUNT) {
+      service.addCountMetric(metricName, tags, value ?? 1);
+    }
+    if (type === GAUGE) {
+      if (!value) {
+        logger.warn({
+          message: "Value is required for gauge metrics",
+          metricName,
+          tags,
+        });
+        return result;
+      }
+      service.addGaugeMetric(metricName, value, tags);
+    }
+
+    return result;
+  };
+};
