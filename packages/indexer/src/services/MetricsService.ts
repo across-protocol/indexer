@@ -12,6 +12,21 @@ const RETRY_ATTEMPTS = 10;
 const RETRY_BACKOFF_EXPONENT = 2;
 
 /**
+ * Configuration for DataDogMetricsService.
+ * @interface
+ * @property {string[]} globalTags - The global tags to apply to all metrics.
+ * @property {boolean} enabled - Whether the metrics service is enabled.
+ * @property {client.Configuration} configuration - The Datadog configuration.
+ * @property {Logger} logger - The logger to use for logging.
+ */
+export interface DataDogMetricsServiceConfig {
+  globalTags: string[];
+  enabled?: boolean;
+  configuration?: client.Configuration;
+  logger?: Logger;
+}
+
+/**
  * Service for submitting metrics to Datadog.
  * The metrics service is a singleton that is used to submit metrics to Datadog.
  * It is initialized in the main process and is used by all indexers.
@@ -26,13 +41,6 @@ const RETRY_BACKOFF_EXPONENT = 2;
  * @property {string[]} globalTags - The global tags to apply to all metrics.
  * @property {boolean} enabled - Whether the metrics service is enabled.
  */
-export interface DataDogMetricsServiceConfig {
-  globalTags: string[];
-  enabled?: boolean;
-  configuration?: client.Configuration;
-  logger?: Logger;
-}
-
 export class DataDogMetricsService {
   private apiInstance: v2.MetricsApi;
   private buffer: v2.MetricSeries[] = [];
