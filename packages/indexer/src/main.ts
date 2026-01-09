@@ -180,10 +180,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
-  const metrics = new DataDogMetricsService(
-    config.datadogConfig.tags,
-    config.datadogConfig.enabled,
-  );
+  const metrics = new DataDogMetricsService({
+    globalTags: config.datadogConfig.tags,
+    enabled: config.datadogConfig.enabled,
+    logger,
+  });
 
   // WebSocket Indexer setup
   const wsIndexerPromises: Promise<void>[] = [];

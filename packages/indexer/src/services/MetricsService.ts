@@ -26,6 +26,13 @@ const RETRY_BACKOFF_EXPONENT = 2;
  * @property {string[]} globalTags - The global tags to apply to all metrics.
  * @property {boolean} enabled - Whether the metrics service is enabled.
  */
+export interface DataDogMetricsServiceConfig {
+  globalTags: string[];
+  enabled?: boolean;
+  configuration?: client.Configuration;
+  logger?: Logger;
+}
+
 export class DataDogMetricsService {
   private apiInstance: v2.MetricsApi;
   private buffer: v2.MetricSeries[] = [];
@@ -38,22 +45,15 @@ export class DataDogMetricsService {
 
   /**
    * Constructor for DataDogMetricsService.
-   * @param {string[]} globalTags - The global tags to apply to all metrics.
-   * @param {boolean} enabled - Whether the metrics service is enabled.
-   * @param {client.Configuration} configuration - The Datadog configuration.
+   * @param {DataDogMetricsServiceConfig} config - The configuration object.
    */
-  constructor(
-    globalTags: string[],
-    enabled: boolean = true,
-    configuration?: client.Configuration,
-    logger?: Logger,
-  ) {
-    this.globalTags = globalTags;
-    this.enabled = enabled;
-    this.logger = logger;
+  constructor(config: DataDogMetricsServiceConfig) {
+    this.globalTags = config.globalTags;
+    this.enabled = config.enabled ?? true;
+    this.logger = config.logger;
 
-    const config =
-      configuration ||
+    const configuration =
+      config.configuration ||
       client.createConfiguration({
         authMethods: {
           apiKeyAuth: process.env.DD_API_KEY,
@@ -61,7 +61,7 @@ export class DataDogMetricsService {
         },
       });
 
-    this.apiInstance = new v2.MetricsApi(config);
+    this.apiInstance = new v2.MetricsApi(configuration);
 
     // Periodically flush metrics
     this.flushInterval = setInterval(() => {
