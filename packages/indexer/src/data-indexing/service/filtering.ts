@@ -18,9 +18,12 @@ import {
   DepositForBurnArgs,
   MessageReceivedArgs,
   MintAndWithdrawArgs,
+  OFTSentArgs,
+  OFTReceivedArgs,
 } from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
 import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
+import { isEndpointIdSupported } from "../adapter/oft/service";
 
 /**
  * Checks if a DepositForBurn event should be indexed.
@@ -170,4 +173,44 @@ export const createCctpMintFilter = async (
     payload: safeJsonStringify(payload),
   });
   return false;
+};
+
+/* ==================================================================================
+ * OFT FILTERING LOGIC
+ * ================================================================================== */
+
+/**
+ * Checks if an OFTSent event should be indexed.
+ * Validates:
+ * 1. Transaction contains Swap API marker ("73c0de")
+ * 2. Destination endpoint ID is supported
+ *
+ * @param args The event arguments.
+ * @param payload The event payload.
+ * @returns True if the event should be indexed.
+ */
+export const filterOFTSentEvents = (
+  args: OFTSentArgs,
+  payload: IndexerEventPayload,
+): boolean => {
+  const txInput = payload?.transaction?.input?.toLowerCase();
+  const hasMarker = !!(txInput && txInput.includes(SWAP_API_CALLDATA_MARKER));
+  const isValidEndpoint = isEndpointIdSupported(args.dstEid);
+
+  return hasMarker && isValidEndpoint;
+};
+
+/**
+ * Checks if an OFTReceived event should be indexed.
+ * Validates that the source endpoint ID is supported.
+ *
+ * @param args The event arguments.
+ * @param payload The event payload.
+ * @returns True if the event should be indexed.
+ */
+export const filterOFTReceivedEvents = (
+  args: OFTReceivedArgs,
+  payload: IndexerEventPayload,
+): boolean => {
+  return isEndpointIdSupported(args.srcEid);
 };

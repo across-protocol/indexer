@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_oftReceived_chainId_blockHash_logIndex", [
@@ -56,6 +57,9 @@ export class OFTReceived {
 
   @Column()
   finalised: boolean;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @Column()
   blockTimestamp: Date;

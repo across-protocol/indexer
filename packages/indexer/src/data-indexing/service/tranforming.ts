@@ -14,6 +14,8 @@ import {
   MintAndWithdrawArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
+  OFTSentArgs,
+  OFTReceivedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils"; // New import
@@ -270,5 +272,67 @@ export const transformSwapFlowFinalizedEvent = (
     totalSent: preprocessed.totalSent.toString(),
     evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
     contractAddress: payload.log.address,
+  };
+};
+
+/* ==================================================================================
+ * OFT TRANSFORMING LOGIC
+ * ================================================================================== */
+/**
+ * Transforms a raw `OFTSent` event payload into a partial `OFTSent` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on block number
+ * and the configured finality buffer.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @param tokenAddress The token address for this OFT (from chain configuration).
+ * @returns A partial `OFTSent` entity ready for storage.
+ */
+export const transformOFTSentEvent = (
+  preprocessed: OFTSentArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+  tokenAddress: string,
+): Partial<entities.OFTSent> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    guid: preprocessed.guid,
+    dstEid: preprocessed.dstEid,
+    fromAddress: preprocessed.fromAddress,
+    amountSentLD: preprocessed.amountSentLD.toString(),
+    amountReceivedLD: preprocessed.amountReceivedLD.toString(),
+    token: tokenAddress,
+  };
+};
+
+/**
+ * Transforms a raw `OFTReceived` event payload into a partial `OFTReceived` entity.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @param tokenAddress The token address for this OFT (from chain configuration).
+ * @returns A partial `OFTReceived` entity ready for storage.
+ */
+export const transformOFTReceivedEvent = (
+  preprocessed: OFTReceivedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+  tokenAddress: string,
+): Partial<entities.OFTReceived> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    guid: preprocessed.guid,
+    srcEid: preprocessed.srcEid,
+    toAddress: preprocessed.toAddress,
+    amountReceivedLD: preprocessed.amountReceivedLD.toString(),
+    token: tokenAddress,
   };
 };

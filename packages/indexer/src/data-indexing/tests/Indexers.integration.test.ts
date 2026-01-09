@@ -18,7 +18,11 @@ import {
   mainnet,
   optimism,
 } from "viem/chains";
-import { CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL } from "../service/config";
+import {
+  CCTP_PROTOCOL,
+  SPONSORED_BRIDGING_PROTOCOL,
+  OFT_PROTOCOL,
+} from "../service/config";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -630,5 +634,113 @@ describe("Websocket Subscription", () => {
       minFinalityThreshold: 1000,
       hookData: "0x",
     });
+  }).timeout(20000);
+
+  it("should ingest the OFTSent event from Arbitrum tx 0x98f7...f3e5", async () => {
+    const txHash =
+      "0x98f730345b717d94926e9916fa748e6a5e3a3db150b213ca7cd5d9c2045df3e5";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Start the Indexer with OFT protocol
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [OFT_PROTOCOL],
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const oftSentRepo = dataSource.getRepository(entities.OFTSent);
+    const savedEvent = await oftSentRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      // --- Chain Context ---
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      finalised: false, // Should be false initially for WS events
+      // --- OFT Event Data ---
+      guid: "0x7fbbbfb502d445fe2b05abc6567a14c804a8d140b098f8a4a2e13ac71ce98605",
+      fromAddress: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      dstEid: 30109, // Polygon endpoint
+      amountSentLD: 1000000,
+      amountReceivedLD: 1000000,
+      token: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", // Arbitrum USDT
+    });
+
+    expect(savedEvent!.blockTimestamp.toISOString()).to.exist;
+    expect(savedEvent!.deletedAt).to.be.null;
+    expect(savedEvent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
+  }).timeout(20000);
+
+  it("should ingest the OFTReceived event from Arbitrum tx 0x470d...7e71", async () => {
+    const txHash =
+      "0x470dcf88ce88e105f27964992827214c2ce36112c2e92f2a377fb57a68557e71";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Start the Indexer with OFT protocol
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [OFT_PROTOCOL],
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const oftReceivedRepo = dataSource.getRepository(entities.OFTReceived);
+    const savedEvent = await oftReceivedRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      // --- Chain Context ---
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      finalised: false, // Should be false initially for WS events
+      // --- OFT Event Data ---
+      guid: "0x973335284a0b34364ced135d8b7e0da909f827acf99654d13e6de97b0d726df5",
+      srcEid: 30101, // Ethereum mainnet endpoint
+      toAddress: "0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
+      amountReceivedLD: 824495616,
+      token: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", // Arbitrum USDT
+    });
+
+    expect(savedEvent!.blockTimestamp.toISOString()).to.exist;
+    expect(savedEvent!.deletedAt).to.be.null;
+    expect(savedEvent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
   }).timeout(20000);
 });
