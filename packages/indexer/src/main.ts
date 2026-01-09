@@ -181,8 +181,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   );
 
   const metrics = new DataDogMetricsService({
-    globalTags: config.datadogConfig.tags,
-    enabled: config.datadogConfig.enabled,
+    configuration: config.datadogConfig,
     logger,
   });
 

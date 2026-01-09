@@ -6,6 +6,7 @@ import {
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 import { Logger } from "winston";
+import { DatadogConfig } from "../parseEnv";
 
 const MAX_RETRY_TIMEOUT = 60000;
 const RETRY_ATTEMPTS = 10;
@@ -14,15 +15,11 @@ const RETRY_BACKOFF_EXPONENT = 2;
 /**
  * Configuration for DataDogMetricsService.
  * @interface
- * @property {string[]} globalTags - The global tags to apply to all metrics.
- * @property {boolean} enabled - Whether the metrics service is enabled.
- * @property {client.Configuration} configuration - The Datadog configuration.
+ * @property {DatadogConfig} configuration - The Datadog configuration.
  * @property {Logger} logger - The logger to use for logging.
  */
 export interface DataDogMetricsServiceConfig {
-  globalTags: string[];
-  enabled?: boolean;
-  configuration?: client.Configuration;
+  configuration: DatadogConfig;
   logger?: Logger;
 }
 
@@ -47,8 +44,7 @@ export class DataDogMetricsService {
   private flushInterval: ReturnType<typeof setInterval>;
   private readonly MAX_BUFFER_SIZE = 100;
   private readonly FLUSH_INTERVAL_MS = 10000;
-  private globalTags: string[];
-  private enabled: boolean;
+  private configuration: DatadogConfig;
   private logger?: Logger;
 
   /**
@@ -56,21 +52,21 @@ export class DataDogMetricsService {
    * @param {DataDogMetricsServiceConfig} config - The configuration object.
    */
   constructor(config: DataDogMetricsServiceConfig) {
-    this.globalTags = config.globalTags;
-    this.enabled = config.enabled ?? true;
     this.logger = config.logger;
+    this.configuration = config.configuration;
 
-    const configuration =
-      config.configuration ||
-      client.createConfiguration({
-        authMethods: {
-          apiKeyAuth: process.env.DD_API_KEY,
-          appKeyAuth: process.env.DD_APP_KEY,
-        },
-      });
+    const configuration = client.createConfiguration({
+      authMethods: {
+        apiKeyAuth: this.configuration.dd_api_key,
+        appKeyAuth: this.configuration.dd_app_key,
+      },
+    });
 
     this.apiInstance = new v2.MetricsApi(configuration);
-
+    this.logger?.debug({
+      message: "DataDogMetricsService initialized",
+      enabled: this.configuration.enabled,
+    });
     // Periodically flush metrics
     this.flushInterval = setInterval(() => {
       this.flush();
@@ -110,9 +106,9 @@ export class DataDogMetricsService {
     tags: string[],
     type: MetricIntakeType,
   ) {
-    if (!this.enabled) return;
+    if (!this.configuration.enabled) return;
 
-    const allTags = [...this.globalTags, ...tags];
+    const allTags = [...this.configuration.globalTags, ...tags];
 
     this.buffer.push({
       metric: metricName,
