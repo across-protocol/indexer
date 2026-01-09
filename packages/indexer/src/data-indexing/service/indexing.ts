@@ -45,6 +45,7 @@ import {
 } from "../model/eventTypes";
 import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
+import { WebSocketTransportConfig } from "viem";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -69,6 +70,8 @@ export interface StartIndexerRequest<
   /** The list of protocols (groups of events) to support on this chain */
   protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
   metrics?: DataDogMetricsService;
+  /** Optional WebSocket transport options */
+  transportOptions?: WebSocketTransportConfig;
 }
 
 export async function startChainIndexing<
@@ -77,8 +80,16 @@ export async function startChainIndexing<
   TPayload,
   TPreprocessed,
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
-  const { repo, rpcUrl, logger, sigterm, chainId, protocols, metrics } =
-    request;
+  const {
+    repo,
+    rpcUrl,
+    logger,
+    sigterm,
+    chainId,
+    protocols,
+    metrics,
+    transportOptions,
+  } = request;
 
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
@@ -97,6 +108,7 @@ export async function startChainIndexing<
     chainId,
     rpcUrl,
     events,
+    transportOptions,
   };
 
   logger.info({
