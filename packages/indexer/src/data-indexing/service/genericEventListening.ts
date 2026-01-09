@@ -12,7 +12,11 @@ import {
 } from "viem";
 import { Logger } from "winston";
 import PLazy from "p-lazy";
-import { DataDogMetricsService } from "../../services/MetricsService";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -207,11 +211,21 @@ async function processLogBatch<TPayload>(
         if (!block) {
           block = await pRetry(
             () => {
-              metrics?.addCountMetric("rpcCallGetBlock", tags);
-              return client.getBlock({
-                blockNumber: logItem.blockNumber!,
-                includeTransactions: true,
-              });
+              const fetchBlock = withMetrics(
+                () =>
+                  client.getBlock({
+                    blockNumber: logItem.blockNumber!,
+                    includeTransactions: true,
+                  }),
+                {
+                  service: metrics,
+                  metricName: "rpcCallGetBlock",
+                  tags,
+                  type: COUNT,
+                  logger,
+                },
+              );
+              return fetchBlock();
             },
             {
               retries: RETRY_ATTEMPTS,
@@ -248,10 +262,20 @@ async function processLogBatch<TPayload>(
             transactionReceiptPromise = new PLazy((resolve, reject) => {
               pRetry(
                 () => {
-                  metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
-                  return client.getTransactionReceipt({
-                    hash: logItem.transactionHash!,
-                  });
+                  const fetchReceipt = withMetrics(
+                    () =>
+                      client.getTransactionReceipt({
+                        hash: logItem.transactionHash!,
+                      }),
+                    {
+                      service: metrics,
+                      metricName: "rpcCallGetTransactionReceipt",
+                      tags,
+                      type: COUNT,
+                      logger,
+                    },
+                  );
+                  return fetchReceipt();
                 },
                 {
                   retries: RETRY_ATTEMPTS,
