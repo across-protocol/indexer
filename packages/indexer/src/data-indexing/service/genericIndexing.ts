@@ -1,5 +1,5 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
-import { createWebSocketClient } from "../adapter/websocket";
+import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
 import { processEvent } from "./genericEventProcessing";
 import {
   Storer,
@@ -8,7 +8,12 @@ import {
   Preprocessor,
 } from "../model/genericTypes";
 import { Logger } from "winston";
-import { type PublicClient, type Transport, type Chain } from "viem";
+import {
+  type PublicClient,
+  type Transport,
+  type Chain,
+  WebSocketTransportConfig,
+} from "viem";
 import Bottleneck from "bottleneck";
 import {
   DataDogMetricsService,
@@ -66,6 +71,8 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
   events: Array<
     IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
   >;
+  /** Optional WebSocket transport options */
+  transportOptions?: WebSocketTransportConfig;
 }
 
 /**
@@ -144,10 +151,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
           message: "Closing WebSocket connection...",
         });
 
-        (await (viemClient.transport as any).getSocket()).close();
-        (await (viemClient.transport as any).getRpcClient()).close();
-        // Force cleanup of the client instance
-        viemClient = undefined as any;
+        await closeViemClient(viemClient, logger);
       }
     } catch (err) {
       logger.warn({
@@ -172,6 +176,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
         indexerConfig.chainId,
         indexerConfig.rpcUrl,
         logger,
+        indexerConfig.transportOptions,
       );
 
       // --- Mechanism to detect Listener Crashes ---
