@@ -10,7 +10,11 @@ import {
 import { Logger } from "winston";
 import { type PublicClient, type Transport, type Chain } from "viem";
 import Bottleneck from "bottleneck";
-import { DataDogMetricsService } from "../../services/MetricsService";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -178,7 +182,27 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const { config, transform, store, filter, preprocess } = eventItem;
+        const {
+          config,
+          transform,
+          store: originalStore,
+          filter,
+          preprocess,
+        } = eventItem;
+
+        const store = withMetrics(originalStore, {
+          service: metrics,
+          metricName: "eventStored",
+          tags: [
+            "websocketIndexer",
+            "store",
+            `chainId:${indexerConfig.chainId}`,
+            `event:${config.eventName}`,
+          ],
+          type: COUNT,
+          logger,
+        });
+
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
           processingQueue,
