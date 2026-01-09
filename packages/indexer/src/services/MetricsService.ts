@@ -1,9 +1,15 @@
 import { client, v2 } from "@datadog/datadog-api-client";
+import pRetry from "p-retry";
 import { MetricIntakeType } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
 import {
   COUNT,
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { Logger } from "winston";
+
+const MAX_RETRY_TIMEOUT = 60000;
+const RETRY_ATTEMPTS = 10;
+const RETRY_BACKOFF_EXPONENT = 2;
 
 /**
  * Service for submitting metrics to Datadog.
@@ -28,6 +34,7 @@ export class DataDogMetricsService {
   private readonly FLUSH_INTERVAL_MS = 10000;
   private globalTags: string[];
   private enabled: boolean;
+  private logger?: Logger;
 
   /**
    * Constructor for DataDogMetricsService.
@@ -39,9 +46,11 @@ export class DataDogMetricsService {
     globalTags: string[],
     enabled: boolean = true,
     configuration?: client.Configuration,
+    logger?: Logger,
   ) {
     this.globalTags = globalTags;
     this.enabled = enabled;
+    this.logger = logger;
 
     const config =
       configuration ||
@@ -130,9 +139,27 @@ export class DataDogMetricsService {
     this.buffer = [];
 
     try {
-      const result = await this.apiInstance.submitMetrics(body);
+      await pRetry(
+        () => {
+          return this.apiInstance.submitMetrics(body);
+        },
+        {
+          retries: RETRY_ATTEMPTS,
+          factor: RETRY_BACKOFF_EXPONENT,
+          maxTimeout: MAX_RETRY_TIMEOUT,
+          onFailedAttempt: (error) => {
+            this.logger?.warn({
+              message: `Failed to submit metrics to Datadog, retrying... (Attempt ${error.attemptNumber} of ${RETRY_ATTEMPTS + 1})`,
+              error,
+            });
+          },
+        },
+      );
     } catch (error) {
-      console.error("Failed to submit metrics to Datadog:", error);
+      this.logger?.error({
+        message: "Failed to submit metrics to Datadog after multiple retries:",
+        error,
+      });
     }
   }
 
