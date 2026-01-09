@@ -8,6 +8,7 @@ const PK_CHAIN_BLOCK_TX_LOG = [
   "transactionHash",
   "logIndex",
 ];
+const UK_CHAIN_BLOCKHASH_LOG = ["chainId", "blockHash", "logIndex"];
 
 /**
  * Stores a DepositForBurn event in the database.
@@ -112,7 +113,7 @@ export const storeOFTSentEvent: Storer<
   return repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
     entities.OFTSent,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    ["chainId", "blockHash", "logIndex"] as (keyof entities.OFTSent)[],
+    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTSent)[],
     [],
   );
 };
@@ -149,7 +150,7 @@ export const storeOFTReceivedEvent: Storer<
   return repository.saveAndHandleFinalisationBatch<entities.OFTReceived>(
     entities.OFTReceived,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    ["chainId", "blockHash", "logIndex"] as (keyof entities.OFTReceived)[],
+    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTReceived)[],
     [],
   );
 };
