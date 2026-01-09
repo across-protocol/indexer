@@ -52,10 +52,10 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
   });
 
   it("should fetch and store SponsoredDepositForBurn event", async () => {
-    // Taken from: https://solscan.io/tx/32hTeHzomgViNyTnMsu9vrRFRmFHhJ4YH9BxZkLhFngxUHtKoj4R4buGsbDiz9Z5ce1WTzjNb3eBP7HiJbQKyqmG
+    // Taken from: https://solscan.io/tx/5QKrQVr1y7z2VH1TP48e46oitzqST7GDPLYnKHz1ZWfBUgieP5ZeH4Z8tGhyz4m3Sc8h3QhrwYdbZgYfgwrz1pw7
     const transactionHash =
-      "32hTeHzomgViNyTnMsu9vrRFRmFHhJ4YH9BxZkLhFngxUHtKoj4R4buGsbDiz9Z5ce1WTzjNb3eBP7HiJbQKyqmG";
-    const blockNumber = 386165186;
+      "5QKrQVr1y7z2VH1TP48e46oitzqST7GDPLYnKHz1ZWfBUgieP5ZeH4Z8tGhyz4m3Sc8h3QhrwYdbZgYfgwrz1pw7";
+    const blockNumber = 391919760;
 
     const blockRange: BlockRange = {
       from: blockNumber,
@@ -76,7 +76,7 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
       where: { transactionHash: transactionHash },
     });
     expect(savedDeposit).to.exist;
-    expect(savedDeposit!.amount).to.equal(1000000);
+    expect(savedDeposit!.amount).to.equal(510074090);
     expect(savedDeposit!.burnToken).to.equal(
       "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     );
@@ -100,18 +100,18 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
 
     // Verify specific fields requested by user
     expect(savedEvent!.originSender).to.equal(
-      "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t",
+      "BEPi931753Xy1iLpCV6kGPDSm1HurXV7L9Po73vuzFC1",
     );
     expect(savedEvent!.finalRecipient).to.equal(
-      toAddress("11111111111139tg9BccnAuutdgEanSRiyykvb1E", destinationChainId),
+      toAddress("11111111111124VWv1hq91WZk5uhNpdN5y3twTot", destinationChainId),
     );
     expect(savedEvent!.quoteDeadline.toString()).to.equal(
-      new Date(1765531955 * 1000).toString(),
+      new Date(1767792290 * 1000).toString(),
     );
-    expect(savedEvent!.maxBpsToSponsor.toString()).to.equal("2002");
+    expect(savedEvent!.maxBpsToSponsor.toString()).to.equal("0");
     expect(savedEvent!.maxUserSlippageBps.toString()).to.equal("500");
     expect(savedEvent!.finalToken).to.equal(
-      toAddress("111111111111EnrHeSexKNBydTZAr233KX5AVrY", destinationChainId),
+      toAddress("1111111111113a6QBVeB9zUZHKpAFvsZzEfmYKZp", destinationChainId),
     );
   }).timeout(30000);
 });

@@ -139,3 +139,11 @@ export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
 export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
 export const MESSAGE_RECEIVED_EVENT_NAME = "MessageReceived";
 export const MINT_AND_WITHDRAW_EVENT_NAME = "MintAndWithdraw";
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Omnichain Fungible Token (OFT) Protocol.
+ * ================================================================================== */
+
+export const OFT_SENT_EVENT_NAME = "OFTSent";
+export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";
