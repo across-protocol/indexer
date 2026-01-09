@@ -388,7 +388,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       };
     });
 
-    // 5. Await all pipelines
+    // Await all pipelines
     const [
       {
         rawDepositForBurnEvents,
