@@ -1,10 +1,27 @@
 import { client, v2 } from "@datadog/datadog-api-client";
+import pRetry from "p-retry";
 import { MetricIntakeType } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
 import {
   COUNT,
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 import { Logger } from "winston";
+import { DatadogConfig } from "../parseEnv";
+
+const MAX_RETRY_TIMEOUT = 60000;
+const RETRY_ATTEMPTS = 10;
+const RETRY_BACKOFF_EXPONENT = 2;
+
+/**
+ * Configuration for DataDogMetricsService.
+ * @interface
+ * @property {DatadogConfig} configuration - The Datadog configuration.
+ * @property {Logger} logger - The logger to use for logging.
+ */
+export interface DataDogMetricsServiceConfig {
+  configuration: DatadogConfig;
+  logger?: Logger;
+}
 
 /**
  * Service for submitting metrics to Datadog.
@@ -27,34 +44,29 @@ export class DataDogMetricsService {
   private flushInterval: ReturnType<typeof setInterval>;
   private readonly MAX_BUFFER_SIZE = 100;
   private readonly FLUSH_INTERVAL_MS = 10000;
-  private globalTags: string[];
-  private enabled: boolean;
+  private configuration: DatadogConfig;
+  private logger?: Logger;
 
   /**
    * Constructor for DataDogMetricsService.
-   * @param {string[]} globalTags - The global tags to apply to all metrics.
-   * @param {boolean} enabled - Whether the metrics service is enabled.
-   * @param {client.Configuration} configuration - The Datadog configuration.
+   * @param {DataDogMetricsServiceConfig} config - The configuration object.
    */
-  constructor(
-    globalTags: string[],
-    enabled: boolean = true,
-    configuration?: client.Configuration,
-  ) {
-    this.globalTags = globalTags;
-    this.enabled = enabled;
+  constructor(config: DataDogMetricsServiceConfig) {
+    this.logger = config.logger;
+    this.configuration = config.configuration;
 
-    const config =
-      configuration ||
-      client.createConfiguration({
-        authMethods: {
-          apiKeyAuth: process.env.DD_API_KEY,
-          appKeyAuth: process.env.DD_APP_KEY,
-        },
-      });
+    const configuration = client.createConfiguration({
+      authMethods: {
+        apiKeyAuth: this.configuration.dd_api_key,
+        appKeyAuth: this.configuration.dd_app_key,
+      },
+    });
 
-    this.apiInstance = new v2.MetricsApi(config);
-
+    this.apiInstance = new v2.MetricsApi(configuration);
+    this.logger?.debug({
+      message: "DataDogMetricsService initialized",
+      enabled: this.configuration.enabled,
+    });
     // Periodically flush metrics
     this.flushInterval = setInterval(() => {
       this.flush();
@@ -94,9 +106,9 @@ export class DataDogMetricsService {
     tags: string[],
     type: MetricIntakeType,
   ) {
-    if (!this.enabled) return;
+    if (!this.configuration.enabled) return;
 
-    const allTags = [...this.globalTags, ...tags];
+    const allTags = [...this.configuration.globalTags, ...tags];
 
     this.buffer.push({
       metric: metricName,
@@ -131,9 +143,27 @@ export class DataDogMetricsService {
     this.buffer = [];
 
     try {
-      const result = await this.apiInstance.submitMetrics(body);
+      await pRetry(
+        () => {
+          return this.apiInstance.submitMetrics(body);
+        },
+        {
+          retries: RETRY_ATTEMPTS,
+          factor: RETRY_BACKOFF_EXPONENT,
+          maxTimeout: MAX_RETRY_TIMEOUT,
+          onFailedAttempt: (error) => {
+            this.logger?.warn({
+              message: `Failed to submit metrics to Datadog, retrying... (Attempt ${error.attemptNumber} of ${RETRY_ATTEMPTS + 1})`,
+              error,
+            });
+          },
+        },
+      );
     } catch (error) {
-      console.error("Failed to submit metrics to Datadog:", error);
+      this.logger?.error({
+        message: "Failed to submit metrics to Datadog after multiple retries:",
+        error,
+      });
     }
   }
 
