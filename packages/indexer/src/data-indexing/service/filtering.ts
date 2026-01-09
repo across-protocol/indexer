@@ -72,7 +72,7 @@ export const createCctpBurnFilter = async (
   logger: Logger,
 ): Promise<boolean> => {
   // Check if receipt is present in payload
-  const receipt = payload.transactionReceipt;
+  const receipt = await payload.transactionReceipt;
   if (!receipt) {
     logger.debug({
       at: "createSwapApiFilter",
@@ -142,7 +142,7 @@ export const createCctpMintFilter = async (
   logger: Logger,
 ): Promise<boolean> => {
   // Check if receipt is present in payload
-  const receipt = payload.transactionReceipt;
+  const receipt = await payload.transactionReceipt;
   if (!receipt) {
     logger.debug({
       at: "createCctpMintFilter",

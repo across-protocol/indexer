@@ -11,6 +11,7 @@ import {
   GetBlockReturnType,
 } from "viem";
 import { Logger } from "winston";
+import PLazy from "p-lazy";
 import { DataDogMetricsService } from "../../services/MetricsService";
 
 /**
@@ -62,7 +63,7 @@ export interface IndexerEventPayload {
   /** The transaction that generated the event. */
   transaction?: Transaction;
   /** The receipt of the transaction that generated the event. */
-  transactionReceipt?: TransactionReceipt;
+  transactionReceipt?: Promise<TransactionReceipt>;
 }
 
 /**
@@ -189,7 +190,7 @@ async function processLogBatch<TPayload>(
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
   const blockCache = new Map<bigint, GetBlockReturnType<Chain, true>>();
-  const receiptCache = new Map<string, TransactionReceipt>();
+  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
 
   // Process all logs in parallel
   await Promise.all(
@@ -240,33 +241,40 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Transaction Receipt (Deduplicated) ---
-        let transactionReceipt: TransactionReceipt | undefined;
+        let transactionReceiptPromise: Promise<TransactionReceipt> | undefined;
         if (logItem.transactionHash) {
-          transactionReceipt = receiptCache.get(logItem.transactionHash);
-          if (!transactionReceipt) {
-            transactionReceipt = await pRetry(
-              () => {
-                metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
-                return client.getTransactionReceipt({
-                  hash: logItem.transactionHash!,
-                });
-              },
-              {
-                retries: RETRY_ATTEMPTS,
-                factor: RETRY_BACKOFF_EXPONENT,
-                maxTimeout: MAX_RETRY_TIMEOUT,
-                onFailedAttempt: (error) => {
-                  logger.warn({
-                    at: "genericEventListener#processLogBatch",
-                    message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
-                    attempt: error.attemptNumber,
-                    retriesLeft: error.retriesLeft,
-                    error,
+          transactionReceiptPromise = receiptCache.get(logItem.transactionHash);
+          if (!transactionReceiptPromise) {
+            transactionReceiptPromise = new PLazy((resolve, reject) => {
+              pRetry(
+                () => {
+                  metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
+                  return client.getTransactionReceipt({
+                    hash: logItem.transactionHash!,
                   });
                 },
-              },
+                {
+                  retries: RETRY_ATTEMPTS,
+                  factor: RETRY_BACKOFF_EXPONENT,
+                  maxTimeout: MAX_RETRY_TIMEOUT,
+                  onFailedAttempt: (error) => {
+                    logger.warn({
+                      at: "genericEventListener#processLogBatch",
+                      message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
+                      attempt: error.attemptNumber,
+                      retriesLeft: error.retriesLeft,
+                      error,
+                    });
+                  },
+                },
+              )
+                .then(resolve)
+                .catch(reject);
+            });
+            receiptCache.set(
+              logItem.transactionHash,
+              transactionReceiptPromise,
             );
-            receiptCache.set(logItem.transactionHash, transactionReceipt);
           }
         }
 
@@ -278,7 +286,7 @@ async function processLogBatch<TPayload>(
           // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
           currentBlockHeight: logItem.blockNumber,
           transaction,
-          transactionReceipt,
+          transactionReceipt: transactionReceiptPromise,
         } as TPayload;
 
         // Trigger the side effect (Forward it to an event processor or message queue)
