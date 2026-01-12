@@ -534,4 +534,148 @@ describe("Deposits Service Tests", () => {
     expect(oftDeposit?.outputAmount).to.equal("2900000");
     expect(oftDeposit?.fillBlockNumber).to.equal(4000);
   });
+
+  it("should filter deposits by startFillBlock and endFillBlock", async () => {
+    // 1. Across deposit filled at block 1500
+    const [acrossDeposit] = await depositsFixture.insertDeposits([
+      { depositId: "101", originChainId: "1", blockNumber: 1000 },
+    ]);
+    const [acrossFill] = await fillsFixture.insertFills([
+      { depositId: "101", originChainId: "1", blockNumber: 1500 },
+    ]);
+    await relayHashInfoFixture.insertRelayHashInfos([
+      {
+        depositEventId: acrossDeposit.id,
+        fillEventId: acrossFill.id,
+        status: entities.RelayStatus.Filled,
+      },
+    ]);
+
+    // 2. CCTP deposit filled at block 2500
+    const txHash = "0x" + "a".repeat(64);
+    const nonce = "0x" + "1".repeat(64);
+    await dataSource.getRepository(entities.DepositForBurn).save({
+      burnToken: "0x123",
+      amount: "1000000",
+      depositor: "0xdepositor",
+      mintRecipient: "0xrecipient",
+      destinationDomain: 2,
+      destinationTokenMessenger: "0xtokenMessenger",
+      destinationCaller: "0xcaller",
+      maxFee: "100",
+      minFinalityThreshold: 1,
+      hookData: "0x",
+      chainId: "1",
+      blockNumber: 2000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 0,
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+    await dataSource.getRepository(entities.MessageSent).save({
+      chainId: "1",
+      blockNumber: 2000,
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 1,
+      message: "0xmessage",
+      version: 1,
+      nonce,
+      sourceDomain: 1,
+      destinationDomain: 2,
+      sender: "0xsender",
+      recipient: "0xrecipient",
+      destinationCaller: "0xcaller",
+      minFinalityThreshold: 1,
+      finalityThresholdExecuted: 0,
+      messageBody: "0x",
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+    await dataSource.getRepository(entities.MessageReceived).save({
+      chainId: "2",
+      blockNumber: 2500,
+      transactionHash: "0xfill",
+      transactionIndex: 0,
+      logIndex: 0,
+      caller: "0xcaller",
+      sourceDomain: 1,
+      nonce,
+      sender: "0xsender",
+      finalityThresholdExecuted: 1,
+      messageBody: "0x",
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+    await dataSource.getRepository(entities.MintAndWithdraw).save({
+      chainId: "2",
+      blockNumber: 2500,
+      transactionHash: "0xfill",
+      transactionIndex: 0,
+      logIndex: 1,
+      mintRecipient: "0xrecipient",
+      amount: "1000000",
+      mintToken: "0xtoken",
+      feeCollected: "0",
+      finalised: true,
+      blockTimestamp: new Date(),
+    });
+
+    // 3. OFT deposit filled at block 3500
+    const guid = "0x" + "g".repeat(64);
+    await oftSentFixture.insertOftSentEvents([
+      {
+        guid,
+        fromAddress: "0xfrom",
+        amountSentLD: "3000000",
+        token: "0xtoken",
+        chainId: "1",
+        dstEid: 30110,
+        blockNumber: 3000,
+        transactionHash: "0xoft",
+        finalised: true,
+      },
+    ]);
+    await oftReceivedFixture.insertOftReceivedEvents([
+      {
+        guid,
+        toAddress: "0xto",
+        amountReceivedLD: "2900000",
+        token: "0xtoken",
+        chainId: "10",
+        srcEid: 30101,
+        blockNumber: 3500,
+        transactionHash: "0xoftfill",
+        finalised: true,
+      },
+    ]);
+
+    // Query with startFillBlock=2000
+    const after2000 = await depositsService.getDeposits({
+      startFillBlock: 2000,
+      limit: 10,
+    });
+    expect(after2000).to.have.lengthOf(2);
+    expect(after2000.map((d) => d.fillBlockNumber)).to.include(2500);
+    expect(after2000.map((d) => d.fillBlockNumber)).to.include(3500);
+
+    // Query with endFillBlock=3000
+    const before3000 = await depositsService.getDeposits({
+      endFillBlock: 3000,
+      limit: 10,
+    });
+    expect(before3000).to.have.lengthOf(2);
+    expect(before3000.map((d) => d.fillBlockNumber)).to.include(1500);
+    expect(before3000.map((d) => d.fillBlockNumber)).to.include(2500);
+
+    // Query with range [2000, 3000]
+    const range = await depositsService.getDeposits({
+      startFillBlock: 2000,
+      endFillBlock: 3000,
+      limit: 10,
+    });
+    expect(range).to.have.lengthOf(1);
+    expect(range[0]?.fillBlockNumber).to.equal(2500);
+  });
 });
