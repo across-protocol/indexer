@@ -21,7 +21,9 @@ import {
   CCTP_PROTOCOL,
   SPONSORED_CCTP_PROTOCOL,
   OFT_PROTOCOL,
+  SPOKE_POOL_PROTOCOL,
 } from "../service/config";
+import { safeJsonStringify } from "../../utils/map";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -826,6 +828,76 @@ describe("Websocket Subscription", () => {
       initialAmount: 100003, // String for bigint/numeric
       finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
       finalAmount: 100003,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
+
+  it("should ingest the FilledRelay event from Arbitrum tx 0xc9f5...fedd", async () => {
+    // Tx: https://arbiscan.io/tx/0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd
+    const txHash =
+      "0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd";
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+    );
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(entities.FilledV3Relay);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 4,
+      finalised: false,
+      depositId: 5287817,
+      originChainId: 8453,
+      destinationChainId: CHAIN_IDs.ARBITRUM,
+      inputToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+      outputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC on Arbitrum
+      inputAmount: "1009060",
+      outputAmount: "1000000",
+      fillDeadline: new Date(1767985475 * 1000),
+      exclusivityDeadline: new Date(1767978416 * 1000),
+      exclusiveRelayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      recipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      message:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      relayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+      repaymentChainId: 8453,
+      updatedRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      updatedMessage:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      updatedOutputAmount: "1000000",
+      fillType: 0,
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);

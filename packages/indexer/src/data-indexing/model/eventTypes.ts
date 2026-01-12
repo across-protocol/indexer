@@ -126,6 +126,35 @@ export interface OFTReceivedArgs {
   amountReceivedLD: bigint;
 }
 
+/* ==================================================================================
+ * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Spoke Pool Protocol.
+ * ================================================================================== */
+export interface RelayExecutionInfo {
+  updatedRecipient: `0x${string}`;
+  updatedMessageHash: `0x${string}`;
+  updatedOutputAmount: bigint;
+  fillType: number;
+}
+
+export interface FilledV3RelayArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  repaymentChainId: bigint;
+  originChainId: bigint;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  exclusiveRelayer: `0x${string}`;
+  relayer: `0x${string}`;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  messageHash: `0x${string}`;
+  relayExecutionInfo: RelayExecutionInfo;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -139,4 +168,5 @@ export type EventArgs =
   | FallbackHyperEVMFlowCompletedArgs
   | ArbitraryActionsExecutedArgs
   | OFTSentArgs
-  | OFTReceivedArgs;
+  | OFTReceivedArgs
+  | FilledV3RelayArgs;

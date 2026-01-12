@@ -278,3 +278,22 @@ export const storeOFTReceivedEvent: Storer<
     [],
   );
 };
+
+/* ==================================================================================
+ * SPOKE POOLSTORING LOGIC
+ * ================================================================================== */
+
+export const storeFilledV3RelayEvent: Storer<
+  Partial<entities.FilledV3Relay>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.FilledV3Relay>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
+    entities.FilledV3Relay,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    ["internalHash"],
+    ["transactionHash"],
+  );
+};

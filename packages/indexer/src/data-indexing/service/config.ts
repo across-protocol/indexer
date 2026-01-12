@@ -1,8 +1,9 @@
-import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
 import {
+  getAddress,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
+import { getDeployedAddress } from "@across-protocol/contracts";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
@@ -13,6 +14,7 @@ import {
   SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
   ARBITRARY_ACTIONS_EXECUTED_ABI,
+  FILLED_V3_RELAY_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -30,6 +32,7 @@ import {
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
   ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
   SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
+  FILLED_V3_RELAY_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -51,6 +54,7 @@ import {
   SimpleTransferFlowCompletedArgs,
   FallbackHyperEVMFlowCompletedArgs,
   ArbitraryActionsExecutedArgs,
+  FilledV3RelayArgs,
 } from "../model/eventTypes";
 import {
   createCctpBurnFilter,
@@ -70,6 +74,7 @@ import {
   transformSimpleTransferFlowCompletedEvent,
   transformFallbackHyperEVMFlowCompletedEvent,
   transformArbitraryActionsExecutedEvent,
+  transformFilledV3RelayEvent,
 } from "./tranforming";
 import {
   storeDepositForBurnEvent,
@@ -85,6 +90,7 @@ import {
   storeArbitraryActionsExecutedEvent,
   storeOFTSentEvent,
   storeOFTReceivedEvent,
+  storeFilledV3RelayEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
@@ -102,6 +108,7 @@ import {
   transformOFTReceivedEvent,
 } from "./tranforming";
 import { getOftChainConfiguration } from "../adapter/oft/service";
+import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
 
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
   TPreprocessed extends any
@@ -411,6 +418,28 @@ export const OFT_PROTOCOL: SupportedProtocols<
       },
     ];
   },
+};
+
+export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
+  any,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: (logger: Logger, chainId: number) => [
+    {
+      config: {
+        abi: FILLED_V3_RELAY_ABI,
+        eventName: FILLED_V3_RELAY_EVENT_NAME,
+        address: getAddress("SpokePool", chainId) as `0x${string}`,
+      },
+      preprocess: extractRawArgs<FilledV3RelayArgs>,
+      filter: async () => true,
+      transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
+        transformFilledV3RelayEvent(args, payload, logger),
+      store: storeFilledV3RelayEvent,
+    },
+  ],
 };
 
 /**

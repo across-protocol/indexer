@@ -59,3 +59,11 @@ export const OFT_SENT_ABI = [
 export const OFT_RECEIVED_ABI = [
   "event OFTReceived(bytes32 indexed guid, uint32 srcEid, address indexed toAddress, uint256 amountReceivedLD)",
 ];
+
+/* ==================================================================================
+ * FILLED V3 RELAY DOMAIN LOGIC & CONFIGURATION
+ * * Specific ABIs for the FILLED V3 RELAY Protocol.
+ * ================================================================================== */
+export const FILLED_V3_RELAY_ABI = [
+  "event FilledRelay(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 repaymentChainId, uint256 indexed originChainId, uint256 indexed depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 exclusiveRelayer, bytes32 indexed relayer, bytes32 depositor, bytes32 recipient, bytes32 messageHash, (bytes32 updatedRecipient, bytes32 updatedMessageHash, uint256 updatedOutputAmount, uint8 fillType) relayExecutionInfo)",
+];
