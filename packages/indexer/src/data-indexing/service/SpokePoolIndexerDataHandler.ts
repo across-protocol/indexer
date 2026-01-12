@@ -411,7 +411,16 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const fillCallsFailedMap = Object.values(fillsAndCallsFailedByTxHash)
       .map((fillAndCallsFailed) => {
         const { fills, callsFailedEvents } = fillAndCallsFailed;
-        const sortedFills = fills.sort((a, b) => a.logIndex - b.logIndex);
+        // Only consider fills that include actions
+        const fillsWithActions = fills.filter(
+          (fill) =>
+            !across.utils.isFillOrSlowFillRequestMessageEmpty(
+              fill.updatedMessage,
+            ),
+        );
+        const sortedFills = fillsWithActions.sort(
+          (a, b) => a.logIndex - b.logIndex,
+        );
         const sortedCallsFailedEvents = callsFailedEvents.sort(
           (a, b) => a.logIndex - b.logIndex,
         );
