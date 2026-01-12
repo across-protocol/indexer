@@ -58,15 +58,15 @@ export const extractRawArgs = <TEvent>(
  * @param logger The logger instance.
  * @returns The preprocessed sponsored deposit for burn arguments.
  */
-export const preprocessSponsoredDepositForBurn = (
+export const preprocessSponsoredDepositForBurn = async (
   payload: IndexerEventPayload,
   logger: Logger,
-): SponsoredDepositForBurnArgs => {
+): Promise<SponsoredDepositForBurnArgs> => {
   const args = extractRawArgs<SponsoredDepositForBurnArgs>(payload);
 
   if (payload.transactionReceipt) {
     const depositArgs = decodeEventFromReceipt<DepositForBurnArgs>(
-      payload.transactionReceipt,
+      await payload.transactionReceipt,
       parseAbi(CCTP_DEPOSIT_FOR_BURN_ABI),
       DEPOSIT_FOR_BURN_EVENT_NAME,
     );
