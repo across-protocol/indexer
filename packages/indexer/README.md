@@ -188,13 +188,25 @@ The websocket indexer uses a configuration-driven architecture centrally managed
 To index a new blockchain:
 
 1.  Open `src/data-indexing/service/config.ts`.
-2.  Add the new chain ID to the `CHAIN_PROTOCOLS` object.
-3.  Assign it the list of protocols you want to index (e.g., `[CCTP_PROTOCOL]`).
+2.  Update `getChainProtocols()` function to include the events configuration for the desired chains.
 
 ```typescript
-export const CHAIN_PROTOCOLS: Record<number, SupportedProtocols<...>> = {
-  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
-  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL], // Added Optimism
+export const getChainProtocols: (config: Config) => Record<
+number,
+SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+>[]> = (config: Config) => {
+  // Add OFT protocol events configuration
+  ...
+
+  // Add CCTP protocol events configuration
+  ...
+
+  // Add your events configuration
+  return chainProtocols;
 };
 ```
 
