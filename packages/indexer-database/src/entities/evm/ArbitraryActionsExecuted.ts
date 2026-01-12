@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_arbitrary_actions_executed_chain_block_tx_log", [
@@ -70,4 +71,7 @@ export class ArbitraryActionsExecuted {
 
   @Column({ nullable: true })
   contractAddress?: string;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 }
