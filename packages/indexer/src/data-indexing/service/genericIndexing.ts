@@ -1,10 +1,25 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
-import { createWebSocketClient } from "../adapter/websocket";
+import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
 import { processEvent } from "./genericEventProcessing";
-import { Storer, Transformer } from "../model/genericTypes";
+import {
+  Storer,
+  Transformer,
+  Filter,
+  Preprocessor,
+} from "../model/genericTypes";
 import { Logger } from "winston";
-import { type PublicClient, type Transport, type Chain } from "viem";
-import * as chains from "viem/chains";
+import {
+  type PublicClient,
+  type Transport,
+  type Chain,
+  WebSocketTransportConfig,
+} from "viem";
+import Bottleneck from "bottleneck";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -17,12 +32,33 @@ import * as chains from "viem/chains";
  */
 
 /**
+ * An event handler for a specific event.
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the event payload from the event listener.
+ * @template TEventEntity The type of the structured database entity.
+ * @template TPreprocessed The type of the preprocessed data.
+ */
+export interface IndexerEventHandler<
+  TDb,
+  TPayload,
+  TEventEntity,
+  TPreprocessed,
+> {
+  config: EventConfig;
+  preprocess: Preprocessor<TPayload, TPreprocessed>;
+  transform: Transformer<TPreprocessed, TPayload, TEventEntity>;
+  store: Storer<TEventEntity, TDb>;
+  filter?: Filter<TPreprocessed, TPayload>;
+}
+
+/**
  * Configuration for a complete indexing subsystem.
  * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  */
-export interface IndexerConfig<TEventEntity, TDb, TPayload> {
+export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
   /** The ID of the blockchain to connect to. */
   chainId: number;
   /** The WebSocket RPC URL for the blockchain. */
@@ -32,11 +68,11 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
    * function to convert the raw event payload to an entity, and a `Storer` function
    * to persist the entity to the database.
    */
-  events: Array<{
-    config: EventConfig;
-    transform: Transformer<TPayload, TEventEntity>;
-    store: Storer<TEventEntity, TDb>;
-  }>;
+  events: Array<
+    IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
+  >;
+  /** Optional WebSocket transport options */
+  transportOptions?: WebSocketTransportConfig;
 }
 
 /**
@@ -44,16 +80,24 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload> {
  * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  */
-export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
+export interface StartIndexingSubsystemRequest<
+  TEventEntity,
+  TDb,
+  TPayload,
+  TPreprocessed,
+> {
   /** The database instance. */
   db: TDb;
   /** The configuration for the indexer subsystem. */
-  indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload>;
+  indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed>;
   /** An optional logger instance. */
-  logger?: Logger;
+  logger: Logger;
   /** An optional AbortSignal to gracefully shut down the indexer. */
   sigterm?: AbortSignal;
+  /** An optional metrics service instance. */
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -63,18 +107,19 @@ export interface StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload> {
  * @template TEntity The type of the structured database entity (e.g., `UniTransfer`).
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
  *
  * @param request The request object containing the database instance, indexer configuration, and the logger.
  */
-export async function startIndexing<TEventEntity, TDb, TPayload>(
-  request: StartIndexingSubsystemRequest<TEventEntity, TDb, TPayload>,
+export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
+  request: StartIndexingSubsystemRequest<
+    TEventEntity,
+    TDb,
+    TPayload,
+    TPreprocessed
+  >,
 ) {
-  const {
-    db,
-    indexerConfig,
-    sigterm,
-    logger = console as unknown as Logger,
-  } = request;
+  const { db, indexerConfig, sigterm, logger, metrics } = request;
   // Upon receiving an error we wait some period of time before retrying to start the listener again
   // The time period has an exponential backoff mechanism to it, to avoid spamming the restart functionality
   // The maximum amount of time we wait for is 1 minute between retries
@@ -83,6 +128,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
 
   // Track active resources for cleanup
   let viemClient: PublicClient<Transport, Chain>;
+  // Setup the Queue
+  // We use this queue to unblock our websocket listeners
+  // The onLog call would otherwise block the websocket from receiving new events until it is done
+  const processingQueue = new Bottleneck({ maxConcurrent: null, minTime: 0 });
   let unwatchFunctions: Array<() => void> = [];
 
   // --- Helper: Cleanup active connections ---
@@ -102,10 +151,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
           message: "Closing WebSocket connection...",
         });
 
-        (await (viemClient.transport as any).getSocket()).close();
-        (await (viemClient.transport as any).getRpcClient()).close();
-        // Force cleanup of the client instance
-        viemClient = undefined as any;
+        await closeViemClient(viemClient, logger);
       }
     } catch (err) {
       logger.warn({
@@ -130,6 +176,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
         indexerConfig.chainId,
         indexerConfig.rpcUrl,
         logger,
+        indexerConfig.transportOptions,
       );
 
       // --- Mechanism to detect Listener Crashes ---
@@ -140,29 +187,73 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const { config, transform, store } = eventItem;
+        const {
+          config,
+          transform,
+          store: originalStore,
+          filter,
+          preprocess,
+        } = eventItem;
+
+        const store = withMetrics(originalStore, {
+          service: metrics,
+          metricName: "eventStored",
+          tags: [
+            "websocketIndexer",
+            "store",
+            `chainId:${indexerConfig.chainId}`,
+            `event:${config.eventName}`,
+          ],
+          type: COUNT,
+          logger,
+        });
+
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
+          processingQueue,
           chainId: indexerConfig.chainId,
           config,
           // This function defines what happens after we receive an event from the websocket RPC provider
           // In this case we directly call the event processor and have it running in the background to not block the websocket from receiving new events
           onEvent: (payload) => {
+            const startProcessing = Date.now();
+
             const eventSource = async () => Promise.resolve(payload);
-            processEvent<TEventEntity, TDb, TPayload>({
+            processEvent<TEventEntity, TDb, TPayload, TPreprocessed>({
               db,
               source: eventSource,
+              preprocess,
               transform,
               store,
+              filter,
               logger,
+            }).then(() => {
+              metrics?.addGaugeMetric(
+                "processEvent",
+                Date.now() - startProcessing,
+                [
+                  "websocketIndexer",
+                  "onEvent",
+                  "startIndexing",
+                  `chainId:${indexerConfig.chainId}`,
+                  `event:${config.eventName}`,
+                ],
+              );
             });
           },
           // If Viem errors out (e.g. WS drops and fails retries),
           // we trigger the restart of the entire subsystem.
           onFatalError: (err) => {
+            metrics?.addCountMetric("onFatalError", [
+              "websocketIndexer",
+              "startIndexing",
+              `chainId:${indexerConfig.chainId}`,
+              `event:${config.eventName}`,
+            ]);
             triggerRestart(err);
           },
           logger,
+          metrics,
         });
         // We collect all the unwatch functions. We need them to shut down the viem subscriber once we want to tearn the indexer down
         if (unwatch) unwatchFunctions.push(unwatch);
@@ -198,6 +289,11 @@ export async function startIndexing<TEventEntity, TDb, TPayload>(
         message: `Indexer crashed for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
         error: (e as Error).message,
       });
+      metrics?.addCountMetric("startIndexingError", [
+        "websocketIndexer",
+        "startIndexing",
+        `chainId:${indexerConfig.chainId}`,
+      ]);
 
       // Clean up dead connections
       await tearDown();

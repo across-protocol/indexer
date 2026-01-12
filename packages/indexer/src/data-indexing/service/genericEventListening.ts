@@ -1,11 +1,22 @@
+import pRetry from "p-retry";
+import Bottleneck from "bottleneck";
 import {
   parseAbi,
   type Log,
   type PublicClient,
   type Transport,
   type Chain,
+  type Transaction,
+  TransactionReceipt,
+  GetBlockReturnType,
 } from "viem";
 import { Logger } from "winston";
+import PLazy from "p-lazy";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -17,6 +28,10 @@ import { Logger } from "winston";
  * - Parsing raw event logs into a standardized, clean format (`IndexerEventPayload`).
  * - Pushing the clean payload into the next stage of the pipeline via a callback.
  */
+
+const MAX_RETRY_TIMEOUT = 60000;
+const RETRY_ATTEMPTS = 10;
+const RETRY_BACKOFF_EXPONENT = 2;
 
 /**
  * Defines the configuration for a single event subscription.
@@ -49,6 +64,10 @@ export interface IndexerEventPayload {
   currentBlockHeight: bigint;
   /** The log that was captured. */
   log: Log;
+  /** The transaction that generated the event. */
+  transaction?: Transaction;
+  /** The receipt of the transaction that generated the event. */
+  transactionReceipt?: Promise<TransactionReceipt>;
 }
 
 /**
@@ -58,6 +77,8 @@ export interface IndexerEventPayload {
 export interface SubscribeToEventRequest<TPayload> {
   /** The Viem public client instance. */
   client: PublicClient<Transport, Chain>;
+  /** The queue to use for processing events. */
+  processingQueue: Bottleneck;
   /** The ID of the blockchain chain. */
   chainId: number;
   /** The configuration for the event to subscribe to. */
@@ -69,7 +90,23 @@ export interface SubscribeToEventRequest<TPayload> {
    */
   onFatalError: (error: Error) => void;
   /** An optional logger instance. */
-  logger?: Logger;
+  logger: Logger;
+  /** An optional metrics service instance. */
+  metrics?: DataDogMetricsService;
+}
+
+/**
+ * Request object for processing a batch of logs.
+ * @template TPayload The type of the event payload.
+ */
+export interface ProcessLogBatchArgs<TPayload> {
+  logs: Log[];
+  config: EventConfig;
+  chainId: number;
+  client: PublicClient<Transport, Chain>;
+  onEvent: (payload: TPayload) => void;
+  logger: Logger;
+  metrics?: DataDogMetricsService;
 }
 
 /**
@@ -82,11 +119,13 @@ export const subscribeToEvent = <TPayload>(
 ) => {
   const {
     client,
+    processingQueue,
     chainId,
     config,
     onEvent,
     onFatalError,
-    logger = console as unknown as Logger,
+    logger,
+    metrics,
   } = request;
   // Viem requires parsing the human-readable string array into a typed ABI
   const parsedAbi = parseAbi(config.abi);
@@ -97,51 +136,19 @@ export const subscribeToEvent = <TPayload>(
     address: config.address,
     abi: parsedAbi,
     eventName: config.eventName,
-    onLogs: async (logs: Log[]) => {
-      // Create a temporary cache for this batch to avoid duplicate requests
-      const blockTimeCache = new Map<bigint, bigint>();
-      // Viem receives a batch of logs (array). We iterate and push them individually.
-      for (const logItem of logs) {
-        try {
-          // Skip pending logs that don't have a block number yet
-          if (!logItem.blockNumber) continue;
-
-          // Check cache first, otherwise fetch from RPC
-          let blockTimestamp = blockTimeCache.get(logItem.blockNumber);
-
-          if (!blockTimestamp) {
-            const block = await client.getBlock({
-              blockNumber: logItem.blockNumber,
-            });
-            blockTimestamp = block.timestamp;
-            blockTimeCache.set(logItem.blockNumber, blockTimestamp);
-          }
-
-          const payload = {
-            chainId,
-            eventName: config.eventName,
-            log: logItem,
-            blockTimestamp,
-            // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
-            currentBlockHeight: logItem.blockNumber,
-          } as TPayload;
-          // Trigger the side effect (Forward it to an event processor or message queue)
-          logger.debug({
-            at: "genericEventListener#processLog",
-            message: `Received Log for ${config.eventName} in tx ${logItem.transactionHash}`,
-            chainId,
-            blockTimestamp,
-            contractAddress: config.address,
-          });
-          onEvent(payload);
-        } catch (error) {
-          logger.error({
-            at: "genericEventListener#processLog",
-            message: "Error processing log batch",
-            error,
-          });
-        }
-      }
+    onLogs: (logs: Log[]) => {
+      // Fire and forget: Add the batch processing to the queue
+      processingQueue.schedule(() =>
+        processLogBatch({
+          logs,
+          config,
+          chainId,
+          client,
+          onEvent,
+          logger,
+          metrics,
+        }),
+      );
     },
     onError: (error: Error) => {
       logger.error({
@@ -158,3 +165,189 @@ export const subscribeToEvent = <TPayload>(
 
   return unwatch;
 };
+
+/**
+ * Processes a batch of logs efficiently by pre-fetching all required data in parallel.
+ *
+ * This function iterates over the logs in the batch and:
+ * 1. Fetches the block and transactions for each log (deduplicated by block number).
+ * 2. Fetches the transaction receipt for each log (deduplicated by tx hash).
+ * 3. Constructs the payload.
+ * 4. Calls the `onEvent` callback.
+ *
+ * All network requests are initiated in parallel to maximize throughput.
+ * Internal caches are used to prevent redundant RPC calls for logs in the same block or transaction.
+ *
+ * @param args - The arguments object containing logs, config, client, etc.
+ */
+async function processLogBatch<TPayload>(
+  args: ProcessLogBatchArgs<TPayload>,
+): Promise<void> {
+  const { logs, config, chainId, client, onEvent, logger, metrics } = args;
+  const batchStart = Date.now();
+  const tags = [
+    `websocketIndexer`,
+    `processLogBatch`,
+    `chainId:${chainId}`,
+    `event:${config.eventName}`,
+  ];
+
+  // Create caches for this batch to avoid duplicate requests/parallel fetching
+  const blockCache = new Map<bigint, GetBlockReturnType<Chain, true>>();
+  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
+
+  // Process all logs in parallel
+  await Promise.all(
+    logs.map(async (logItem) => {
+      const startProcessingTime = Date.now();
+      try {
+        // Skip pending logs that don't have a block number yet
+        if (!logItem.blockNumber) {
+          return;
+        }
+
+        // --- Fetch Block & Transactions (Deduplicated) ---
+        let block = blockCache.get(logItem.blockNumber);
+        if (!block) {
+          block = await pRetry(
+            () => {
+              const fetchBlock = withMetrics(
+                () =>
+                  client.getBlock({
+                    blockNumber: logItem.blockNumber!,
+                    includeTransactions: true,
+                  }),
+                {
+                  service: metrics,
+                  metricName: "rpcCallGetBlock",
+                  tags,
+                  type: COUNT,
+                  logger,
+                },
+              );
+              return fetchBlock();
+            },
+            {
+              retries: RETRY_ATTEMPTS,
+              factor: RETRY_BACKOFF_EXPONENT,
+              maxTimeout: MAX_RETRY_TIMEOUT,
+              onFailedAttempt: (error) => {
+                logger.warn({
+                  at: "genericEventListener#processLogBatch",
+                  message: `Failed to fetch block ${logItem.blockNumber}, retrying...`,
+                  attempt: error.attemptNumber,
+                  retriesLeft: error.retriesLeft,
+                  error,
+                });
+              },
+            },
+          );
+          blockCache.set(logItem.blockNumber, block);
+        }
+        const { timestamp: blockTimestamp, transactions } = await block;
+
+        // --- Find Transaction ---
+        let transaction: Transaction | undefined;
+        if (transactions) {
+          transaction = transactions.find(
+            (t: any) => t.hash === logItem.transactionHash,
+          );
+        }
+
+        // --- Fetch Transaction Receipt (Deduplicated) ---
+        let transactionReceiptPromise: Promise<TransactionReceipt> | undefined;
+        if (logItem.transactionHash) {
+          transactionReceiptPromise = receiptCache.get(logItem.transactionHash);
+          if (!transactionReceiptPromise) {
+            transactionReceiptPromise = new PLazy((resolve, reject) => {
+              pRetry(
+                () => {
+                  const fetchReceipt = withMetrics(
+                    () =>
+                      client.getTransactionReceipt({
+                        hash: logItem.transactionHash!,
+                      }),
+                    {
+                      service: metrics,
+                      metricName: "rpcCallGetTransactionReceipt",
+                      tags,
+                      type: COUNT,
+                      logger,
+                    },
+                  );
+                  return fetchReceipt();
+                },
+                {
+                  retries: RETRY_ATTEMPTS,
+                  factor: RETRY_BACKOFF_EXPONENT,
+                  maxTimeout: MAX_RETRY_TIMEOUT,
+                  onFailedAttempt: (error) => {
+                    logger.warn({
+                      at: "genericEventListener#processLogBatch",
+                      message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
+                      attempt: error.attemptNumber,
+                      retriesLeft: error.retriesLeft,
+                      error,
+                    });
+                  },
+                },
+              )
+                .then(resolve)
+                .catch(reject);
+            });
+            receiptCache.set(
+              logItem.transactionHash,
+              transactionReceiptPromise,
+            );
+          }
+        }
+
+        const payload = {
+          chainId,
+          eventName: config.eventName,
+          log: logItem,
+          blockTimestamp,
+          // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
+          currentBlockHeight: logItem.blockNumber,
+          transaction,
+          transactionReceipt: transactionReceiptPromise,
+        } as TPayload;
+
+        // Trigger the side effect (Forward it to an event processor or message queue)
+        logger.debug({
+          at: "genericEventListener#processLog",
+          message: `Received Log for ${config.eventName} in tx ${logItem.transactionHash}`,
+          chainId,
+          blockTimestamp,
+          contractAddress: config.address,
+        });
+        onEvent(payload);
+
+        metrics?.addGaugeMetric(
+          "processLog",
+          Date.now() - startProcessingTime,
+          tags,
+        );
+        metrics?.addGaugeMetric(
+          "websocketToBlockLatency",
+          // The block timestamp is in seconds, the batch start is in milliseconds, so we need to divide the batch start by 1000 to get the same unit.
+          // Converting the block timestamp to milliseconds would be counterproductive as it would be rounded to the nearest second which will give an inaccurate latency measurement.
+          // We cannot measure the latency below a second, so in the data visualization we can only show the latency in seconds.
+          Math.floor(batchStart / 1000 - Number(blockTimestamp)),
+          tags,
+        );
+      } catch (error) {
+        logger.error({
+          at: "genericEventListener#processLog",
+          message: "Error processing log item",
+          error,
+          logIndex: logItem.logIndex,
+          txHash: logItem.transactionHash,
+          chainId,
+        });
+        metrics?.addCountMetric("processLogError", tags);
+      }
+    }),
+  );
+  metrics?.addGaugeMetric("processLogBatch", Date.now() - batchStart, tags);
+}
