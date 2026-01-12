@@ -1,5 +1,5 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
-import { createWebSocketClient } from "../adapter/websocket";
+import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
 import { processEvent } from "./genericEventProcessing";
 import {
   Storer,
@@ -8,9 +8,18 @@ import {
   Preprocessor,
 } from "../model/genericTypes";
 import { Logger } from "winston";
-import { type PublicClient, type Transport, type Chain } from "viem";
+import {
+  type PublicClient,
+  type Transport,
+  type Chain,
+  WebSocketTransportConfig,
+} from "viem";
 import Bottleneck from "bottleneck";
-import { DataDogMetricsService } from "../../services/MetricsService";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -62,6 +71,8 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
   events: Array<
     IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
   >;
+  /** Optional WebSocket transport options */
+  transportOptions?: WebSocketTransportConfig;
 }
 
 /**
@@ -140,10 +151,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
           message: "Closing WebSocket connection...",
         });
 
-        (await (viemClient.transport as any).getSocket()).close();
-        (await (viemClient.transport as any).getRpcClient()).close();
-        // Force cleanup of the client instance
-        viemClient = undefined as any;
+        await closeViemClient(viemClient, logger);
       }
     } catch (err) {
       logger.warn({
@@ -168,6 +176,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
         indexerConfig.chainId,
         indexerConfig.rpcUrl,
         logger,
+        indexerConfig.transportOptions,
       );
 
       // --- Mechanism to detect Listener Crashes ---
@@ -178,7 +187,27 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const { config, transform, store, filter, preprocess } = eventItem;
+        const {
+          config,
+          transform,
+          store: originalStore,
+          filter,
+          preprocess,
+        } = eventItem;
+
+        const store = withMetrics(originalStore, {
+          service: metrics,
+          metricName: "eventStored",
+          tags: [
+            "websocketIndexer",
+            "store",
+            `chainId:${indexerConfig.chainId}`,
+            `event:${config.eventName}`,
+          ],
+          type: COUNT,
+          logger,
+        });
+
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
           processingQueue,

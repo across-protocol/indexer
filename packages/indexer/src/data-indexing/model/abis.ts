@@ -47,3 +47,15 @@ export const FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI = [
 export const ARBITRARY_ACTIONS_EXECUTED_ABI = [
   "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
 ];
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific ABIs for the Omnichain Fungible Token (OFT) Protocol.
+ * ================================================================================== */
+export const OFT_SENT_ABI = [
+  "event OFTSent(bytes32 indexed guid, uint32 dstEid, address indexed fromAddress, uint256 amountSentLD, uint256 amountReceivedLD)",
+];
+
+export const OFT_RECEIVED_ABI = [
+  "event OFTReceived(bytes32 indexed guid, uint32 srcEid, address indexed toAddress, uint256 amountReceivedLD)",
+];

@@ -1,3 +1,4 @@
+import pRetry from "p-retry";
 import Bottleneck from "bottleneck";
 import {
   parseAbi,
@@ -7,9 +8,15 @@ import {
   type Chain,
   type Transaction,
   TransactionReceipt,
+  GetBlockReturnType,
 } from "viem";
 import { Logger } from "winston";
-import { DataDogMetricsService } from "../../services/MetricsService";
+import PLazy from "p-lazy";
+import {
+  DataDogMetricsService,
+  withMetrics,
+} from "../../services/MetricsService";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -21,6 +28,10 @@ import { DataDogMetricsService } from "../../services/MetricsService";
  * - Parsing raw event logs into a standardized, clean format (`IndexerEventPayload`).
  * - Pushing the clean payload into the next stage of the pipeline via a callback.
  */
+
+const MAX_RETRY_TIMEOUT = 60000;
+const RETRY_ATTEMPTS = 10;
+const RETRY_BACKOFF_EXPONENT = 2;
 
 /**
  * Defines the configuration for a single event subscription.
@@ -56,7 +67,7 @@ export interface IndexerEventPayload {
   /** The transaction that generated the event. */
   transaction?: Transaction;
   /** The receipt of the transaction that generated the event. */
-  transactionReceipt?: TransactionReceipt;
+  transactionReceipt?: Promise<TransactionReceipt>;
 }
 
 /**
@@ -93,7 +104,6 @@ export interface ProcessLogBatchArgs<TPayload> {
   config: EventConfig;
   chainId: number;
   client: PublicClient<Transport, Chain>;
-
   onEvent: (payload: TPayload) => void;
   logger: Logger;
   metrics?: DataDogMetricsService;
@@ -183,11 +193,8 @@ async function processLogBatch<TPayload>(
   ];
 
   // Create caches for this batch to avoid duplicate requests/parallel fetching
-  const blockCache = new Map<
-    bigint,
-    { timestamp: bigint; transactions: Transaction[] }
-  >();
-  const receiptCache = new Map<string, TransactionReceipt>();
+  const blockCache = new Map<bigint, GetBlockReturnType<Chain, true>>();
+  const receiptCache = new Map<string, Promise<TransactionReceipt>>();
 
   // Process all logs in parallel
   await Promise.all(
@@ -200,17 +207,44 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Block & Transactions (Deduplicated) ---
-        let blockInformation = blockCache.get(logItem.blockNumber);
-        if (!blockInformation) {
-          blockInformation = await client.getBlock({
-            blockNumber: logItem.blockNumber,
-            includeTransactions: true,
-          });
-          metrics?.addCountMetric("rpcCallGetBlock", tags);
-
-          blockCache.set(logItem.blockNumber, blockInformation);
+        let block = blockCache.get(logItem.blockNumber);
+        if (!block) {
+          block = await pRetry(
+            () => {
+              const fetchBlock = withMetrics(
+                () =>
+                  client.getBlock({
+                    blockNumber: logItem.blockNumber!,
+                    includeTransactions: true,
+                  }),
+                {
+                  service: metrics,
+                  metricName: "rpcCallGetBlock",
+                  tags,
+                  type: COUNT,
+                  logger,
+                },
+              );
+              return fetchBlock();
+            },
+            {
+              retries: RETRY_ATTEMPTS,
+              factor: RETRY_BACKOFF_EXPONENT,
+              maxTimeout: MAX_RETRY_TIMEOUT,
+              onFailedAttempt: (error) => {
+                logger.warn({
+                  at: "genericEventListener#processLogBatch",
+                  message: `Failed to fetch block ${logItem.blockNumber}, retrying...`,
+                  attempt: error.attemptNumber,
+                  retriesLeft: error.retriesLeft,
+                  error,
+                });
+              },
+            },
+          );
+          blockCache.set(logItem.blockNumber, block);
         }
-        const { timestamp: blockTimestamp, transactions } = blockInformation;
+        const { timestamp: blockTimestamp, transactions } = await block;
 
         // --- Find Transaction ---
         let transaction: Transaction | undefined;
@@ -221,15 +255,50 @@ async function processLogBatch<TPayload>(
         }
 
         // --- Fetch Transaction Receipt (Deduplicated) ---
-        let transactionReceipt: TransactionReceipt | undefined;
+        let transactionReceiptPromise: Promise<TransactionReceipt> | undefined;
         if (logItem.transactionHash) {
-          transactionReceipt = receiptCache.get(logItem.transactionHash);
-          if (!transactionReceipt) {
-            transactionReceipt = await client.getTransactionReceipt({
-              hash: logItem.transactionHash,
+          transactionReceiptPromise = receiptCache.get(logItem.transactionHash);
+          if (!transactionReceiptPromise) {
+            transactionReceiptPromise = new PLazy((resolve, reject) => {
+              pRetry(
+                () => {
+                  const fetchReceipt = withMetrics(
+                    () =>
+                      client.getTransactionReceipt({
+                        hash: logItem.transactionHash!,
+                      }),
+                    {
+                      service: metrics,
+                      metricName: "rpcCallGetTransactionReceipt",
+                      tags,
+                      type: COUNT,
+                      logger,
+                    },
+                  );
+                  return fetchReceipt();
+                },
+                {
+                  retries: RETRY_ATTEMPTS,
+                  factor: RETRY_BACKOFF_EXPONENT,
+                  maxTimeout: MAX_RETRY_TIMEOUT,
+                  onFailedAttempt: (error) => {
+                    logger.warn({
+                      at: "genericEventListener#processLogBatch",
+                      message: `Failed to fetch receipt for ${logItem.transactionHash}, retrying...`,
+                      attempt: error.attemptNumber,
+                      retriesLeft: error.retriesLeft,
+                      error,
+                    });
+                  },
+                },
+              )
+                .then(resolve)
+                .catch(reject);
             });
-            metrics?.addCountMetric("rpcCallGetTransactionReceipt", tags);
-            receiptCache.set(logItem.transactionHash, transactionReceipt);
+            receiptCache.set(
+              logItem.transactionHash,
+              transactionReceiptPromise,
+            );
           }
         }
 
@@ -241,7 +310,7 @@ async function processLogBatch<TPayload>(
           // The events are emitted at head so we can simply take the block number of the log as the currentBlockHeight
           currentBlockHeight: logItem.blockNumber,
           transaction,
-          transactionReceipt,
+          transactionReceipt: transactionReceiptPromise,
         } as TPayload;
 
         // Trigger the side effect (Forward it to an event processor or message queue)
@@ -274,6 +343,7 @@ async function processLogBatch<TPayload>(
           error,
           logIndex: logItem.logIndex,
           txHash: logItem.transactionHash,
+          chainId,
         });
         metrics?.addCountMetric("processLogError", tags);
       }

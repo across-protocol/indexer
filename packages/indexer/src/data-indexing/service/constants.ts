@@ -150,3 +150,11 @@ export const FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME =
   "FallbackHyperEVMFlowCompleted";
 export const ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME = "ArbitraryActionsExecuted";
 export const SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME = "SponsoredDepositForBurn";
+
+/* ==================================================================================
+ * OFT DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Omnichain Fungible Token (OFT) Protocol.
+ * ================================================================================== */
+
+export const OFT_SENT_EVENT_NAME = "OFTSent";
+export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";

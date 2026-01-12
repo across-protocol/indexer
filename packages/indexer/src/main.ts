@@ -180,17 +180,21 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
-  const metrics = new DataDogMetricsService(
-    config.datadogConfig.tags,
-    config.datadogConfig.enabled,
-  );
+  const metrics = new DataDogMetricsService({
+    configuration: config.datadogConfig,
+    logger,
+  });
 
   // WebSocket Indexer setup
   const wsIndexerPromises: Promise<void>[] = [];
   const abortController = new AbortController();
 
   if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
-    const allProviders = parseEnv.parseProvidersUrls();
+    // Merge providers, allowing WS providers to override RPC providers if defined for a chain
+    const allProviders = new Map([
+      ...parseEnv.parseProvidersUrls("RPC_PROVIDER_URLS_"),
+      ...parseEnv.parseProvidersUrls("WS_RPC_PROVIDER_URLS_"),
+    ]);
 
     // Determine which chains to index via WebSocket
     let wsChainIds: number[] = []; // Default to Arbitrum

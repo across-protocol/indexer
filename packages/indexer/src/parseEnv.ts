@@ -74,7 +74,7 @@ export type DatadogConfig = {
   environment: string;
   dd_api_key: string;
   dd_app_key: string;
-  tags: string[];
+  globalTags: string[];
 };
 
 export type Env = Record<string, string | undefined>;
@@ -142,10 +142,12 @@ function parseProviderConfigs(env: Env): ProviderConfig[] {
   return results;
 }
 
-export function parseProvidersUrls() {
+export function parseProvidersUrls(prefix: string = "RPC_PROVIDER_URLS_") {
   const results: Map<number, string[]> = new Map();
+  const regex = new RegExp(`^${prefix}(\\d+)$`);
+
   for (const [key, value] of Object.entries(process.env)) {
-    const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
+    const match = key.match(regex);
     if (match) {
       const chainId = match[1] ? parseNumber(match[1]) : undefined;
       if (chainId && value) {
@@ -243,7 +245,7 @@ export function parseDatadogConfig(env: Env): DatadogConfig {
     environment,
     dd_api_key,
     dd_app_key,
-    tags,
+    globalTags: tags,
   };
 }
 

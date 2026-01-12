@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_oftSent_chainId_blockHash_logIndex", [
@@ -16,6 +17,7 @@ import {
 ])
 @Index("IX_oftSent_finalised", ["finalised"])
 @Index("IX_oftSent_deletedAt", ["deletedAt"])
+@Index("IX_oftSent_chainId_blockNumber", ["chainId", "blockNumber"])
 export class OFTSent {
   @PrimaryGeneratedColumn()
   id: number;
@@ -58,6 +60,9 @@ export class OFTSent {
 
   @Column()
   finalised: boolean;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @Column()
   blockTimestamp: Date;

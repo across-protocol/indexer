@@ -8,6 +8,7 @@ const PK_CHAIN_BLOCK_TX_LOG = [
   "transactionHash",
   "logIndex",
 ];
+const UK_CHAIN_BLOCKHASH_LOG = ["chainId", "blockHash", "logIndex"];
 
 /**
  * Stores a DepositForBurn event in the database.
@@ -226,6 +227,54 @@ export const storeArbitraryActionsExecutedEvent: Storer<
     entities.ArbitraryActionsExecuted,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
+    [],
+  );
+};
+
+/* ==================================================================================
+ * OFT STORING LOGIC
+ * ================================================================================== */
+
+/**
+ * Stores an OFTSent event in the database.
+ *
+ * @param event The OFTSent entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeOFTSentEvent: Storer<
+  Partial<entities.OFTSent>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.OFTSent>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
+    entities.OFTSent,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTSent)[],
+    [],
+  );
+};
+
+/**
+ * Stores an OFTReceived event in the database.
+ *
+ * @param event The OFTReceived entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeOFTReceivedEvent: Storer<
+  Partial<entities.OFTReceived>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.OFTReceived>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.OFTReceived>(
+    entities.OFTReceived,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTReceived)[],
     [],
   );
 };
