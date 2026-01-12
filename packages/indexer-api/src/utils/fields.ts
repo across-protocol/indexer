@@ -7,7 +7,7 @@ export const DepositFields = [
   `deposit."originChainId"::bigint as "originChainId"`,
   `deposit."destinationChainId"::bigint as "destinationChainId"`,
   `deposit.depositor::varchar as "depositor"`,
-  `deposit.recipient::varchar as "recipient"`,
+  `COALESCE((SELECT sm.recipient::varchar FROM "evm"."swap_metadata" sm WHERE sm."relayHashInfoId" = rhi.id AND sm.side = '${entities.SwapSide.DESTINATION_SWAP}'::"evm"."swap_metadata_side_enum" AND sm."deletedAt" IS NULL ORDER BY sm.id ASC LIMIT 1), deposit.recipient)::varchar as "recipient"`,
   `deposit."inputToken"::varchar as "inputToken"`,
   `deposit."inputAmount"::varchar as "inputAmount"`,
   `deposit."outputToken"::varchar as "outputToken"`,
