@@ -180,7 +180,6 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
           token: event.token || event.tokenAddress || "",
           depositType: event.type || event.depositType,
           nonce: event.nonce?.toString(),
-          rawData: event,
         };
 
         deposits.push(deposit);

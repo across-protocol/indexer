@@ -52,9 +52,6 @@ export class HyperliquidDeposit {
   @Column({ nullable: true })
   nonce?: string;
 
-  @Column({ type: "text", nullable: true })
-  rawData?: string;
-
   @Column()
   finalised: boolean;
 

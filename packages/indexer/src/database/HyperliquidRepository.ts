@@ -47,9 +47,6 @@ export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {
           token: deposit.token,
           depositType: deposit.depositType,
           nonce: deposit.nonce,
-          rawData: deposit.rawData
-            ? JSON.stringify(deposit.rawData)
-            : undefined,
           finalised: deposit.blockNumber <= lastFinalisedBlock,
         };
       });

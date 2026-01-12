@@ -16,7 +16,6 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
             "token" character varying NOT NULL,
             "depositType" character varying,
             "nonce" character varying,
-            "rawData" text,
             "finalised" boolean NOT NULL,
             "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
             "deletedAt" TIMESTAMP,

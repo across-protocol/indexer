@@ -14,7 +14,4 @@ export interface HyperliquidDepositEvent {
   token: string;
   depositType?: string;
   nonce?: string;
-
-  // Additional metadata
-  rawData?: any;
 }
