@@ -5,8 +5,7 @@ import { startChainIndexing } from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
 import * as contractUtils from "../../utils/contractUtils";
-import { entities, utils, DataSourceType } from "@repo/indexer-database";
-import { MESSAGE_TRANSMITTER_ADDRESS_MAINNET } from "../service/constants";
+import { entities, DataSourceType } from "@repo/indexer-database";
 import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
@@ -20,7 +19,7 @@ import {
 } from "viem/chains";
 import {
   CCTP_PROTOCOL,
-  SPONSORED_BRIDGING_PROTOCOL,
+  SPONSORED_CCTP_PROTOCOL,
   OFT_PROTOCOL,
 } from "../service/config";
 
@@ -396,12 +395,12 @@ describe("Websocket Subscription", () => {
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
-      protocols: [SPONSORED_BRIDGING_PROTOCOL],
+      protocols: [SPONSORED_CCTP_PROTOCOL],
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
-      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
         .length,
     );
 
@@ -457,12 +456,12 @@ describe("Websocket Subscription", () => {
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
-      protocols: [SPONSORED_BRIDGING_PROTOCOL],
+      protocols: [SPONSORED_CCTP_PROTOCOL],
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
-      SPONSORED_BRIDGING_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
         .length,
     );
 
@@ -543,6 +542,79 @@ describe("Websocket Subscription", () => {
       hookData: "0x",
     });
   }).timeout(20000);
+  it("should ingest sponsored CCTP events from Arbitrum tx 0xef55...78a0", async () => {
+    // Tx: https://arbiscan.io/tx/0xef55d3110094488b943525fd6609e7918328009168e661658b5fb858434b78a0
+    const txHash =
+      "0xef55d3110094488b943525fd6609e7918328009168e661658b5fb858434b78a0";
+
+    const client = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    // Stub contract Utils for finding the sponsored event from the periphery address
+    // The previous test suite (CCTPIndexerDataHandler) used:
+    // SponsoredCCTPSrcPeriphery: 0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPSrcPeripheryAddress")
+      .returns("0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7");
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      client,
+      txHash,
+    );
+
+    // Start the Indexer
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM)
+        .length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify DepositForBurn Persistence
+    const depositRepo = dataSource.getRepository(entities.DepositForBurn);
+    const savedEvent = await depositRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent!.transactionHash).to.equal(txHash);
+
+    // Verify SponsoredDepositForBurn Persistence
+    const sponsoredRepo = dataSource.getRepository(
+      entities.SponsoredDepositForBurn,
+    );
+    const savedSponsoredEvent = await sponsoredRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedSponsoredEvent).to.exist;
+    expect(savedSponsoredEvent!).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      quoteNonce:
+        "0x333d757477a9ebed33ed12e6320a8414d034cd86ca2acd292d9b687a99bdb866",
+      originSender: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      quoteDeadline: new Date(1765996920 * 1000),
+      maxBpsToSponsor: 0,
+      maxUserSlippageBps: 50,
+      finalToken: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      signature:
+        "0x1ed01ce81157c25664616c112142037217f5b22318f451eb7f6eb07d2784810a00c1d0f648a6687fcd3dccfe7c37660c7e378dbc0c2a49a917d6b016cdb8f8571c",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
   it("should ingest the MintAndWithdraw event from Arbitrum tx 0x3b3d...e813", async () => {
     // Real Transaction Data
     const txHash =
@@ -562,6 +634,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -591,6 +664,7 @@ describe("Websocket Subscription", () => {
       feeCollected: 0,
       mintRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
       mintToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);
   it("should ingest the DepositForBurn event from Optimism tx 0x56e0...99c3", async () => {
@@ -612,6 +686,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.OPTIMISM,
       protocols: [CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(
@@ -643,6 +718,225 @@ describe("Websocket Subscription", () => {
       maxFee: 100,
       minFinalityThreshold: 1000,
       hookData: "0x",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
+  it("should ingest the SimpleTransferFlowCompleted event from HyperEVM tx 0x0e07...0abb", async () => {
+    // Tx: https://hyperevmscan.io/tx/0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb
+    const txHash =
+      "0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    // Stub the periphery address for this test
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(entities.SimpleTransferFlowCompleted);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0x900ae297e854a869531be43d57f0da808207132313de1a986558eefcac41a89c",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      evmAmountIn: 100003,
+      bridgingFeesIncurred: 11,
+      evmAmountSponsored: 11,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
+
+  it("should ingest the ArbitraryActionsExecuted event from HyperEVM tx 0x0e07...0abb", async () => {
+    // Tx: https://hyperevmscan.io/tx/0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb
+    const txHash =
+      "0x0e07cf92929a5e3c9d18ba28c71bf50b678d357eb9f433ed305ac6ab958f0abb";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    // Stub the periphery address for this test
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(entities.ArbitraryActionsExecuted);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0x900ae297e854a869531be43d57f0da808207132313de1a986558eefcac41a89c",
+      initialToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      initialAmount: 100003, // String for bigint/numeric
+      finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      finalAmount: 100003,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
+
+  it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {
+    // Tx: https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02
+    const txHash =
+      "0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    // Stub the periphery address for this test
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(
+      entities.FallbackHyperEVMFlowCompleted,
+    );
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0xd4731c4ab33b3a364d599940d9ba46df41f6a75233a361e2d312e072540ed184",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+      evmAmountIn: 999900,
+      bridgingFeesIncurred: 100,
+      evmAmountSponsored: 0,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(20000);
+
+  it("should ingest the SponsoredAccountActivation event from HyperEVM tx 0x4afd...230a", async () => {
+    // Tx: https://hyperevmscan.io/tx/0x4afdb0310d407241b875c1fe00fbfd40e311e665b8456c65d8fcb3ba9083230a
+    const txHash =
+      "0x4afdb0310d407241b875c1fe00fbfd40e311e665b8456c65d8fcb3ba9083230a";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    // Stub the periphery address for this test
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_CCTP_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(entities.SponsoredAccountActivation);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0xd4731c4ab33b3a364d599940d9ba46df41f6a75233a361e2d312e072540ed184",
+      finalRecipient: "0x63aAeEb87f4d5ac9eb95EeF0edDc0D6E7f71800d",
+      fundingToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      evmAmountSponsored: 1000000,
+      dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);
 
@@ -665,6 +959,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(2);
@@ -719,6 +1014,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
     await server.waitForSubscription(2);

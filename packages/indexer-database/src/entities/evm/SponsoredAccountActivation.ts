@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_sponsoredAccountActivation_chain_block_tx_log", [
@@ -68,4 +69,7 @@ export class SponsoredAccountActivation {
 
   @Column({ nullable: true })
   contractAddress?: string;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 }

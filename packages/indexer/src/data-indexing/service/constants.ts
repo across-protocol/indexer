@@ -140,6 +140,17 @@ export const MESSAGE_SENT_EVENT_NAME = "MessageSent";
 export const MESSAGE_RECEIVED_EVENT_NAME = "MessageReceived";
 export const MINT_AND_WITHDRAW_EVENT_NAME = "MintAndWithdraw";
 
+export const SWAP_FLOW_FINALIZED_EVENT_NAME = "SwapFlowFinalized";
+export const SWAP_FLOW_INITIALIZED_EVENT_NAME = "SwapFlowInitialized";
+export const SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME =
+  "SponsoredAccountActivation";
+export const SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME =
+  "SimpleTransferFlowCompleted";
+export const FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME =
+  "FallbackHyperEVMFlowCompleted";
+export const ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME = "ArbitraryActionsExecuted";
+export const SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME = "SponsoredDepositForBurn";
+
 /* ==================================================================================
  * OFT DOMAIN LOGIC & CONFIGURATION
  * * Specific implementations for the Omnichain Fungible Token (OFT) Protocol.
