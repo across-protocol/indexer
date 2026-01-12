@@ -15,6 +15,23 @@ export interface HyperliquidBlock {
   data: any[];
 }
 
+/**
+ * API response structure for a single block from Hyperliquid
+ */
+interface HyperliquidApiBlockResponse {
+  block_number: number;
+  block_time: string;
+  local_time: string;
+  events: any[];
+}
+
+/**
+ * API response structure for multiple blocks from Hyperliquid
+ */
+interface HyperliquidBlocksResponse {
+  blocks: HyperliquidApiBlockResponse[];
+}
+
 export interface HyperliquidRpcResponse<T = any> {
   jsonrpc: string;
   id: number;
@@ -51,8 +68,6 @@ export class HyperliquidRpcClient {
     params: any[] | Record<string, any>,
   ): Promise<T> {
     const id = this.requestId++;
-    // JSON-RPC 2.0 allows params to be an array or an object
-    // Hyperliquid API accepts both formats, so pass directly
     const requestBody = {
       jsonrpc: "2.0",
       method,
@@ -127,13 +142,13 @@ export class HyperliquidRpcClient {
     streamType: HyperliquidStreamType,
     blockNumber: number,
   ): Promise<HyperliquidBlock> {
-    const data = await this.makeRequest<any[]>("hl_getBlock", [
-      streamType,
-      blockNumber,
-    ]);
+    const block = await this.makeRequest<HyperliquidApiBlockResponse>(
+      "hl_getBlock",
+      [streamType, blockNumber],
+    );
     return {
-      blockNumber,
-      data: data || [],
+      blockNumber: block.block_number,
+      data: block.events || [],
     };
   }
 
@@ -145,20 +160,15 @@ export class HyperliquidRpcClient {
     fromBlock: number,
     toBlock: number,
   ): Promise<HyperliquidBlock[]> {
-    const response = await this.makeRequest<{
-      blocks: Array<{
-        block_number: number;
-        block_time: string;
-        local_time: string;
-        events: any[];
-      }>;
-    }>("hl_getBatchBlocks", {
-      stream: streamType,
-      from: fromBlock,
-      to: toBlock,
-    });
+    const response = await this.makeRequest<HyperliquidBlocksResponse>(
+      "hl_getBatchBlocks",
+      {
+        stream: streamType,
+        from: fromBlock,
+        to: toBlock,
+      },
+    );
 
-    // The API returns { blocks: [...] } where each block has block_number and events
     if (!response || !response.blocks || !Array.isArray(response.blocks)) {
       this.logger.warn({
         at: "HyperliquidRpcClient#getBatchBlocks",
@@ -181,18 +191,26 @@ export class HyperliquidRpcClient {
     streamType: HyperliquidStreamType,
     count: number,
   ): Promise<HyperliquidBlock[]> {
-    const data = await this.makeRequest<any[]>("hl_getLatestBlocks", {
-      stream: streamType,
-      count,
-    });
+    const response = await this.makeRequest<HyperliquidBlocksResponse>(
+      "hl_getLatestBlocks",
+      {
+        stream: streamType,
+        count,
+      },
+    );
 
-    // Similar to getBatchBlocks, we need to structure the response
-    // This will need adjustment based on actual API response
-    return Array.isArray(data)
-      ? data.map((blockData) => ({
-          blockNumber: 0, // Will need to be determined from response
-          data: Array.isArray(blockData) ? blockData : [blockData],
-        }))
-      : [];
+    if (!response || !response.blocks || !Array.isArray(response.blocks)) {
+      this.logger.warn({
+        at: "HyperliquidRpcClient#getLatestBlocks",
+        message: "Unexpected API response structure",
+        response,
+      });
+      return [];
+    }
+
+    return response.blocks.map((block) => ({
+      blockNumber: block.block_number,
+      data: block.events || [],
+    }));
   }
 }

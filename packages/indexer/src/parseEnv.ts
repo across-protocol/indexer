@@ -26,7 +26,7 @@ export type Config = {
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
   enableHyperliquidIndexer: boolean;
-  hyperliquidRpcUrl?: string;
+  hyperliquidMainnet: boolean;
   hyperliquidIndexerStartBlock?: number;
   datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
@@ -289,7 +289,9 @@ export function envToConfig(env: Env): Config {
   const enableHyperliquidIndexer = env.ENABLE_HYPERLIQUID_INDEXER
     ? env.ENABLE_HYPERLIQUID_INDEXER === "true"
     : false;
-  const hyperliquidRpcUrl = env.HYPERLIQUID_RPC_URL;
+  const hyperliquidMainnet = env.HYPERLIQUID_MAINNET
+    ? env.HYPERLIQUID_MAINNET === "true"
+    : false;
   const hyperliquidIndexerStartBlock = env.HYPERLIQUID_INDEXER_START_BLOCK
     ? parseInt(env.HYPERLIQUID_INDEXER_START_BLOCK)
     : undefined;
@@ -366,7 +368,7 @@ export function envToConfig(env: Env): Config {
     cctpIndexerChainIds,
     enableOftIndexer,
     enableHyperliquidIndexer,
-    hyperliquidRpcUrl,
+    hyperliquidMainnet,
     hyperliquidIndexerStartBlock,
     enableCctpFinalizer,
     pubSubCctpFinalizerTopic,

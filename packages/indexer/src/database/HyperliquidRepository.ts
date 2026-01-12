@@ -7,7 +7,7 @@ import {
   utils as dbUtils,
   SaveQueryResult,
 } from "@repo/indexer-database";
-import { HyperliquidDepositWithBlock } from "../data-indexing/adapter/hyperliquid/model";
+import { HyperliquidDepositEvent } from "../data-indexing/adapter/hyperliquid/model";
 
 export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {
   constructor(
@@ -29,7 +29,7 @@ export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public async formatAndSaveHyperliquidDeposits(
-    deposits: HyperliquidDepositWithBlock[],
+    deposits: HyperliquidDepositEvent[],
     lastFinalisedBlock: number,
     blockDates: Record<number, Date>,
   ) {

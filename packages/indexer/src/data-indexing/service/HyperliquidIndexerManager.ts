@@ -1,6 +1,6 @@
 import { Logger } from "winston";
 import { DataSource } from "@repo/indexer-database";
-import { Config } from "../../parseEnv";
+import { Config, parseProvidersUrls } from "../../parseEnv";
 import {
   getFinalisedBlockBufferDistance,
   getIndexingDelaySeconds,
@@ -16,7 +16,6 @@ export class HyperliquidIndexerManager {
     private logger: Logger,
     private config: Config,
     private postgres: DataSource,
-    private rpcUrl: string,
     private startBlockNumber: number = 0,
   ) {}
 
@@ -30,10 +29,21 @@ export class HyperliquidIndexerManager {
         return;
       }
 
-      if (!this.rpcUrl) {
+      // Chain ID is always 1337 for Hyperliquid
+      const chainId = 1337;
+
+      // Use different chain ID for mainnet and testnet
+      const rpcConfigChainId = this.config.hyperliquidMainnet
+        ? chainId
+        : chainId + 1;
+      const rpcUrls =
+        parseProvidersUrls("RPC_PROVIDER_URLS_").get(rpcConfigChainId);
+      const rpcUrl = rpcUrls?.[0];
+
+      if (!rpcUrl) {
         this.logger.error({
           at: "Indexer#HyperliquidIndexerManager#start",
-          message: "Hyperliquid RPC URL is not configured",
+          message: `Hyperliquid RPC URL is not configured. Please set RPC_PROVIDER_URLS_${rpcConfigChainId} (${this.config.hyperliquidMainnet ? "mainnet" : "testnet"})`,
         });
         return;
       }
@@ -45,43 +55,38 @@ export class HyperliquidIndexerManager {
 
       const hyperliquidIndexerDataHandler = new HyperliquidIndexerDataHandler(
         this.logger,
-        this.rpcUrl,
+        rpcUrl,
         hyperliquidRepository,
         this.startBlockNumber,
       );
 
-      // Use a default chain ID for Hyperliquid (we'll need to define this)
-      // For now, we'll use a placeholder or get it from config
-      const chainId = 998; // Placeholder - adjust based on actual Hyperliquid chain ID
-
-      // Get indexing delay, with fallback if chain ID not in constants
       let indexingDelaySeconds = 4; // Default delay
       try {
         indexingDelaySeconds =
           getIndexingDelaySeconds(chainId, this.config) * 2;
       } catch (error) {
-        // Chain ID not in constants, use default
         indexingDelaySeconds = this.config.indexingDelaySeconds ?? 4;
       }
 
       const indexer = new HyperliquidIndexer(
         {
           indexingDelaySeconds,
-          finalisedBlockBufferDistance: 10, // Conservative buffer for Hyperliquid
-          maxBlockRangeSize: this.config.maxBlockRangeSize ?? 1000, // Smaller batches for API limits
+          finalisedBlockBufferDistance: 0, // Reorgs are not possible on Hyperliquid
+          maxBlockRangeSize: this.config.maxBlockRangeSize ?? 1000,
           indexingDelaySecondsOnError: this.config.indexingDelaySecondsOnError,
         },
         hyperliquidIndexerDataHandler,
         this.logger,
         this.postgres,
-        this.rpcUrl,
+        rpcUrl,
       );
 
       this.indexer = indexer;
       this.logger.info({
         at: "Indexer#HyperliquidIndexerManager#start",
         message: "Starting Hyperliquid indexer",
-        rpcUrl: this.rpcUrl,
+        chainId,
+        rpcUrl,
         startBlockNumber: this.startBlockNumber,
       });
 

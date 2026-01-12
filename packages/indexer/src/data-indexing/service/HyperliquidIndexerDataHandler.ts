@@ -6,12 +6,12 @@ import {
   HyperliquidRpcClient,
   HyperliquidBlock,
 } from "../adapter/hyperliquid/HyperliquidRpcClient";
-import { HyperliquidDepositWithBlock } from "../adapter/hyperliquid/model";
+import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 import * as across from "@across-protocol/sdk";
 
 export type FetchDepositsResult = {
-  deposits: HyperliquidDepositWithBlock[];
+  deposits: HyperliquidDepositEvent[];
 };
 
 export type StoreDepositsResult = {
@@ -110,9 +110,8 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     const rpcClient = new HyperliquidRpcClient(this.rpcUrl, this.logger);
 
     try {
-      // Fetch blocks in batches to avoid overwhelming the API
-      const batchSize = 100; // Adjust based on API limits
-      const deposits: HyperliquidDepositWithBlock[] = [];
+      const batchSize = 100;
+      const deposits: HyperliquidDepositEvent[] = [];
 
       for (
         let fromBlock = blockRange.from;
@@ -154,12 +153,11 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
   /**
    * Parses deposit events from a Hyperliquid block
-   * This will need to be adjusted based on the actual structure of events in the API response
    */
   private parseDepositsFromBlock(
     block: HyperliquidBlock,
-  ): HyperliquidDepositWithBlock[] {
-    const deposits: HyperliquidDepositWithBlock[] = [];
+  ): HyperliquidDepositEvent[] {
+    const deposits: HyperliquidDepositEvent[] = [];
 
     if (!block.data || !Array.isArray(block.data)) {
       return deposits;
@@ -168,7 +166,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     // Store all events from the block as raw data
     for (const event of block.data) {
       try {
-        const deposit: HyperliquidDepositWithBlock = {
+        const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
           transactionHash:
             event.txHash || event.transactionHash || `0x${block.blockNumber}`,
@@ -177,13 +175,11 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
           blockTimestamp: event.timestamp
             ? new Date(event.timestamp)
             : new Date(),
-          // Extract common fields if available, otherwise use defaults
           user: event.user || event.from || event.address || "",
           amount: event.amount || event.value || "0",
           token: event.token || event.tokenAddress || "",
           depositType: event.type || event.depositType,
           nonce: event.nonce?.toString(),
-          // Store the entire raw event for later processing
           rawData: event,
         };
 
@@ -218,14 +214,8 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       };
     }
 
-    // Get block timestamps (we'll need to fetch these from the RPC if not in the event)
-    const blockNumbers = [
-      ...new Set(deposits.deposits.map((d) => d.blockNumber)),
-    ];
     const blockDates: Record<number, Date> = {};
 
-    // For now, use the timestamp from the deposit event
-    // In a real implementation, you might want to fetch block timestamps from the RPC
     for (const deposit of deposits.deposits) {
       if (!blockDates[deposit.blockNumber]) {
         blockDates[deposit.blockNumber] = deposit.blockTimestamp;
