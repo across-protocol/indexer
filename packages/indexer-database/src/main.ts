@@ -72,6 +72,8 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.SponsoredDepositForBurn,
       entities.CctpFinalizerJob,
       entities.HypercoreCctpWithdraw,
+      // Hyperliquid
+      entities.HyperliquidDeposit,
       // OFT
       entities.OFTSent,
       entities.OFTReceived,

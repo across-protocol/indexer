@@ -7,6 +7,7 @@ import { entities, DataSource } from "@repo/indexer-database";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import { HyperliquidRpcClient } from "../adapter/hyperliquid/HyperliquidRpcClient";
 
 const DEFAULT_MAX_BLOCK_RANGE_SIZE = 50_000;
 
@@ -42,7 +43,7 @@ export class Indexer {
   constructor(
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
-    private logger: Logger,
+    protected logger: Logger,
     private dataSource: DataSource,
   ) {
     this.stopRequested = false;
@@ -218,5 +219,24 @@ export class SvmIndexer extends Indexer {
   protected async getLatestBlockNumber(): Promise<number> {
     const latestBlockNumber = await this.rpcProvider.getSlot().send();
     return Number(latestBlockNumber);
+  }
+}
+
+export class HyperliquidIndexer extends Indexer {
+  constructor(
+    config: ConstructorConfig,
+    dataHandler: IndexerDataHandler,
+    logger: Logger,
+    dataSource: DataSource,
+    private rpcUrl: string,
+  ) {
+    super(config, dataHandler, logger, dataSource);
+  }
+
+  protected async getLatestBlockNumber(): Promise<number> {
+    const rpcClient = new HyperliquidRpcClient(this.rpcUrl, this.logger);
+    const latestBlockNumber =
+      await rpcClient.getLatestBlockNumber("writer_actions");
+    return latestBlockNumber;
   }
 }

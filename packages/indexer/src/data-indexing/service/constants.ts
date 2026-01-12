@@ -35,6 +35,8 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.BOBA]: 0,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 40,
+  // Hyperliquid (placeholder chain ID - adjust based on actual chain ID)
+  998: 10,
 };
 
 export function getFinalisedBlockBufferDistance(chainId: number) {
@@ -82,6 +84,8 @@ const indexingDelaySeconds: Record<number, number> = {
   [CHAIN_IDs.BOBA]: 0,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 2,
+  // Hyperliquid (placeholder chain ID - adjust based on actual chain ID)
+  998: 4,
 };
 
 export function getIndexingDelaySeconds(chainId: number, config: Config) {
