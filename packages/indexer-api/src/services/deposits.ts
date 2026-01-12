@@ -250,6 +250,12 @@ export class DepositsService {
           destinationChainId: params.destinationChainId,
         },
       );
+      fundsDepositedQueryBuilder.andWhere(
+        "fill.destinationChainId = :fillDestinationChainId",
+        {
+          fillDestinationChainId: params.destinationChainId,
+        },
+      );
       depositForBurnQueryBuilder.andWhere(
         "mintAndWithdraw.chainId = :destinationChainId",
         {
@@ -332,6 +338,42 @@ export class DepositsService {
       );
       oftSentQueryBuilder.andWhere("oftSent.blockNumber <= :endBlock", {
         endBlock: params.endBlock,
+      });
+    }
+
+    if (params.startFillBlock) {
+      fundsDepositedQueryBuilder.andWhere(
+        "fill.blockNumber >= :startFillBlock",
+        {
+          startFillBlock: params.startFillBlock,
+        },
+      );
+      depositForBurnQueryBuilder.andWhere(
+        "mintAndWithdraw.blockNumber >= :startFillBlock",
+        {
+          startFillBlock: params.startFillBlock,
+        },
+      );
+      oftSentQueryBuilder.andWhere(
+        "oftReceived.blockNumber >= :startFillBlock",
+        {
+          startFillBlock: params.startFillBlock,
+        },
+      );
+    }
+
+    if (params.endFillBlock) {
+      fundsDepositedQueryBuilder.andWhere("fill.blockNumber <= :endFillBlock", {
+        endFillBlock: params.endFillBlock,
+      });
+      depositForBurnQueryBuilder.andWhere(
+        "mintAndWithdraw.blockNumber <= :endFillBlock",
+        {
+          endFillBlock: params.endFillBlock,
+        },
+      );
+      oftSentQueryBuilder.andWhere("oftReceived.blockNumber <= :endFillBlock", {
+        endFillBlock: params.endFillBlock,
       });
     }
 
