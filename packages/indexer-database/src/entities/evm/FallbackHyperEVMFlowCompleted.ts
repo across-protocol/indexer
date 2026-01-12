@@ -7,6 +7,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_fallback_hyper_evm_flow_completed_chain_block_tx_log", [
@@ -77,4 +78,7 @@ export class FallbackHyperEVMFlowCompleted {
 
   @Column({ nullable: true })
   contractAddress?: string;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 }

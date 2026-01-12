@@ -3,7 +3,7 @@ import * as across from "@across-protocol/sdk";
 import { IndexerEventPayload } from "./genericEventListening";
 import {
   getCctpDestinationChainFromDomain,
-  decodeMessage, // New import
+  decodeMessage,
 } from "../adapter/cctp-v2/service";
 import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
@@ -11,20 +11,19 @@ import {
   DepositForBurnArgs,
   MessageReceivedArgs,
   MessageSentArgs,
+  SponsoredDepositForBurnArgs,
   MintAndWithdrawArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
+  SponsoredAccountActivationArgs,
+  SimpleTransferFlowCompletedArgs,
+  FallbackHyperEVMFlowCompletedArgs,
+  ArbitraryActionsExecutedArgs,
   OFTSentArgs,
   OFTReceivedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
-import { arrayify } from "ethers/lib/utils"; // New import
-import {
-  TransactionReceipt,
-  parseEventLogs,
-  ParseEventLogsReturnType,
-  Abi,
-} from "viem";
+import { arrayify } from "ethers/lib/utils";
 
 /**
  * A generic transformer for addresses.
@@ -130,6 +129,43 @@ export const transformDepositForBurnEvent = (
   };
 };
 
+export const transformSponsoredDepositForBurnEvent = (
+  preprocessed: SponsoredDepositForBurnArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SponsoredDepositForBurn> => {
+  const base = baseTransformer(payload, logger);
+
+  const destinationChainId = preprocessed.destinationChainId;
+  if (!destinationChainId) {
+    const message = `Failed to decode DepositForBurn event from transaction receipt to decode destination chain id for SponsoredDepositForBurnEvent.`;
+    logger.error({
+      message,
+      payload,
+    });
+    throw new Error(message);
+  }
+  const finalRecipient = transformAddress(
+    preprocessed.finalRecipient,
+    destinationChainId,
+  );
+  const finalToken = transformAddress(
+    preprocessed.finalToken,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    quoteNonce: preprocessed.quoteNonce,
+    originSender: preprocessed.originSender,
+    finalRecipient,
+    quoteDeadline: new Date(Number(preprocessed.quoteDeadline) * 1000),
+    maxBpsToSponsor: preprocessed.maxBpsToSponsor.toString(),
+    maxUserSlippageBps: preprocessed.maxUserSlippageBps.toString(),
+    finalToken,
+    signature: preprocessed.signature,
+  };
+};
 export const transformMessageSentEvent = (
   preprocessed: MessageSentArgs,
   payload: IndexerEventPayload,
@@ -168,25 +204,6 @@ export const transformMessageSentEvent = (
 };
 
 /**
- * extracts and decodes a specific event from a transaction receipt's logs.
- * @param receipt The transaction receipt.
- * @param abi The Abi containing the event definition.
- * @returns The decoded event arguments, or undefined if not found.
- */
-export const decodeEventFromReceipt = <T>(
-  receipt: TransactionReceipt,
-  abi: Abi,
-  eventName: string,
-): T | undefined => {
-  const logs = parseEventLogs({
-    abi,
-    logs: receipt.logs,
-  });
-  const log = logs.find((log) => log.eventName === eventName);
-  return (log?.args as T) ?? undefined;
-};
-
-/**
  * Transforms a raw `MessageReceived` event payload into a partial `MessageReceived` entity.
  * The 'finalised' property is set by the `baseTransformer` based on the event's block number
  * and the configured finality buffer.
@@ -215,6 +232,15 @@ export const transformMessageReceivedEvent = (
   };
 };
 
+/**
+ * Transforms a raw `MintAndWithdraw` event payload into a partial `MintAndWithdraw` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `MintAndWithdraw` entity ready for storage.
+ */
 export const transformMintAndWithdrawEvent = (
   preprocessed: MintAndWithdrawArgs,
   payload: IndexerEventPayload,
@@ -234,6 +260,15 @@ export const transformMintAndWithdrawEvent = (
   };
 };
 
+/**
+ * Transforms a raw `SwapFlowInitialized` event payload into a partial `SwapFlowInitialized` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `SwapFlowInitialized` entity ready for storage.
+ */
 export const transformSwapFlowInitializedEvent = (
   preprocessed: SwapFlowInitializedArgs,
   payload: IndexerEventPayload,
@@ -256,6 +291,15 @@ export const transformSwapFlowInitializedEvent = (
   };
 };
 
+/**
+ * Transforms a raw `SwapFlowFinalized` event payload into a partial `SwapFlowFinalized` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `SwapFlowFinalized` entity ready for storage.
+ */
 export const transformSwapFlowFinalizedEvent = (
   preprocessed: SwapFlowFinalizedArgs,
   payload: IndexerEventPayload,
@@ -271,6 +315,119 @@ export const transformSwapFlowFinalizedEvent = (
     finalToken: preprocessed.finalToken,
     totalSent: preprocessed.totalSent.toString(),
     evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
+    contractAddress: payload.log.address,
+  };
+};
+
+/**
+ * Transforms a raw `SponsoredAccountActivation` event payload into a partial `SponsoredAccountActivation` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `SponsoredAccountActivation` entity ready for storage.
+ */
+export const transformSponsoredAccountActivationEvent = (
+  preprocessed: SponsoredAccountActivationArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SponsoredAccountActivation> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    finalRecipient: preprocessed.finalRecipient,
+    fundingToken: preprocessed.fundingToken,
+    evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
+    contractAddress: payload.log.address,
+  };
+};
+
+/**
+ * Transforms a raw `SimpleTransferFlowCompleted` event payload into a partial `SimpleTransferFlowCompleted` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `SimpleTransferFlowCompleted` entity ready for storage.
+ */
+export const transformSimpleTransferFlowCompletedEvent = (
+  preprocessed: SimpleTransferFlowCompletedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SimpleTransferFlowCompleted> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    finalRecipient: preprocessed.finalRecipient,
+    finalToken: preprocessed.finalToken,
+    evmAmountIn: preprocessed.evmAmountIn.toString(),
+    bridgingFeesIncurred: preprocessed.bridgingFeesIncurred.toString(),
+    evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
+    contractAddress: payload.log.address,
+  };
+};
+
+/**
+ * Transforms a raw `FallbackHyperEVMFlowCompleted` event payload into a partial `FallbackHyperEVMFlowCompleted` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `FallbackHyperEVMFlowCompleted` entity ready for storage.
+ */
+export const transformFallbackHyperEVMFlowCompletedEvent = (
+  preprocessed: FallbackHyperEVMFlowCompletedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.FallbackHyperEVMFlowCompleted> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    finalRecipient: preprocessed.finalRecipient,
+    finalToken: preprocessed.finalToken,
+    evmAmountIn: preprocessed.evmAmountIn.toString(),
+    bridgingFeesIncurred: preprocessed.bridgingFeesIncurred.toString(),
+    evmAmountSponsored: preprocessed.evmAmountSponsored.toString(),
+    contractAddress: payload.log.address,
+  };
+};
+
+/**
+ * Transforms a raw `ArbitraryActionsExecuted` event payload into a partial `ArbitraryActionsExecuted` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on the event's block number
+ * and the configured finality buffer.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger An optional logger instance. Defaults to console if not provided.
+ * @returns A partial `ArbitraryActionsExecuted` entity ready for storage.
+ */
+export const transformArbitraryActionsExecutedEvent = (
+  preprocessed: ArbitraryActionsExecutedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.ArbitraryActionsExecuted> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    initialToken: preprocessed.initialToken,
+    initialAmount: preprocessed.initialAmount.toString(),
+    finalToken: preprocessed.finalToken,
+    finalAmount: preprocessed.finalAmount.toString(),
     contractAddress: payload.log.address,
   };
 };

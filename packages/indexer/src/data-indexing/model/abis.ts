@@ -28,6 +28,26 @@ export const SWAP_FLOW_INITIALIZED_ABI = [
   "event SwapFlowInitialized(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 coreAmountIn,uint64 minAmountToSend,uint64 maxAmountToSend)",
 ];
 
+export const SPONSORED_DEPOSIT_FOR_BURN_ABI = [
+  "event SponsoredDepositForBurn(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes signature)",
+];
+
+export const SPONSORED_ACCOUNT_ACTIVATION_ABI = [
+  "event SponsoredAccountActivation(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed fundingToken, uint256 evmAmountSponsored)",
+];
+
+export const SIMPLE_TRANSFER_FLOW_COMPLETED_ABI = [
+  "event SimpleTransferFlowCompleted(bytes32 indexed quoteNonce,address indexed finalRecipient,address indexed finalToken,uint256 evmAmountIn,uint256 bridgingFeesIncurred,uint256 evmAmountSponsored)",
+];
+
+export const FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI = [
+  "event FallbackHyperEVMFlowCompleted(bytes32 indexed quoteNonce, address indexed finalRecipient, address indexed finalToken, uint256 evmAmountIn, uint256 bridgingFeesIncurred, uint256 evmAmountSponsored)",
+];
+
+export const ARBITRARY_ACTIONS_EXECUTED_ABI = [
+  "event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, address indexed initialToken, uint256 initialAmount, address indexed finalToken, uint256 finalAmount)",
+];
+
 /* ==================================================================================
  * OFT DOMAIN LOGIC & CONFIGURATION
  * * Specific ABIs for the Omnichain Fungible Token (OFT) Protocol.

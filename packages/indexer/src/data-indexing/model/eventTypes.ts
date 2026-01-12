@@ -61,6 +61,51 @@ export interface SwapFlowInitializedArgs {
   maxAmountToSend: bigint;
 }
 
+export interface SponsoredDepositForBurnArgs {
+  quoteNonce: `0x${string}`;
+  originSender: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  quoteDeadline: bigint;
+  maxBpsToSponsor: bigint;
+  maxUserSlippageBps: bigint;
+  finalToken: `0x${string}`;
+  signature: `0x${string}`;
+  destinationChainId?: number;
+}
+
+export interface SponsoredAccountActivationArgs {
+  quoteNonce: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  fundingToken: `0x${string}`;
+  evmAmountSponsored: bigint;
+}
+
+export interface SimpleTransferFlowCompletedArgs {
+  quoteNonce: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  finalToken: `0x${string}`;
+  evmAmountIn: bigint;
+  bridgingFeesIncurred: bigint;
+  evmAmountSponsored: bigint;
+}
+
+export interface FallbackHyperEVMFlowCompletedArgs {
+  quoteNonce: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  finalToken: `0x${string}`;
+  evmAmountIn: bigint;
+  bridgingFeesIncurred: bigint;
+  evmAmountSponsored: bigint;
+}
+
+export interface ArbitraryActionsExecutedArgs {
+  quoteNonce: `0x${string}`;
+  initialToken: `0x${string}`;
+  initialAmount: bigint;
+  finalToken: `0x${string}`;
+  finalAmount: bigint;
+}
+
 /* ==================================================================================
  * OFT DOMAIN LOGIC & CONFIGURATION
  * * Specific event types for the Omnichain Fungible Token (OFT) Protocol.
@@ -88,5 +133,10 @@ export type EventArgs =
   | MintAndWithdrawArgs
   | SwapFlowFinalizedArgs
   | SwapFlowInitializedArgs
+  | SponsoredDepositForBurnArgs
+  | SponsoredAccountActivationArgs
+  | SimpleTransferFlowCompletedArgs
+  | FallbackHyperEVMFlowCompletedArgs
+  | ArbitraryActionsExecutedArgs
   | OFTSentArgs
   | OFTReceivedArgs;
