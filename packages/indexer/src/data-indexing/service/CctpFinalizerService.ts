@@ -325,8 +325,11 @@ class CctpUnfinalizedBurnMonitorService extends RepeatableTask {
         }
 
         const { nonce, sourceDomain, destinationDomain } = raw;
-        const destinationChainId =
-          getCctpDestinationChainFromDomain(destinationDomain);
+        const isProduction = isProductionNetwork(Number(job.burnEvent.chainId));
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          destinationDomain,
+          isProduction,
+        );
 
         const elapsedMinutes = Math.round(
           (Date.now() - job.createdAt.getTime()) / 1000 / 60,
