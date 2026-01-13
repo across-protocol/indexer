@@ -9,11 +9,7 @@ import {
 } from "typeorm";
 
 @Entity()
-@Unique("UK_hyperliquidDeposit_block_txn_log", [
-  "blockNumber",
-  "transactionHash",
-  "logIndex",
-])
+@Unique("UK_hyperliquidDeposit_block_txn", ["blockNumber", "transactionHash"])
 @Index("IX_hyperliquidDeposit_finalised", ["finalised"])
 @Index("IX_hyperliquidDeposit_deletedAt", ["deletedAt"])
 @Index("IX_hyperliquidDeposit_user", ["user"])
@@ -27,12 +23,6 @@ export class HyperliquidDeposit {
 
   @Column()
   transactionHash: string;
-
-  @Column()
-  transactionIndex: number;
-
-  @Column()
-  logIndex: number;
 
   @Column()
   blockTimestamp: Date;

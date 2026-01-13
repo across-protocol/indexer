@@ -12,6 +12,7 @@ export type HyperliquidStreamType =
 
 export interface HyperliquidBlock {
   blockNumber: number;
+  blockTime?: string;
   data: any[];
 }
 
@@ -141,13 +142,19 @@ export class HyperliquidRpcClient {
   async getBlock(
     streamType: HyperliquidStreamType,
     blockNumber: number,
+    filters?: Record<string, any>,
   ): Promise<HyperliquidBlock> {
+    const params: any = [streamType, blockNumber];
+    if (filters) {
+      params.push(filters);
+    }
     const block = await this.makeRequest<HyperliquidApiBlockResponse>(
       "hl_getBlock",
-      [streamType, blockNumber],
+      params,
     );
     return {
       blockNumber: block.block_number,
+      blockTime: block.block_time,
       data: block.events || [],
     };
   }
@@ -159,14 +166,19 @@ export class HyperliquidRpcClient {
     streamType: HyperliquidStreamType,
     fromBlock: number,
     toBlock: number,
+    filters?: Record<string, any>,
   ): Promise<HyperliquidBlock[]> {
+    const params: any = {
+      stream: streamType,
+      from: fromBlock,
+      to: toBlock,
+    };
+    if (filters) {
+      params.filters = filters;
+    }
     const response = await this.makeRequest<HyperliquidBlocksResponse>(
       "hl_getBatchBlocks",
-      {
-        stream: streamType,
-        from: fromBlock,
-        to: toBlock,
-      },
+      params,
     );
 
     if (!response || !response.blocks || !Array.isArray(response.blocks)) {
@@ -180,6 +192,7 @@ export class HyperliquidRpcClient {
 
     return response.blocks.map((block) => ({
       blockNumber: block.block_number,
+      blockTime: block.block_time,
       data: block.events || [],
     }));
   }
@@ -210,6 +223,7 @@ export class HyperliquidRpcClient {
 
     return response.blocks.map((block) => ({
       blockNumber: block.block_number,
+      blockTime: block.block_time,
       data: block.events || [],
     }));
   }

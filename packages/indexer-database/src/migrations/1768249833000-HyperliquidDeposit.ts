@@ -8,8 +8,6 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
             "id" SERIAL NOT NULL,
             "blockNumber" integer NOT NULL,
             "transactionHash" character varying NOT NULL,
-            "transactionIndex" integer NOT NULL,
-            "logIndex" integer NOT NULL,
             "blockTimestamp" TIMESTAMP NOT NULL,
             "user" character varying NOT NULL,
             "amount" numeric NOT NULL,
@@ -19,7 +17,7 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
             "finalised" boolean NOT NULL,
             "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
             "deletedAt" TIMESTAMP,
-            CONSTRAINT "UK_hyperliquidDeposit_block_txn_log" UNIQUE ("blockNumber", "transactionHash", "logIndex"),
+            CONSTRAINT "UK_hyperliquidDeposit_block_txn" UNIQUE ("blockNumber", "transactionHash"),
             CONSTRAINT "PK_hyperliquidDeposit" PRIMARY KEY ("id"))
         `);
 

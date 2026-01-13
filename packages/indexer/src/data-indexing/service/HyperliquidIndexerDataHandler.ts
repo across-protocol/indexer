@@ -129,6 +129,11 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
           this.STREAM_TYPE,
           fromBlock,
           toBlock,
+          {
+            type: {
+              values: ["SystemSpotSendAction"],
+            },
+          },
         );
 
         // Parse deposits from blocks
@@ -168,16 +173,14 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       try {
         const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
-          transactionHash: event.txHash || event.transactionHash || "",
-          transactionIndex: event.txIndex ?? 0,
-          logIndex: event.logIndex ?? 0,
-          blockTimestamp: event.timestamp
-            ? new Date(event.timestamp)
+          transactionHash: event.evm_tx_hash ?? "",
+          blockTimestamp: block.blockTime
+            ? new Date(block.blockTime)
             : new Date(),
-          user: event.user || event.from || event.address || "",
-          amount: event.amount || event.value || "0",
-          token: event.token || event.tokenAddress || "",
-          depositType: event.type || event.depositType,
+          user: event.user ?? "",
+          amount: event.action?.wei?.toString() ?? "0",
+          token: event.action?.token?.toString() ?? "",
+          depositType: event.action?.type,
           nonce: event.nonce?.toString(),
         };
 

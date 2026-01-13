@@ -37,9 +37,7 @@ export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {
       deposits.map((deposit) => {
         return {
           blockNumber: deposit.blockNumber,
-          logIndex: deposit.logIndex ?? 0,
           transactionHash: deposit.transactionHash,
-          transactionIndex: deposit.transactionIndex ?? 0,
           blockTimestamp:
             deposit.blockTimestamp || blockDates[deposit.blockNumber]!,
           user: deposit.user,
@@ -57,7 +55,7 @@ export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {
         this.saveAndHandleFinalisationBatch<entities.HyperliquidDeposit>(
           entities.HyperliquidDeposit,
           eventsChunk,
-          ["blockNumber", "transactionHash", "logIndex"],
+          ["blockNumber", "transactionHash"],
           [],
         ),
       ),

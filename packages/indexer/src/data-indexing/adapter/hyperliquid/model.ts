@@ -4,8 +4,6 @@
 export interface HyperliquidDepositEvent {
   blockNumber: number;
   transactionHash: string;
-  transactionIndex?: number;
-  logIndex?: number;
   blockTimestamp: Date;
 
   // Deposit-specific fields
