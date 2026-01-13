@@ -94,6 +94,16 @@ export function getIndexingDelaySeconds(chainId: number, config: Config) {
   return indexingDelay;
 }
 
+/**
+ * Get the seconds delay for the polling indexing.
+ * This is not configured per chain, but a global value that can be overridden
+ * by the `INDEXING_DELAY_SECONDS` environment variable.
+ */
+export function getPollingIndexingDelaySeconds(config: Config) {
+  // For now keep a simple default value of 5 minutes.
+  return config.indexingDelaySeconds || 300;
+}
+
 /* ==================================================================================
  * CCTP DOMAIN LOGIC & CONFIGURATION
  * * Specific implementations for the Circle Cross-Chain Transfer Protocol (CCTP).
