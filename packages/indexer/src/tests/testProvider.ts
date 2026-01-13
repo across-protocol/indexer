@@ -132,12 +132,8 @@ export class MockWebSocketRPCServer {
     if (!this.activeSocket) throw new Error("No client connected");
     // Iterate over all active subscriptions
     for (const [subId, filter] of this.subscriptions.entries()) {
-      console.log("Pushing event to subscription", subId);
-      console.log("Filter: ", filter);
-      console.log("Log: ", log);
       // Check if this log matches the subscription's filter
       if (this.isLogMatchingFilter(log, filter)) {
-        console.log("Pushing event to subscription", subId);
         const payload = {
           jsonrpc: "2.0",
           method: "eth_subscription",

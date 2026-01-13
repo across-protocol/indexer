@@ -27,6 +27,7 @@ import {
   OFTReceivedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
+import { BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
 import { FilledV3RelayArgs } from "../model/eventTypes";
 
@@ -513,48 +514,46 @@ export const transformFilledV3RelayEvent = (
   logger: Logger,
 ): Partial<entities.FilledV3Relay> => {
   const base = baseTransformer(payload, logger);
-  const destinationChainId = base.chainId; // Event emitted on destination chain
+  const destinationChainId = Number(base.chainId); // Event emitted on destination chain
   const originChainId = Number(preprocessed.originChainId);
 
-  // Helper to wrap bytes32 string for getInternalHash
-  const wrapBytes32 = (val: string) => ({ toBytes32: () => val });
-
   const relayData = {
-    originChainId: preprocessed.originChainId.toString(),
-    depositId: preprocessed.depositId,
-    inputToken: wrapBytes32(preprocessed.inputToken),
-    outputToken: wrapBytes32(preprocessed.outputToken),
-    inputAmount: preprocessed.inputAmount.toString(),
-    outputAmount: preprocessed.outputAmount.toString(),
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken,
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken,
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
     fillDeadline: preprocessed.fillDeadline,
     exclusivityDeadline: preprocessed.exclusivityDeadline,
-    exclusiveRelayer: wrapBytes32(preprocessed.exclusiveRelayer),
-    depositor: wrapBytes32(preprocessed.depositor),
-    recipient: wrapBytes32(preprocessed.recipient),
-    messageHash: preprocessed.messageHash, // messageHash
-  } as any; // Cast to any to bypass strict RelayData type check for getInternalHash which only needs toBytes32 and primitives
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer,
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor,
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient,
+      destinationChainId,
+    ),
+    messageHash: preprocessed.messageHash,
+  } as Omit<across.interfaces.RelayData, "message">;
 
   const internalHash = getInternalHash(
     relayData,
-    preprocessed.messageHash, // messageHash
+    preprocessed.messageHash,
     Number(destinationChainId),
   );
 
   // Transform addresses
-  const depositor = transformAddress(preprocessed.depositor, originChainId);
-  const recipient = transformAddress(
-    preprocessed.recipient,
-    Number(destinationChainId),
-  );
-  const inputToken = transformAddress(preprocessed.inputToken, originChainId);
-  const outputToken = transformAddress(
-    preprocessed.outputToken,
-    Number(destinationChainId),
-  );
-  const exclusiveRelayer = transformAddress(
-    preprocessed.exclusiveRelayer,
-    Number(destinationChainId),
-  );
   const relayer = transformAddress(
     preprocessed.relayer,
     Number(preprocessed.repaymentChainId),
@@ -569,15 +568,30 @@ export const transformFilledV3RelayEvent = (
     internalHash,
     depositId: preprocessed.depositId.toString(),
     originChainId: preprocessed.originChainId.toString(),
-    destinationChainId,
-    depositor,
-    recipient,
-    inputToken,
-    inputAmount: preprocessed.inputAmount.toString(),
-    outputToken,
-    outputAmount: preprocessed.outputAmount.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
     message: preprocessed.messageHash,
-    exclusiveRelayer,
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
     exclusivityDeadline:
       preprocessed.exclusivityDeadline === 0
         ? undefined
