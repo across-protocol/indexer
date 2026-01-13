@@ -366,6 +366,9 @@ describe("Deposits Service Tests", () => {
     expect(deposit?.swapOutputTokenAmount?.toString()).to.equal(
       "1000000000000000000",
     );
+    expect(deposit?.recipient).to.equal(
+      "0x9876543210987654321098765432109876543210",
+    );
     // Verify only required swap metadata fields are present
     const swapMetadataFields = Object.keys(deposit || {}).filter((key) =>
       key.startsWith("swapMetadata"),
