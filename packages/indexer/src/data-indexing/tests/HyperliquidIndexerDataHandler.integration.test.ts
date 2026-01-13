@@ -21,6 +21,7 @@ describe("HyperliquidIndexerDataHandler", () => {
 
   const mockRpcUrl = "https://test-rpc-url.com/hypercore";
   const mockBlockNumber = 859481445;
+  const mockBlockTime = "2026-01-12T22:19:03.042753714Z";
   const mockTransactionHash = "0x1234567890abcdef1234567890abcdef12345678";
 
   beforeEach(async () => {
@@ -65,17 +66,17 @@ describe("HyperliquidIndexerDataHandler", () => {
     // Mock the RPC response
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
+      blockTime: mockBlockTime,
       data: [
         {
-          txHash: mockTransactionHash,
-          txIndex: 0,
-          logIndex: 0,
-          timestamp: new Date().toISOString(),
+          evm_tx_hash: mockTransactionHash,
           user: "0x2222222222222222222222222222222222222222",
-          amount: "1000000000000000000",
-          token: "USDC",
-          type: "deposit",
-          nonce: "12345",
+          nonce: 12345,
+          action: {
+            type: "SystemSpotSendAction",
+            token: 150,
+            wei: 1000000000000000000,
+          },
         },
       ],
     };
@@ -101,8 +102,8 @@ describe("HyperliquidIndexerDataHandler", () => {
       "0x2222222222222222222222222222222222222222",
     );
     expect(savedDeposit!.amount.toString()).to.equal("1000000000000000000");
-    expect(savedDeposit!.token).to.equal("USDC");
-    expect(savedDeposit!.depositType).to.equal("deposit");
+    expect(savedDeposit!.token).to.equal("150");
+    expect(savedDeposit!.depositType).to.equal("SystemSpotSendAction");
     expect(savedDeposit!.nonce).to.equal("12345");
     expect(savedDeposit!.finalised).to.be.true;
   }).timeout(20000);
@@ -113,17 +114,19 @@ describe("HyperliquidIndexerDataHandler", () => {
       to: mockBlockNumber,
     };
 
-    // Mock the RPC response without txHash
+    // Mock the RPC response without evm_tx_hash
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
+      blockTime: mockBlockTime,
       data: [
         {
-          txIndex: 0,
-          logIndex: 0,
-          timestamp: new Date().toISOString(),
           user: "0x2222222222222222222222222222222222222222",
-          amount: "500000000000000000",
-          token: "USDT",
+          nonce: 12346,
+          action: {
+            type: "SystemSpotSendAction",
+            token: 268,
+            wei: 500000000000000000,
+          },
         },
       ],
     };
@@ -148,7 +151,7 @@ describe("HyperliquidIndexerDataHandler", () => {
       "0x2222222222222222222222222222222222222222",
     );
     expect(savedDeposit!.amount.toString()).to.equal("500000000000000000");
-    expect(savedDeposit!.token).to.equal("USDT");
+    expect(savedDeposit!.token).to.equal("268");
   }).timeout(20000);
 
   it("should handle empty block data", async () => {
@@ -160,6 +163,7 @@ describe("HyperliquidIndexerDataHandler", () => {
     // Mock the RPC response with empty data
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
+      blockTime: mockBlockTime,
       data: [],
     };
 
@@ -189,34 +193,39 @@ describe("HyperliquidIndexerDataHandler", () => {
     const mockBlocks: HyperliquidBlock[] = [
       {
         blockNumber: mockBlockNumber,
+        blockTime: mockBlockTime,
         data: [
           {
-            txHash: `${mockTransactionHash}1`,
-            txIndex: 0,
-            logIndex: 0,
-            timestamp: new Date().toISOString(),
+            evm_tx_hash: `${mockTransactionHash}1`,
             user: "0x2222222222222222222222222222222222222222",
-            amount: "1000000000000000000",
-            token: "USDC",
+            nonce: 12347,
+            action: {
+              type: "SystemSpotSendAction",
+              token: 150,
+              wei: 1000000000000000000,
+            },
           },
         ],
       },
       {
         blockNumber: mockBlockNumber + 1,
+        blockTime: mockBlockTime,
         data: [
           {
-            txHash: `${mockTransactionHash}2`,
-            txIndex: 0,
-            logIndex: 0,
-            timestamp: new Date().toISOString(),
+            evm_tx_hash: `${mockTransactionHash}2`,
             user: "0x2222222222222222222222222222222222222222",
-            amount: "2000000000000000000",
-            token: "USDT",
+            nonce: 12348,
+            action: {
+              type: "SystemSpotSendAction",
+              token: 268,
+              wei: 2000000000000000000,
+            },
           },
         ],
       },
       {
         blockNumber: mockBlockNumber + 2,
+        blockTime: mockBlockTime,
         data: [],
       },
     ];
