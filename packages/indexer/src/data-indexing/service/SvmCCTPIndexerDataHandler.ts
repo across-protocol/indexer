@@ -290,68 +290,119 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       );
     }
 
-    // Fetch burn events (DepositForBurn from TokenMessengerMinter)
-    const depositForBurnEvents = (await this.tokenMessengerClient.queryEvents(
+    const fromBlock = BigInt(blockRange.from);
+    const toBlock = BigInt(blockRange.to);
+
+    // Kick off all initial queries concurrently
+    const depositForBurnPromise = this.tokenMessengerClient.queryEvents(
       "DepositForBurn" as any,
-      BigInt(blockRange.from),
-      BigInt(blockRange.to),
-    )) as across.arch.svm.EventWithData[];
-    // Filter for Swap API transactions (check transaction logs for marker)
-    const filteredDepositForBurnEvents =
-      await this.filterTransactionsFromSwapApi(
-        depositForBurnEvents as SolanaDepositForBurnEvent[],
-      );
-
-    // Look for MessageSent account in the transaction
-    // Fetch transactions for all events that need them (filtered DepositForBurn events)
-    const transactions = await this.getTransactionsForSignatures(
-      filteredDepositForBurnEvents.map((e) => e.signature),
-    );
-    // Look for MessageSent account in the transaction
-    const burnEvents = await this.matchDepositForBurnWithMessageSent(
-      filteredDepositForBurnEvents,
-      transactions,
+      fromBlock,
+      toBlock,
     );
 
-    // Fetch SponsoredDepositForBurn events
-    const allSponsoredBurnEvents =
-      (await this.sponsoredCctpSrcPeripheryClient.queryEvents(
+    const sponsoredBurnPromise =
+      this.sponsoredCctpSrcPeripheryClient.queryEvents(
         "SponsoredDepositForBurn" as any,
-        BigInt(blockRange.from),
-        BigInt(blockRange.to),
-      )) as (SolanaSponsoredDepositForBurnEvent &
-        across.arch.svm.EventWithData)[];
-
-    // Match sponsored events with depositForBurn events by transaction signature
-    const sponsoredBurnEvents =
-      this.matchSponsoredDepositForBurnWithDepositForBurn(
-        allSponsoredBurnEvents,
-        filteredDepositForBurnEvents,
+        fromBlock,
+        toBlock,
       );
 
-    // Fetch mint events (MessageReceived from MessageTransmitter)
-    const receiveMessageEvents =
-      (await this.messageTransmitterClient.queryEvents(
-        "MessageReceived" as any,
-        BigInt(blockRange.from),
-        BigInt(blockRange.to),
-      )) as across.arch.svm.EventWithData[];
-
-    // Filter for Across finalizer transactions
-    const filteredReceiveMessageEvents =
-      await this.filterTransactionsFromAcrossFinalizer(receiveMessageEvents);
-
-    // Extract and pair MessageReceived with MintAndWithdraw events
-    const mintEvents = await this.matchMessageReceivedWithMintAndWithdraw(
-      filteredReceiveMessageEvents,
-      blockRange,
+    const receiveMessagePromise = this.messageTransmitterClient.queryEvents(
+      "MessageReceived" as any,
+      fromBlock,
+      toBlock,
     );
+
+    const mintAndWithdrawPromise = this.tokenMessengerClient.queryEvents(
+      "MintAndWithdraw" as any,
+      fromBlock,
+      toBlock,
+    );
+
+    // Process Burn and Sponsored Events Pipeline
+    // They are processed together because Sponsored events depend on the DepositForBurn events for address transformation
+    const burnEventsPipeline = Promise.all([
+      depositForBurnPromise,
+      sponsoredBurnPromise,
+    ]).then(async ([events, sponsoredEvents]) => {
+      const depositForBurnEvents = events as across.arch.svm.EventWithData[];
+      const allSponsoredBurnEvents =
+        sponsoredEvents as (SolanaSponsoredDepositForBurnEvent &
+          across.arch.svm.EventWithData)[];
+
+      // Filter for Swap API transactions (check transaction logs for marker)
+      const filteredDepositForBurnEvents =
+        await this.filterTransactionsFromSwapApi(
+          depositForBurnEvents as SolanaDepositForBurnEvent[],
+        );
+
+      // Fetch transactions for all events that need them (filtered DepositForBurn events)
+      const transactions = await this.getTransactionsForSignatures(
+        filteredDepositForBurnEvents.map((e) => e.signature),
+      );
+
+      // Look for MessageSent account in the transaction
+      const matchedBurnEvents = await this.matchDepositForBurnWithMessageSent(
+        filteredDepositForBurnEvents,
+        transactions,
+      );
+
+      // Match sponsored events with depositForBurn events by transaction signature
+      const matchedSponsoredBurnEvents =
+        this.matchSponsoredDepositForBurnWithDepositForBurn(
+          allSponsoredBurnEvents,
+          filteredDepositForBurnEvents,
+        );
+
+      return {
+        rawDepositForBurnEvents: depositForBurnEvents,
+        matchedBurnEvents,
+        matchedSponsoredBurnEvents,
+      };
+    });
+
+    // Process Mint Events Pipeline
+    const mintEventsPipeline = Promise.all([
+      receiveMessagePromise,
+      mintAndWithdrawPromise,
+    ]).then(async ([receiveEvents, mintAndWithdrawEvents]) => {
+      const receiveMessageEvents =
+        receiveEvents as across.arch.svm.EventWithData[];
+      const mintAndWithdrawEventsTyped =
+        mintAndWithdrawEvents as across.arch.svm.EventWithData[];
+
+      // Filter for Across finalizer transactions
+      const filteredReceiveMessageEvents =
+        await this.filterTransactionsFromAcrossFinalizer(receiveMessageEvents);
+
+      // Extract and pair MessageReceived with MintAndWithdraw events
+      const matchedMintEvents =
+        await this.matchMessageReceivedWithMintAndWithdraw(
+          filteredReceiveMessageEvents,
+          mintAndWithdrawEventsTyped,
+        );
+
+      return {
+        receiveMessageEvents,
+        matchedMintEvents,
+      };
+    });
+
+    // Await all pipelines
+    const [
+      {
+        rawDepositForBurnEvents,
+        matchedBurnEvents,
+        matchedSponsoredBurnEvents,
+      },
+      { receiveMessageEvents, matchedMintEvents },
+    ] = await Promise.all([burnEventsPipeline, mintEventsPipeline]);
 
     // Build slotTimes from all events
     const slotTimes = [
-      ...depositForBurnEvents,
+      ...rawDepositForBurnEvents,
       ...receiveMessageEvents,
-      ...sponsoredBurnEvents,
+      ...matchedSponsoredBurnEvents,
     ].reduce(
       (acc, event) => {
         if (event.blockTime !== null) {
@@ -362,33 +413,33 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       {} as Record<number, number>,
     );
 
-    this.runChecks(burnEvents, mintEvents);
+    this.runChecks(matchedBurnEvents, matchedMintEvents);
 
-    if (burnEvents.length > 0) {
+    if (matchedBurnEvents.length > 0) {
       this.logger.debug({
         at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
-        message: `Found ${burnEvents.length} burn events from Solana on chain ${this.chainId}`,
+        message: `Found ${matchedBurnEvents.length} burn events from Solana on chain ${this.chainId}`,
       });
     }
 
-    if (mintEvents.length > 0) {
+    if (matchedMintEvents.length > 0) {
       this.logger.debug({
         at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
-        message: `Found ${mintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
+        message: `Found ${matchedMintEvents.length} mint events from Across Finalizer on chain ${this.chainId}`,
       });
     }
 
-    if (sponsoredBurnEvents.length > 0) {
+    if (matchedSponsoredBurnEvents.length > 0) {
       this.logger.debug({
         at: "SvmCCTPIndexerDataHandler#fetchEventsByRange",
-        message: `Found ${sponsoredBurnEvents.length} sponsored burn events on chain ${this.chainId}`,
+        message: `Found ${matchedSponsoredBurnEvents.length} sponsored burn events on chain ${this.chainId}`,
       });
     }
 
     return {
-      burnEvents,
-      sponsoredBurnEvents,
-      mintEvents,
+      burnEvents: matchedBurnEvents,
+      sponsoredBurnEvents: matchedSponsoredBurnEvents,
+      mintEvents: matchedMintEvents,
       slotTimes,
     };
   }
@@ -679,17 +730,9 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
    */
   private async matchMessageReceivedWithMintAndWithdraw(
     receiveMessageEvents: across.arch.svm.EventWithData[],
-    blockRange: BlockRange,
+    mintAndWithdrawEvents: across.arch.svm.EventWithData[],
   ): Promise<SolanaMintEventsPair[]> {
     const mintEventsPairs: SolanaMintEventsPair[] = [];
-
-    // Query all MintAndWithdraw events in the queried block range
-    const mintAndWithdrawEventsForRange =
-      (await this.tokenMessengerClient!.queryEvents(
-        "MintAndWithdraw" as any,
-        BigInt(blockRange.from),
-        BigInt(blockRange.to),
-      )) as across.arch.svm.EventWithData[];
 
     // Create a Set of receiveMessage signatures to filter mint events by
     const receiveMessageSignatures = new Set(
@@ -701,7 +744,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       string,
       across.arch.svm.EventWithData
     >();
-    for (const mintEvent of mintAndWithdrawEventsForRange) {
+    for (const mintEvent of mintAndWithdrawEvents) {
       if (receiveMessageSignatures.has(mintEvent.signature)) {
         mintEventsBySignature.set(mintEvent.signature, mintEvent);
       }
