@@ -168,8 +168,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       try {
         const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
-          transactionHash:
-            event.txHash || event.transactionHash || `0x${block.blockNumber}`,
+          transactionHash: event.txHash || event.transactionHash || "",
           transactionIndex: event.txIndex ?? 0,
           logIndex: event.logIndex ?? 0,
           blockTimestamp: event.timestamp
