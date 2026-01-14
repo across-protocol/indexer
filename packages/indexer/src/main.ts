@@ -196,22 +196,14 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       ...parseEnv.parseProvidersUrls("WS_RPC_PROVIDER_URLS_"),
     ]);
 
-    // Determine which chains to index via WebSocket
-    let wsChainIds: number[] = []; // Default to Arbitrum
-    if (process.env.WS_INDEXER_CHAIN_IDS) {
-      wsChainIds = process.env.WS_INDEXER_CHAIN_IDS.split(",")
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !isNaN(n));
-    }
-
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
       repo: new dbUtils.BlockchainEventRepository(postgres, logger),
       logger,
       providers: allProviders,
       sigterm: abortController.signal,
-      chainIds: wsChainIds,
       metrics,
+      config,
     });
     wsIndexerPromises.push(...handlers);
   }

@@ -46,6 +46,10 @@ export type Config = {
    * If this is not set, then the default hardcoded values will be used.
    */
   indexingDelaySecondsOnError?: number;
+  /**
+   * The list of chain IDs for which the WebSocket indexing is enabled.
+   */
+  wsIndexerChainIds: number[];
 };
 
 export type RedisConfig = {
@@ -330,6 +334,13 @@ export function envToConfig(env: Env): Config {
       ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
       : 30;
 
+  let wsIndexerChainIds: number[] = [];
+  if (process.env.WS_INDEXER_CHAIN_IDS) {
+    wsIndexerChainIds = process.env.WS_INDEXER_CHAIN_IDS.split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n));
+  }
+
   return {
     redisConfig,
     postgresConfig,
@@ -353,5 +364,6 @@ export function envToConfig(env: Env): Config {
     bundleEventsServiceStartBlockNumber,
     indexingDelaySeconds,
     bundleEventsServiceDelaySeconds: bundleIncludedEventsServiceDelaySeconds,
+    wsIndexerChainIds,
   };
 }

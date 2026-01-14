@@ -43,9 +43,10 @@ import {
   MessageSentArgs,
   MessageReceivedArgs,
 } from "../model/eventTypes";
-import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
+import { getChainProtocols, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { WebSocketTransportConfig } from "viem";
+import { Config } from "../../parseEnv";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -137,9 +138,8 @@ export interface StartIndexersRequest {
   /** Map of ChainID to list of RPC URLs */
   providers: Map<number, string[]>;
   sigterm?: AbortSignal;
-  /** List of chains to start indexing for */
-  chainIds: number[];
   metrics?: DataDogMetricsService;
+  config: Config;
 }
 
 /**
@@ -150,8 +150,10 @@ export interface StartIndexersRequest {
 export function startWebSocketIndexing(
   request: StartIndexersRequest,
 ): Promise<void>[] {
-  const { providers, logger, chainIds, metrics } = request;
+  const { providers, logger, config, metrics } = request;
   const handlers: Promise<void>[] = [];
+  const chainProtocols = getChainProtocols(request.config);
+  const chainIds = config.wsIndexerChainIds;
 
   for (const chainId of chainIds) {
     // Get RPC Provider
@@ -166,7 +168,7 @@ export function startWebSocketIndexing(
     const rpcUrl = chainProviders[0];
 
     // Get Supported Protocols
-    const protocols = CHAIN_PROTOCOLS[chainId];
+    const protocols = chainProtocols[chainId];
     if (!protocols || protocols.length === 0) {
       logger.warn({
         at: "indexing#startIndexing",

@@ -101,7 +101,11 @@ import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
 } from "./tranforming";
-import { getOftChainConfiguration } from "../adapter/oft/service";
+import {
+  getOftChainConfiguration,
+  getSupportOftChainIds,
+} from "../adapter/oft/service";
+import { Config } from "../../parseEnv";
 
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
   TPreprocessed extends any
@@ -414,10 +418,11 @@ export const OFT_PROTOCOL: SupportedProtocols<
 };
 
 /**
- * Configuration for supported protocols on different chains.
- * @template Record<number, SupportedProtocols<Partial<typeof Entity>, BlockchainEventRepository, IndexerEventPayload, EventArgs>[]> The type of the supported protocols.
+ * Get configuration for supported protocols on different chains.
  */
-export const CHAIN_PROTOCOLS: Record<
+export const getChainProtocols: (
+  config: Config,
+) => Record<
   number,
   SupportedProtocols<
     Partial<typeof Entity>,
@@ -425,10 +430,39 @@ export const CHAIN_PROTOCOLS: Record<
     IndexerEventPayload,
     EventArgs
   >[]
-> = {
-  [CHAIN_IDs.ARBITRUM]: [SPONSORED_CCTP_PROTOCOL, OFT_PROTOCOL],
-  [CHAIN_IDs.HYPEREVM]: [SPONSORED_CCTP_PROTOCOL],
-  [CHAIN_IDs.OPTIMISM]: [SPONSORED_CCTP_PROTOCOL],
-  [CHAIN_IDs.MAINNET]: [SPONSORED_CCTP_PROTOCOL],
-  // Add new chains here...
+> = (config: Config) => {
+  // Initialize with empty array for each chain.
+  const chainProtocols = config.wsIndexerChainIds.reduce(
+    (acc, chainId) => {
+      acc[chainId] = [];
+      return acc;
+    },
+    {} as Record<
+      number,
+      SupportedProtocols<
+        Partial<typeof Entity>,
+        BlockchainEventRepository,
+        IndexerEventPayload,
+        EventArgs
+      >[]
+    >,
+  );
+
+  // Add OFT protocol events configuration
+  if (config.enableOftIndexer) {
+    for (const chainId of getSupportOftChainIds()) {
+      if (chainProtocols[chainId]) {
+        chainProtocols[chainId].push(OFT_PROTOCOL);
+      }
+    }
+  }
+
+  // Add CCTP protocol events configuration
+  for (const chainId of config.cctpIndexerChainIds) {
+    if (chainProtocols[chainId]) {
+      chainProtocols[chainId].push(SPONSORED_CCTP_PROTOCOL);
+    }
+  }
+
+  return chainProtocols;
 };
