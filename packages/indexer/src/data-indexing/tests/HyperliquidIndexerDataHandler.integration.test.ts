@@ -73,7 +73,7 @@ describe("HyperliquidIndexerDataHandler", () => {
           user: "0x2222222222222222222222222222222222222222",
           nonce: 12345,
           action: {
-            type: "SystemSpotSendAction",
+            type: "SystemSendAssetAction",
             token: 150,
             wei: 1000000000000000000,
           },
@@ -103,7 +103,7 @@ describe("HyperliquidIndexerDataHandler", () => {
     );
     expect(savedDeposit!.amount.toString()).to.equal("1000000000000000000");
     expect(savedDeposit!.token).to.equal("150");
-    expect(savedDeposit!.depositType).to.equal("SystemSpotSendAction");
+    expect(savedDeposit!.depositType).to.equal("SystemSendAssetAction");
     expect(savedDeposit!.nonce).to.equal("12345");
     expect(savedDeposit!.finalised).to.be.true;
   }).timeout(20000);
@@ -123,7 +123,7 @@ describe("HyperliquidIndexerDataHandler", () => {
           user: "0x2222222222222222222222222222222222222222",
           nonce: 12346,
           action: {
-            type: "SystemSpotSendAction",
+            type: "SystemSendAssetAction",
             token: 268,
             wei: 500000000000000000,
           },
@@ -200,7 +200,7 @@ describe("HyperliquidIndexerDataHandler", () => {
             user: "0x2222222222222222222222222222222222222222",
             nonce: 12347,
             action: {
-              type: "SystemSpotSendAction",
+              type: "SystemSendAssetAction",
               token: 150,
               wei: 1000000000000000000,
             },
@@ -216,7 +216,7 @@ describe("HyperliquidIndexerDataHandler", () => {
             user: "0x2222222222222222222222222222222222222222",
             nonce: 12348,
             action: {
-              type: "SystemSpotSendAction",
+              type: "SystemSendAssetAction",
               token: 268,
               wei: 2000000000000000000,
             },

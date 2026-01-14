@@ -23,7 +23,10 @@ import {
   OFTReceivedArgs,
 } from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
-import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
+import {
+  isHypercoreWithdraw,
+  isHypercoreDeposit,
+} from "../adapter/cctp-v2/service";
 import { isEndpointIdSupported } from "../adapter/oft/service";
 
 /**
@@ -120,7 +123,7 @@ export const createCctpBurnFilter = async (
 
 /**
  * Filters MessageReceived events.
- * Checks if the caller is a whitelisted finalizer or if the message body represents a valid Hypercore withdrawal.
+ * Checks if the caller is a whitelisted finalizer or if the message body represents a valid Hypercore withdrawal or deposit.
  *
  * @param args The event arguments.
  * @param payload The event payload.
@@ -140,7 +143,16 @@ export const filterMessageReceived = (
     chainId: payload.chainId,
     transactionHash: payload.log.transactionHash ?? undefined,
   });
-  return result.isValid;
+  if (result.isValid) {
+    return true;
+  }
+  // Check if it's a HyperCore deposit (CCTP deposit to Hyperliquid)
+  const isDeposit = isHypercoreDeposit(args.messageBody, {
+    logger,
+    chainId: payload.chainId,
+    transactionHash: payload.log.transactionHash ?? undefined,
+  });
+  return isDeposit;
 };
 
 /**

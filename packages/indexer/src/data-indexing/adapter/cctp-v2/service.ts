@@ -12,6 +12,7 @@ import {
   DecodedHyperCoreWithdrawalHookData,
   DecodedMessageBody,
 } from "./model";
+import { CCTP_FORWARD_MAGIC_BYTES } from "../../service/constants";
 
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
@@ -378,6 +379,18 @@ export interface IsHypercoreWithdrawOptions {
   transactionHash?: string;
 }
 
+export interface IsHypercoreDepositOptions {
+  logger?: {
+    warn: (log: {
+      at: string;
+      message: string;
+      transactionHash?: string;
+    }) => void;
+  };
+  chainId?: number;
+  transactionHash?: string;
+}
+
 export interface HypercoreWithdrawResult {
   isValid: boolean;
   decodedHookData: DecodedHyperCoreWithdrawalHookData | null;
@@ -454,4 +467,21 @@ export function isHypercoreWithdraw(
     isValid: isValidMagicBytes,
     decodedHookData,
   };
+}
+
+/**
+ * Validates if a message body represents a valid HyperCore deposit (CCTP deposit to Hyperliquid).
+ * Checks for "cctp-forward" magic bytes directly in the message body.
+ *
+ * @param messageBody The raw message body hex string from MessageReceived event
+ * @param options Optional logger, chainId, and transactionHash for warning messages
+ * @returns True if the message body contains "cctp-forward" magic bytes
+ */
+export function isHypercoreDeposit(
+  messageBody: string,
+  options?: IsHypercoreDepositOptions,
+): boolean {
+  // Check if the magic bytes appear in the message body (case-insensitive)
+  const messageBodyLower = messageBody.toLowerCase();
+  return messageBodyLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
 }

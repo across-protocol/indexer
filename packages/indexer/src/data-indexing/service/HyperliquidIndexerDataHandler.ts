@@ -129,11 +129,6 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
           this.STREAM_TYPE,
           fromBlock,
           toBlock,
-          {
-            type: {
-              values: ["SystemSpotSendAction"],
-            },
-          },
         );
 
         // Parse deposits from blocks
@@ -168,20 +163,36 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       return deposits;
     }
 
-    // Store all events from the block as raw data
+    // Only process SystemSendAssetAction events
     for (const event of block.data) {
       try {
+        // Filter to only process SystemSendAssetAction events
+        if (event.action?.type !== "SystemSendAssetAction") {
+          continue;
+        }
+
+        if (!event.user) {
+          throw new Error(
+            `user is required for HyperliquidDeposit event in block ${block.blockNumber}`,
+          );
+        }
+        if (!event.nonce) {
+          throw new Error(
+            `nonce is required for HyperliquidDeposit event in block ${block.blockNumber}`,
+          );
+        }
+
         const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
           transactionHash: event.evm_tx_hash ?? "",
           blockTimestamp: block.blockTime
             ? new Date(block.blockTime)
             : new Date(),
-          user: event.user ?? "",
+          user: event.user,
           amount: event.action?.wei?.toString() ?? "0",
           token: event.action?.token?.toString() ?? "",
           depositType: event.action?.type,
-          nonce: event.nonce?.toString(),
+          nonce: event.nonce.toString(),
         };
 
         deposits.push(deposit);

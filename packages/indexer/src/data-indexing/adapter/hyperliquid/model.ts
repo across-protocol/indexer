@@ -11,5 +11,5 @@ export interface HyperliquidDepositEvent {
   amount: string;
   token: string;
   depositType?: string;
-  nonce?: string;
+  nonce: string;
 }

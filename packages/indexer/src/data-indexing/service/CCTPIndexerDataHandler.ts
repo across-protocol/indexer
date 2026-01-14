@@ -46,6 +46,7 @@ import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
+  isHypercoreDeposit,
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
@@ -461,12 +462,22 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       if (WHITELISTED_FINALIZERS.includes(event.args.caller)) {
         return true;
       }
-      const result = isHypercoreWithdraw(event.args.messageBody, {
+      // Check if it's a HyperCore withdrawal (for withdrawals)
+      const withdrawResult = isHypercoreWithdraw(event.args.messageBody, {
         logger: this.logger,
         chainId: this.chainId,
         transactionHash: event.transactionHash,
       });
-      return result.isValid;
+      if (withdrawResult.isValid) {
+        return true;
+      }
+      // Check if it's a HyperCore deposit (CCTP deposit to Hyperliquid)
+      const isDeposit = isHypercoreDeposit(event.args.messageBody, {
+        logger: this.logger,
+        chainId: this.chainId,
+        transactionHash: event.transactionHash,
+      });
+      return isDeposit;
     });
   }
 

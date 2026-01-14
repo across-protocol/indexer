@@ -13,11 +13,14 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
             "amount" numeric NOT NULL,
             "token" character varying NOT NULL,
             "depositType" character varying,
-            "nonce" character varying,
+            "nonce" character varying NOT NULL,
+            "hypercoreIdentifier" character varying NOT NULL,
+            "cctpBurnEventId" integer,
             "finalised" boolean NOT NULL,
             "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
             "deletedAt" TIMESTAMP,
-            CONSTRAINT "UK_hyperliquidDeposit_block_txn" UNIQUE ("blockNumber", "transactionHash"),
+            CONSTRAINT "UK_hyperliquidDeposit_hypercore_identifier" UNIQUE ("hypercoreIdentifier"),
+            CONSTRAINT "FK_hyperliquidDeposit_cctpBurnEventId" FOREIGN KEY ("cctpBurnEventId") REFERENCES "evm"."deposit_for_burn"("id") ON DELETE NO ACTION ON UPDATE NO ACTION,
             CONSTRAINT "PK_hyperliquidDeposit" PRIMARY KEY ("id"))
         `);
 
@@ -32,6 +35,9 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
     );
     await queryRunner.query(
       `CREATE INDEX "IX_hyperliquidDeposit_blockTimestamp" ON "hyperliquid_deposit" ("blockTimestamp")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IX_hyperliquidDeposit_cctpBurnEventId" ON "hyperliquid_deposit" ("cctpBurnEventId")`,
     );
   }
 
