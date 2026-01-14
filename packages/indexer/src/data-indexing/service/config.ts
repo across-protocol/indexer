@@ -6,7 +6,6 @@ import {
 import { SpokePoolEvents } from "../../utils/spokePoolUtils";
 import {
   DataDogMetricsService,
-  COUNT,
   withMetrics,
 } from "../../services/MetricsService";
 import {
@@ -133,6 +132,7 @@ import { RedisCache } from "../../redis/redisCache";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { initializeContractFactories } from "../../utils";
 import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * Array of event handlers.

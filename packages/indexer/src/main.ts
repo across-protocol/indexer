@@ -195,7 +195,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger,
       providers: allProviders,
       sigterm: abortController.signal,
-      chainIds: config.wsIndexerChainIds,
       metrics,
       config,
     });
