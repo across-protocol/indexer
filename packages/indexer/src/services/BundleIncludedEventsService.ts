@@ -479,6 +479,10 @@ export class BundleIncludedEventsService extends RepeatableTask {
     const entries = await Promise.all(
       lookbackRange.map(async ({ chainId, startBlock, endBlock }) => {
         let latestBlock: number;
+        // skip if chainid is in the excluded chain ids
+        if (EXCLUDED_CHAIN_IDS_FROM_BUNDLE_RECONSTRUCTION.includes(chainId)) {
+          return [chainId, endBlock];
+        }
         // If chain is disabled, just return the end block as the latest block
         if (startBlock === endBlock) {
           return [chainId, endBlock];
