@@ -59,7 +59,11 @@ import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
-import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
+import {
+  SWAP_API_CALLDATA_MARKER,
+  CCTP_FORWARD_MAGIC_BYTES,
+  WHITELISTED_FINALIZERS,
+} from "./constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -424,17 +428,24 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     transactions: Record<string, Transaction>,
     depositForBurnEvents: DepositForBurnEvent[],
   ) {
-    const transactionHashes = Object.values(transactions)
-      .filter((transaction) => {
-        return transaction.data.includes(SWAP_API_CALLDATA_MARKER);
-      })
-      .map((transaction) => transaction.hash);
-
     return depositForBurnEvents.filter((event) => {
-      // Filter by transaction hash (Swap API marker)
-      if (!transactionHashes.includes(event.transactionHash)) {
+      const transaction = transactions[event.transactionHash];
+      if (!transaction) {
         return false;
       }
+
+      const dataLower = transaction.data.toLowerCase();
+
+      // Check for CCTP forward magic bytes (for Hyperliquid deposits)
+      if (dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase())) {
+        return true;
+      }
+
+      // Check for Swap API marker
+      if (!dataLower.includes(SWAP_API_CALLDATA_MARKER.toLowerCase())) {
+        return false;
+      }
+
       // Filter also by destinationCaller.
       // The Swap API marker alone is insufficient since "73c0de" can appear
       // in the calldata of transactions unrelated to Across.

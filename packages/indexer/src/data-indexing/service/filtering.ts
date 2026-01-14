@@ -2,6 +2,7 @@ import { pad, decodeEventLog, TransactionReceipt, parseAbi } from "viem";
 import { Logger } from "winston";
 import {
   SWAP_API_CALLDATA_MARKER,
+  CCTP_FORWARD_MAGIC_BYTES,
   WHITELISTED_FINALIZERS,
   DEPOSIT_FOR_BURN_EVENT_NAME,
   MESSAGE_RECEIVED_EVENT_NAME,
@@ -27,7 +28,9 @@ import { isEndpointIdSupported } from "../adapter/oft/service";
 
 /**
  * Checks if a DepositForBurn event should be indexed.
- * It checks if the destination caller is whitelisted OR if the transaction calldata contains the Swap API marker.
+ * It checks if:
+ * 1. The destination caller is whitelisted AND the transaction calldata contains the Swap API marker, OR
+ * 2. The transaction calldata contains the CCTP forward magic bytes (for Hyperliquid deposits).
  *
  * @param args The event arguments.
  * @param payload The event payload.
@@ -46,6 +49,15 @@ export const filterDepositForBurnEvents = (
   const destinationCallerLower = args.destinationCaller?.toLowerCase();
 
   const txInput = payload?.transaction?.input?.toLowerCase();
+
+  // Check for CCTP forward magic bytes (for Hyperliquid deposits)
+  const hasCctpForwardMarker = !!(
+    txInput && txInput.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase())
+  );
+
+  if (hasCctpForwardMarker) {
+    return true;
+  }
 
   // Is the caller whitelisted?
   const isWhitelisted = !!(
