@@ -194,7 +194,6 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs,
   EventArgs
 > = {
   getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
@@ -572,7 +571,7 @@ export const getChainProtocols: (
     Partial<typeof Entity>,
     BlockchainEventRepository,
     IndexerEventPayload,
-    PreprocessedTypes
+    PreprocessedTypes | EventArgs
   >[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.

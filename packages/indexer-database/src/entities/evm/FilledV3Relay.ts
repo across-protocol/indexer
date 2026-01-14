@@ -47,12 +47,6 @@ export class FilledV3Relay {
   @Column({ type: "bigint" })
   destinationChainId: string;
 
-  @Column({ default: false })
-  fromLiteChain: boolean;
-
-  @Column({ default: false })
-  toLiteChain: boolean;
-
   @Column()
   depositor: string;
 

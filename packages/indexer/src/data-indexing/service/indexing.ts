@@ -61,13 +61,7 @@ export interface StartIndexerRequest<
   sigterm?: AbortSignal;
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
-  protocols: SupportedProtocols<
-    TEventEntity,
-    TDb,
-    TPayload,
-    TEventArgs,
-    TPreprocessed
-  >[];
+  protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
   metrics?: DataDogMetricsService;
   /** Optional WebSocket transport options */
   transportOptions?: WebSocketTransportConfig;
