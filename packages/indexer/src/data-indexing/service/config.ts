@@ -92,7 +92,7 @@ import {
   storeOFTReceivedEvent,
   storeFilledV3RelayEvent,
 } from "./storing";
-import { Entity } from "typeorm";
+import { DataSource, Entity } from "typeorm";
 import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
 import {
   SWAP_FLOW_FINALIZED_ABI,
@@ -107,14 +107,40 @@ import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
 } from "./tranforming";
-import { getOftChainConfiguration } from "../adapter/oft/service";
-import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
+import {
+  getOftChainConfiguration,
+  getSupportOftChainIds,
+} from "../adapter/oft/service";
+import { Config } from "../../parseEnv";
+import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
+import { RedisCache } from "../../redis/redisCache";
+import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+import { initializeContractFactories } from "../../utils";
 
+/**
+ * Array of event handlers.
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the event payload from the event listener.
+ * @template TEventEntity The type of the structured database entity.
+ * @template TPreprocessed The type of the preprocessed data.
+ */
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
   TPreprocessed extends any
     ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
     : never
 >;
+
+/**
+ * Request object for getting event handlers.
+ * @property logger - The logger instance.
+ * @property chainId - The chain ID.
+ * @property config - The configuration object.
+ */
+type GetEventHandlersRequest = { logger: Logger,
+  chainId: number,
+  database?: DataSource,
+  cache?: RedisCache,
+};
 
 /**
  * Configuration for a complete indexing subsystem.
@@ -134,10 +160,7 @@ export interface SupportedProtocols<
    * "TPreprocessed extends any" forces TypeScript to distribute the Union.
    * It means: "Allow an array where items can be Handler<Deposit> OR Handler<Message>".
    */
-  getEventHandlers: (
-    logger: Logger,
-    chainId: number,
-  ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
+  getEventHandlers: (request: GetEventHandlersRequest) => Promise<EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>>;
 }
 
 /**
@@ -153,7 +176,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
     return [
       {
@@ -327,9 +350,9 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
-    const handlers = CCTP_PROTOCOL.getEventHandlers(logger, chainId);
+    const handlers = await CCTP_PROTOCOL.getEventHandlers({ logger, chainId });
 
     // Now let's see if for the given chainId there exists a sponsored CCTP src periphery
     const sourceSponsorhipContractAddress = getSponsoredCCTPSrcPeripheryAddress(
@@ -383,7 +406,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
     const oftConfig = getOftChainConfiguration(chainId);
     const adapterAddress = oftConfig.tokens[0]!.adapter;
@@ -426,7 +449,22 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => [
+  getEventHandlers: async ({ logger, chainId,database,cache }: GetEventHandlersRequest) => {
+    if (!database || !cache) {
+      const message = `No database ${database} or cache ${cache} found for chainId for spoke pool protocol${chainId}`;
+      logger.error({ message });
+      throw new Error(message);
+    }
+      const retryProvidersFactory = new RetryProvidersFactory(
+          cache,
+        logger,
+      ).initializeProviders();
+      // SDK clients factories
+    const { hubPoolClientFactory, spokePoolClientFactory } = initializeContractFactories(retryProvidersFactory, logger);
+    const spokePoolClient = await spokePoolClientFactory.get(chainId);
+    const hubPoolClient = await hubPoolClientFactory.get(chainId);
+    
+    return [
     {
       config: {
         abi: FILLED_V3_RELAY_ABI,
@@ -436,17 +474,18 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
       preprocess: extractRawArgs<FilledV3RelayArgs>,
       filter: async () => true,
       transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
-        transformFilledV3RelayEvent(args, payload, logger),
+        transformFilledV3RelayEvent(args, payload, logger, spokePoolClient, hubPoolClient),
       store: storeFilledV3RelayEvent,
     },
-  ],
+  ]}
 };
 
 /**
- * Configuration for supported protocols on different chains.
- * @template Record<number, SupportedProtocols<Partial<typeof Entity>, BlockchainEventRepository, IndexerEventPayload, EventArgs>[]> The type of the supported protocols.
+ * Get configuration for supported protocols on different chains.
  */
-export const CHAIN_PROTOCOLS: Record<
+export const getChainProtocols: (
+  config: Config,
+) => Record<
   number,
   SupportedProtocols<
     Partial<typeof Entity>,
@@ -454,14 +493,39 @@ export const CHAIN_PROTOCOLS: Record<
     IndexerEventPayload,
     EventArgs
   >[]
-> = {
-  [CHAIN_IDs.ARBITRUM]: [
-    SPONSORED_CCTP_PROTOCOL,
-    OFT_PROTOCOL,
-    SPOKE_POOL_PROTOCOL,
-  ],
-  [CHAIN_IDs.HYPEREVM]: [SPONSORED_CCTP_PROTOCOL],
-  [CHAIN_IDs.OPTIMISM]: [SPONSORED_CCTP_PROTOCOL],
-  [CHAIN_IDs.MAINNET]: [SPONSORED_CCTP_PROTOCOL],
-  // Add new chains here...
+> = (config: Config) => {
+  // Initialize with empty array for each chain.
+  const chainProtocols = config.wsIndexerChainIds.reduce(
+    (acc, chainId) => {
+      acc[chainId] = [];
+      return acc;
+    },
+    {} as Record<
+      number,
+      SupportedProtocols<
+        Partial<typeof Entity>,
+        BlockchainEventRepository,
+        IndexerEventPayload,
+        EventArgs
+      >[]
+    >,
+  );
+
+  // Add OFT protocol events configuration
+  if (config.enableOftIndexer) {
+    for (const chainId of getSupportOftChainIds()) {
+      if (chainProtocols[chainId]) {
+        chainProtocols[chainId].push(OFT_PROTOCOL);
+      }
+    }
+  }
+
+  // Add CCTP protocol events configuration
+  for (const chainId of config.cctpIndexerChainIds) {
+    if (chainProtocols[chainId]) {
+      chainProtocols[chainId].push(SPONSORED_CCTP_PROTOCOL);
+    }
+  }
+
+  return chainProtocols;
 };

@@ -30,6 +30,8 @@ import { Logger } from "winston";
 import { BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
 import { FilledV3RelayArgs } from "../model/eventTypes";
+import { SpokePoolClient } from "@across-protocol/sdk/dist/cjs/clients/SpokePoolClient/SpokePoolClient";
+import { HubPoolClient } from "@across-protocol/sdk/dist/cjs/clients/HubPoolClient";
 
 /**
  * A generic transformer for addresses.
@@ -512,6 +514,8 @@ export const transformFilledV3RelayEvent = (
   preprocessed: FilledV3RelayArgs,
   payload: IndexerEventPayload,
   logger: Logger,
+  spokePoolClient: SpokePoolClient,
+  hubPoolClient: HubPoolClient,
 ): Partial<entities.FilledV3Relay> => {
   const base = baseTransformer(payload, logger);
   const destinationChainId = Number(base.chainId); // Event emitted on destination chain
@@ -563,8 +567,22 @@ export const transformFilledV3RelayEvent = (
     Number(destinationChainId),
   );
 
+  const blockTimestamp = Number(base.blockTimestamp) / 1000;
+  const fromLiteChain =
+    hubPoolClient.configStoreClient?.isChainLiteChainAtTimestamp(
+      originChainId,
+      blockTimestamp,
+    ) ?? false;
+  const toLiteChain =
+    hubPoolClient.configStoreClient?.isChainLiteChainAtTimestamp(
+      destinationChainId,
+      blockTimestamp,
+    ) ?? false;
+
   return {
     ...base,
+    fromLiteChain,
+    toLiteChain,
     internalHash,
     depositId: preprocessed.depositId.toString(),
     originChainId: preprocessed.originChainId.toString(),

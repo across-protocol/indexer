@@ -16,6 +16,10 @@ import { DataSourceType } from "../../model";
 @Index("IX_filledV3Relay_blockTimestamp", ["blockTimestamp"])
 @Index("IX_filledV3Relay_relayer", ["relayer"])
 @Index("IX_filledV3Relay_destinationChainId", ["destinationChainId"])
+@Index("IX_filledV3Relay_destinationChainId_blockNumber", [
+  "destinationChainId",
+  "blockNumber",
+])
 @Index("IX_filledV3Relay_depositId_originChainId", [
   "depositId",
   "originChainId",
@@ -42,6 +46,12 @@ export class FilledV3Relay {
 
   @Column({ type: "bigint" })
   destinationChainId: string;
+
+  @Column({ default: false })
+  fromLiteChain: boolean;
+
+  @Column({ default: false })
+  toLiteChain: boolean;
 
   @Column()
   depositor: string;

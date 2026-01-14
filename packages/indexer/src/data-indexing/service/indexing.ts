@@ -30,7 +30,7 @@ import {
   storeMessageSentEvent,
   storeMessageReceivedEvent,
 } from "./storing";
-import { utils as dbUtils } from "@repo/indexer-database";
+import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 import {
   filterDepositForBurnEvents,
@@ -43,9 +43,11 @@ import {
   MessageSentArgs,
   MessageReceivedArgs,
 } from "../model/eventTypes";
-import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
+import { getChainProtocols, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { WebSocketTransportConfig } from "viem";
+import { Config } from "../../parseEnv";
+import { RedisCache } from "../../redis/redisCache";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -61,7 +63,8 @@ export interface StartIndexerRequest<
   TPayload,
   TPreprocessed,
 > {
-  repo: TDb;
+  database: DataSource;
+  cache: RedisCache;
   rpcUrl: string;
   logger: Logger;
   /** Optional signal to gracefully shut down the indexer */
@@ -81,7 +84,8 @@ export async function startChainIndexing<
   TPreprocessed,
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
   const {
-    repo,
+    database,
+    cache,
     rpcUrl,
     logger,
     sigterm,
@@ -94,9 +98,13 @@ export async function startChainIndexing<
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
-  const events = protocols.flatMap((protocol) =>
-    protocol.getEventHandlers(logger, chainId),
-  );
+  const events = (
+    await Promise.all(
+      protocols.map((protocol) =>
+        protocol.getEventHandlers({ logger, chainId, database, cache }),
+      ),
+    )
+  ).flat();
 
   // Build the concrete configuration
   const indexerConfig: IndexerConfig<
@@ -120,7 +128,7 @@ export async function startChainIndexing<
 
   // Start the generic indexer subsystem
   await startGenericIndexing({
-    db: repo,
+    db: new dbUtils.BlockchainEventRepository(database, logger) as TDb,
     indexerConfig,
     logger,
     sigterm,
@@ -132,7 +140,8 @@ export async function startChainIndexing<
  * Request object for the generic startIndexing entry point.
  */
 export interface StartIndexersRequest {
-  repo: dbUtils.BlockchainEventRepository;
+  database: DataSource;
+  cache: RedisCache;
   logger: Logger;
   /** Map of ChainID to list of RPC URLs */
   providers: Map<number, string[]>;
@@ -140,6 +149,7 @@ export interface StartIndexersRequest {
   /** List of chains to start indexing for */
   chainIds: number[];
   metrics?: DataDogMetricsService;
+  config: Config;
 }
 
 /**
@@ -152,6 +162,7 @@ export function startWebSocketIndexing(
 ): Promise<void>[] {
   const { providers, logger, chainIds, metrics } = request;
   const handlers: Promise<void>[] = [];
+  const chainProtocols = getChainProtocols(request.config);
 
   for (const chainId of chainIds) {
     // Get RPC Provider
@@ -166,7 +177,7 @@ export function startWebSocketIndexing(
     const rpcUrl = chainProviders[0];
 
     // Get Supported Protocols
-    const protocols = CHAIN_PROTOCOLS[chainId];
+    const protocols = chainProtocols[chainId];
     if (!protocols || protocols.length === 0) {
       logger.warn({
         at: "indexing#startIndexing",
@@ -178,7 +189,8 @@ export function startWebSocketIndexing(
     // Start Chain Indexing
     handlers.push(
       startChainIndexing({
-        repo: request.repo,
+        database: request.database,
+        cache: request.cache,
         rpcUrl,
         logger: request.logger,
         sigterm: request.sigterm,

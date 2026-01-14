@@ -220,3 +220,30 @@ export class SpokePoolClientFactory extends AsyncContractClientFactory<
     throw new Error(`Chain ${chainId} is not an EVM or SVM chain`);
   }
 }
+
+export function initializeContractFactories(
+  retryProviderFactory: RetryProvidersFactory,
+  logger: Logger,
+): {
+  configStoreClientFactory: ConfigStoreClientFactory;
+  hubPoolClientFactory: HubPoolClientFactory;
+  spokePoolClientFactory: SpokePoolClientFactory;
+} {
+  const configStoreClientFactory = new ConfigStoreClientFactory(
+    retryProviderFactory,
+    logger,
+    undefined,
+  );
+  const hubPoolClientFactory = new HubPoolClientFactory(
+    retryProviderFactory,
+    logger,
+    { configStoreClientFactory },
+  );
+  const spokePoolClientFactory = new SpokePoolClientFactory(
+    retryProviderFactory,
+    logger,
+    { hubPoolClientFactory },
+  );
+  return { configStoreClientFactory, hubPoolClientFactory, spokePoolClientFactory };
+}
+  
