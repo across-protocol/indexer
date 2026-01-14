@@ -125,7 +125,8 @@ export async function preprocessFilledV3RelayEvent(
 
   const events = await fetchSpokePoolEvents({
     chainId,
-    blockNumber: Number(blockNumber),
+    toBlockNumber: Number(blockNumber),
+    fromBlockNumber: Number(blockNumber),
     factories,
     cache,
     metricsService: metrics,
@@ -186,7 +187,8 @@ export async function preprocessV3FundsDepositedEvent(
 
   const events = await fetchSpokePoolEvents({
     chainId,
-    blockNumber: Number(blockNumber),
+    toBlockNumber: Number(blockNumber),
+    fromBlockNumber: Number(blockNumber),
     factories,
     cache,
     metricsService: metrics,

@@ -203,14 +203,16 @@ export type SpokePoolEvents = {
 /**
  * Request object for fetching spoke pool events.
  * @param chainId The chain ID of the spoke pool.
- * @param blockNumber The block number to fetch events for.
+ * @param fromBlockNumber The block number to fetch events for.
+ * @param toBlockNumber The block number to fetch events for.
  * @param factories The factories for the spoke pool clients.
  * @param cache The cache for the spoke pool events.
  * @param metricsService The metrics service for the spoke pool events.
  */
 export interface FetchSpokePoolEventsRequest {
   chainId: number;
-  blockNumber: number;
+  toBlockNumber: number;
+  fromBlockNumber: number;
   factories: {
     spokePoolClientFactory: SpokePoolClientFactory;
     hubPoolClientFactory: HubPoolClientFactory;
@@ -228,8 +230,15 @@ export interface FetchSpokePoolEventsRequest {
 export async function fetchSpokePoolEvents(
   request: FetchSpokePoolEventsRequest,
 ): Promise<SpokePoolEvents> {
-  const { chainId, blockNumber, factories, cache, metricsService } = request;
-  const cacheKey = `spoke-pool-events-${chainId}-${blockNumber}`;
+  const {
+    chainId,
+    toBlockNumber,
+    fromBlockNumber,
+    factories,
+    cache,
+    metricsService,
+  } = request;
+  const cacheKey = `spoke-pool-events-${chainId}-${toBlockNumber}-${fromBlockNumber}`;
 
   if (cache) {
     const cached = cache.get(cacheKey);
@@ -244,7 +253,6 @@ export async function fetchSpokePoolEvents(
     configStoreClientFactory,
   } = factories;
 
-  const maxBlockLookback = getMaxBlockLookBack(chainId);
   // FIXME: hardcoded chain id to represent mainnet for hub/config
   const hubChainId = 1;
 
@@ -260,12 +268,11 @@ export async function fetchSpokePoolEvents(
 
   const spokePoolClient = await spokePoolClientFactory.get(
     chainId,
-    blockNumber,
-    blockNumber,
+    fromBlockNumber,
+    toBlockNumber,
     {
       hubPoolClient,
       disableQuoteBlockLookup: true,
-      maxBlockLookback,
     },
     false,
   );
