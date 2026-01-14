@@ -5,6 +5,14 @@ import { utils as ethersUtils } from "ethers";
 import { entities } from "@repo/indexer-database";
 
 import { SvmProvider } from "../web3/RetryProvidersFactory";
+import {
+  ConfigStoreClientFactory,
+  HubPoolClientFactory,
+  SpokePoolClientFactory,
+} from "./contractFactoryUtils";
+import { DataDogMetricsService } from "../services/MetricsService";
+import { getMaxBlockLookBack } from "../web3/constants";
+import { default as _ } from "lodash";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
@@ -165,4 +173,170 @@ export function relayHashToInt32(relayHash: string): number {
 
   // Return the final computed 32-bit integer hash
   return hash;
+}
+
+/**
+ * Spoke pool events
+ * @param v3FundsDepositedEvents - V3 funds deposited events
+ * @param filledV3RelayEvents - V3 relay events
+ * @param requestedV3SlowFillEvents - V3 slow fill events
+ * @param requestedSpeedUpV3Events - V3 speed up events
+ * @param relayedRootBundleEvents - Root bundle relay events
+ * @param executedRelayerRefundRootEvents - Root bundle executed events
+ * @param tokensBridgedEvents - Tokens bridged events
+ */
+export type SpokePoolEvents = {
+  v3FundsDepositedEvents: interfaces.DepositWithBlock[];
+  filledV3RelayEvents: interfaces.FillWithBlock[];
+  requestedV3SlowFillEvents: interfaces.SlowFillRequestWithBlock[];
+  requestedSpeedUpV3Events: {
+    [depositorAddress: string]: {
+      [depositId: string]: interfaces.SpeedUpWithBlock[];
+    };
+  };
+  relayedRootBundleEvents: interfaces.RootBundleRelayWithBlock[];
+  executedRelayerRefundRootEvents: interfaces.RelayerRefundExecutionWithBlock[];
+  tokensBridgedEvents: interfaces.TokensBridged[];
+  claimedRelayerRefunds: interfaces.ClaimedRelayerRefundWithBlock[];
+};
+
+/**
+ * Request object for fetching spoke pool events.
+ * @param chainId The chain ID of the spoke pool.
+ * @param blockNumber The block number to fetch events for.
+ * @param factories The factories for the spoke pool clients.
+ * @param cache The cache for the spoke pool events.
+ * @param metricsService The metrics service for the spoke pool events.
+ */
+export interface FetchSpokePoolEventsRequest {
+  chainId: number;
+  blockNumber: number;
+  factories: {
+    spokePoolClientFactory: SpokePoolClientFactory;
+    hubPoolClientFactory: HubPoolClientFactory;
+    configStoreClientFactory: ConfigStoreClientFactory;
+  };
+  cache?: Map<string, SpokePoolEvents>;
+  metricsService?: DataDogMetricsService;
+}
+
+/**
+ * Fetches spoke pool events for the given chain and block number.
+ * @param request The request object containing the chain ID, block number, factories, cache, and metrics service.
+ * @returns The spoke pool events for the given chain and block number.
+ */
+export async function fetchSpokePoolEvents(
+  request: FetchSpokePoolEventsRequest,
+): Promise<SpokePoolEvents> {
+  const { chainId, blockNumber, factories, cache, metricsService } = request;
+  const cacheKey = `spoke-pool-events-${chainId}-${blockNumber}`;
+
+  if (cache) {
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const {
+    spokePoolClientFactory,
+    hubPoolClientFactory,
+    configStoreClientFactory,
+  } = factories;
+
+  const maxBlockLookback = getMaxBlockLookBack(chainId);
+  // FIXME: hardcoded chain id to represent mainnet for hub/config
+  const hubChainId = 1;
+
+  const configStoreClient = configStoreClientFactory.get(hubChainId);
+  const hubPoolClient = hubPoolClientFactory.get(
+    hubChainId,
+    undefined,
+    undefined,
+    {
+      configStoreClient,
+    },
+  );
+
+  const spokePoolClient = await spokePoolClientFactory.get(
+    chainId,
+    blockNumber,
+    blockNumber,
+    {
+      hubPoolClient,
+      disableQuoteBlockLookup: true,
+      maxBlockLookback,
+    },
+    false,
+  );
+
+  // We use this pattern to measure the duration of the update call
+  const startConfigStoreUpdate = Date.now();
+  await configStoreClient.update();
+  metricsService?.addGaugeMetric(
+    "configStoreClientUpdate",
+    Date.now() - startConfigStoreUpdate,
+    [`chainId:${chainId}`],
+  );
+
+  const startHubPoolUpdate = Date.now();
+  await hubPoolClient.update([
+    "SetPoolRebalanceRoute",
+    "CrossChainContractsSet",
+  ]);
+  metricsService?.addGaugeMetric(
+    "hubPoolClientUpdate",
+    Date.now() - startHubPoolUpdate,
+    [`chainId:${chainId}`],
+  );
+
+  // We aim to avoid the unneeded update events
+  // Specifically, we avoid the EnabledDepositRoute event because this
+  // requires a lookback to the deployment block of the SpokePool contract.
+  const startSpokePoolUpdate = Date.now();
+  await spokePoolClient.update([
+    "ClaimedRelayerRefund",
+    "ExecutedRelayerRefundRoot",
+    "FilledRelay",
+    "FundsDeposited",
+    "RelayedRootBundle",
+    "RequestedSlowFill",
+    "RequestedSpeedUpDeposit",
+    "TokensBridged",
+  ]);
+  metricsService?.addGaugeMetric(
+    "spokePoolClientUpdate",
+    Date.now() - startSpokePoolUpdate,
+    [`chainId:${chainId}`],
+  );
+
+  const v3FundsDepositedEvents = spokePoolClient.getDeposits({
+    fromBlock: blockNumber,
+    toBlock: blockNumber,
+  });
+  const filledV3RelayEvents = spokePoolClient.getFills();
+  const requestedV3SlowFillEvents = spokePoolClient.getSlowFillRequests();
+  const requestedSpeedUpV3Events = spokePoolClient.getSpeedUps();
+  const relayedRootBundleEvents = spokePoolClient.getRootBundleRelays();
+  const executedRelayerRefundRootEvents =
+    spokePoolClient.getRelayerRefundExecutions();
+  const tokensBridgedEvents = spokePoolClient.getTokensBridged();
+  const claimedRelayerRefunds = spokePoolClient.getClaimedRelayerRefunds();
+
+  const result: SpokePoolEvents = {
+    v3FundsDepositedEvents,
+    filledV3RelayEvents,
+    requestedV3SlowFillEvents,
+    requestedSpeedUpV3Events,
+    relayedRootBundleEvents,
+    executedRelayerRefundRootEvents,
+    tokensBridgedEvents,
+    claimedRelayerRefunds,
+  };
+
+  if (cache) {
+    cache.set(cacheKey, result);
+  }
+
+  return result;
 }

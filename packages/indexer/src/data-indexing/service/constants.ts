@@ -164,4 +164,5 @@ export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";
  * * Specific implementations for the Spoke Pool Protocol.
  * ================================================================================== */
 
-export const FILLED_V3_RELAY_EVENT_NAME = "FilledRelay";
+export const FILLED_RELAY_V3_EVENT_NAME = "FilledRelay";
+export const FUNDS_DEPOSITED_V3_EVENT_NAME = "FundsDeposited";

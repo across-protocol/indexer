@@ -29,9 +29,10 @@ import {
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
-import { FilledV3RelayArgs } from "../model/eventTypes";
-import { SpokePoolClient } from "@across-protocol/sdk/dist/cjs/clients/SpokePoolClient/SpokePoolClient";
-import { HubPoolClient } from "@across-protocol/sdk/dist/cjs/clients/HubPoolClient";
+import {
+  PreprocessedFilledV3RelayArgs,
+  PreprocessedV3FundsDepositedArgs,
+} from "../model/preprocessedTypes";
 
 /**
  * A generic transformer for addresses.
@@ -511,11 +512,9 @@ export const transformOFTReceivedEvent = (
  * @returns A partial `FilledV3Relay` entity ready for storage.
  */
 export const transformFilledV3RelayEvent = (
-  preprocessed: FilledV3RelayArgs,
+  preprocessed: PreprocessedFilledV3RelayArgs,
   payload: IndexerEventPayload,
   logger: Logger,
-  spokePoolClient: SpokePoolClient,
-  hubPoolClient: HubPoolClient,
 ): Partial<entities.FilledV3Relay> => {
   const base = baseTransformer(payload, logger);
   const destinationChainId = Number(base.chainId); // Event emitted on destination chain
@@ -525,11 +524,11 @@ export const transformFilledV3RelayEvent = (
     originChainId,
     depositId: BigNumber.from(preprocessed.depositId),
     inputToken: across.utils.toAddressType(
-      preprocessed.inputToken,
+      preprocessed.inputToken.toString(),
       originChainId,
     ),
     outputToken: across.utils.toAddressType(
-      preprocessed.outputToken,
+      preprocessed.outputToken.toString(),
       destinationChainId,
     ),
     inputAmount: BigNumber.from(preprocessed.inputAmount),
@@ -537,15 +536,15 @@ export const transformFilledV3RelayEvent = (
     fillDeadline: preprocessed.fillDeadline,
     exclusivityDeadline: preprocessed.exclusivityDeadline,
     exclusiveRelayer: across.utils.toAddressType(
-      preprocessed.exclusiveRelayer,
+      preprocessed.exclusiveRelayer.toString(),
       destinationChainId,
     ),
     depositor: across.utils.toAddressType(
-      preprocessed.depositor,
+      preprocessed.depositor.toString(),
       originChainId,
     ),
     recipient: across.utils.toAddressType(
-      preprocessed.recipient,
+      preprocessed.recipient.toString(),
       destinationChainId,
     ),
     messageHash: preprocessed.messageHash,
@@ -559,30 +558,16 @@ export const transformFilledV3RelayEvent = (
 
   // Transform addresses
   const relayer = transformAddress(
-    preprocessed.relayer,
+    preprocessed.relayer.toString(),
     Number(preprocessed.repaymentChainId),
   );
   const updatedRecipient = transformAddress(
-    preprocessed.relayExecutionInfo.updatedRecipient,
+    preprocessed.relayExecutionInfo.updatedRecipient.toString(),
     Number(destinationChainId),
   );
 
-  const blockTimestamp = Number(base.blockTimestamp) / 1000;
-  const fromLiteChain =
-    hubPoolClient.configStoreClient?.isChainLiteChainAtTimestamp(
-      originChainId,
-      blockTimestamp,
-    ) ?? false;
-  const toLiteChain =
-    hubPoolClient.configStoreClient?.isChainLiteChainAtTimestamp(
-      destinationChainId,
-      blockTimestamp,
-    ) ?? false;
-
   return {
     ...base,
-    fromLiteChain,
-    toLiteChain,
     internalHash,
     depositId: preprocessed.depositId.toString(),
     originChainId: preprocessed.originChainId.toString(),
@@ -622,5 +607,100 @@ export const transformFilledV3RelayEvent = (
     updatedOutputAmount:
       preprocessed.relayExecutionInfo.updatedOutputAmount.toString(),
     fillType: preprocessed.relayExecutionInfo.fillType,
+    fromLiteChain: preprocessed.fromLiteChain,
+    toLiteChain: preprocessed.toLiteChain,
+  };
+};
+
+/**
+ * Transforms a raw `V3FundsDeposited` event payload into a partial `V3FundsDeposited` entity.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @returns A partial `V3FundsDeposited` entity ready for storage.
+ */
+export const transformV3FundsDepositedEvent = (
+  preprocessed: PreprocessedV3FundsDepositedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.V3FundsDeposited> => {
+  const base = baseTransformer(payload, logger);
+  const originChainId = Number(preprocessed.originChainId);
+  const destinationChainId = Number(preprocessed.destinationChainId);
+
+  const relayData = {
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken.toString(),
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken.toString(),
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
+    fillDeadline: preprocessed.fillDeadline,
+    exclusivityDeadline: preprocessed.exclusivityDeadline,
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer.toString(),
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor.toString(),
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient.toString(),
+      destinationChainId,
+    ),
+    messageHash: preprocessed.messageHash,
+  } as Omit<across.interfaces.RelayData, "message">;
+
+  const internalHash = getInternalHash(
+    relayData,
+    preprocessed.messageHash,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    internalHash,
+    depositId: preprocessed.depositId.toString(),
+    originChainId: originChainId.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
+    quoteTimestamp: new Date(preprocessed.quoteTimestamp * 1000),
+    fillDeadline: new Date(preprocessed.fillDeadline * 1000),
+    exclusivityDeadline:
+      preprocessed.exclusivityDeadline === 0
+        ? undefined
+        : new Date(preprocessed.exclusivityDeadline * 1000),
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
+    message: preprocessed.message,
+    fromLiteChain: preprocessed.fromLiteChain,
+    toLiteChain: preprocessed.toLiteChain,
   };
 };

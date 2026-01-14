@@ -87,7 +87,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
   ).initializeProviders();
   // SDK clients factories
-  const { configStoreClientFactory, hubPoolClientFactory, spokePoolClientFactory } = initializeContractFactories(retryProvidersFactory, logger);
+  const {
+    configStoreClientFactory,
+    hubPoolClientFactory,
+    spokePoolClientFactory,
+  } = initializeContractFactories(retryProvidersFactory, logger);
   const indexerQueuesService = new IndexerQueuesService(redis);
   const acrossIndexerManager = new AcrossIndexerManager(
     logger,
@@ -170,6 +174,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const metrics = new DataDogMetricsService({
     configuration: config.datadogConfig,
     logger,
+    tags: ["websocket"],
   });
 
   // WebSocket Indexer setup

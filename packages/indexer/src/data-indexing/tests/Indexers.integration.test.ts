@@ -14,6 +14,7 @@ import {
   arbitrum,
   arbitrumSepolia,
   hyperEvm,
+  base,
   mainnet,
   optimism,
 } from "viem/chains";
@@ -24,6 +25,7 @@ import {
   SPOKE_POOL_PROTOCOL,
 } from "../service/config";
 import { safeJsonStringify } from "../../utils/map";
+import { RedisCache } from "../../redis/redisCache";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -45,6 +47,9 @@ const getTestPublicClient = (chainId: number): PublicClient => {
   } else if (chainId === CHAIN_IDs.OPTIMISM) {
     chain = optimism;
     transportUrl = process.env.RPC_PROVIDER_URLS_10?.split(",")[0];
+  } else if (chainId === CHAIN_IDs.BASE) {
+    chain = base;
+    transportUrl = process.env.RPC_PROVIDER_URLS_8453?.split(",")[0];
   } else {
     throw new Error(`Unsupported chainId for test client: ${chainId}`);
   }
@@ -190,7 +195,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with the real repository
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -258,7 +264,8 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -322,7 +329,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -392,7 +400,8 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -453,7 +462,8 @@ describe("Websocket Subscription", () => {
       .returns("0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -504,7 +514,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -566,7 +577,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -630,7 +642,8 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -682,7 +695,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -741,7 +755,8 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -796,7 +811,8 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -849,7 +865,9 @@ describe("Websocket Subscription", () => {
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
+
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -920,7 +938,8 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -977,7 +996,8 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1025,7 +1045,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with OFT protocol
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1080,7 +1101,8 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with OFT protocol
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1120,5 +1142,72 @@ describe("Websocket Subscription", () => {
     expect(savedEvent!.blockTimestamp.toISOString()).to.exist;
     expect(savedEvent!.deletedAt).to.be.null;
     expect(savedEvent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
+  }).timeout(20000);
+
+  it("should ingest the FundsDeposited event from Base tx 0x07eca...b0cc6", async () => {
+    // Tx: https://basescan.org/tx/0x07eca2b22d7ed61e0d7c5ea1833b020c1c421223019dfd3dd6381f184d1b0cc6#eventlog#839
+    const txHash =
+      "0x07eca2b22d7ed61e0d7c5ea1833b020c1c421223019dfd3dd6381f184d1b0cc6";
+    const baseClient = getTestPublicClient(CHAIN_IDs.BASE);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      baseClient,
+      txHash,
+    );
+
+    // Stub getDeployedAddress for SpokePool on Base
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0x09aea4b2242abc8bb4bb78d537a67a245a7bec64");
+
+    startChainIndexing({
+      database: dataSource,
+      cache: new Map() as unknown as RedisCache,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.BASE,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.BASE).length,
+    );
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const repo = dataSource.getRepository(entities.V3FundsDeposited);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 13,
+      logIndex: 43,
+      finalised: false,
+      // --- Event Data ---
+      destinationChainId: 42161,
+      depositId: 5287817,
+      depositor: "0x9A8F92A830A5CB89A3816E3D267CB7791C16B04D",
+      inputToken: "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
+      outputToken: "0xAF88D065E77C8CC2239327C5EDB3A432268E5831",
+      inputAmount: "1009060",
+      outputAmount: "1000000",
+      quoteTimestamp: 1767978275,
+      fillDeadline: new Date(1767985475 * 1000),
+      exclusivityDeadline: new Date(1767978416 * 1000),
+      recipient: "0x9A8F92A830A5CB89A3816E3D267CB7791C16B04D",
+      exclusiveRelayer: "0xEF1EC136931AB5728B0783FD87D109C9D15D31F1",
+      message: "0x",
+      fromLiteChain: false,
+      toLiteChain: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
   }).timeout(20000);
 });

@@ -3,7 +3,12 @@ import {
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
-import { getDeployedAddress } from "@across-protocol/contracts";
+import { SpokePoolEvents } from "../../utils/spokePoolUtils";
+import {
+  DataDogMetricsService,
+  COUNT,
+  withMetrics,
+} from "../../services/MetricsService";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
@@ -15,6 +20,7 @@ import {
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
   ARBITRARY_ACTIONS_EXECUTED_ABI,
   FILLED_V3_RELAY_ABI,
+  V3_FUNDS_DEPOSITED_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -32,7 +38,8 @@ import {
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
   ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
   SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
-  FILLED_V3_RELAY_EVENT_NAME,
+  FILLED_RELAY_V3_EVENT_NAME,
+  FUNDS_DEPOSITED_V3_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -40,6 +47,8 @@ import { Logger } from "winston";
 import {
   extractRawArgs,
   preprocessSponsoredDepositForBurn,
+  preprocessFilledV3RelayEvent,
+  preprocessV3FundsDepositedEvent,
 } from "./preprocessing";
 import {
   DepositForBurnArgs,
@@ -54,8 +63,13 @@ import {
   SimpleTransferFlowCompletedArgs,
   FallbackHyperEVMFlowCompletedArgs,
   ArbitraryActionsExecutedArgs,
-  FilledV3RelayArgs,
 } from "../model/eventTypes";
+import {
+  PreprocessedFilledV3RelayArgs,
+  PreprocessedV3FundsDepositedArgs,
+  PreprocessedTypes,
+} from "../model";
+
 import {
   createCctpBurnFilter,
   createCctpMintFilter,
@@ -75,6 +89,7 @@ import {
   transformFallbackHyperEVMFlowCompletedEvent,
   transformArbitraryActionsExecutedEvent,
   transformFilledV3RelayEvent,
+  transformV3FundsDepositedEvent,
 } from "./tranforming";
 import {
   storeDepositForBurnEvent,
@@ -91,9 +106,10 @@ import {
   storeOFTSentEvent,
   storeOFTReceivedEvent,
   storeFilledV3RelayEvent,
+  storeV3FundsDepositedEvent,
 } from "./storing";
-import { DataSource, Entity } from "typeorm";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { Entity } from "typeorm";
+import { TEST_NETWORKS } from "@across-protocol/constants";
 import {
   SWAP_FLOW_FINALIZED_ABI,
   SWAP_FLOW_INITIALIZED_ABI,
@@ -116,6 +132,7 @@ import { BlockchainEventRepository } from "../../../../indexer-database/dist/src
 import { RedisCache } from "../../redis/redisCache";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { initializeContractFactories } from "../../utils";
+import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 
 /**
  * Array of event handlers.
@@ -136,10 +153,11 @@ type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
  * @property chainId - The chain ID.
  * @property config - The configuration object.
  */
-type GetEventHandlersRequest = { logger: Logger,
-  chainId: number,
-  database?: DataSource,
-  cache?: RedisCache,
+type GetEventHandlersRequest = {
+  logger: Logger;
+  chainId: number;
+  cache?: RedisCache;
+  metrics?: DataDogMetricsService;
 };
 
 /**
@@ -160,7 +178,9 @@ export interface SupportedProtocols<
    * "TPreprocessed extends any" forces TypeScript to distribute the Union.
    * It means: "Allow an array where items can be Handler<Deposit> OR Handler<Message>".
    */
-  getEventHandlers: (request: GetEventHandlersRequest) => Promise<EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>>;
+  getEventHandlers: (
+    request: GetEventHandlersRequest,
+  ) => Promise<EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>>;
 }
 
 /**
@@ -174,6 +194,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
+  EventArgs,
   EventArgs
 > = {
   getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
@@ -447,37 +468,97 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
   any,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  PreprocessedTypes
 > = {
-  getEventHandlers: async ({ logger, chainId,database,cache }: GetEventHandlersRequest) => {
-    if (!database || !cache) {
-      const message = `No database ${database} or cache ${cache} found for chainId for spoke pool protocol${chainId}`;
+  getEventHandlers: async ({
+    logger,
+    chainId,
+    cache,
+    metrics,
+  }: GetEventHandlersRequest) => {
+    if (!cache) {
+      const message = `No cache ${cache} found for chainId for spoke pool protocol${chainId}`;
       logger.error({ message });
       throw new Error(message);
     }
-      const retryProvidersFactory = new RetryProvidersFactory(
-          cache,
-        logger,
-      ).initializeProviders();
-      // SDK clients factories
-    const { hubPoolClientFactory, spokePoolClientFactory } = initializeContractFactories(retryProvidersFactory, logger);
-    const spokePoolClient = await spokePoolClientFactory.get(chainId);
-    const hubPoolClient = await hubPoolClientFactory.get(chainId);
-    
+    const retryProvidersFactory = new RetryProvidersFactory(
+      cache,
+      logger,
+    ).initializeProviders();
+
+    // Wrap the provider's send method with metrics
+    const originalGetProviderForChainId =
+      retryProvidersFactory.getProviderForChainId.bind(retryProvidersFactory);
+    retryProvidersFactory.getProviderForChainId = (chainId: number) => {
+      const provider = originalGetProviderForChainId(chainId);
+      // Check if provider has a send method (RetryProvider) and cast to any to allow modification
+      if ("send" in provider && typeof (provider as any).send === "function") {
+        const retryProvider = provider as RetryProvider;
+        const originalSend = retryProvider.send.bind(retryProvider);
+        retryProvider.send = withMetrics(originalSend, {
+          service: metrics,
+          metricName: "SpokePoolProtocolRpcRequests",
+          tags: [`chainId:${chainId}`, `spokePoolProtocol`],
+          type: COUNT,
+          logger,
+        });
+      }
+      return provider;
+    };
+    // SDK clients factories
+    const contractFactories = initializeContractFactories(
+      retryProvidersFactory,
+      logger,
+    );
+    // We want a single cache for all spoke pool events initialized per chain
+    // This cache is then passed to the preprocess functions
+    const spokePoolEventCache = new Map<string, SpokePoolEvents>();
+
     return [
-    {
-      config: {
-        abi: FILLED_V3_RELAY_ABI,
-        eventName: FILLED_V3_RELAY_EVENT_NAME,
-        address: getAddress("SpokePool", chainId) as `0x${string}`,
+      {
+        config: {
+          abi: FILLED_V3_RELAY_ABI,
+          eventName: FILLED_RELAY_V3_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: (payload: IndexerEventPayload) =>
+          preprocessFilledV3RelayEvent({
+            payload,
+            factories: contractFactories,
+            logger,
+            cache: spokePoolEventCache,
+            metrics,
+          }),
+        filter: async () => true,
+        transform: (
+          args: PreprocessedFilledV3RelayArgs,
+          payload: IndexerEventPayload,
+        ) => transformFilledV3RelayEvent(args, payload, logger),
+        store: storeFilledV3RelayEvent,
       },
-      preprocess: extractRawArgs<FilledV3RelayArgs>,
-      filter: async () => true,
-      transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
-        transformFilledV3RelayEvent(args, payload, logger, spokePoolClient, hubPoolClient),
-      store: storeFilledV3RelayEvent,
-    },
-  ]}
+      {
+        config: {
+          abi: V3_FUNDS_DEPOSITED_ABI,
+          eventName: FUNDS_DEPOSITED_V3_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: (payload: IndexerEventPayload) =>
+          preprocessV3FundsDepositedEvent({
+            payload,
+            factories: contractFactories,
+            logger,
+            cache: spokePoolEventCache,
+            metrics,
+          }),
+        filter: async () => true,
+        transform: (
+          args: PreprocessedV3FundsDepositedArgs,
+          payload: IndexerEventPayload,
+        ) => transformV3FundsDepositedEvent(args, payload, logger),
+        store: storeV3FundsDepositedEvent,
+      },
+    ];
+  },
 };
 
 /**
@@ -491,7 +572,7 @@ export const getChainProtocols: (
     Partial<typeof Entity>,
     BlockchainEventRepository,
     IndexerEventPayload,
-    EventArgs
+    PreprocessedTypes
   >[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.
@@ -506,7 +587,7 @@ export const getChainProtocols: (
         Partial<typeof Entity>,
         BlockchainEventRepository,
         IndexerEventPayload,
-        EventArgs
+        PreprocessedTypes | EventArgs
       >[]
     >,
   );

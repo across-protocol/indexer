@@ -32,17 +32,6 @@ import {
 } from "./storing";
 import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
-import {
-  filterDepositForBurnEvents,
-  createCctpBurnFilter,
-  filterMessageReceived,
-} from "./filtering";
-import {
-  EventArgs,
-  DepositForBurnArgs,
-  MessageSentArgs,
-  MessageReceivedArgs,
-} from "../model/eventTypes";
 import { getChainProtocols, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { WebSocketTransportConfig } from "viem";
@@ -61,6 +50,7 @@ export interface StartIndexerRequest<
   TEventEntity,
   TDb,
   TPayload,
+  TEventArgs,
   TPreprocessed,
 > {
   database: DataSource;
@@ -71,7 +61,13 @@ export interface StartIndexerRequest<
   sigterm?: AbortSignal;
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
-  protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
+  protocols: SupportedProtocols<
+    TEventEntity,
+    TDb,
+    TPayload,
+    TEventArgs,
+    TPreprocessed
+  >[];
   metrics?: DataDogMetricsService;
   /** Optional WebSocket transport options */
   transportOptions?: WebSocketTransportConfig;
@@ -81,8 +77,17 @@ export async function startChainIndexing<
   TEventEntity,
   TDb,
   TPayload,
+  TEventArgs,
   TPreprocessed,
->(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
+>(
+  request: StartIndexerRequest<
+    TEventEntity,
+    TDb,
+    TPayload,
+    TEventArgs,
+    TPreprocessed
+  >,
+) {
   const {
     database,
     cache,
@@ -101,7 +106,7 @@ export async function startChainIndexing<
   const events = (
     await Promise.all(
       protocols.map((protocol) =>
-        protocol.getEventHandlers({ logger, chainId, database, cache }),
+        protocol.getEventHandlers({ logger, chainId, cache, metrics }),
       ),
     )
   ).flat();

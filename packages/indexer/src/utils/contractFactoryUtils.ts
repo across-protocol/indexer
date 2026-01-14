@@ -244,6 +244,9 @@ export function initializeContractFactories(
     logger,
     { hubPoolClientFactory },
   );
-  return { configStoreClientFactory, hubPoolClientFactory, spokePoolClientFactory };
+  return {
+    configStoreClientFactory,
+    hubPoolClientFactory,
+    spokePoolClientFactory,
+  };
 }
-  
