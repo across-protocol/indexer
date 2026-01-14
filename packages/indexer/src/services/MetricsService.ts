@@ -1,10 +1,12 @@
 import { client, v2 } from "@datadog/datadog-api-client";
 import pRetry from "p-retry";
 import { MetricIntakeType } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
+
 import {
   COUNT,
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+
 import { Logger } from "winston";
 import { DatadogConfig } from "../parseEnv";
 
@@ -20,7 +22,8 @@ const RETRY_BACKOFF_EXPONENT = 2;
  */
 export interface DataDogMetricsServiceConfig {
   configuration: DatadogConfig;
-  logger?: Logger;
+  logger: Logger;
+  tags?: string[];
 }
 
 /**
@@ -46,6 +49,7 @@ export class DataDogMetricsService {
   private readonly FLUSH_INTERVAL_MS = 10000;
   private configuration: DatadogConfig;
   private logger?: Logger;
+  private instanceTags: string[] = [];
 
   /**
    * Constructor for DataDogMetricsService.
@@ -54,12 +58,16 @@ export class DataDogMetricsService {
   constructor(config: DataDogMetricsServiceConfig) {
     this.logger = config.logger;
     this.configuration = config.configuration;
+    this.instanceTags = config.tags || [];
 
     const configuration = client.createConfiguration({
       authMethods: {
         apiKeyAuth: this.configuration.dd_api_key,
         appKeyAuth: this.configuration.dd_app_key,
       },
+      maxRetries: RETRY_ATTEMPTS,
+      backoffBase: RETRY_BACKOFF_EXPONENT,
+      backoffMultiplier: RETRY_BACKOFF_EXPONENT,
     });
 
     this.apiInstance = new v2.MetricsApi(configuration);
@@ -108,7 +116,11 @@ export class DataDogMetricsService {
   ) {
     if (!this.configuration.enabled) return;
 
-    const allTags = [...this.configuration.globalTags, ...tags];
+    const allTags = [
+      ...this.configuration.globalTags,
+      ...this.instanceTags,
+      ...tags,
+    ];
 
     this.buffer.push({
       metric: metricName,
@@ -138,7 +150,7 @@ export class DataDogMetricsService {
         series: [...this.buffer],
       },
     };
-    console.log("Flushing metrics: ", this.buffer.length);
+
     // Clear buffer immediately to avoid double sending if flush takes time
     this.buffer = [];
 

@@ -12,6 +12,7 @@ import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
+  initializeContractFactories,
   SpokePoolClientFactory,
 } from "./utils/contractFactoryUtils";
 // Managers
@@ -86,21 +87,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
   ).initializeProviders();
   // SDK clients factories
-  const configStoreClientFactory = new ConfigStoreClientFactory(
-    retryProvidersFactory,
-    logger,
-    undefined,
-  );
-  const hubPoolClientFactory = new HubPoolClientFactory(
-    retryProvidersFactory,
-    logger,
-    { configStoreClientFactory },
-  );
-  const spokePoolClientFactory = new SpokePoolClientFactory(
-    retryProvidersFactory,
-    logger,
-    { hubPoolClientFactory },
-  );
+  const {
+    configStoreClientFactory,
+    hubPoolClientFactory,
+    spokePoolClientFactory,
+  } = initializeContractFactories(retryProvidersFactory, logger);
   const indexerQueuesService = new IndexerQueuesService(redis);
   const acrossIndexerManager = new AcrossIndexerManager(
     logger,
@@ -183,6 +174,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const metrics = new DataDogMetricsService({
     configuration: config.datadogConfig,
     logger,
+    tags: ["websocket"],
   });
 
   // WebSocket Indexer setup
@@ -198,7 +190,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
-      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      database: postgres,
+      cache: redisCache,
       logger,
       providers: allProviders,
       sigterm: abortController.signal,

@@ -278,3 +278,37 @@ export const storeOFTReceivedEvent: Storer<
     [],
   );
 };
+
+/* ==================================================================================
+ * SPOKE POOL STORING LOGIC
+ * ================================================================================== */
+
+export const storeFilledV3RelayEvent: Storer<
+  Partial<entities.FilledV3Relay>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.FilledV3Relay>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
+    entities.FilledV3Relay,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    ["internalHash"],
+    ["transactionHash"],
+  );
+};
+
+export const storeV3FundsDepositedEvent: Storer<
+  Partial<entities.V3FundsDeposited>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.V3FundsDeposited>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
+    entities.V3FundsDeposited,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    ["internalHash"],
+    ["transactionHash"],
+  );
+};
