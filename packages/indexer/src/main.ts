@@ -2,7 +2,6 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { WebhookFactory } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";
@@ -23,7 +22,6 @@ import { BundleRepository } from "./database/BundleRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
 import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
-import { utils as dbUtils } from "@repo/indexer-database";
 // Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
@@ -36,7 +34,6 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
-import { startWebSocketIndexing } from "./data-indexing/service/indexing";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -179,32 +176,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
-  // WebSocket Indexer setup
-  const wsIndexerPromises: Promise<void>[] = [];
-  const abortController = new AbortController();
-
-  if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
-    const allProviders = parseEnv.parseProvidersUrls();
-
-    // Determine which chains to index via WebSocket
-    let wsChainIds: number[] = []; // Default to Arbitrum
-    if (process.env.WS_INDEXER_CHAIN_IDS) {
-      wsChainIds = process.env.WS_INDEXER_CHAIN_IDS.split(",")
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !isNaN(n));
-    }
-
-    // Start all configured WS indexers
-    const handlers = startWebSocketIndexing({
-      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
-      logger,
-      providers: allProviders,
-      sigterm: abortController.signal,
-      chainIds: wsChainIds,
-    });
-    wsIndexerPromises.push(...handlers);
-  }
-
   let exitRequested = false;
   process.on("SIGINT", () => {
     if (!exitRequested) {
@@ -221,7 +192,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
-      abortController.abort(); // Signal WS indexers to stop
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -246,7 +216,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
-    ...wsIndexerResults
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
@@ -254,7 +223,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
-    ...wsIndexerPromises,
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -272,9 +240,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         oftIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
-      wsIndexerRunSuccess: wsIndexerResults.every(
-        (r) => r.status === "fulfilled",
-      ),
     },
   });
   await integratorIdWorker.close();
