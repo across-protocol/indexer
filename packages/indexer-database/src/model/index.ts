@@ -26,3 +26,8 @@ export type SaveQueryResult<T> = {
   data: T;
   result: SaveQueryResultType;
 };
+
+export enum DataSourceType {
+  WEB_SOCKET = "websocket",
+  POLLING = "polling",
+}
