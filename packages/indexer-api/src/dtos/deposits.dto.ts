@@ -98,6 +98,12 @@ export const DepositStatusParams = s.object({
    */
   from: s.optional(parseAddressField),
   hypercoreWithdrawalNonce: s.optional(s.string()),
+
+  /**
+   * Hyperliquid Deposits
+   */
+  hypercoreDepositNonce: s.optional(s.string()),
+  recipient: s.optional(parseAddressField),
 });
 
 export type DepositStatusParams = s.Infer<typeof DepositStatusParams>;

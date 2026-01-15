@@ -15,6 +15,7 @@ import type {
 import {
   DepositNotFoundException,
   HyperliquidWithdrawalNotFoundException,
+  HyperliquidDepositNotFoundException,
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
@@ -674,7 +675,8 @@ export class DepositsService {
         params.depositTxHash ||
         params.depositTxnRef ||
         params.relayDataHash ||
-        (params.from && params.hypercoreWithdrawalNonce)
+        (params.from && params.hypercoreWithdrawalNonce) ||
+        (params.hypercoreDepositNonce && params.recipient)
       )
     ) {
       throw new IncorrectQueryParamsException();
@@ -691,6 +693,11 @@ export class DepositsService {
     if (params.from && params.hypercoreWithdrawalNonce) {
       // Hyperliquid Withdrawal status check
       return this.getHyperliquidWithdrawalStatus(params);
+    }
+
+    if (params.hypercoreDepositNonce && params.recipient) {
+      // Hyperliquid Deposit status check
+      return this.getHyperliquidDepositStatus(params);
     }
 
     // no cached data, so we need to query the database
@@ -1283,6 +1290,121 @@ export class DepositsService {
     return result;
   }
 
+  private async getHyperliquidDepositStatus(params: DepositStatusParams) {
+    const cacheKey = this.getDepositStatusCacheKey(params);
+    const repo = this.db.getRepository(entities.HyperliquidDeposit);
+
+    // Normalize the nonce to string and recipient to lowercase for comparison
+    const nonce = params.hypercoreDepositNonce?.toString() || "";
+    const recipient = params.recipient?.toLowerCase() || "";
+
+    const deposit = await repo.findOne({
+      where: {
+        nonce: nonce,
+        user: recipient,
+      },
+      relations: ["cctpBurnEvent"],
+    });
+
+    if (!deposit) {
+      throw new HyperliquidDepositNotFoundException();
+    }
+
+    // Get the DepositForBurn to get the deposit transaction hash
+    // First try the directly linked event, then try reverse traversal
+    let depositForBurn: entities.DepositForBurn | null =
+      deposit.cctpBurnEvent || null;
+
+    if (!depositForBurn && deposit.transactionHash) {
+      // Try to find it using reverse traversal: MessageReceived -> MessageSent -> DepositForBurn
+      depositForBurn = await this.findCctpBurnEventByMessageReceived(
+        deposit.transactionHash,
+      );
+    }
+
+    if (!depositForBurn) {
+      throw new HyperliquidDepositNotFoundException();
+    }
+
+    const depositTxnRef = depositForBurn.transactionHash;
+    const originChainId = parseInt(depositForBurn.chainId);
+
+    const result = {
+      status: "filled",
+      originChainId: originChainId,
+      depositId: params.hypercoreDepositNonce as string,
+      depositTxnRef: depositTxnRef,
+      fillTxnRef: deposit.transactionHash,
+      destinationChainId: CHAIN_IDs.HYPERCORE,
+      depositRefundTxnRef: null,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex: 0,
+        maxIndex: 0,
+      },
+    };
+
+    const cacheTtlSeconds = 60 * 5; // 5 minutes
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      cacheTtlSeconds,
+    );
+
+    return result;
+  }
+
+  /**
+   * Finds the CCTP burn event by reverse traversal from MessageReceived.
+   * The transactionHash in HyperliquidDeposit is the EVM transaction hash from HyperEVM (MessageReceived transaction).
+   * We find the MessageReceived event, then MessageSent using nonce and sourceDomain,
+   * then DepositForBurn using MessageSent's transactionHash.
+   */
+  private async findCctpBurnEventByMessageReceived(
+    transactionHash: string,
+  ): Promise<entities.DepositForBurn | null> {
+    try {
+      const messageReceivedRepo = this.db.getRepository(
+        entities.MessageReceived,
+      );
+      const messageReceived = await messageReceivedRepo.findOne({
+        where: {
+          transactionHash,
+          chainId: "999", // HyperEVM chain ID
+        },
+      });
+
+      if (!messageReceived) {
+        return null;
+      }
+
+      const messageSentRepo = this.db.getRepository(entities.MessageSent);
+      const messageSent = await messageSentRepo.findOne({
+        where: {
+          nonce: messageReceived.nonce,
+          sourceDomain: messageReceived.sourceDomain,
+        },
+      });
+
+      if (!messageSent) {
+        return null;
+      }
+
+      const depositForBurnRepo = this.db.getRepository(entities.DepositForBurn);
+      const depositForBurn = await depositForBurnRepo.findOne({
+        where: {
+          transactionHash: messageSent.transactionHash,
+          chainId: messageSent.chainId,
+        },
+      });
+
+      return depositForBurn;
+    } catch (error: any) {
+      return null;
+    }
+  }
+
   public async getDeposit(params: DepositParams) {
     // in the validation rules each of these params are marked as optional
     // but we need to check that at least one of them is present
@@ -1678,6 +1800,10 @@ export class DepositsService {
 
     if (params.from && params.hypercoreWithdrawalNonce) {
       return `depositStatus-${params.from}-${params.hypercoreWithdrawalNonce}`;
+    }
+
+    if (params.hypercoreDepositNonce && params.recipient) {
+      return `depositStatus-${params.hypercoreDepositNonce}-${params.recipient}`;
     }
 
     // in theory this should never happen because we have already checked
