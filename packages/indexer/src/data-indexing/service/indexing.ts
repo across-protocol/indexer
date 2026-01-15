@@ -23,7 +23,7 @@ import {
   transformDepositForBurnEvent,
   transformMessageSentEvent,
   transformMessageReceivedEvent,
-} from "./tranforming";
+} from "./transforming";
 import { extractRawArgs } from "./preprocessing";
 import {
   storeDepositForBurnEvent,
