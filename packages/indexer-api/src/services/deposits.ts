@@ -11,6 +11,8 @@ import type {
   ParsedDepositReturnType,
   DepositStatusResponse,
   DepositStatusParams,
+  HyperliquidTransfersParams,
+  HyperliquidTransferResponse,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
@@ -1402,6 +1404,99 @@ export class DepositsService {
       return depositForBurn;
     } catch (error: any) {
       return null;
+    }
+  }
+
+  public async getHyperliquidTransfers(
+    params: HyperliquidTransfersParams,
+  ): Promise<HyperliquidTransferResponse[]> {
+    const user = params.user.toLowerCase();
+    const skip = params.skip || 0;
+    const limit = params.limit || 50;
+
+    if (params.direction === "in") {
+      // Fetch deposits from hyperliquid_deposit table with pagination
+      const repo = this.db.getRepository(entities.HyperliquidDeposit);
+      const deposits = await repo.find({
+        where: {
+          user: user,
+        },
+        relations: ["cctpBurnEvent"],
+        order: {
+          blockTimestamp: "DESC",
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      // Process deposits with async operations
+      const results = await Promise.all(
+        deposits.map(async (deposit) => {
+          // Try to get depositTxnRef from linked burn event or via reverse traversal
+          let depositTxnRef: string | null =
+            deposit.cctpBurnEvent?.transactionHash || null;
+          let originChainId: number | null = deposit.cctpBurnEvent
+            ? parseInt(deposit.cctpBurnEvent.chainId)
+            : null;
+
+          // If not directly linked, try reverse traversal
+          if (!depositTxnRef && deposit.transactionHash) {
+            const burnEvent = await this.findCctpBurnEventByMessageReceived(
+              deposit.transactionHash,
+            );
+            if (burnEvent) {
+              depositTxnRef = burnEvent.transactionHash;
+              originChainId = parseInt(burnEvent.chainId);
+            }
+          }
+
+          return {
+            depositTxnRef: depositTxnRef,
+            fillTxnRef: deposit.transactionHash,
+            originChainId: originChainId,
+            destinationChainId: CHAIN_IDs.HYPERCORE,
+            amount: deposit.amount,
+            token: deposit.token,
+            blockTimestamp: deposit.blockTimestamp,
+          };
+        }),
+      );
+
+      return results;
+    } else {
+      // Fetch withdrawals from hypercore_cctp_withdraw table with pagination
+      const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
+      const withdrawals = await repo.find({
+        where: {
+          fromAddress: user,
+        },
+        relations: ["burnEvent", "mintEvent"],
+        order: {
+          createdAt: "DESC",
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      return withdrawals.map((withdrawal) => {
+        return {
+          depositTxnRef:
+            withdrawal.burnTxnHash ||
+            withdrawal.burnEvent?.transactionHash ||
+            null,
+          fillTxnRef:
+            withdrawal.mintTxnHash ||
+            withdrawal.mintEvent?.transactionHash ||
+            null,
+          originChainId: withdrawal.originChainId
+            ? parseInt(withdrawal.originChainId)
+            : null,
+          destinationChainId: withdrawal.destinationChainId
+            ? parseInt(withdrawal.destinationChainId)
+            : null,
+          blockTimestamp: withdrawal.createdAt,
+        };
+      });
     }
   }
 

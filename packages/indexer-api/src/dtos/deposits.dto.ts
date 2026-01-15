@@ -108,6 +108,31 @@ export const DepositStatusParams = s.object({
 
 export type DepositStatusParams = s.Infer<typeof DepositStatusParams>;
 
+export const HyperliquidTransfersParams = s.object({
+  direction: s.enums(["in", "out"]),
+  user: parseAddressField,
+  skip: s.defaulted(stringToInt, 0),
+  limit: s.refine(
+    s.defaulted(stringToInt, 50),
+    "maxLimit",
+    (value) => value <= 1000 || "Limit must not exceed 1000",
+  ),
+});
+
+export type HyperliquidTransfersParams = s.Infer<
+  typeof HyperliquidTransfersParams
+>;
+
+export type HyperliquidTransferResponse = {
+  depositTxnRef: string | null;
+  fillTxnRef: string | null;
+  originChainId: number | null;
+  destinationChainId: number | null;
+  amount?: string | null;
+  token?: string | null;
+  blockTimestamp?: Date | null;
+};
+
 export const FilterDepositsParams = s.object({
   originChainId: s.optional(stringToInt),
   destinationChainId: s.optional(stringToInt),
