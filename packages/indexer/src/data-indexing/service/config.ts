@@ -4,10 +4,8 @@ import {
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
 import { SpokePoolEvents } from "../../utils/spokePoolUtils";
-import {
-  DataDogMetricsService,
-  withMetrics,
-} from "../../services/MetricsService";
+import { DataDogMetricsService } from "../../services/MetricsService";
+import { RedisCache } from "../../redis/redisCache";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
@@ -128,11 +126,9 @@ import {
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
-import { RedisCache } from "../../redis/redisCache";
-import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+import { createRetryProvidersFactoryWithMetrics } from "../../utils/adapterUtils";
 import { initializeContractFactories } from "../../utils";
-import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
-import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+
 
 /**
  * Array of event handlers.
@@ -194,7 +190,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  PreprocessedTypes
 > = {
   getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
@@ -368,7 +364,7 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  PreprocessedTypes
 > = {
   getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
@@ -424,7 +420,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  PreprocessedTypes
 > = {
   getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
@@ -480,30 +476,11 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
       logger.error({ message });
       throw new Error(message);
     }
-    const retryProvidersFactory = new RetryProvidersFactory(
+    const retryProvidersFactory = createRetryProvidersFactoryWithMetrics(
       cache,
       logger,
-    ).initializeProviders();
-
-    // Wrap the provider's send method with metrics
-    const originalGetProviderForChainId =
-      retryProvidersFactory.getProviderForChainId.bind(retryProvidersFactory);
-    retryProvidersFactory.getProviderForChainId = (chainId: number) => {
-      const provider = originalGetProviderForChainId(chainId);
-      // Check if provider has a send method (RetryProvider) and cast to any to allow modification
-      if ("send" in provider && typeof (provider as any).send === "function") {
-        const retryProvider = provider as RetryProvider;
-        const originalSend = retryProvider.send.bind(retryProvider);
-        retryProvider.send = withMetrics(originalSend, {
-          service: metrics,
-          metricName: "SpokePoolProtocolRpcRequests",
-          tags: [`chainId:${chainId}`, `spokePoolProtocol`],
-          type: COUNT,
-          logger,
-        });
-      }
-      return provider;
-    };
+      metrics,
+    );
     // SDK clients factories
     const contractFactories = initializeContractFactories(
       retryProvidersFactory,
@@ -567,12 +544,14 @@ export const getChainProtocols: (
   config: Config,
 ) => Record<
   number,
-  SupportedProtocols<
-    Partial<typeof Entity>,
-    BlockchainEventRepository,
-    IndexerEventPayload,
-    PreprocessedTypes | EventArgs
-  >[]
+  (
+    | SupportedProtocols<
+        Partial<typeof Entity>,
+        BlockchainEventRepository,
+        IndexerEventPayload,
+        PreprocessedTypes
+      >
+  )[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.
   const chainProtocols = config.wsIndexerChainIds.reduce(
@@ -582,12 +561,14 @@ export const getChainProtocols: (
     },
     {} as Record<
       number,
-      SupportedProtocols<
-        Partial<typeof Entity>,
-        BlockchainEventRepository,
-        IndexerEventPayload,
-        PreprocessedTypes | EventArgs
-      >[]
+      (
+        | SupportedProtocols<
+            Partial<typeof Entity>,
+            BlockchainEventRepository,
+            IndexerEventPayload,
+            PreprocessedTypes
+          >
+      )[]
     >,
   );
 
@@ -597,6 +578,13 @@ export const getChainProtocols: (
       if (chainProtocols[chainId]) {
         chainProtocols[chainId].push(OFT_PROTOCOL);
       }
+    }
+  }
+
+  // Add SpokePool protocol events configuration
+  for (const chainId of config.evmSpokePoolChainsEnabled) {
+    if (chainProtocols[chainId]) {
+      chainProtocols[chainId].push(SPOKE_POOL_PROTOCOL);
     }
   }
 

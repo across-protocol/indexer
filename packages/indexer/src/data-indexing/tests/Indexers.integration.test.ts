@@ -207,7 +207,13 @@ describe("Websocket Subscription", () => {
 
     // Wait for the indexer to subscribe
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     // Push the events to the WebSocket
@@ -275,7 +281,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -340,7 +352,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -411,8 +429,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
-        .length,
+      (
+        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.HYPEREVM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -473,8 +496,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
-        .length,
+      (
+        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.HYPEREVM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -525,7 +553,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.MAINNET).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.MAINNET,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -587,8 +621,13 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM)
-        .length,
+      (
+        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -653,7 +692,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -706,7 +751,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.OPTIMISM).length,
+      (
+        await CCTP_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.OPTIMISM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -867,7 +918,6 @@ describe("Websocket Subscription", () => {
     startChainIndexing({
       database: dataSource,
       cache: new Map() as unknown as RedisCache,
-
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -877,7 +927,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      SPOKE_POOL_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      (
+        await SPOKE_POOL_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -1173,7 +1229,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      SPOKE_POOL_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.BASE).length,
+      (
+        await SPOKE_POOL_PROTOCOL.getEventHandlers({
+          logger,
+          chainId: CHAIN_IDs.BASE,
+          cache: new Map() as unknown as RedisCache,
+        })
+      ).length,
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 

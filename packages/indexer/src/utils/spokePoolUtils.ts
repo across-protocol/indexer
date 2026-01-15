@@ -220,6 +220,7 @@ export interface FetchSpokePoolEventsRequest {
   };
   cache?: Map<string, SpokePoolEvents>;
   metricsService?: DataDogMetricsService;
+  eventName?: string;
 }
 
 /**
@@ -237,8 +238,11 @@ export async function fetchSpokePoolEvents(
     factories,
     cache,
     metricsService,
+    eventName,
   } = request;
-  const cacheKey = `spoke-pool-events-${chainId}-${toBlockNumber}-${fromBlockNumber}`;
+  const cacheKey = `spoke-pool-events-${chainId}-${toBlockNumber}-${fromBlockNumber}${
+    eventName ? `-${eventName}` : ""
+  }`;
 
   if (cache) {
     const cached = cache.get(cacheKey);
@@ -318,8 +322,8 @@ export async function fetchSpokePoolEvents(
   );
 
   const v3FundsDepositedEvents = spokePoolClient.getDeposits({
-    fromBlock: blockNumber,
-    toBlock: blockNumber,
+    fromBlock: fromBlockNumber,
+    toBlock: toBlockNumber,
   });
   const filledV3RelayEvents = spokePoolClient.getFills();
   const requestedV3SlowFillEvents = spokePoolClient.getSlowFillRequests();

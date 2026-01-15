@@ -1,7 +1,11 @@
 import { IndexerEventPayload } from "./genericEventListening";
 import { Abi, parseAbi, parseEventLogs, TransactionReceipt } from "viem";
 import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
-import { DEPOSIT_FOR_BURN_EVENT_NAME } from "./constants";
+import {
+  DEPOSIT_FOR_BURN_EVENT_NAME,
+  FILLED_RELAY_V3_EVENT_NAME,
+  FUNDS_DEPOSITED_V3_EVENT_NAME,
+} from "./constants";
 import {
   DepositForBurnArgs,
   SponsoredDepositForBurnArgs,
@@ -130,6 +134,7 @@ export async function preprocessFilledV3RelayEvent(
     factories,
     cache,
     metricsService: metrics,
+    eventName: FILLED_RELAY_V3_EVENT_NAME,
   });
 
   // Make sure we are fetching the correct fill event
@@ -192,6 +197,7 @@ export async function preprocessV3FundsDepositedEvent(
     factories,
     cache,
     metricsService: metrics,
+    eventName: FUNDS_DEPOSITED_V3_EVENT_NAME,
   });
 
   // Make sure we are fetching the correct deposit event

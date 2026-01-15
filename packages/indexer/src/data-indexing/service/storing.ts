@@ -9,6 +9,8 @@ const PK_CHAIN_BLOCK_TX_LOG = [
   "logIndex",
 ];
 const UK_CHAIN_BLOCKHASH_LOG = ["chainId", "blockHash", "logIndex"];
+const UK_INTERNAL_HASH = ["internalHash"];
+const UPDATE_TRANSACTION_HASH = ["transactionHash"];
 
 /**
  * Stores a DepositForBurn event in the database.
@@ -293,8 +295,8 @@ export const storeFilledV3RelayEvent: Storer<
   return repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
     entities.FilledV3Relay,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    ["internalHash"],
-    ["transactionHash"],
+    UK_INTERNAL_HASH as (keyof entities.FilledV3Relay)[],
+    UPDATE_TRANSACTION_HASH as (keyof entities.FilledV3Relay)[],
   );
 };
 
@@ -308,7 +310,7 @@ export const storeV3FundsDepositedEvent: Storer<
   return repository.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
     entities.V3FundsDeposited,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    ["internalHash"],
-    ["transactionHash"],
+    UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
+    UPDATE_TRANSACTION_HASH as (keyof entities.V3FundsDeposited)[],
   );
 };
