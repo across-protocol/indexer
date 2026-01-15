@@ -70,7 +70,7 @@ import {
   transformSimpleTransferFlowCompletedEvent,
   transformFallbackHyperEVMFlowCompletedEvent,
   transformArbitraryActionsExecutedEvent,
-} from "./tranforming";
+} from "./transforming";
 import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
@@ -100,7 +100,7 @@ import { filterOFTSentEvents, filterOFTReceivedEvents } from "./filtering";
 import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
-} from "./tranforming";
+} from "./transforming";
 import {
   getOftChainConfiguration,
   getSupportOftChainIds,
