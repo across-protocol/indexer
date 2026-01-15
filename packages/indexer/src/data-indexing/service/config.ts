@@ -74,7 +74,7 @@ import {
   transformSimpleTransferFlowCompletedEvent,
   transformFallbackHyperEVMFlowCompletedEvent,
   transformArbitraryActionsExecutedEvent,
-} from "./tranforming";
+} from "./transforming";
 import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
