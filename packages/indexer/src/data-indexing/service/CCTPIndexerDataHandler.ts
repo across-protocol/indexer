@@ -59,7 +59,11 @@ import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
-import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
+import {
+  SPONSORED_CCTP_DST_PERIPHERY_ADDRESS,
+  SWAP_API_CALLDATA_MARKER,
+  WHITELISTED_FINALIZERS,
+} from "./constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
