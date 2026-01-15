@@ -162,7 +162,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     config,
     postgres,
-    config.hyperliquidIndexerStartBlock || 0,
   );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
 

@@ -5,6 +5,7 @@ import { BlockRange } from "../model";
 import {
   HyperliquidRpcClient,
   HyperliquidBlock,
+  HyperliquidStreamType,
 } from "../adapter/hyperliquid/HyperliquidRpcClient";
 import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
@@ -23,7 +24,7 @@ export type StoreDepositsResult = {
 
 export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
   private isInitialized: boolean;
-  private readonly STREAM_TYPE: "writer_actions" = "writer_actions";
+  private readonly STREAM_TYPE = HyperliquidStreamType.WRITER_ACTIONS;
 
   constructor(
     private logger: Logger,
@@ -81,10 +82,6 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     );
     const timeToStoreDeposits = performance.now();
 
-    // Delete unfinalised deposits
-    await this.hyperliquidRepository.deleteUnfinalisedHyperliquidDeposits(
-      lastFinalisedBlock,
-    );
     const timeToDeleteDeposits = performance.now();
 
     const finalPerfTime = performance.now();

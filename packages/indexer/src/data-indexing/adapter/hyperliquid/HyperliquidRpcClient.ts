@@ -2,13 +2,14 @@ import axios, { AxiosInstance } from "axios";
 import { Logger } from "winston";
 import pRetry from "p-retry";
 
-export type HyperliquidStreamType =
-  | "trades"
-  | "orders"
-  | "book"
-  | "twap"
-  | "events"
-  | "writer_actions";
+export enum HyperliquidStreamType {
+  TRADES = "trades",
+  ORDERS = "orders",
+  BOOK = "book",
+  TWAP = "twap",
+  EVENTS = "events",
+  WRITER_ACTIONS = "writer_actions",
+}
 
 export interface HyperliquidBlock {
   blockNumber: number;
@@ -128,7 +129,7 @@ export class HyperliquidRpcClient {
    * Gets the latest block number for a specific stream type
    */
   async getLatestBlockNumber(
-    streamType: HyperliquidStreamType = "writer_actions",
+    streamType: HyperliquidStreamType = HyperliquidStreamType.WRITER_ACTIONS,
   ): Promise<number> {
     const result = await this.makeRequest<number>("hl_getLatestBlockNumber", [
       streamType,
