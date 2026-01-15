@@ -6,6 +6,7 @@ import { HyperliquidIndexerManager } from "../service/HyperliquidIndexerManager"
 import { parseProvidersUrls, Config } from "../../parseEnv";
 import { getTestDataSource } from "../../tests/setup";
 import { HyperliquidIndexer } from "../service/Indexer";
+import * as cctpService from "../adapter/cctp-v2/service";
 
 describe("HyperliquidIndexerManager", () => {
   let dataSource: DataSource;
@@ -53,6 +54,8 @@ describe("HyperliquidIndexerManager", () => {
     // Set up environment variable for RPC URL
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
+    // Set start block to avoid getIndexingStartBlockNumber error
+    config.hyperliquidIndexerStartBlock = 0;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
@@ -69,17 +72,27 @@ describe("HyperliquidIndexerManager", () => {
       .stub(HyperliquidIndexer.prototype, "start")
       .resolves();
 
+    // Mock getIndexingStartBlockNumber to return a value for HYPERCORE
+    const getIndexingStartBlockNumberStub = sinon
+      .stub(cctpService, "getIndexingStartBlockNumber")
+      .returns(0);
+
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
+    // Don't set hyperliquidIndexerStartBlock, so it uses getIndexingStartBlockNumber
+    config.hyperliquidIndexerStartBlock = undefined;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
 
-    // Verify that the indexer was created (which means getIndexingStartBlockNumber was used)
+    // Verify that getIndexingStartBlockNumber was called
+    expect(getIndexingStartBlockNumberStub.called).to.be.true;
+    // Verify that the indexer was created
     expect(indexerStartStub.called).to.be.true;
 
     delete process.env.RPC_PROVIDER_URLS_1337;
     indexerStartStub.restore();
+    getIndexingStartBlockNumberStub.restore();
   });
 
   it("should use hyperliquidIndexerStartBlock from config when set", async () => {
@@ -121,6 +134,7 @@ describe("HyperliquidIndexerManager", () => {
 
   it("should use testnet chain ID (1338) when hyperliquidMainnet is false", async () => {
     config.hyperliquidMainnet = false;
+    config.hyperliquidIndexerStartBlock = 0;
 
     const indexerStartStub = sinon
       .stub(HyperliquidIndexer.prototype, "start")

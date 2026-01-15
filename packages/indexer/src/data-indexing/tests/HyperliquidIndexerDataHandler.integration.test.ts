@@ -109,7 +109,7 @@ describe("HyperliquidIndexerDataHandler", () => {
     expect(savedDeposit!.nonce).to.equal("12345");
     expect(savedDeposit!.finalised).to.be.true;
     expect(savedDeposit!.hypercoreIdentifier).to.equal(
-      "0x222222222222222222222222222222222222222212345",
+      "0x2222222222222222222222222222222222222222-12345",
     );
   }).timeout(20000);
 
@@ -292,14 +292,19 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    try {
-      await handler.processBlockRange(blockRange, mockBlockNumber);
-      expect.fail("Expected error to be thrown");
-    } catch (error: any) {
-      expect(error.message).to.include(
-        `user is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
-      );
-    }
+    await handler.processBlockRange(blockRange, mockBlockNumber);
+
+    // Error should be caught and logged as warning, not thrown
+    expect((logger.warn as sinon.SinonSpy).called).to.be.true;
+    const warnCalls = (logger.warn as sinon.SinonSpy).getCalls();
+    const warnCall = warnCalls.find(
+      (call) =>
+        call.args[0]?.message === "Error parsing event" &&
+        call.args[0]?.error?.includes(
+          `user is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
+        ),
+    );
+    expect(warnCall).to.exist;
   }).timeout(20000);
 
   it("should throw error when nonce is missing", async () => {
@@ -328,13 +333,18 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    try {
-      await handler.processBlockRange(blockRange, mockBlockNumber);
-      expect.fail("Expected error to be thrown");
-    } catch (error: any) {
-      expect(error.message).to.include(
-        `nonce is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
-      );
-    }
+    await handler.processBlockRange(blockRange, mockBlockNumber);
+
+    // Error should be caught and logged as warning, not thrown
+    expect((logger.warn as sinon.SinonSpy).called).to.be.true;
+    const warnCalls = (logger.warn as sinon.SinonSpy).getCalls();
+    const warnCall = warnCalls.find(
+      (call) =>
+        call.args[0]?.message === "Error parsing event" &&
+        call.args[0]?.error?.includes(
+          `nonce is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
+        ),
+    );
+    expect(warnCall).to.exist;
   }).timeout(20000);
 });
