@@ -3,13 +3,13 @@
  */
 export interface HyperliquidDepositEvent {
   blockNumber: number;
-  transactionHash: string | null;
+  transactionHash: string;
   blockTimestamp: Date;
 
   // Deposit-specific fields
   user: string;
-  amount: string | null;
-  token: string | null;
-  depositType: string | null;
+  amount: string;
+  token: string;
+  depositType: string;
   nonce: string;
 }

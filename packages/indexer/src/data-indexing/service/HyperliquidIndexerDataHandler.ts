@@ -11,6 +11,25 @@ import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 import * as across from "@across-protocol/sdk";
 import { HYPERLIQUID_CORE_DEPOSIT_WALLET } from "./constants";
+import { IndexerError } from "@repo/error-handling";
+
+/**
+ * Error thrown when a required field is missing from a Hyperliquid deposit event
+ */
+class HyperliquidMissingFieldError extends IndexerError {
+  constructor(
+    fieldName: string,
+    blockNumber: number,
+    additionalData?: Record<string, string>,
+  ) {
+    const message = `Missing required field '${fieldName}' for HyperliquidDeposit event in block ${blockNumber}`;
+    super(HyperliquidMissingFieldError.name, message, {
+      fieldName,
+      blockNumber: blockNumber.toString(),
+      ...additionalData,
+    });
+  }
+}
 
 export type FetchDepositsResult = {
   deposits: HyperliquidDepositEvent[];
@@ -190,26 +209,49 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
         // The destination is the actual user wallet
         if (!event.action?.destination) {
-          throw new Error(
-            `destination is required for HyperliquidDeposit event in block ${block.blockNumber}`,
+          throw new HyperliquidMissingFieldError(
+            "destination",
+            block.blockNumber,
           );
         }
         if (!event.nonce) {
-          throw new Error(
-            `nonce is required for HyperliquidDeposit event in block ${block.blockNumber}`,
+          throw new HyperliquidMissingFieldError("nonce", block.blockNumber);
+        }
+        if (!event.evm_tx_hash) {
+          throw new HyperliquidMissingFieldError(
+            "evm_tx_hash",
+            block.blockNumber,
+          );
+        }
+        if (event.action?.wei == null) {
+          throw new HyperliquidMissingFieldError(
+            "action.wei",
+            block.blockNumber,
+          );
+        }
+        if (event.action?.token == null) {
+          throw new HyperliquidMissingFieldError(
+            "action.token",
+            block.blockNumber,
+          );
+        }
+        if (!event.action?.type) {
+          throw new HyperliquidMissingFieldError(
+            "action.type",
+            block.blockNumber,
           );
         }
 
         const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
-          transactionHash: event.evm_tx_hash ?? null,
+          transactionHash: event.evm_tx_hash,
           blockTimestamp: block.blockTime
             ? new Date(block.blockTime)
             : new Date(),
           user: event.action.destination,
-          amount: event.action?.wei?.toString() ?? null,
-          token: event.action?.token?.toString() ?? null,
-          depositType: event.action?.type ?? null,
+          amount: event.action.wei.toString(),
+          token: event.action.token.toString(),
+          depositType: event.action.type,
           nonce: event.nonce.toString(),
         };
 

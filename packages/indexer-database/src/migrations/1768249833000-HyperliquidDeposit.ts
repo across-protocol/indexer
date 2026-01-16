@@ -12,7 +12,7 @@ export class HyperliquidDeposit1768249833000 implements MigrationInterface {
             "user" character varying NOT NULL,
             "amount" numeric NOT NULL,
             "token" character varying NOT NULL,
-            "depositType" character varying,
+            "depositType" character varying NOT NULL,
             "nonce" character varying NOT NULL,
             "hypercoreIdentifier" character varying NOT NULL,
             "cctpBurnEventId" integer,
