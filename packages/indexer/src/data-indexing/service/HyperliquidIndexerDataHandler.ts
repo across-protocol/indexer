@@ -150,6 +150,11 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
   /**
    * Parses deposit events from a Hyperliquid block
+   * Uses writer_actions stream and filters for deposits based on system address pattern
+   *
+   * Rule for deposits (EVM → HyperCore):
+   * - SystemSpotSendAction where user field starts with 0x2000... (system address)
+   * - The destination field is the user wallet
    */
   private parseDepositsFromBlock(
     block: HyperliquidBlock,
@@ -160,17 +165,30 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       return deposits;
     }
 
-    // Only process SystemSendAssetAction events
+    // System address prefix that indicates deposits (EVM → HyperCore)
+    const SYSTEM_ADDRESS_PREFIX = "0x2000";
+
+    // Process events from writer_actions stream
     for (const event of block.data) {
       try {
-        // Filter to only process SystemSendAssetAction events
-        if (event.action?.type !== "SystemSendAssetAction") {
+        // Only process SystemSpotSendAction events
+        if (event.action?.type !== "SystemSpotSendAction") {
           continue;
         }
 
-        if (!event.user) {
+        // Check if user starts with 0x2000... (system address) - this indicates a deposit
+        if (
+          !event.user
+            ?.toLowerCase()
+            .startsWith(SYSTEM_ADDRESS_PREFIX.toLowerCase())
+        ) {
+          continue;
+        }
+
+        // The destination is the actual user wallet
+        if (!event.action?.destination) {
           throw new Error(
-            `user is required for HyperliquidDeposit event in block ${block.blockNumber}`,
+            `destination is required for HyperliquidDeposit event in block ${block.blockNumber}`,
           );
         }
         if (!event.nonce) {
@@ -185,7 +203,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
           blockTimestamp: block.blockTime
             ? new Date(block.blockTime)
             : new Date(),
-          user: event.user,
+          user: event.action.destination,
           amount: event.action?.wei?.toString() ?? "0",
           token: event.action?.token?.toString() ?? "",
           depositType: event.action?.type,
