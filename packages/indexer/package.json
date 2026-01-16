@@ -32,7 +32,7 @@
     "@google-cloud/pubsub": "^5.2.0",
     "@repo/error-handling": "workspace:*",
     "@repo/webhooks": "workspace:*",
-    "@solana/kit": "^^2.3.0",
+    "@solana/kit": "^2.3.0",
     "@types/express": "^4.17.21",
     "@types/lodash": "^4.17.7",
     "@types/luxon": "^3.4.2",
