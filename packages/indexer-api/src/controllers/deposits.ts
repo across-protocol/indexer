@@ -6,6 +6,7 @@ import {
   DepositParams,
   FilterDepositsParams,
   DepositStatusParams,
+  HyperliquidTransfersParams,
 } from "../dtos/deposits.dto";
 
 export class DepositsController {
@@ -74,6 +75,20 @@ export class DepositsController {
     try {
       const params = s.create(req.query, FilterDepositsParams);
       const result = await this.service.getFilledDeposits(params);
+      return res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getHyperliquidTransfers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const params = s.create(req.query, HyperliquidTransfersParams);
+      const result = await this.service.getHyperliquidTransfers(params);
       return res.json(result);
     } catch (err) {
       next(err);

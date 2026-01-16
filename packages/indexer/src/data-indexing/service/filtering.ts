@@ -2,6 +2,7 @@ import { pad, decodeEventLog, TransactionReceipt, parseAbi } from "viem";
 import { Logger } from "winston";
 import {
   SWAP_API_CALLDATA_MARKER,
+  CCTP_FORWARD_MAGIC_BYTES,
   WHITELISTED_FINALIZERS,
   DEPOSIT_FOR_BURN_EVENT_NAME,
   MESSAGE_RECEIVED_EVENT_NAME,
@@ -22,12 +23,20 @@ import {
   OFTReceivedArgs,
 } from "../model/eventTypes";
 import { safeJsonStringify } from "../../utils";
-import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
+import {
+  isHypercoreWithdraw,
+  isHypercoreDeposit,
+} from "../adapter/cctp-v2/service";
 import { isEndpointIdSupported } from "../adapter/oft/service";
 
 /**
  * Checks if a DepositForBurn event should be indexed.
- * It checks if the destination caller is whitelisted OR if the transaction calldata contains the Swap API marker.
+ * It checks if:
+ * 1. The destination caller is whitelisted AND the transaction calldata contains the Swap API marker, OR
+ * 2. The transaction calldata contains the CCTP forward magic bytes (for Hyperliquid deposits).
+ *
+ * Note: Hyperliquid deposits are indexed via the Hyperliquid indexer, not via WebSocket event listening.
+ * This filter is for WebSocket-based indexing which is not enabled in production.
  *
  * @param args The event arguments.
  * @param payload The event payload.
@@ -46,6 +55,16 @@ export const filterDepositForBurnEvents = (
   const destinationCallerLower = args.destinationCaller?.toLowerCase();
 
   const txInput = payload?.transaction?.input?.toLowerCase();
+
+  // Exclude Hyperliquid deposits from WebSocket indexing - they are handled by the Hyperliquid indexer
+  // Check for CCTP forward magic bytes (for Hyperliquid deposits) and exclude them
+  const hasCctpForwardMarker = !!(
+    txInput && txInput.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase())
+  );
+
+  if (hasCctpForwardMarker) {
+    return false; // Exclude Hyperliquid deposits from WS indexing
+  }
 
   // Is the caller whitelisted?
   const isWhitelisted = !!(
@@ -108,7 +127,7 @@ export const createCctpBurnFilter = async (
 
 /**
  * Filters MessageReceived events.
- * Checks if the caller is a whitelisted finalizer or if the message body represents a valid Hypercore withdrawal.
+ * Checks if the caller is a whitelisted finalizer or if the message body represents a valid Hypercore withdrawal or deposit.
  *
  * @param args The event arguments.
  * @param payload The event payload.
@@ -128,7 +147,16 @@ export const filterMessageReceived = (
     chainId: payload.chainId,
     transactionHash: payload.log.transactionHash ?? undefined,
   });
-  return result.isValid;
+  if (result.isValid) {
+    return true;
+  }
+  // Check if it's a HyperCore deposit (CCTP deposit to Hyperliquid)
+  const isDeposit = isHypercoreDeposit(args.messageBody, {
+    logger,
+    chainId: payload.chainId,
+    transactionHash: payload.log.transactionHash ?? undefined,
+  });
+  return isDeposit;
 };
 
 /**
