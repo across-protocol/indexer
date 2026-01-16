@@ -10,6 +10,7 @@ import {
 import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 import * as across from "@across-protocol/sdk";
+import { HYPERLIQUID_CORE_DEPOSIT_WALLET } from "./constants";
 
 export type FetchDepositsResult = {
   deposits: HyperliquidDepositEvent[];
@@ -150,11 +151,12 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
   /**
    * Parses deposit events from a Hyperliquid block
-   * Uses writer_actions stream and filters for deposits based on system address pattern
+   * Uses writer_actions stream and filters for deposits based on core deposit wallet
    *
    * Rule for deposits (EVM → HyperCore):
-   * - SystemSpotSendAction where user field starts with 0x2000... (system address)
-   * - The destination field is the user wallet
+   * - SystemSendAssetAction where user field equals the core deposit wallet address
+   * - The destination field is the actual user wallet
+   * - Token must be 0 (USDC)
    */
   private parseDepositsFromBlock(
     block: HyperliquidBlock,
@@ -165,23 +167,27 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       return deposits;
     }
 
-    // System address prefix that indicates deposits (EVM → HyperCore)
-    const SYSTEM_ADDRESS_PREFIX = "0x2000";
+    // USDC token ID
+    const USDC_TOKEN_ID = 0;
 
     // Process events from writer_actions stream
     for (const event of block.data) {
       try {
-        // Only process SystemSpotSendAction events
-        if (event.action?.type !== "SystemSpotSendAction") {
+        // Only process SystemSendAssetAction events
+        if (event.action?.type !== "SystemSendAssetAction") {
           continue;
         }
 
-        // Check if user starts with 0x2000... (system address) - this indicates a deposit
+        // Check if user equals the core deposit wallet address
         if (
-          !event.user
-            ?.toLowerCase()
-            .startsWith(SYSTEM_ADDRESS_PREFIX.toLowerCase())
+          event.user?.toLowerCase() !==
+          HYPERLIQUID_CORE_DEPOSIT_WALLET.toLowerCase()
         ) {
+          continue;
+        }
+
+        // Filter for USDC only (token 0)
+        if (event.action?.token !== USDC_TOKEN_ID) {
           continue;
         }
 
