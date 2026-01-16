@@ -83,9 +83,9 @@ export class IncorrectDepositStatusMonitor extends RepeatableTask {
         .andWhere("rhi.fillDeadline <= :fillDeadlineLimit", {
           fillDeadlineLimit,
         })
-        // Only look at deposits from the last year to test the service on a smaller time window.
+        // Only look at recent deposits to test the service on a smaller time window.
         // TODO: extend the time window once we are sure the service is working as expected.
-        .andWhere("d.blockTimestamp >= '2026-01-01 00:00:00'")
+        .andWhere("d.blockTimestamp >= '2026-01-09 00:00:00'")
         .orderBy("d.blockTimestamp", "DESC")
         .limit(100)
         .getMany();
