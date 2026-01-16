@@ -1,5 +1,5 @@
 # Set the build image
-FROM node:20
+FROM node:24
 
 # Set the work directory
 WORKDIR /usr/src/app

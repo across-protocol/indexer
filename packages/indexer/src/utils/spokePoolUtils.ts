@@ -1,6 +1,7 @@
 import { interfaces, providers } from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { utils as ethersUtils } from "ethers";
+import { Signature } from "@solana/kit";
 
 import { entities } from "@repo/indexer-database";
 
@@ -51,8 +52,9 @@ export async function getSvmIntegratorId(
   const INTEGRATOR_DELIMITER = "1dc0de";
   const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
   const txn = await provider
-    .getTransaction(txnRef, {
+    .getTransaction(txnRef as Signature, {
       maxSupportedTransactionVersion: 0,
+      encoding: "json",
     })
     .send();
   const txnLogs = txn?.meta?.logMessages;
