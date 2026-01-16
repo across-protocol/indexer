@@ -153,11 +153,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     postgres,
   );
-  const monitoringManager = new MonitoringManager(
-    logger,
-    config,
-    postgres,
-  );
+  const monitoringManager = new MonitoringManager(logger, config, postgres);
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
