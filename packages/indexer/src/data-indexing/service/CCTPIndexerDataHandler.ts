@@ -241,11 +241,21 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const depositForBurnTransactions = await this.getTransactions([
       ...new Set(depositForBurnEvents.map((event) => event.transactionHash)),
     ]);
-    const filteredDepositForBurnEvents =
-      await this.filterTransactionsFromSwapApi(
-        depositForBurnTransactions,
-        depositForBurnEvents,
-      );
+    const hyperliquidDeposits = await this.filterHyperliquidDeposits(
+      depositForBurnTransactions,
+      depositForBurnEvents,
+    );
+    const swapApiDeposits = await this.filterTransactionsFromSwapApi(
+      depositForBurnTransactions,
+      depositForBurnEvents,
+    );
+    // Combine and deduplicate by transactionHash to avoid processing the same event twice
+    const allFilteredEvents = [...hyperliquidDeposits, ...swapApiDeposits];
+    const filteredDepositForBurnEvents = Array.from(
+      new Map(
+        allFilteredEvents.map((event) => [event.transactionHash, event]),
+      ).values(),
+    );
 
     const filteredMessageReceivedEvents = this.filterMintTransactions(
       messageReceivedEvents,
@@ -425,10 +435,14 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
-  private async filterTransactionsFromSwapApi(
+  /**
+   * Filters for Hyperliquid deposits by checking for CCTP forward magic bytes.
+   * Hyperliquid deposits should NOT be filtered by destinationCaller.
+   */
+  private async filterHyperliquidDeposits(
     transactions: Record<string, Transaction>,
     depositForBurnEvents: DepositForBurnEvent[],
-  ) {
+  ): Promise<DepositForBurnEvent[]> {
     return depositForBurnEvents.filter((event) => {
       const transaction = transactions[event.transactionHash];
       if (!transaction) {
@@ -436,11 +450,25 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       }
 
       const dataLower = transaction.data.toLowerCase();
+      // Only check for CCTP forward magic bytes - do not filter by destinationCaller
+      return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
+    });
+  }
 
-      // Check for CCTP forward magic bytes (for Hyperliquid deposits)
-      if (dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase())) {
-        return true;
+  /**
+   * Filters for Swap API deposits by checking for Swap API marker and whitelisted destinationCaller.
+   */
+  private async filterTransactionsFromSwapApi(
+    transactions: Record<string, Transaction>,
+    depositForBurnEvents: DepositForBurnEvent[],
+  ): Promise<DepositForBurnEvent[]> {
+    return depositForBurnEvents.filter((event) => {
+      const transaction = transactions[event.transactionHash];
+      if (!transaction) {
+        return false;
       }
+
+      const dataLower = transaction.data.toLowerCase();
 
       // Check for Swap API marker
       if (!dataLower.includes(SWAP_API_CALLDATA_MARKER.toLowerCase())) {

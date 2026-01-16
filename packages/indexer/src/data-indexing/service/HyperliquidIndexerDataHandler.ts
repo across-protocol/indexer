@@ -31,7 +31,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     private logger: Logger,
     private rpcUrl: string,
     private hyperliquidRepository: HyperliquidRepository,
-    private startBlockNumber: number = 0,
+    private startBlockNumber: number,
   ) {
     this.isInitialized = false;
   }
@@ -83,8 +83,6 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     );
     const timeToStoreDeposits = performance.now();
 
-    const timeToDeleteDeposits = performance.now();
-
     const finalPerfTime = performance.now();
 
     this.logger.debug({
@@ -95,7 +93,6 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
       finalTime: finalPerfTime - startPerfTime,
       timeToFetchDeposits: timeToFetchDeposits - startPerfTime,
       timeToStoreDeposits: timeToStoreDeposits - timeToFetchDeposits,
-      timeToDeleteDeposits: timeToDeleteDeposits - timeToStoreDeposits,
     });
   }
 
@@ -205,14 +202,14 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
         const deposit: HyperliquidDepositEvent = {
           blockNumber: block.blockNumber,
-          transactionHash: event.evm_tx_hash ?? "",
+          transactionHash: event.evm_tx_hash ?? null,
           blockTimestamp: block.blockTime
             ? new Date(block.blockTime)
             : new Date(),
           user: event.action.destination,
-          amount: event.action?.wei?.toString() ?? "0",
-          token: event.action?.token?.toString() ?? "",
-          depositType: event.action?.type,
+          amount: event.action?.wei?.toString() ?? null,
+          token: event.action?.token?.toString() ?? null,
+          depositType: event.action?.type ?? null,
           nonce: event.nonce.toString(),
         };
 

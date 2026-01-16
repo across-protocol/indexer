@@ -112,11 +112,7 @@ export const HyperliquidTransfersParams = s.object({
   direction: s.enums(["in", "out"]),
   user: parseAddressField,
   skip: s.defaulted(stringToInt, 0),
-  limit: s.refine(
-    s.defaulted(stringToInt, 50),
-    "maxLimit",
-    (value) => value <= 1000 || "Limit must not exceed 1000",
-  ),
+  limit: s.defaulted(stringToInt, 50),
 });
 
 export type HyperliquidTransfersParams = s.Infer<
@@ -130,7 +126,7 @@ export type HyperliquidTransferResponse = {
   destinationChainId: number | null;
   amount?: string | null;
   token?: string | null;
-  blockTimestamp?: Date | null;
+  destinationBlockTimestamp?: Date | null; // Timestamp of the block on the destination chain (HyperEVM)
 };
 
 export const FilterDepositsParams = s.object({

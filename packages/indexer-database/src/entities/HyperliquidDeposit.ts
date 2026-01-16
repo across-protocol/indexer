@@ -25,8 +25,8 @@ export class HyperliquidDeposit {
   @Column()
   blockNumber: number;
 
-  @Column()
-  transactionHash: string;
+  @Column({ nullable: true })
+  transactionHash?: string;
 
   @Column()
   blockTimestamp: Date;
@@ -34,11 +34,11 @@ export class HyperliquidDeposit {
   @Column()
   user: string;
 
-  @Column({ type: "decimal" })
-  amount: string;
+  @Column({ type: "decimal", nullable: true })
+  amount?: string;
 
-  @Column()
-  token: string;
+  @Column({ nullable: true })
+  token?: string;
 
   @Column({ nullable: true })
   depositType?: string;

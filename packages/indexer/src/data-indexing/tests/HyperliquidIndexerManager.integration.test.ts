@@ -6,7 +6,6 @@ import { HyperliquidIndexerManager } from "../service/HyperliquidIndexerManager"
 import { parseProvidersUrls, Config } from "../../parseEnv";
 import { getTestDataSource } from "../../tests/setup";
 import { HyperliquidIndexer } from "../service/Indexer";
-import * as cctpService from "../adapter/cctp-v2/service";
 
 describe("HyperliquidIndexerManager", () => {
   let dataSource: DataSource;
@@ -28,7 +27,6 @@ describe("HyperliquidIndexerManager", () => {
     config = {
       enableHyperliquidIndexer: true,
       hyperliquidMainnet: true,
-      hyperliquidIndexerStartBlock: undefined,
       providerUrls,
       indexingDelaySecondsOnError: 2,
       maxBlockRangeSize: 1000,
@@ -54,8 +52,6 @@ describe("HyperliquidIndexerManager", () => {
     // Set up environment variable for RPC URL
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
-    // Set start block to avoid getIndexingStartBlockNumber error
-    config.hyperliquidIndexerStartBlock = 0;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
@@ -67,52 +63,41 @@ describe("HyperliquidIndexerManager", () => {
     indexerStartStub.restore();
   });
 
-  it("should use getIndexingStartBlockNumber when hyperliquidIndexerStartBlock is not set", async () => {
+  it("should use starting block number from mapping for mainnet", async () => {
     const indexerStartStub = sinon
       .stub(HyperliquidIndexer.prototype, "start")
       .resolves();
 
-    // Mock getIndexingStartBlockNumber to return a value for HYPERCORE
-    const getIndexingStartBlockNumberStub = sinon
-      .stub(cctpService, "getIndexingStartBlockNumber")
-      .returns(0);
-
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
-    // Don't set hyperliquidIndexerStartBlock, so it uses getIndexingStartBlockNumber
-    config.hyperliquidIndexerStartBlock = undefined;
+    config.hyperliquidMainnet = true;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
 
-    // Verify that getIndexingStartBlockNumber was called
-    expect(getIndexingStartBlockNumberStub.called).to.be.true;
     // Verify that the indexer was created
     expect(indexerStartStub.called).to.be.true;
 
     delete process.env.RPC_PROVIDER_URLS_1337;
     indexerStartStub.restore();
-    getIndexingStartBlockNumberStub.restore();
   });
 
-  it("should use hyperliquidIndexerStartBlock from config when set", async () => {
-    const customStartBlock = 1000000;
-    config.hyperliquidIndexerStartBlock = customStartBlock;
-
+  it("should use starting block number from mapping for testnet", async () => {
     const indexerStartStub = sinon
       .stub(HyperliquidIndexer.prototype, "start")
       .resolves();
 
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
-    process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
+    process.env.RPC_PROVIDER_URLS_1338 = testRpcUrl;
+    config.hyperliquidMainnet = false;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
 
-    // The handler should be initialized with the custom start block
+    // Verify that the indexer was created
     expect(indexerStartStub.called).to.be.true;
 
-    delete process.env.RPC_PROVIDER_URLS_1337;
+    delete process.env.RPC_PROVIDER_URLS_1338;
     indexerStartStub.restore();
   });
 
@@ -134,7 +119,6 @@ describe("HyperliquidIndexerManager", () => {
 
   it("should use testnet chain ID (1338) when hyperliquidMainnet is false", async () => {
     config.hyperliquidMainnet = false;
-    config.hyperliquidIndexerStartBlock = 0;
 
     const indexerStartStub = sinon
       .stub(HyperliquidIndexer.prototype, "start")

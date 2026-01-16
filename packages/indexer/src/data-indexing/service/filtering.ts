@@ -35,6 +35,9 @@ import { isEndpointIdSupported } from "../adapter/oft/service";
  * 1. The destination caller is whitelisted AND the transaction calldata contains the Swap API marker, OR
  * 2. The transaction calldata contains the CCTP forward magic bytes (for Hyperliquid deposits).
  *
+ * Note: Hyperliquid deposits are indexed via the Hyperliquid indexer, not via WebSocket event listening.
+ * This filter is for WebSocket-based indexing which is not enabled in production.
+ *
  * @param args The event arguments.
  * @param payload The event payload.
  * @returns True if the event should be indexed.
@@ -53,13 +56,14 @@ export const filterDepositForBurnEvents = (
 
   const txInput = payload?.transaction?.input?.toLowerCase();
 
-  // Check for CCTP forward magic bytes (for Hyperliquid deposits)
+  // Exclude Hyperliquid deposits from WebSocket indexing - they are handled by the Hyperliquid indexer
+  // Check for CCTP forward magic bytes (for Hyperliquid deposits) and exclude them
   const hasCctpForwardMarker = !!(
     txInput && txInput.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase())
   );
 
   if (hasCctpForwardMarker) {
-    return true;
+    return false; // Exclude Hyperliquid deposits from WS indexing
   }
 
   // Is the caller whitelisted?

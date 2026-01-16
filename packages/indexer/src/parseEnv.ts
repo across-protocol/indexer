@@ -27,7 +27,6 @@ export type Config = {
   enableOftIndexer: boolean;
   enableHyperliquidIndexer: boolean;
   hyperliquidMainnet: boolean;
-  hyperliquidIndexerStartBlock?: number;
   datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -292,9 +291,6 @@ export function envToConfig(env: Env): Config {
   const hyperliquidMainnet = env.HYPERLIQUID_MAINNET
     ? env.HYPERLIQUID_MAINNET === "true"
     : false;
-  const hyperliquidIndexerStartBlock = env.HYPERLIQUID_INDEXER_START_BLOCK
-    ? parseInt(env.HYPERLIQUID_INDEXER_START_BLOCK)
-    : undefined;
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
     : false;
@@ -369,7 +365,6 @@ export function envToConfig(env: Env): Config {
     enableOftIndexer,
     enableHyperliquidIndexer,
     hyperliquidMainnet,
-    hyperliquidIndexerStartBlock,
     enableCctpFinalizer,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,

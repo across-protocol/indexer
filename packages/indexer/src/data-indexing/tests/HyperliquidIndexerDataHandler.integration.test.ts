@@ -104,7 +104,7 @@ describe("HyperliquidIndexerDataHandler", () => {
     expect(savedDeposit!.transactionHash).to.equal(mockTransactionHash);
     expect(savedDeposit!.blockNumber).to.equal(mockBlockNumber);
     expect(savedDeposit!.user).to.equal(userWallet);
-    expect(savedDeposit!.amount.toString()).to.equal("1000000000000000000");
+    expect(savedDeposit!.amount?.toString()).to.equal("1000000000000000000");
     expect(savedDeposit!.token).to.equal("0");
     expect(savedDeposit!.depositType).to.equal("SystemSendAssetAction");
     expect(savedDeposit!.nonce).to.equal("12345");

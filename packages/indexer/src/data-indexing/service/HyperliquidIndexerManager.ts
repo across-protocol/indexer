@@ -9,7 +9,15 @@ import {
 import { HyperliquidIndexer } from "./Indexer";
 import { HyperliquidIndexerDataHandler } from "./HyperliquidIndexerDataHandler";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
-import { getIndexingStartBlockNumber } from "../adapter/cctp-v2/service";
+
+/**
+ * Starting block numbers for Hyperliquid indexing
+ * These represent the block numbers when Hyperliquid deposits started being indexed
+ */
+const HYPERLIQUID_STARTING_BLOCK_NUMBERS = {
+  mainnet: 863585946,
+  testnet: 0,
+};
 
 export class HyperliquidIndexerManager {
   private indexer?: HyperliquidIndexer;
@@ -54,11 +62,10 @@ export class HyperliquidIndexerManager {
         this.logger,
       );
 
-      // Get start block number from constant, with env override support
-      const startBlockNumber =
-        this.config.hyperliquidIndexerStartBlock !== undefined
-          ? this.config.hyperliquidIndexerStartBlock
-          : getIndexingStartBlockNumber(chainId);
+      // Get start block number from mapping based on mainnet/testnet
+      const startBlockNumber = this.config.hyperliquidMainnet
+        ? HYPERLIQUID_STARTING_BLOCK_NUMBERS.mainnet
+        : HYPERLIQUID_STARTING_BLOCK_NUMBERS.testnet;
 
       const hyperliquidIndexerDataHandler = new HyperliquidIndexerDataHandler(
         this.logger,

@@ -1312,17 +1312,9 @@ export class DepositsService {
       throw new HyperliquidDepositNotFoundException();
     }
 
-    // Get the DepositForBurn to get the deposit transaction hash
-    // First try the directly linked event, then try reverse traversal
-    let depositForBurn: entities.DepositForBurn | null =
+    // Get the DepositForBurn from the directly linked event
+    const depositForBurn: entities.DepositForBurn | null =
       deposit.cctpBurnEvent || null;
-
-    if (!depositForBurn && deposit.transactionHash) {
-      // Try to find it using reverse traversal: MessageReceived -> MessageSent -> DepositForBurn
-      depositForBurn = await this.findCctpBurnEventByMessageReceived(
-        deposit.transactionHash,
-      );
-    }
 
     if (!depositForBurn) {
       throw new HyperliquidDepositNotFoundException();
@@ -1357,56 +1349,6 @@ export class DepositsService {
     return result;
   }
 
-  /**
-   * Finds the CCTP burn event by reverse traversal from MessageReceived.
-   * The transactionHash in HyperliquidDeposit is the EVM transaction hash from HyperEVM (MessageReceived transaction).
-   * We find the MessageReceived event, then MessageSent using nonce and sourceDomain,
-   * then DepositForBurn using MessageSent's transactionHash.
-   */
-  private async findCctpBurnEventByMessageReceived(
-    transactionHash: string,
-  ): Promise<entities.DepositForBurn | null> {
-    try {
-      const messageReceivedRepo = this.db.getRepository(
-        entities.MessageReceived,
-      );
-      const messageReceived = await messageReceivedRepo.findOne({
-        where: {
-          transactionHash,
-          chainId: "999", // HyperEVM chain ID
-        },
-      });
-
-      if (!messageReceived) {
-        return null;
-      }
-
-      const messageSentRepo = this.db.getRepository(entities.MessageSent);
-      const messageSent = await messageSentRepo.findOne({
-        where: {
-          nonce: messageReceived.nonce,
-          sourceDomain: messageReceived.sourceDomain,
-        },
-      });
-
-      if (!messageSent) {
-        return null;
-      }
-
-      const depositForBurnRepo = this.db.getRepository(entities.DepositForBurn);
-      const depositForBurn = await depositForBurnRepo.findOne({
-        where: {
-          transactionHash: messageSent.transactionHash,
-          chainId: messageSent.chainId,
-        },
-      });
-
-      return depositForBurn;
-    } catch (error: any) {
-      return null;
-    }
-  }
-
   public async getHyperliquidTransfers(
     params: HyperliquidTransfersParams,
   ): Promise<HyperliquidTransferResponse[]> {
@@ -1439,17 +1381,6 @@ export class DepositsService {
             ? parseInt(deposit.cctpBurnEvent.chainId)
             : null;
 
-          // If not directly linked, try reverse traversal
-          if (!depositTxnRef && deposit.transactionHash) {
-            const burnEvent = await this.findCctpBurnEventByMessageReceived(
-              deposit.transactionHash,
-            );
-            if (burnEvent) {
-              depositTxnRef = burnEvent.transactionHash;
-              originChainId = parseInt(burnEvent.chainId);
-            }
-          }
-
           return {
             depositTxnRef: depositTxnRef,
             fillTxnRef: deposit.transactionHash,
@@ -1457,7 +1388,7 @@ export class DepositsService {
             destinationChainId: CHAIN_IDs.HYPERCORE,
             amount: deposit.amount,
             token: deposit.token,
-            blockTimestamp: deposit.blockTimestamp,
+            destinationBlockTimestamp: deposit.blockTimestamp,
           };
         }),
       );
@@ -1494,7 +1425,7 @@ export class DepositsService {
           destinationChainId: withdrawal.destinationChainId
             ? parseInt(withdrawal.destinationChainId)
             : null,
-          blockTimestamp: withdrawal.createdAt,
+          destinationBlockTimestamp: withdrawal.createdAt, // Timestamp of the block on the destination chain
         };
       });
     }
