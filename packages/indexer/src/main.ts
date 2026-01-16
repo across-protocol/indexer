@@ -38,6 +38,7 @@ import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
 import { DataDogMetricsService } from "./services/MetricsService";
+import { MonitoringManager } from "./monitoring/MonitoringManager";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -156,6 +157,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     postgres,
   );
+  const monitoringManager = new MonitoringManager(logger, config, postgres);
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -226,6 +228,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
       abortController.abort(); // Signal WS indexers to stop
+      monitoringManager.stopGracefully();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -251,6 +254,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
+    monitoringManagerResults,
     ...wsIndexerResults
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
@@ -259,6 +263,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
+    monitoringManager.start(),
     ...wsIndexerPromises,
   ]);
   logger.info({
@@ -277,6 +282,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         oftIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
+      monitoringManagerRunSuccess:
+        monitoringManagerResults.status === "fulfilled",
       wsIndexerRunSuccess: wsIndexerResults.every(
         (r) => r.status === "fulfilled",
       ),

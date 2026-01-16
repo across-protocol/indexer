@@ -1,6 +1,7 @@
 import { V3FundsDeposited } from "../entities";
 import { getRandomInt } from "../utils/FixtureUtils";
 import { DataSource, DeleteResult, Repository } from "typeorm";
+import { ethers } from "ethers";
 
 export class FundsDepositedFixture {
   private repository: Repository<V3FundsDeposited>;
@@ -15,8 +16,8 @@ export class FundsDepositedFixture {
    */
   public mockFundsDeposited(overrides: Partial<V3FundsDeposited>) {
     return {
-      relayHash: "0xaaa",
-      internalHash: "0xaaa",
+      relayHash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      internalHash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
       depositId: getRandomInt().toString(),
       originChainId: "1",
       destinationChainId: "10",
@@ -34,10 +35,10 @@ export class FundsDepositedFixture {
       exclusivityDeadline: new Date(),
       fillDeadline: new Date(),
       quoteTimestamp: new Date(),
-      transactionHash: "0x",
-      transactionIndex: 1,
-      logIndex: 1,
-      blockNumber: 1,
+      transactionHash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      transactionIndex: getRandomInt(0, 100),
+      logIndex: getRandomInt(0, 200),
+      blockNumber: getRandomInt(0, 20000000),
       finalised: true,
       blockTimestamp: new Date(),
       ...overrides,

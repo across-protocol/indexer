@@ -30,6 +30,7 @@ export type Config = {
   maxBlockRangeSize?: number;
   coingeckoApiKey?: string;
   enablePriceWorker: boolean;
+  enabledMonitors: string[];
   bundleEventsServiceStartBlockNumber: number;
   /**
    * Override the delay between processing block ranges in seconds in the Indexer class.
@@ -301,6 +302,7 @@ export function envToConfig(env: Env): Config {
   const enablePriceWorker = env.ENABLE_PRICE_WORKER
     ? env.ENABLE_PRICE_WORKER === "true"
     : true;
+  const enabledMonitors = parseArray(env.ENABLED_MONITORS);
   const maxBlockRangeSize = env.MAX_BLOCK_RANGE_SIZE
     ? parseInt(env.MAX_BLOCK_RANGE_SIZE)
     : undefined;
@@ -361,6 +363,7 @@ export function envToConfig(env: Env): Config {
     maxBlockRangeSize,
     coingeckoApiKey,
     enablePriceWorker,
+    enabledMonitors,
     bundleEventsServiceStartBlockNumber,
     indexingDelaySeconds,
     bundleEventsServiceDelaySeconds: bundleIncludedEventsServiceDelaySeconds,
