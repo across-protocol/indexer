@@ -64,20 +64,22 @@ describe("HyperliquidIndexerDataHandler", () => {
       to: mockBlockNumber,
     };
 
-    // Mock the RPC response
+    const userWallet = "0x2222222222222222222222222222222222222222";
+
+    // Mock the RPC response - SystemSpotSendAction with system address as user
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
       blockTime: mockBlockTime,
       data: [
         {
           evm_tx_hash: mockTransactionHash,
-          user: "0x2222222222222222222222222222222222222222",
+          user: "0x2000000000000000000000000000000000000000",
           nonce: 12345,
           action: {
-            type: "SystemSendAssetAction",
+            type: "SystemSpotSendAction",
             token: 150,
             wei: 1000000000000000000,
-            destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+            destination: userWallet,
           },
         },
       ],
@@ -100,17 +102,13 @@ describe("HyperliquidIndexerDataHandler", () => {
     expect(savedDeposit).to.exist;
     expect(savedDeposit!.transactionHash).to.equal(mockTransactionHash);
     expect(savedDeposit!.blockNumber).to.equal(mockBlockNumber);
-    expect(savedDeposit!.user).to.equal(
-      "0x2222222222222222222222222222222222222222",
-    );
+    expect(savedDeposit!.user).to.equal(userWallet);
     expect(savedDeposit!.amount.toString()).to.equal("1000000000000000000");
     expect(savedDeposit!.token).to.equal("150");
-    expect(savedDeposit!.depositType).to.equal("SystemSendAssetAction");
+    expect(savedDeposit!.depositType).to.equal("SystemSpotSendAction");
     expect(savedDeposit!.nonce).to.equal("12345");
     expect(savedDeposit!.finalised).to.be.true;
-    expect(savedDeposit!.hypercoreIdentifier).to.equal(
-      "0x2222222222222222222222222222222222222222-12345",
-    );
+    expect(savedDeposit!.hypercoreIdentifier).to.equal(`${userWallet}-12345`);
   }).timeout(20000);
 
   it("should handle empty block data", async () => {
@@ -148,6 +146,8 @@ describe("HyperliquidIndexerDataHandler", () => {
       to: mockBlockNumber + 2,
     };
 
+    const userWallet = "0x2222222222222222222222222222222222222222";
+
     // Mock the RPC response with multiple blocks
     const mockBlocks: HyperliquidBlock[] = [
       {
@@ -156,13 +156,13 @@ describe("HyperliquidIndexerDataHandler", () => {
         data: [
           {
             evm_tx_hash: `${mockTransactionHash}1`,
-            user: "0x2222222222222222222222222222222222222222",
+            user: "0x2000000000000000000000000000000000000000",
             nonce: 12347,
             action: {
-              type: "SystemSendAssetAction",
+              type: "SystemSpotSendAction",
               token: 150,
               wei: 1000000000000000000,
-              destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+              destination: userWallet,
             },
           },
         ],
@@ -173,13 +173,13 @@ describe("HyperliquidIndexerDataHandler", () => {
         data: [
           {
             evm_tx_hash: `${mockTransactionHash}2`,
-            user: "0x2222222222222222222222222222222222222222",
+            user: "0x2000000000000000000000000000000000000000",
             nonce: 12348,
             action: {
-              type: "SystemSendAssetAction",
+              type: "SystemSpotSendAction",
               token: 268,
               wei: 2000000000000000000,
-              destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+              destination: userWallet,
             },
           },
         ],
@@ -212,11 +212,13 @@ describe("HyperliquidIndexerDataHandler", () => {
       .exist;
   }).timeout(20000);
 
-  it("should filter out non-SystemSendAssetAction events", async () => {
+  it("should filter out non-deposit events", async () => {
     const blockRange: BlockRange = {
       from: mockBlockNumber,
       to: mockBlockNumber,
     };
+
+    const userWallet = "0x2222222222222222222222222222222222222222";
 
     // Mock the RPC response with different event types
     const mockBlock: HyperliquidBlock = {
@@ -224,24 +226,39 @@ describe("HyperliquidIndexerDataHandler", () => {
       blockTime: mockBlockTime,
       data: [
         {
+          // SystemSpotSendAction but user is not system address - should be filtered out
           evm_tx_hash: mockTransactionHash,
-          user: "0x2222222222222222222222222222222222222222",
+          user: userWallet,
           nonce: 12349,
           action: {
             type: "SystemSpotSendAction",
             token: 150,
             wei: 1000000000000000000,
+            destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
           },
         },
         {
+          // SystemSendAssetAction - should be filtered out (not SystemSpotSendAction)
           evm_tx_hash: `${mockTransactionHash}2`,
-          user: "0x2222222222222222222222222222222222222222",
+          user: userWallet,
           nonce: 12350,
           action: {
             type: "SystemSendAssetAction",
             token: 268,
             wei: 2000000000000000000,
             destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+          },
+        },
+        {
+          // Valid deposit: SystemSpotSendAction with system address
+          evm_tx_hash: `${mockTransactionHash}3`,
+          user: "0x2000000000000000000000000000000000000000",
+          nonce: 12351,
+          action: {
+            type: "SystemSpotSendAction",
+            token: 268,
+            wei: 3000000000000000000,
+            destination: userWallet,
           },
         },
       ],
@@ -260,31 +277,32 @@ describe("HyperliquidIndexerDataHandler", () => {
       },
     });
 
-    // Should only save the SystemSendAssetAction event
+    // Should only save the valid deposit (SystemSpotSendAction with system address)
     expect(savedDeposits).to.have.length(1);
-    expect(savedDeposits[0]?.depositType).to.equal("SystemSendAssetAction");
-    expect(savedDeposits[0]?.nonce).to.equal("12350");
+    expect(savedDeposits[0]?.depositType).to.equal("SystemSpotSendAction");
+    expect(savedDeposits[0]?.nonce).to.equal("12351");
+    expect(savedDeposits[0]?.user).to.equal(userWallet);
   }).timeout(20000);
 
-  it("should throw error when user is missing", async () => {
+  it("should throw error when destination is missing", async () => {
     const blockRange: BlockRange = {
       from: mockBlockNumber,
       to: mockBlockNumber,
     };
 
-    // Mock the RPC response without user
+    // Mock the RPC response without destination
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
       blockTime: mockBlockTime,
       data: [
         {
           evm_tx_hash: mockTransactionHash,
+          user: "0x2000000000000000000000000000000000000000",
           nonce: 12351,
           action: {
-            type: "SystemSendAssetAction",
+            type: "SystemSpotSendAction",
             token: 150,
             wei: 1000000000000000000,
-            destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
           },
         },
       ],
@@ -301,10 +319,54 @@ describe("HyperliquidIndexerDataHandler", () => {
       (call) =>
         call.args[0]?.message === "Error parsing event" &&
         call.args[0]?.error?.includes(
-          `user is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
+          `destination is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
         ),
     );
     expect(warnCall).to.exist;
+  }).timeout(20000);
+
+  it("should filter out withdrawals (destination is system address)", async () => {
+    const blockRange: BlockRange = {
+      from: mockBlockNumber,
+      to: mockBlockNumber,
+    };
+
+    const userWallet = "0x2222222222222222222222222222222222222222";
+
+    // Mock the RPC response with a withdrawal (destination is system address)
+    const mockBlock: HyperliquidBlock = {
+      blockNumber: mockBlockNumber,
+      blockTime: mockBlockTime,
+      data: [
+        {
+          evm_tx_hash: mockTransactionHash,
+          user: userWallet,
+          nonce: 12352,
+          action: {
+            type: "SystemSpotSendAction",
+            token: 150,
+            wei: 1000000000000000000,
+            destination: "0x2000000000000000000000000000000000000000",
+          },
+        },
+      ],
+    };
+
+    rpcClientStub.resolves([mockBlock]);
+
+    await handler.processBlockRange(blockRange, mockBlockNumber);
+
+    const hyperliquidDepositRepo = dataSource.getRepository(
+      entities.HyperliquidDeposit,
+    );
+    const savedDeposits = await hyperliquidDepositRepo.find({
+      where: {
+        blockNumber: mockBlockNumber,
+      },
+    });
+
+    // Should filter out withdrawals (user is not system address)
+    expect(savedDeposits).to.have.length(0);
   }).timeout(20000);
 
   it("should throw error when nonce is missing", async () => {
@@ -313,6 +375,8 @@ describe("HyperliquidIndexerDataHandler", () => {
       to: mockBlockNumber,
     };
 
+    const userWallet = "0x2222222222222222222222222222222222222222";
+
     // Mock the RPC response without nonce
     const mockBlock: HyperliquidBlock = {
       blockNumber: mockBlockNumber,
@@ -320,12 +384,12 @@ describe("HyperliquidIndexerDataHandler", () => {
       data: [
         {
           evm_tx_hash: mockTransactionHash,
-          user: "0x2222222222222222222222222222222222222222",
+          user: "0x2000000000000000000000000000000000000000",
           action: {
-            type: "SystemSendAssetAction",
+            type: "SystemSpotSendAction",
             token: 150,
             wei: 1000000000000000000,
-            destination: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+            destination: userWallet,
           },
         },
       ],
