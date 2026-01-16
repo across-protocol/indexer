@@ -22,8 +22,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@across-protocol/constants": "^3.1.91",
-    "@across-protocol/sdk": "^4.3.97",
+    "@across-protocol/constants": "^3.1.97",
+    "@across-protocol/sdk": "^4.3.109",
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/indexer-database": "workspace:*",
