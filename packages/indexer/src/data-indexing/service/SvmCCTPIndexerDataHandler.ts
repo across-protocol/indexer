@@ -212,6 +212,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
       const txn = await this.provider
         .getTransaction(signature(sig), {
           maxSupportedTransactionVersion: 0,
+          encoding: "json",
         })
         .send();
 
@@ -506,6 +507,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         const txn = await this.provider
           .getTransaction(signature(sig), {
             maxSupportedTransactionVersion: 0,
+            encoding: "json",
           })
           .send();
         if (txn) {
@@ -701,6 +703,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         const txn = await this.provider
           .getTransaction(signature(sig), {
             maxSupportedTransactionVersion: 0,
+            encoding: "json",
           })
           .send();
 

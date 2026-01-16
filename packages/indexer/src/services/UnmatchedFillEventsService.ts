@@ -87,6 +87,7 @@ export class UnmatchedFillEventsService extends RepeatableTask {
         const transaction = await provider
           .getTransaction(fill.transactionHash as Signature, {
             maxSupportedTransactionVersion: 0,
+            encoding: "json",
           })
           .send();
         fillsGasFee = {
