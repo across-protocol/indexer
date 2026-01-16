@@ -34,6 +34,7 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
+import { MonitoringManager } from "./monitoring/MonitoringManager";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -152,6 +153,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     postgres,
   );
+  const monitoringManager = new MonitoringManager(
+    logger,
+    config,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -192,6 +198,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
+      monitoringManager.stopGracefully();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -216,6 +223,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
+    monitoringManagerResults,
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
@@ -223,6 +231,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     oftIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
+    monitoringManager.start(),
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -240,6 +249,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         oftIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
+      monitoringManagerRunSuccess:
+        monitoringManagerResults.status === "fulfilled",
     },
   });
   await integratorIdWorker.close();
