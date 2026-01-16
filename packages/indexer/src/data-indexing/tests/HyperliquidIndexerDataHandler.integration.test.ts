@@ -322,7 +322,7 @@ describe("HyperliquidIndexerDataHandler", () => {
       (call) =>
         call.args[0]?.message === "Error parsing event" &&
         call.args[0]?.error?.includes(
-          `destination is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
+          `Missing required field 'destination' for HyperliquidDeposit event in block ${mockBlockNumber}`,
         ),
     );
     expect(warnCall).to.exist;
@@ -409,7 +409,7 @@ describe("HyperliquidIndexerDataHandler", () => {
       (call) =>
         call.args[0]?.message === "Error parsing event" &&
         call.args[0]?.error?.includes(
-          `nonce is required for HyperliquidDeposit event in block ${mockBlockNumber}`,
+          `Missing required field 'nonce' for HyperliquidDeposit event in block ${mockBlockNumber}`,
         ),
     );
     expect(warnCall).to.exist;
