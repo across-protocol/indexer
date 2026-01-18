@@ -121,13 +121,6 @@ export const SPONSORED_CCTP_DST_PERIPHERY_ADDRESS: {
   [CHAIN_IDs.HYPEREVM]: "0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95",
 };
 
-// TODO: Update this address once the contract is deployed
-export const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: {
-  [key: number]: `0x${string}`;
-} = {
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: "0x79176E2E91c77b57AC11c6fe2d2Ab2203D87AF85",
-};
-
 export const SWAP_API_CALLDATA_MARKER = "73c0de";
 export const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
