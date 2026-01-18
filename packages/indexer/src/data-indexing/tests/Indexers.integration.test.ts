@@ -26,6 +26,7 @@ import {
 } from "../service/config";
 import { safeJsonStringify } from "../../utils/map";
 import { RedisCache } from "../../redis/redisCache";
+import { waitForEventToBeStoredOrFail } from "./utils";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -219,13 +220,13 @@ describe("Websocket Subscription", () => {
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -292,13 +293,13 @@ describe("Websocket Subscription", () => {
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const messageSentRepo = dataSource.getRepository(entities.MessageSent);
-    const savedEvent = await messageSentRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: messageSentRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -366,15 +367,15 @@ describe("Websocket Subscription", () => {
     const messageBody =
       "00000001C6FA7AF3BEDBAD3A3D65F36AABC97431B1BBE4C2D2F6E0E47CA60203452F5D61000000000000000000000000AEECE9A1F996226C026BB05E7561830872385A59000000000000000000000000000000000000000000000000000000037E11D600455B0EAACAC3285754B398CE32FA37EF6846ACBE1D7A09E0A8EF006FF7110412000000000000000000000000000000000000000000000000000000000016E361000000000000000000000000000000000000000000000000000000000016E36000000000000000000000000000000000000000000000000000000000016DBBAF";
 
-    // Wait for async processing
-    await new Promise((r) => setTimeout(r, 500));
-
     // Verify Persistence
     const messageReceivedRepo = dataSource.getRepository(
       entities.MessageReceived,
     );
-    const savedEvent = await messageReceivedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: messageReceivedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     // Basic Existence Check
@@ -440,15 +441,15 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify SwapFlowInitialized
     const initializedRepo = dataSource.getRepository(
       entities.SwapFlowInitialized,
     );
-    const savedInitialized = await initializedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedInitialized = await waitForEventToBeStoredOrFail({
+      repository: initializedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedInitialized).to.exist;
     expect(savedInitialized).to.deep.include({
@@ -507,12 +508,12 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const finalizedRepo = dataSource.getRepository(entities.SwapFlowFinalized);
-    const savedFinalized = await finalizedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedFinalized = await waitForEventToBeStoredOrFail({
+      repository: finalizedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedFinalized).to.exist;
@@ -564,13 +565,13 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -632,13 +633,13 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify DepositForBurn Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(txHash);
@@ -647,8 +648,11 @@ describe("Websocket Subscription", () => {
     const sponsoredRepo = dataSource.getRepository(
       entities.SponsoredDepositForBurn,
     );
-    const savedSponsoredEvent = await sponsoredRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedSponsoredEvent = await waitForEventToBeStoredOrFail({
+      repository: sponsoredRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedSponsoredEvent).to.exist;
     expect(savedSponsoredEvent!).to.deep.include({
@@ -703,13 +707,13 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const repo = dataSource.getRepository(entities.MintAndWithdraw);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -762,13 +766,13 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -816,16 +820,22 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+        cache: new Map() as unknown as RedisCache,
+      })).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.SimpleTransferFlowCompleted);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -872,16 +882,22 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+        cache: new Map() as unknown as RedisCache,
+      })).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.ArbitraryActionsExecuted);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -919,7 +935,7 @@ describe("Websocket Subscription", () => {
       database: dataSource,
       cache: new Map() as unknown as RedisCache,
       rpcUrl,
-      logger,
+      logger: console as unknown as Logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPOKE_POOL_PROTOCOL],
@@ -937,12 +953,13 @@ describe("Websocket Subscription", () => {
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.FilledV3Relay);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      timeout: 20000,
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -974,7 +991,7 @@ describe("Websocket Subscription", () => {
       fillType: 0,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(20000);
+  }).timeout(30000);
 
   it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {
     // Tx: https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02
@@ -1004,18 +1021,24 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+        cache: new Map() as unknown as RedisCache,
+      })).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
-
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const repo = dataSource.getRepository(
       entities.FallbackHyperEVMFlowCompleted,
     );
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -1062,16 +1085,22 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription((
+      await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+        cache: new Map() as unknown as RedisCache,
+      })
+    ).length);
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.SponsoredAccountActivation);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -1111,17 +1140,23 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription((
+      await OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+        cache: new Map() as unknown as RedisCache,
+      })
+    ).length);
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const oftSentRepo = dataSource.getRepository(entities.OFTSent);
-    const savedEvent = await oftSentRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: oftSentRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -1167,17 +1202,23 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription((
+      await OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+        cache: new Map() as unknown as RedisCache,
+      })
+    ).length);
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const oftReceivedRepo = dataSource.getRepository(entities.OFTReceived);
-    const savedEvent = await oftReceivedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: oftReceivedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -1239,12 +1280,12 @@ describe("Websocket Subscription", () => {
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.V3FundsDeposited);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({

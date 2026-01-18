@@ -87,7 +87,7 @@ import {
   transformArbitraryActionsExecutedEvent,
   transformFilledV3RelayEvent,
   transformV3FundsDepositedEvent,
-} from "./tranforming";
+} from "./transforming";
 import {
   storeDepositForBurnEvent,
   storeMessageReceivedEvent,
@@ -119,7 +119,7 @@ import { filterOFTSentEvents, filterOFTReceivedEvents } from "./filtering";
 import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
-} from "./tranforming";
+} from "./transforming";
 import {
   getOftChainConfiguration,
   getSupportOftChainIds,

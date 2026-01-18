@@ -1,6 +1,7 @@
 import { interfaces, providers } from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { utils as ethersUtils } from "ethers";
+import { Signature } from "@solana/kit";
 
 import { entities } from "@repo/indexer-database";
 
@@ -59,8 +60,9 @@ export async function getSvmIntegratorId(
   const INTEGRATOR_DELIMITER = "1dc0de";
   const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
   const txn = await provider
-    .getTransaction(txnRef, {
+    .getTransaction(txnRef as Signature, {
       maxSupportedTransactionVersion: 0,
+      encoding: "json",
     })
     .send();
   const txnLogs = txn?.meta?.logMessages;
@@ -208,6 +210,8 @@ export type SpokePoolEvents = {
  * @param factories The factories for the spoke pool clients.
  * @param cache The cache for the spoke pool events.
  * @param metricsService The metrics service for the spoke pool events.
+ * @param eventName The name of the event to fetch.
+ * @param maxBlockLookBack The maximum number of blocks to look back for events.
  */
 export interface FetchSpokePoolEventsRequest {
   chainId: number;
@@ -221,6 +225,7 @@ export interface FetchSpokePoolEventsRequest {
   cache?: Map<string, SpokePoolEvents>;
   metricsService?: DataDogMetricsService;
   eventName?: string;
+  maxBlockLookBack?: number;
 }
 
 /**
@@ -240,9 +245,8 @@ export async function fetchSpokePoolEvents(
     metricsService,
     eventName,
   } = request;
-  const cacheKey = `spoke-pool-events-${chainId}-${toBlockNumber}-${fromBlockNumber}${
-    eventName ? `-${eventName}` : ""
-  }`;
+  const cacheKey = `spoke-pool-events-${chainId}-${toBlockNumber}-${fromBlockNumber}${eventName ? `-${eventName}` : ""
+    }`;
 
   if (cache) {
     const cached = cache.get(cacheKey);
@@ -260,7 +264,10 @@ export async function fetchSpokePoolEvents(
   // FIXME: hardcoded chain id to represent mainnet for hub/config
   const hubChainId = 1;
 
-  const configStoreClient = configStoreClientFactory.get(hubChainId);
+  const configStoreClient = configStoreClientFactory.get(hubChainId,
+    fromBlockNumber,
+    toBlockNumber,
+  );
   const hubPoolClient = hubPoolClientFactory.get(
     hubChainId,
     undefined,
@@ -269,7 +276,8 @@ export async function fetchSpokePoolEvents(
       configStoreClient,
     },
   );
-
+  const t1 = Date.now();
+  console.log("Start spoke pool client")
   const spokePoolClient = await spokePoolClientFactory.get(
     chainId,
     fromBlockNumber,
@@ -277,20 +285,26 @@ export async function fetchSpokePoolEvents(
     {
       hubPoolClient,
       disableQuoteBlockLookup: true,
+      maxBlockLookback: request.maxBlockLookBack,
     },
     false,
   );
+  const t2 = Date.now();
+  console.log("End spoke pool client", t2 - t1);
 
   // We use this pattern to measure the duration of the update call
   const startConfigStoreUpdate = Date.now();
+  const t3 = Date.now();
   await configStoreClient.update();
   metricsService?.addGaugeMetric(
     "configStoreClientUpdate",
     Date.now() - startConfigStoreUpdate,
     [`chainId:${chainId}`],
   );
+  console.log("End config store update", Date.now() - t3);
 
   const startHubPoolUpdate = Date.now();
+  const t4 = Date.now();
   await hubPoolClient.update([
     "SetPoolRebalanceRoute",
     "CrossChainContractsSet",
@@ -300,7 +314,7 @@ export async function fetchSpokePoolEvents(
     Date.now() - startHubPoolUpdate,
     [`chainId:${chainId}`],
   );
-
+console.log("End hub pool update", Date.now() - t4);
   // We aim to avoid the unneeded update events
   // Specifically, we avoid the EnabledDepositRoute event because this
   // requires a lookback to the deployment block of the SpokePool contract.
@@ -320,7 +334,7 @@ export async function fetchSpokePoolEvents(
     Date.now() - startSpokePoolUpdate,
     [`chainId:${chainId}`],
   );
-
+  console.log("End spoke pool update: ", Date.now() - startSpokePoolUpdate);
   const v3FundsDepositedEvents = spokePoolClient.getDeposits({
     fromBlock: fromBlockNumber,
     toBlock: toBlockNumber,

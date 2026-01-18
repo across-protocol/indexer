@@ -135,6 +135,7 @@ export async function preprocessFilledV3RelayEvent(
     cache,
     metricsService: metrics,
     eventName: FILLED_RELAY_V3_EVENT_NAME,
+    maxBlockLookBack: 1
   });
 
   // Make sure we are fetching the correct fill event
@@ -198,6 +199,7 @@ export async function preprocessV3FundsDepositedEvent(
     cache,
     metricsService: metrics,
     eventName: FUNDS_DEPOSITED_V3_EVENT_NAME,
+    maxBlockLookBack: 1
   });
 
   // Make sure we are fetching the correct deposit event

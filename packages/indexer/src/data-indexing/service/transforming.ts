@@ -607,8 +607,6 @@ export const transformFilledV3RelayEvent = (
     updatedOutputAmount:
       preprocessed.relayExecutionInfo.updatedOutputAmount.toString(),
     fillType: preprocessed.relayExecutionInfo.fillType,
-    fromLiteChain: preprocessed.fromLiteChain,
-    toLiteChain: preprocessed.toLiteChain,
   };
 };
 

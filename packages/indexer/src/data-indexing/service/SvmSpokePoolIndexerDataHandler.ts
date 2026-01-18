@@ -179,6 +179,7 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
         const transaction = await this.provider
           .getTransaction(fill.txnRef as Signature, {
             maxSupportedTransactionVersion: 0,
+            encoding: "json",
           })
           .send();
         return !!transaction?.meta?.fee
