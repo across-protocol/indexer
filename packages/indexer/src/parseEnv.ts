@@ -51,6 +51,7 @@ export type Config = {
    * The list of chain IDs for which the WebSocket indexing is enabled.
    */
   wsIndexerChainIds: number[];
+  enableWebSocketIndexer: boolean;
 };
 
 export type RedisConfig = {
@@ -335,6 +336,9 @@ export function envToConfig(env: Env): Config {
     env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
       ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
       : 30;
+  const enableWebSocketIndexer = env.ENABLE_WEBSOCKET_INDEXER
+    ? env.ENABLE_WEBSOCKET_INDEXER === "true"
+    : false;
 
   let wsIndexerChainIds: number[] = [];
   if (process.env.WS_INDEXER_CHAIN_IDS) {
@@ -368,5 +372,6 @@ export function envToConfig(env: Env): Config {
     indexingDelaySeconds,
     bundleEventsServiceDelaySeconds: bundleIncludedEventsServiceDelaySeconds,
     wsIndexerChainIds,
+    enableWebSocketIndexer,
   };
 }
