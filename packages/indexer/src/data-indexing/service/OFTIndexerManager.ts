@@ -66,7 +66,10 @@ export class OFTIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds: getPollingIndexerDelaySeconds(chainId, this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
             Number(chainId),
           ),

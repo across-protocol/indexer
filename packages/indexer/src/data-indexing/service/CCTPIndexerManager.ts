@@ -73,7 +73,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds: getPollingIndexerDelaySeconds(chainId, this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),
@@ -123,7 +126,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new SvmIndexer(
         {
-          indexingDelaySeconds: getPollingIndexerDelaySeconds(chainId, this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),
