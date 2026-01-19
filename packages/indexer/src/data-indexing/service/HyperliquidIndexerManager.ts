@@ -11,13 +11,10 @@ import { HyperliquidIndexerDataHandler } from "./HyperliquidIndexerDataHandler";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 
 /**
- * Starting block numbers for Hyperliquid indexing
- * These represent the block numbers when Hyperliquid deposits started being indexed
+ * Starting block number for Hyperliquid indexing
+ * This represents the block number when Hyperliquid deposits started being indexed
  */
-const HYPERLIQUID_STARTING_BLOCK_NUMBERS = {
-  mainnet: 863585946,
-  testnet: 0,
-};
+const HYPERLIQUID_STARTING_BLOCK_NUMBER = 863585946;
 
 export class HyperliquidIndexerManager {
   private indexer?: HyperliquidIndexer;
@@ -41,18 +38,14 @@ export class HyperliquidIndexerManager {
       // Chain ID is always HYPERCORE (1337) for Hyperliquid
       const chainId = CHAIN_IDs.HYPERCORE;
 
-      // Use different chain ID for mainnet and testnet RPC config
-      // Mainnet uses 1337, testnet uses 1338
-      const rpcConfigChainId = this.config.hyperliquidMainnet
-        ? chainId
-        : chainId + 1;
-      const rpcUrls = parseProvidersUrls().get(rpcConfigChainId);
+      // Use RPC_PROVIDER_URLS_1337 for Hyperliquid mainnet
+      const rpcUrls = parseProvidersUrls().get(chainId);
       const rpcUrl = rpcUrls?.[0];
 
       if (!rpcUrl) {
         this.logger.error({
           at: "Indexer#HyperliquidIndexerManager#start",
-          message: `Hyperliquid RPC URL is not configured. Please set RPC_PROVIDER_URLS_${rpcConfigChainId} (${this.config.hyperliquidMainnet ? "mainnet" : "testnet"})`,
+          message: `Hyperliquid RPC URL is not configured. Please set RPC_PROVIDER_URLS_${chainId}`,
         });
         return;
       }
@@ -62,10 +55,8 @@ export class HyperliquidIndexerManager {
         this.logger,
       );
 
-      // Get start block number from mapping based on mainnet/testnet
-      const startBlockNumber = this.config.hyperliquidMainnet
-        ? HYPERLIQUID_STARTING_BLOCK_NUMBERS.mainnet
-        : HYPERLIQUID_STARTING_BLOCK_NUMBERS.testnet;
+      // Use the starting block number for Hyperliquid mainnet
+      const startBlockNumber = HYPERLIQUID_STARTING_BLOCK_NUMBER;
 
       const hyperliquidIndexerDataHandler = new HyperliquidIndexerDataHandler(
         this.logger,

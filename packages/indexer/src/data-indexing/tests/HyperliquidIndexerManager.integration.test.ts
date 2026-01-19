@@ -26,7 +26,6 @@ describe("HyperliquidIndexerManager", () => {
     const providerUrls = parseProvidersUrls();
     config = {
       enableHyperliquidIndexer: true,
-      hyperliquidMainnet: true,
       providerUrls,
       indexingDelaySecondsOnError: 2,
       maxBlockRangeSize: 1000,
@@ -63,14 +62,13 @@ describe("HyperliquidIndexerManager", () => {
     indexerStartStub.restore();
   });
 
-  it("should use starting block number from mapping for mainnet", async () => {
+  it("should use starting block number from constant", async () => {
     const indexerStartStub = sinon
       .stub(HyperliquidIndexer.prototype, "start")
       .resolves();
 
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
-    config.hyperliquidMainnet = true;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
@@ -79,25 +77,6 @@ describe("HyperliquidIndexerManager", () => {
     expect(indexerStartStub.called).to.be.true;
 
     delete process.env.RPC_PROVIDER_URLS_1337;
-    indexerStartStub.restore();
-  });
-
-  it("should use starting block number from mapping for testnet", async () => {
-    const indexerStartStub = sinon
-      .stub(HyperliquidIndexer.prototype, "start")
-      .resolves();
-
-    const testRpcUrl = "https://test-rpc-url.com/hypercore";
-    process.env.RPC_PROVIDER_URLS_1338 = testRpcUrl;
-    config.hyperliquidMainnet = false;
-
-    manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
-
-    // Verify that the indexer was created
-    expect(indexerStartStub.called).to.be.true;
-
-    delete process.env.RPC_PROVIDER_URLS_1338;
     indexerStartStub.restore();
   });
 
@@ -117,29 +96,9 @@ describe("HyperliquidIndexerManager", () => {
     indexerStartStub.restore();
   });
 
-  it("should use testnet chain ID (1338) when hyperliquidMainnet is false", async () => {
-    config.hyperliquidMainnet = false;
-
-    const indexerStartStub = sinon
-      .stub(HyperliquidIndexer.prototype, "start")
-      .resolves();
-
-    const testRpcUrl = "https://test-rpc-url.com/hypercore";
-    process.env.RPC_PROVIDER_URLS_1338 = testRpcUrl;
-
-    manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
-
-    expect(indexerStartStub.called).to.be.true;
-
-    delete process.env.RPC_PROVIDER_URLS_1338;
-    indexerStartStub.restore();
-  });
-
   it("should log error when RPC URL is not configured", async () => {
     // Ensure no RPC URL is set
     delete process.env.RPC_PROVIDER_URLS_1337;
-    delete process.env.RPC_PROVIDER_URLS_1338;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
     await manager.start();
