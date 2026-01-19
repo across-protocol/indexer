@@ -142,7 +142,10 @@ export class MockWebSocketRPCServer {
           },
         };
         const replacer = (_: string, value: any) =>
-          typeof value === "bigint" ? `0x${value.toString(16)}` : value;
+          typeof value === "bigint" || typeof value === "number"
+            ? `0x${value.toString(16)}`
+            : value;
+
         this.activeSocket.send(JSON.stringify(payload, replacer));
       }
     }
