@@ -138,7 +138,7 @@ export class CctpFinalizerService extends RepeatableTask {
 
         if (sponsoredEvent) {
           // If there's a matching sponsored event, publish with signature
-          await this.publishBurnEvent(
+          await this.processBurnEvent(
             burnEvent,
             sponsoredEvent.signature,
             sponsoredEvent.id,
@@ -164,7 +164,7 @@ export class CctpFinalizerService extends RepeatableTask {
               burnEvent.hookData
                 ?.toLowerCase()
                 .includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase()) ?? false;
-            await this.publishBurnEvent(
+            await this.processBurnEvent(
               burnEvent,
               undefined,
               undefined,
@@ -189,7 +189,7 @@ export class CctpFinalizerService extends RepeatableTask {
     return Promise.resolve();
   }
 
-  private async publishBurnEvent(
+  private async processBurnEvent(
     burnEvent: entities.DepositForBurn,
     signature?: string,
     sponsoredDepositForBurnId?: number,
@@ -285,9 +285,7 @@ export class CctpFinalizerService extends RepeatableTask {
           destinationChainId,
           signature,
         );
-      }
 
-      if (!skipPubSub) {
         const jobValues: {
           attestation: string;
           message: string;
