@@ -4,7 +4,6 @@ import {
   type PublicClient,
   type Transport,
   type Chain,
-  WebSocketTransportConfig,
 } from "viem";
 import * as chains from "viem/chains";
 import { Logger } from "winston";
@@ -21,7 +20,6 @@ export const createWebSocketClient = (
   chainId: number,
   rpcUrl: string,
   logger: Logger,
-  transportOptions?: WebSocketTransportConfig,
 ): PublicClient<Transport, Chain> => {
   // Use the helper to get the official chain object
   const chain = getChain(chainId, logger);
@@ -30,69 +28,11 @@ export const createWebSocketClient = (
   const client = createPublicClient({
     chain,
     // We use the webSocket transport for persistent connections
-    transport: webSocket(rpcUrl, transportOptions),
+    transport: webSocket(rpcUrl),
   });
 
   return client;
 };
-
-export async function closeViemClient(client: PublicClient, logger: Logger) {
-  const transport = client.transport as any;
-
-  if (transport.type !== "webSocket") return;
-
-  try {
-    // Viem v2 transports have a direct close method
-    if (typeof transport.close === "function") {
-      await transport.close();
-      return;
-    }
-
-    // Fallback: manual cleanup
-    const rpcClient = await transport.getRpcClient();
-
-    if (rpcClient) {
-      // Disable reconnection
-      if (rpcClient.reconnect !== undefined) {
-        rpcClient.reconnect = false;
-      }
-
-      // Close the RPC client
-      if (typeof rpcClient.close === "function") {
-        rpcClient.close();
-      }
-
-      // Handle socket cleanup
-      if (rpcClient.socket) {
-        const socket = rpcClient.socket;
-
-        // Add error handler to suppress ECONNREFUSED during cleanup
-        if (typeof socket.on === "function") {
-          socket.on("error", () => {}); // Suppress errors
-          socket.removeAllListeners();
-        } else {
-          socket.onerror = () => {};
-          socket.onclose = null;
-          socket.onmessage = null;
-          socket.onopen = null;
-        }
-
-        // Close/terminate
-        if (typeof socket.terminate === "function") {
-          socket.terminate();
-        } else {
-          socket.close();
-        }
-      }
-    }
-  } catch (error) {
-    // This is expected if the socket is already closed/closing
-    logger.debug({
-      message: "WebSocket client cleanup completed with error (expected)",
-      error: (error as Error).message,
-    });
-  }
-}
 
 /**
  * Looks up a Viem Chain object from the official library by its numeric ID.

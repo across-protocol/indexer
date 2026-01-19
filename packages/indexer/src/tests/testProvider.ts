@@ -98,9 +98,8 @@ export class MockWebSocketRPCServer {
   /**
    * Waits until the client (Viem) has actually requested a subscription.
    * This prevents race conditions where you push an event before Viem is ready.
-   * @param count The number of subscriptions/events to wait for.
    */
-  async waitForSubscription(count: number) {
+  async waitForSubscription(count: number = 3) {
     if (this.subscriptions.size >= count) {
       return;
     }
@@ -143,10 +142,7 @@ export class MockWebSocketRPCServer {
           },
         };
         const replacer = (_: string, value: any) =>
-          typeof value === "bigint" || typeof value === "number"
-            ? `0x${value.toString(16)}`
-            : value;
-
+          typeof value === "bigint" ? `0x${value.toString(16)}` : value;
         this.activeSocket.send(JSON.stringify(payload, replacer));
       }
     }

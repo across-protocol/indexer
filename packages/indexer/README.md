@@ -1,10 +1,13 @@
 # Indexer
+
 This package is meant to read data from an rpc provider, modify it as necessary and insert into a database.
 
 ## Run
+
 Using Docker:
 
 From the root folder, run:
+
 - `pnpm run dev-env:up`
 - `pnpm run dev-env:run-app:indexer` this command will execute migrations if needed and run the indexer.
 
@@ -20,9 +23,10 @@ This package includes unit, integration, and non-Docker end-to-end (E2E) tests.
 
 **Test File Naming Conventions**:
 To ensure proper test execution with the new commands, please adhere to the following naming conventions for your test files:
-*   **Unit Tests**: Files should end with `*.unit.test.ts`
-*   **Integration Tests**: Files should end with `*.integration.test.ts`
-*   **Docker E2E Tests**: Files should end with `*.e2e.test.ts`
+
+- **Unit Tests**: Files should end with `*.unit.test.ts`
+- **Integration Tests**: Files should end with `*.integration.test.ts`
+- **Docker E2E Tests**: Files should end with `*.e2e.test.ts`
 
 **Configuration**:
 For these tests to run correctly, you need to provide RPC URLs for the testnet chains. Create a `.env.test` file at the **root of the repository** (if it doesn't already exist) and add the necessary RPC provider URLs.
@@ -36,24 +40,25 @@ RPC_PROVIDER_URLS_421614="<your_arbitrum_sepolia_rpc_url>"
 **Running Tests**:
 Navigate to the `packages/indexer` directory to run the following commands:
 
-*   **Run all tests (Unit, Integration, and E2E)**:
-    ```bash
-    pnpm test
-    ```
-*   **Run only Unit Tests**:
-    ```bash
-    pnpm test:unit
-    ```
-*   **Run only Integration Tests**:
-    ```bash
-    pnpm test:integration
-    ```
-*   **Run only E2E Tests**:
-    ```bash
-    pnpm test:e2e
-    ```
+- **Run all tests (Unit, Integration, and E2E)**:
+  ```bash
+  pnpm test
+  ```
+- **Run only Unit Tests**:
+  ```bash
+  pnpm test:unit
+  ```
+- **Run only Integration Tests**:
+  ```bash
+  pnpm test:integration
+  ```
+- **Run only E2E Tests**:
+  ```bash
+  pnpm test:e2e
+  ```
 
 ## ENV
+
 ```
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
@@ -96,4 +101,131 @@ PUBSUB_GCP_PROJECT_ID=
 COINGECKO_API_KEY=
 BUNDLE_EVENTS_SERVICE_START_BLOCK_NUMBER=
 INDEXING_DELAY_SECONDS=
+```
+
+## Websocket Indexer
+
+The Websocket Indexer provides a high-performance, push-based indexing system. It runs as an integrated service within the main indexer application.
+
+### Architecture Overview
+
+The Websocket Indexer implements a push-based architecture to address the latency and inefficiency of traditional polling. Instead of repeatedly querying for new blocks, it uses a WebSocket connection to receive events as soon as they are emitted by the blockchain.
+
+The main components are:
+
+- **WebSocket Listener**: Establishes a single WebSocket connection per chain, subscribing to all relevant events. It's a generic service that publishes raw event data.
+- **Event Processor**: Consumes events, transforms them into a structured format, and stores them in the database. In this implementation, this is called directly by the listener.
+- **Reconciliation Service**: Periodically validates indexed data against the blockchain to ensure data integrity, handling block reorgs and filling gaps.
+
+This decoupled approach improves scalability, reduces resource consumption, and enhances data integrity.
+
+#### Data Flow Diagram
+
+The following diagram illustrates the data flow. Note that while the full architecture can use a message queue (MQ) for maximum resilience, the current implementation features a more direct communication path where the **Listener calls the Processor directly**, and the processor runs independently in the background.
+
+```mermaid
+sequenceDiagram
+    participant RPC as Blockchain RPC (WS/HTTP)
+    participant Listener as WS Listener
+    participant MQ as Message Queue (Topic Exchange)
+    participant Processor as Event Processor
+    participant DB as PostgreSQL
+    participant Reconciler as Reconciliation Service
+
+    Note over RPC, DB: Real-time Path (Head / Unsafe)
+    RPC->>Listener: New Event (WebSocket)
+    Listener->>MQ: Publish (Key: chain.1.event.Deposit)
+    MQ->>Processor: Route to "Deposit" Queue
+    Processor->>DB: INSERT (Status: Unfinalized)
+
+    Note over Listener,Processor: The Listener can also call the Processor directly, which then runs independently in the background.
+
+    Note over DB, Reconciler: Reconciliation Path (Safe Depth)
+    loop Every 5 Minutes OR On Startup
+        Reconciler->>DB: Check Last Indexed Block
+        DB-->>Reconciler: Return Max Block
+
+        opt System Behind Chain Tip (Startup/Downtime)
+            Reconciler->>RPC: Batch Fetch Missing Range (Gap Fill)
+            Reconciler->>MQ: Publish Catch-up Batch
+        end
+
+        Reconciler->>RPC: GetLogs(Recent Range - SafetyBuffer)
+        RPC-->>Reconciler: Return All Finalized Events
+        Reconciler->>MQ: Publish Batch (Status: Finalized)
+
+        MQ->>Processor: Consume Batch
+        activate Processor
+        Processor->>DB: UPSERT Finalized Events
+        Processor->>DB: DELETE Orphaned Unfinalized Events
+        deactivate Processor
+    end
+```
+
+### Getting Started
+To run the websocket indexer, execute the following command from the **root** of the monorepo:
+
+```bash
+# Enable the WebSocket indexer via environment variable
+ENABLE_WEBSOCKET_INDEXER=true pnpm start:indexer
+```
+
+You can also specify which chains to index using `WS_INDEXER_CHAIN_IDS`.
+
+```bash
+# Example: Index Arbitrum One and Arbitrum Sepolia
+ENABLE_WEBSOCKET_INDEXER=true WS_INDEXER_CHAIN_IDS=42161,421614 pnpm start:indexer
+```
+
+This will start the websocket indexer services as part of the main application startup. The system is configured via `src/data-indexing/service/config.ts`.
+
+### Development Guide
+
+The websocket indexer uses a configuration-driven architecture centrally managed in `src/data-indexing/service/config.ts`.
+
+#### How to Add a New Chain
+
+To index a new blockchain:
+
+1.  Open `src/data-indexing/service/config.ts`.
+2.  Add the new chain ID to the `CHAIN_PROTOCOLS` object.
+3.  Assign it the list of protocols you want to index (e.g., `[CCTP_PROTOCOL]`).
+
+```typescript
+export const CHAIN_PROTOCOLS: Record<number, SupportedProtocols<...>> = {
+  [CHAIN_IDs.ARBITRUM]: [CCTP_PROTOCOL],
+  [CHAIN_IDs.OPTIMISM]: [CCTP_PROTOCOL], // Added Optimism
+};
+```
+
+#### How to Add a New Event
+
+To listen to a new event (or protocol):
+
+1.  Define a new `SupportedProtocols` object (or update an existing one like `CCTP_PROTOCOL`).
+2.  Implement the `getEventHandlers` function.
+3.  Return an array of event handler configurations, where each handler includes:
+    *   `config`: Contract address, ABI, and event name.
+    *   `preprocess`, `filter`, `transform`, `store`: The pure functions for the pipeline.
+
+```typescript
+export const MY_NEW_PROTOCOL: SupportedProtocols<...> = {
+  getEventHandlers: (testNet, logger) => [
+    {
+      config: { ... },
+      preprocess: ...,
+      filter: ...,
+      transform: ...,
+      store: ...
+    }
+  ]
+};
+```
+
+### Testing
+
+Tests for the websocket indexer are part of the integration test suite.
+
+```bash
+pnpm test:integration
 ```
