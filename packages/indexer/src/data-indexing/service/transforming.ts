@@ -25,14 +25,12 @@ import {
   ArbitraryActionsExecutedArgs,
   OFTSentArgs,
   OFTReceivedArgs,
+  FilledV3RelayArgs,
+  V3FundsDepositedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
-import {
-  PreprocessedFilledV3RelayArgs,
-  PreprocessedV3FundsDepositedArgs,
-} from "../model/preprocessedTypes";
 
 /**
  * A generic transformer for addresses.
@@ -512,7 +510,7 @@ export const transformOFTReceivedEvent = (
  * @returns A partial `FilledV3Relay` entity ready for storage.
  */
 export const transformFilledV3RelayEvent = (
-  preprocessed: PreprocessedFilledV3RelayArgs,
+  preprocessed: FilledV3RelayArgs,
   payload: IndexerEventPayload,
   logger: Logger,
 ): Partial<entities.FilledV3Relay> => {
@@ -619,13 +617,14 @@ export const transformFilledV3RelayEvent = (
  * @returns A partial `V3FundsDeposited` entity ready for storage.
  */
 export const transformV3FundsDepositedEvent = (
-  preprocessed: PreprocessedV3FundsDepositedArgs,
+  preprocessed: V3FundsDepositedArgs,
   payload: IndexerEventPayload,
   logger: Logger,
 ): Partial<entities.V3FundsDeposited> => {
   const base = baseTransformer(payload, logger);
-  const originChainId = Number(preprocessed.originChainId);
+  const originChainId = Number(base.chainId);
   const destinationChainId = Number(preprocessed.destinationChainId);
+  const messageHash = across.utils.getMessageHash(preprocessed.message);
 
   const relayData = {
     originChainId,
@@ -654,18 +653,24 @@ export const transformV3FundsDepositedEvent = (
       preprocessed.recipient.toString(),
       destinationChainId,
     ),
-    messageHash: preprocessed.messageHash,
-  } as Omit<across.interfaces.RelayData, "message">;
+    message: preprocessed.message,
+  } as across.interfaces.RelayData;
 
   const internalHash = getInternalHash(
     relayData,
-    preprocessed.messageHash,
+    messageHash,
     destinationChainId,
   );
+
+  const relayHash = across.utils.getRelayHashFromEvent({
+    ...relayData,
+    destinationChainId,
+  });
 
   return {
     ...base,
     internalHash,
+    relayHash,
     depositId: preprocessed.depositId.toString(),
     originChainId: originChainId.toString(),
     destinationChainId: destinationChainId.toString(),
@@ -698,7 +703,7 @@ export const transformV3FundsDepositedEvent = (
       destinationChainId,
     ),
     message: preprocessed.message,
-    fromLiteChain: preprocessed.fromLiteChain,
-    toLiteChain: preprocessed.toLiteChain,
+    fromLiteChain: false,
+    toLiteChain: false,
   };
 };

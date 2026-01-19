@@ -54,7 +54,6 @@ export interface StartIndexerRequest<
   TPreprocessed,
 > {
   database: DataSource;
-  cache: RedisCache;
   rpcUrl: string;
   logger: Logger;
   /** Optional signal to gracefully shut down the indexer */
@@ -84,7 +83,6 @@ export async function startChainIndexing<
 ) {
   const {
     database,
-    cache,
     rpcUrl,
     logger,
     sigterm,
@@ -97,13 +95,9 @@ export async function startChainIndexing<
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
-  const events = (
-    await Promise.all(
-      protocols.map((protocol) =>
-        protocol.getEventHandlers({ logger, chainId, cache, metrics }),
-      ),
-    )
-  ).flat();
+  const events = protocols
+    .map((protocol) => protocol.getEventHandlers({ logger, chainId, metrics }))
+    .flat();
 
   // Build the concrete configuration
   const indexerConfig: IndexerConfig<
@@ -188,7 +182,6 @@ export function startWebSocketIndexing(
     handlers.push(
       startChainIndexing({
         database: request.database,
-        cache: request.cache,
         rpcUrl,
         logger: request.logger,
         sigterm: request.sigterm,

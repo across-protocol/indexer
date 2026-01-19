@@ -3,7 +3,7 @@ import {
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
-import { SpokePoolEvents } from "../../utils/spokePoolUtils";
+
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { RedisCache } from "../../redis/redisCache";
 import {
@@ -16,8 +16,8 @@ import {
   SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
   ARBITRARY_ACTIONS_EXECUTED_ABI,
-  FILLED_V3_RELAY_ABI,
-  V3_FUNDS_DEPOSITED_ABI,
+  FILLED_RELAY_V3_ABI,
+  FUNDS_DEPOSITED_V3_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -44,8 +44,6 @@ import { Logger } from "winston";
 import {
   extractRawArgs,
   preprocessSponsoredDepositForBurn,
-  preprocessFilledV3RelayEvent,
-  preprocessV3FundsDepositedEvent,
 } from "./preprocessing";
 import {
   DepositForBurnArgs,
@@ -60,12 +58,9 @@ import {
   SimpleTransferFlowCompletedArgs,
   FallbackHyperEVMFlowCompletedArgs,
   ArbitraryActionsExecutedArgs,
+  FilledV3RelayArgs,
+  V3FundsDepositedArgs,
 } from "../model/eventTypes";
-import {
-  PreprocessedFilledV3RelayArgs,
-  PreprocessedV3FundsDepositedArgs,
-  PreprocessedTypes,
-} from "../model";
 
 import {
   createCctpBurnFilter,
@@ -126,9 +121,6 @@ import {
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
-import { createRetryProvidersFactoryWithMetrics } from "../../utils/adapterUtils";
-import { initializeContractFactories } from "../../utils";
-
 
 /**
  * Array of event handlers.
@@ -176,7 +168,7 @@ export interface SupportedProtocols<
    */
   getEventHandlers: (
     request: GetEventHandlersRequest,
-  ) => Promise<EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>>;
+  ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
 }
 
 /**
@@ -190,9 +182,9 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  PreprocessedTypes
+  EventArgs
 > = {
-  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
     return [
       {
@@ -364,11 +356,11 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  PreprocessedTypes
+  EventArgs
 > = {
-  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
-    const handlers = await CCTP_PROTOCOL.getEventHandlers({ logger, chainId });
+    const handlers = CCTP_PROTOCOL.getEventHandlers({ logger, chainId });
 
     // Now let's see if for the given chainId there exists a sponsored CCTP src periphery
     const sourceSponsorhipContractAddress = getSponsoredCCTPSrcPeripheryAddress(
@@ -420,9 +412,9 @@ export const OFT_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  PreprocessedTypes
+  EventArgs
 > = {
-  getEventHandlers: async ({ logger, chainId }: GetEventHandlersRequest) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
     const oftConfig = getOftChainConfiguration(chainId);
     const adapterAddress = oftConfig.tokens[0]!.adapter;
@@ -463,74 +455,32 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
   any,
   BlockchainEventRepository,
   IndexerEventPayload,
-  PreprocessedTypes
+  EventArgs
 > = {
-  getEventHandlers: async ({
-    logger,
-    chainId,
-    cache,
-    metrics,
-  }: GetEventHandlersRequest) => {
-    if (!cache) {
-      const message = `No cache ${cache} found for chainId for spoke pool protocol${chainId}`;
-      logger.error({ message });
-      throw new Error(message);
-    }
-    const retryProvidersFactory = createRetryProvidersFactoryWithMetrics(
-      cache,
-      logger,
-      metrics,
-    );
-    // SDK clients factories
-    const contractFactories = initializeContractFactories(
-      retryProvidersFactory,
-      logger,
-    );
-    // We want a single cache for all spoke pool events initialized per chain
-    // This cache is then passed to the preprocess functions
-    const spokePoolEventCache = new Map<string, SpokePoolEvents>();
-
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     return [
       {
         config: {
-          abi: FILLED_V3_RELAY_ABI,
+          abi: FILLED_RELAY_V3_ABI,
           eventName: FILLED_RELAY_V3_EVENT_NAME,
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
-        preprocess: (payload: IndexerEventPayload) =>
-          preprocessFilledV3RelayEvent({
-            payload,
-            factories: contractFactories,
-            logger,
-            cache: spokePoolEventCache,
-            metrics,
-          }),
+        preprocess: extractRawArgs<FilledV3RelayArgs>,
         filter: async () => true,
-        transform: (
-          args: PreprocessedFilledV3RelayArgs,
-          payload: IndexerEventPayload,
-        ) => transformFilledV3RelayEvent(args, payload, logger),
+        transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
+          transformFilledV3RelayEvent(args, payload, logger),
         store: storeFilledV3RelayEvent,
       },
       {
         config: {
-          abi: V3_FUNDS_DEPOSITED_ABI,
+          abi: FUNDS_DEPOSITED_V3_ABI,
           eventName: FUNDS_DEPOSITED_V3_EVENT_NAME,
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
-        preprocess: (payload: IndexerEventPayload) =>
-          preprocessV3FundsDepositedEvent({
-            payload,
-            factories: contractFactories,
-            logger,
-            cache: spokePoolEventCache,
-            metrics,
-          }),
+        preprocess: extractRawArgs<V3FundsDepositedArgs>,
         filter: async () => true,
-        transform: (
-          args: PreprocessedV3FundsDepositedArgs,
-          payload: IndexerEventPayload,
-        ) => transformV3FundsDepositedEvent(args, payload, logger),
+        transform: (args: V3FundsDepositedArgs, payload: IndexerEventPayload) =>
+          transformV3FundsDepositedEvent(args, payload, logger),
         store: storeV3FundsDepositedEvent,
       },
     ];
@@ -544,14 +494,12 @@ export const getChainProtocols: (
   config: Config,
 ) => Record<
   number,
-  (
-    | SupportedProtocols<
-        Partial<typeof Entity>,
-        BlockchainEventRepository,
-        IndexerEventPayload,
-        PreprocessedTypes
-      >
-  )[]
+  SupportedProtocols<
+    Partial<typeof Entity>,
+    BlockchainEventRepository,
+    IndexerEventPayload,
+    EventArgs
+  >[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.
   const chainProtocols = config.wsIndexerChainIds.reduce(
@@ -561,14 +509,12 @@ export const getChainProtocols: (
     },
     {} as Record<
       number,
-      (
-        | SupportedProtocols<
-            Partial<typeof Entity>,
-            BlockchainEventRepository,
-            IndexerEventPayload,
-            PreprocessedTypes
-          >
-      )[]
+      SupportedProtocols<
+        Partial<typeof Entity>,
+        BlockchainEventRepository,
+        IndexerEventPayload,
+        EventArgs
+      >[]
     >,
   );
 

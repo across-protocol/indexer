@@ -25,10 +25,16 @@ import {
   SPOKE_POOL_PROTOCOL,
 } from "../service/config";
 import { safeJsonStringify } from "../../utils/map";
-import { RedisCache } from "../../redis/redisCache";
-import { waitForEventToBeStoredOrFail } from "./utils";
+import {
+  waitForEventToBeStoredOrFail,
+  sanityCheckWithEventIndexer,
+  getSpokePoolIndexerDataHandler,
+  compareFundsDepositedEvents,
+  compareFilledRelayEvents,
+} from "./utils";
 
 // Setup generic client for fetching data
+
 const getTestPublicClient = (chainId: number): PublicClient => {
   let chain;
   let transportUrl;
@@ -197,7 +203,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer with the real repository
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -208,13 +213,10 @@ describe("Websocket Subscription", () => {
 
     // Wait for the indexer to subscribe
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     // Push the events to the WebSocket
@@ -272,7 +274,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -282,13 +283,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -343,7 +341,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -353,13 +350,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -420,7 +414,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -430,13 +423,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.HYPEREVM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -487,7 +477,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -497,13 +486,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.HYPEREVM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -544,7 +530,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -554,13 +539,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.MAINNET,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.MAINNET,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -613,7 +595,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -622,13 +603,10 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
     await server.waitForSubscription(
-      (
-        await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -686,7 +664,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -696,13 +673,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -745,7 +719,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -755,13 +728,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await CCTP_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.OPTIMISM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.OPTIMISM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -811,7 +781,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -821,11 +790,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.HYPEREVM,
-        cache: new Map() as unknown as RedisCache,
-      })).length,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -873,7 +841,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -883,11 +850,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.HYPEREVM,
-        cache: new Map() as unknown as RedisCache,
-      })).length,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -931,11 +897,26 @@ describe("Websocket Subscription", () => {
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
 
+    const repo = dataSource.getRepository(entities.FilledV3Relay);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler(
+          dataSource,
+          logger,
+          CHAIN_IDs.ARBITRUM,
+          CHAIN_IDs.MAINNET,
+        ),
+      repository: repo,
+      findOptions: { transactionHash: txHash, logIndex: 4 },
+      blockNumber: Number(block.number),
+    });
+
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
-      logger: console as unknown as Logger,
+      logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPOKE_POOL_PROTOCOL],
@@ -943,17 +924,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await SPOKE_POOL_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    const repo = dataSource.getRepository(entities.FilledV3Relay);
     const savedEvent = await waitForEventToBeStoredOrFail({
       repository: repo,
       findOptions: {
@@ -962,6 +939,10 @@ describe("Websocket Subscription", () => {
       timeout: 20000,
     });
     expect(savedEvent).to.exist;
+
+    // Compare WS event with Handler event
+    compareFilledRelayEvents(savedEvent, sanityCheckResult);
+
     expect(savedEvent).to.deep.include({
       blockNumber: Number(block.number),
       transactionHash: txHash,
@@ -991,7 +972,7 @@ describe("Websocket Subscription", () => {
       fillType: 0,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(30000);
+  }).timeout(40000);
 
   it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {
     // Tx: https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02
@@ -1012,7 +993,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1022,11 +1002,10 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.HYPEREVM,
-        cache: new Map() as unknown as RedisCache,
-      })).length,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -1076,7 +1055,6 @@ describe("Websocket Subscription", () => {
 
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1085,13 +1063,12 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription((
-      await SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.HYPEREVM,
-        cache: new Map() as unknown as RedisCache,
-      })
-    ).length);
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -1131,7 +1108,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer with OFT protocol
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1140,13 +1116,12 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription((
-      await OFT_PROTOCOL.getEventHandlers({
+    await server.waitForSubscription(
+      OFT_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.ARBITRUM,
-        cache: new Map() as unknown as RedisCache,
-      })
-    ).length);
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -1193,7 +1168,6 @@ describe("Websocket Subscription", () => {
     // Start the Indexer with OFT protocol
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1202,13 +1176,12 @@ describe("Websocket Subscription", () => {
       transportOptions: { reconnect: false, timeout: 30_000 },
     });
 
-    await server.waitForSubscription((
-      await OFT_PROTOCOL.getEventHandlers({
+    await server.waitForSubscription(
+      OFT_PROTOCOL.getEventHandlers({
         logger,
         chainId: CHAIN_IDs.ARBITRUM,
-        cache: new Map() as unknown as RedisCache,
-      })
-    ).length);
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
@@ -1258,9 +1231,24 @@ describe("Websocket Subscription", () => {
       .stub(contractUtils, "getAddress")
       .returns("0x09aea4b2242abc8bb4bb78d537a67a245a7bec64");
 
+    const repo = dataSource.getRepository(entities.V3FundsDeposited);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler(
+          dataSource,
+          logger,
+          CHAIN_IDs.BASE,
+          CHAIN_IDs.MAINNET,
+        ),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+    });
+
     startChainIndexing({
       database: dataSource,
-      cache: new Map() as unknown as RedisCache,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
@@ -1270,17 +1258,13 @@ describe("Websocket Subscription", () => {
     });
 
     await server.waitForSubscription(
-      (
-        await SPOKE_POOL_PROTOCOL.getEventHandlers({
-          logger,
-          chainId: CHAIN_IDs.BASE,
-          cache: new Map() as unknown as RedisCache,
-        })
-      ).length,
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.BASE,
+      }).length,
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    const repo = dataSource.getRepository(entities.V3FundsDeposited);
     const savedEvent = await waitForEventToBeStoredOrFail({
       repository: repo,
       findOptions: {
@@ -1288,29 +1272,34 @@ describe("Websocket Subscription", () => {
       },
     });
     expect(savedEvent).to.exist;
+    expect(savedEvent.blockNumber).to.equal(Number(block.number));
+
+    // Compare WS event with Handler event
+    compareFundsDepositedEvents(savedEvent, sanityCheckResult);
+
     expect(savedEvent).to.deep.include({
       blockNumber: Number(block.number),
       transactionHash: txHash,
-      transactionIndex: 13,
-      logIndex: 43,
+      transactionIndex: 268,
+      logIndex: 839,
       finalised: false,
       // --- Event Data ---
       destinationChainId: 42161,
       depositId: 5287817,
-      depositor: "0x9A8F92A830A5CB89A3816E3D267CB7791C16B04D",
-      inputToken: "0x833589FCD6EDB6E08F4C7C32D4F71B54BDA02913",
-      outputToken: "0xAF88D065E77C8CC2239327C5EDB3A432268E5831",
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      inputToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      outputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       inputAmount: "1009060",
       outputAmount: "1000000",
-      quoteTimestamp: 1767978275,
+      quoteTimestamp: new Date(1767978275 * 1000),
       fillDeadline: new Date(1767985475 * 1000),
       exclusivityDeadline: new Date(1767978416 * 1000),
-      recipient: "0x9A8F92A830A5CB89A3816E3D267CB7791C16B04D",
-      exclusiveRelayer: "0xEF1EC136931AB5728B0783FD87D109C9D15D31F1",
+      recipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      exclusiveRelayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
       message: "0x",
       fromLiteChain: false,
       toLiteChain: false,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(20000);
+  }).timeout(40000);
 });

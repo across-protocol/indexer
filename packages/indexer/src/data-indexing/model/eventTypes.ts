@@ -155,6 +155,22 @@ export interface FilledV3RelayArgs {
   relayExecutionInfo: RelayExecutionInfo;
 }
 
+export interface V3FundsDepositedArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  destinationChainId: bigint;
+  depositId: number;
+  quoteTimestamp: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  exclusiveRelayer: `0x${string}`;
+  message: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -169,4 +185,5 @@ export type EventArgs =
   | ArbitraryActionsExecutedArgs
   | OFTSentArgs
   | OFTReceivedArgs
-  | FilledV3RelayArgs;
+  | FilledV3RelayArgs
+  | V3FundsDepositedArgs;
