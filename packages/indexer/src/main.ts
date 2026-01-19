@@ -2,7 +2,6 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { WebhookFactory } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";
@@ -12,7 +11,6 @@ import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
-  initializeContractFactories,
   SpokePoolClientFactory,
 } from "./utils/contractFactoryUtils";
 // Managers
@@ -87,11 +85,21 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
   ).initializeProviders();
   // SDK clients factories
-  const {
-    configStoreClientFactory,
-    hubPoolClientFactory,
-    spokePoolClientFactory,
-  } = initializeContractFactories(retryProvidersFactory, logger);
+  const configStoreClientFactory = new ConfigStoreClientFactory(
+    retryProvidersFactory,
+    logger,
+    undefined,
+  );
+  const hubPoolClientFactory = new HubPoolClientFactory(
+    retryProvidersFactory,
+    logger,
+    { configStoreClientFactory },
+  );
+  const spokePoolClientFactory = new SpokePoolClientFactory(
+    retryProvidersFactory,
+    logger,
+    { hubPoolClientFactory },
+  );
   const indexerQueuesService = new IndexerQueuesService(redis);
   const acrossIndexerManager = new AcrossIndexerManager(
     logger,
@@ -191,7 +199,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
       database: postgres,
-      cache: redisCache,
       logger,
       providers: allProviders,
       sigterm: abortController.signal,

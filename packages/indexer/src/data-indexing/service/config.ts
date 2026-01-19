@@ -3,9 +3,7 @@ import {
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
-
 import { DataDogMetricsService } from "../../services/MetricsService";
-import { RedisCache } from "../../redis/redisCache";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
@@ -139,12 +137,11 @@ type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
  * Request object for getting event handlers.
  * @property logger - The logger instance.
  * @property chainId - The chain ID.
- * @property config - The configuration object.
+ * @property metrics - The metrics service instance.
  */
 type GetEventHandlersRequest = {
   logger: Logger;
   chainId: number;
-  cache?: RedisCache;
   metrics?: DataDogMetricsService;
 };
 

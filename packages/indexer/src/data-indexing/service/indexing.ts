@@ -2,34 +2,6 @@ import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
 } from "./genericIndexing";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
-import { IndexerEventPayload } from "./genericEventListening";
-import { Entity } from "typeorm";
-import {
-  TOKEN_MESSENGER_ADDRESS_MAINNET,
-  DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-  TOKEN_MESSENGER_ADDRESS_TESTNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
-  MESSAGE_RECEIVED_EVENT_NAME,
-} from "./constants";
-import {
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-  CCTP_MESSAGE_SENT_ABI,
-  CCTP_MESSAGE_RECEIVED_ABI,
-} from "../model/abis";
-import {
-  transformDepositForBurnEvent,
-  transformMessageSentEvent,
-  transformMessageReceivedEvent,
-} from "./transforming";
-import { extractRawArgs } from "./preprocessing";
-import {
-  storeDepositForBurnEvent,
-  storeMessageSentEvent,
-  storeMessageReceivedEvent,
-} from "./storing";
 import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
 import { getChainProtocols, SupportedProtocols } from "./config";
@@ -50,7 +22,6 @@ export interface StartIndexerRequest<
   TEventEntity,
   TDb,
   TPayload,
-  TEventArgs,
   TPreprocessed,
 > {
   database: DataSource;
@@ -70,17 +41,8 @@ export async function startChainIndexing<
   TEventEntity,
   TDb,
   TPayload,
-  TEventArgs,
   TPreprocessed,
->(
-  request: StartIndexerRequest<
-    TEventEntity,
-    TDb,
-    TPayload,
-    TEventArgs,
-    TPreprocessed
-  >,
-) {
+>(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
   const {
     database,
     rpcUrl,
@@ -95,9 +57,9 @@ export async function startChainIndexing<
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
-  const events = protocols
-    .map((protocol) => protocol.getEventHandlers({ logger, chainId, metrics }))
-    .flat();
+  const events = protocols.flatMap((protocol) =>
+    protocol.getEventHandlers({ logger, chainId, metrics }),
+  );
 
   // Build the concrete configuration
   const indexerConfig: IndexerConfig<
@@ -134,7 +96,6 @@ export async function startChainIndexing<
  */
 export interface StartIndexersRequest {
   database: DataSource;
-  cache: RedisCache;
   logger: Logger;
   /** Map of ChainID to list of RPC URLs */
   providers: Map<number, string[]>;

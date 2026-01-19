@@ -10,7 +10,7 @@ import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
 import { Logger } from "winston";
 
 /**
- * extracts and decoding a specific event from a transaction receipt's logs.
+ * extracts and decodes a specific event from a transaction receipt's logs.
  * @param receipt The transaction receipt.
  * @param abi The Abi containing the event definition.
  * @returns The decoded event arguments, or undefined if not found.
