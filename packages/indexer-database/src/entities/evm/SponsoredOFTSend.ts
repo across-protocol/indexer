@@ -7,6 +7,7 @@ import {
   DeleteDateColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_sponsoredOFTSend_chain_block_tx_log", [
@@ -76,6 +77,13 @@ export class SponsoredOFTSend {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({
+    type: "simple-enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
