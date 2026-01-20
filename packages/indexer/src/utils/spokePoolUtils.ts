@@ -4,7 +4,6 @@ import { utils as ethersUtils } from "ethers";
 import { Signature } from "@solana/kit";
 import { entities } from "@repo/indexer-database";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
-import { default as _ } from "lodash";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
