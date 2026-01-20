@@ -31,7 +31,11 @@ import {
   getSpokePoolIndexerDataHandler,
   compareFundsDepositedEvents,
   compareFilledRelayEvents,
+  compareExecutedRelayerRefundRootEvents,
+  compareRequestedSpeedUpV3DepositEvents,
 } from "./utils";
+
+const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
 
 // Setup generic client for fetching data
 
@@ -208,7 +212,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     // Wait for the indexer to subscribe
@@ -279,7 +283,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -346,7 +350,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -419,7 +423,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -482,7 +486,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -535,7 +539,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.MAINNET,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -600,7 +604,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
     await server.waitForSubscription(
       SPONSORED_CCTP_PROTOCOL.getEventHandlers({
@@ -669,7 +673,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -724,7 +728,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.OPTIMISM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -786,7 +790,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -846,7 +850,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -902,12 +906,12 @@ describe("Websocket Subscription", () => {
     // Sanity check SpokePoolIndexerDataHandler
     const sanityCheckResult = await sanityCheckWithEventIndexer({
       handlerFactory: () =>
-        getSpokePoolIndexerDataHandler(
+        getSpokePoolIndexerDataHandler({
           dataSource,
           logger,
-          CHAIN_IDs.ARBITRUM,
-          CHAIN_IDs.MAINNET,
-        ),
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
       repository: repo,
       findOptions: { transactionHash: txHash, logIndex: 4 },
       blockNumber: Number(block.number),
@@ -920,7 +924,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPOKE_POOL_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -998,7 +1002,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -1060,7 +1064,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -1113,7 +1117,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -1173,7 +1177,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -1236,12 +1240,12 @@ describe("Websocket Subscription", () => {
     // Sanity check SpokePoolIndexerDataHandler
     const sanityCheckResult = await sanityCheckWithEventIndexer({
       handlerFactory: () =>
-        getSpokePoolIndexerDataHandler(
+        getSpokePoolIndexerDataHandler({
           dataSource,
           logger,
-          CHAIN_IDs.BASE,
-          CHAIN_IDs.MAINNET,
-        ),
+          chainId: CHAIN_IDs.BASE,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
       repository: repo,
       findOptions: { transactionHash: txHash },
       blockNumber: Number(block.number),
@@ -1254,7 +1258,7 @@ describe("Websocket Subscription", () => {
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.BASE,
       protocols: [SPOKE_POOL_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
@@ -1299,6 +1303,201 @@ describe("Websocket Subscription", () => {
       message: "0x",
       fromLiteChain: false,
       toLiteChain: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(40000);
+
+  it("should ingest the ExecutedRelayerRefundRoot event from Arbitrum tx 0x51f7...b86a", async () => {
+    // Real Transaction Data:
+    // https://arbiscan.io/tx/0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a#eventlog#15
+    const txHash =
+      "0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.ExecutedRelayerRefundRoot);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+
+    // Compare WS event with Handler event
+    compareExecutedRelayerRefundRootEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 15,
+      finalised: false,
+      rootBundleId: 13609,
+      leafId: 32,
+      l2TokenAddress: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
+      amountToReturn: "0",
+      deferredRefunds: false,
+      caller: "0xf7bAc63fc7CEaCf0589F25454Ecf5C2ce904997c",
+      dataSource: DataSourceType.WEB_SOCKET,
+      refundAmounts: [
+        "1423517351881039498",
+        "1062966083653758153",
+        "627500000000000000",
+        "528933518447811005",
+        "66600000000000000",
+        "30183584218819591",
+        "14387937048495050",
+        "10172385990202550",
+        "1031950123591036",
+        "484263292722309",
+        "196833485894965",
+      ],
+      refundAddresses: [
+        "0xCad97616f91872C02BA3553dB315Db4015cBE850",
+        "0x699EE12a1d97437A4A1E87C71e5d882b3881e2e3",
+        "0x0000000000e3E50357ab6F3a7Efb5117351720B4",
+        "0x394311A6Aaa0D8E3411D8b62DE4578D41322d1bD",
+        "0x15652636f3898F550b257B89926d5566821c32E1",
+        "0x3d7dC36aA2B542ad239012730DFdB23F03D75bE9",
+        "0x4e1bAb12E5b9281dbE057F41B67E9a0f505fd37d",
+        "0xefF7337B37c8D217d01cb8223fe497ABD75190d5",
+        "0x18105A39dB36EB6f865704Be858bcC7954c66467",
+        "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+        "0xEeAF25aD4f51fE2f57Be2F206C9d8A568A618b99",
+      ],
+    });
+  }).timeout(40000);
+
+  it("should ingest the RequestedSpeedUpV3Deposit event from Arbitrum tx 0x39a0...823", async () => {
+    // Real Transaction Data:
+    const txHash =
+      "0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.RequestedSpeedUpV3Deposit);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger: console as unknown as Logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+
+    // Compare WS event with Handler event
+    compareRequestedSpeedUpV3DepositEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      originChainId: 42161,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 0,
+      logIndex: 4,
+      updatedOutputAmount: "299247000000000",
+      depositId: 3042028,
+      depositor: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
+      updatedRecipient: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
+      updatedMessage: "0x",
+      depositorSignature:
+        "0x4AB7F470CF11759EA9B4C1DC912BB5C2F43514DB29CE81B2DBD0D7E3C08CAB516463F3A4D41BB9B371F54FD1E169EDC8685F632F3C2FA1F678BDCB828F3C117F1C",
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(40000);

@@ -27,6 +27,8 @@ import {
   OFTReceivedArgs,
   FilledV3RelayArgs,
   V3FundsDepositedArgs,
+  ExecutedRelayerRefundRootArgs,
+  RequestedSpeedUpV3DepositArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -705,5 +707,59 @@ export const transformV3FundsDepositedEvent = (
     message: preprocessed.message,
     fromLiteChain: false,
     toLiteChain: false,
+  };
+};
+
+/**
+ * Transforms a raw `ExecutedRelayerRefundRoot` event payload into a partial `ExecutedRelayerRefundRoot` entity.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @returns A partial `ExecutedRelayerRefundRoot` entity ready for storage.
+ */
+export const transformExecutedRelayerRefundRootEvent = (
+  preprocessed: ExecutedRelayerRefundRootArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.ExecutedRelayerRefundRoot> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    chainId: preprocessed.chainId.toString(),
+    rootBundleId: preprocessed.rootBundleId,
+    leafId: preprocessed.leafId,
+    l2TokenAddress: transformAddress(preprocessed.l2TokenAddress, chainId),
+    amountToReturn: preprocessed.amountToReturn.toString(),
+    refundAmounts: preprocessed.refundAmounts.map((amount) =>
+      amount.toString(),
+    ),
+    refundAddresses: preprocessed.refundAddresses.map((address) =>
+      transformAddress(address, chainId),
+    ),
+    deferredRefunds: preprocessed.deferredRefunds,
+    caller: transformAddress(preprocessed.caller, chainId),
+  };
+};
+
+export const transformRequestedSpeedUpV3DepositEvent = (
+  preprocessed: RequestedSpeedUpV3DepositArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RequestedSpeedUpV3Deposit> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    originChainId: base.chainId.toString(),
+    depositId: preprocessed.depositId.toString(),
+    depositor: transformAddress(preprocessed.depositor, chainId),
+    updatedRecipient: transformAddress(preprocessed.updatedRecipient, chainId),
+    updatedMessage: preprocessed.updatedMessage,
+    updatedOutputAmount: preprocessed.updatedOutputAmount.toString(),
+    depositorSignature: preprocessed.depositorSignature,
   };
 };

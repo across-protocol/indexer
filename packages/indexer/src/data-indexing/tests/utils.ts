@@ -115,8 +115,7 @@ export async function sanityCheckWithEventIndexer<
   const handler = handlerFactory();
 
   await handler.processBlockRange(
-    { from: blockNumber, to: blockNumber },
-    blockNumber - 1,
+    { from: blockNumber-100, to: blockNumber }
   );
 
   const event = await repository.findOne({ where: findOptions });
@@ -132,12 +131,29 @@ export async function sanityCheckWithEventIndexer<
   return event;
 }
 
+/**
+ * Request object for getSpokePoolIndexerDataHandler.
+ * @property {DataSource} dataSource - The database data source.
+ * @property {Logger} logger - The logger instance.
+ * @property {number} chainId - The chain ID for the spoke pool.
+ * @property {number} hubPoolChainId - The chain ID for the hub pool.
+ */
+export type GetSpokePoolIndexerDataHandlerRequest = {
+  dataSource: DataSource;
+  logger: Logger;
+  chainId: number;
+  hubPoolChainId: number;
+};
+
+/**
+ * Creates a SpokePoolIndexerDataHandler for testing purposes.
+ * @param request The configuration for the handler.
+ * @returns A configured SpokePoolIndexerDataHandler.
+ */
 export const getSpokePoolIndexerDataHandler = (
-  dataSource: DataSource,
-  logger: Logger,
-  chainId: number,
-  hubPoolChainId: number,
+  request: GetSpokePoolIndexerDataHandlerRequest,
 ) => {
+  const { dataSource, logger, chainId, hubPoolChainId } = request;
   const retryProvidersFactory = createTestRetryProviderFactory(logger);
   retryProvidersFactory.initializeProviders();
   const provider = retryProvidersFactory.getProviderForChainId(
@@ -164,19 +180,19 @@ export const getSpokePoolIndexerDataHandler = (
   // Create Repositories
   const spokePoolRepo = new SpokePoolRepository(
     dataSource,
-    console as unknown as Logger,
+    logger,
   );
   const swapBeforeBridgeRepo = new SwapBeforeBridgeRepository(
     dataSource,
-    console as unknown as Logger,
+    logger,
   );
   const callsFailedRepo = new CallsFailedRepository(
     dataSource,
-    console as unknown as Logger,
+    logger,
   );
   const swapMetadataRepo = new SwapMetadataRepository(
     dataSource,
-    console as unknown as Logger,
+    logger,
   );
 
   // Create Services
@@ -213,30 +229,91 @@ export const getSpokePoolIndexerDataHandler = (
   return handler;
 };
 
-export const compareFundsDepositedEvents = (
-  saved: Partial<entities.V3FundsDeposited>,
-  expected: Partial<entities.V3FundsDeposited>,
+// Event Fields Constants
+const V3_FUNDS_DEPOSITED_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "destinationChainId",
+  "depositId",
+  "depositor",
+  "inputToken",
+  "outputToken",
+  "inputAmount",
+  "outputAmount",
+  "quoteTimestamp",
+  "fillDeadline",
+  "exclusivityDeadline",
+  "recipient",
+  "exclusiveRelayer",
+  "message",
+];
+
+const FILLED_V3_RELAY_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "depositId",
+  "originChainId",
+  "destinationChainId",
+  "inputToken",
+  "outputToken",
+  "inputAmount",
+  "outputAmount",
+  "fillDeadline",
+  "exclusivityDeadline",
+  "exclusiveRelayer",
+  "depositor",
+  "recipient",
+  "message",
+  "relayer",
+  "repaymentChainId",
+  "updatedRecipient",
+  "updatedMessage",
+  "updatedOutputAmount",
+  "fillType",
+];
+
+const EXECUTED_RELAYER_REFUND_ROOT_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "rootBundleId",
+  "leafId",
+  "l2TokenAddress",
+  "amountToReturn",
+  "refundAmounts",
+  "refundAddresses",
+  "deferredRefunds",
+  "caller",
+];
+
+const REQUESTED_SPEED_UP_V3_DEPOSIT_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "originChainId",
+  "depositId",
+  "depositor",
+  "updatedRecipient",
+  "updatedMessage",
+  "updatedOutputAmount",
+  "depositorSignature",
+];
+
+const compareSubset = <T>(
+  saved: Partial<T>,
+  expected: Partial<T>,
+  fields: string[],
 ) => {
-  const fields = [
-    "blockNumber",
-    "transactionHash",
-    "transactionIndex",
-    "logIndex",
-    "finalised",
-    "destinationChainId",
-    "depositId",
-    "depositor",
-    "inputToken",
-    "outputToken",
-    "inputAmount",
-    "outputAmount",
-    "quoteTimestamp",
-    "fillDeadline",
-    "exclusivityDeadline",
-    "recipient",
-    "exclusiveRelayer",
-    "message",
-  ];
   const savedSubset: Record<string, any> = {};
   const expectedSubset: Record<string, any> = {};
   fields.forEach((f) => {
@@ -246,41 +323,30 @@ export const compareFundsDepositedEvents = (
   expect(savedSubset).to.deep.equal(expectedSubset);
 };
 
+export const compareFundsDepositedEvents = (
+  saved: Partial<entities.V3FundsDeposited>,
+  expected: Partial<entities.V3FundsDeposited>,
+) => {
+  compareSubset(saved, expected, V3_FUNDS_DEPOSITED_FIELDS);
+};
+
 export const compareFilledRelayEvents = (
   saved: Partial<entities.FilledV3Relay>,
   expected: Partial<entities.FilledV3Relay>,
 ) => {
-  const fields = [
-    "blockNumber",
-    "transactionHash",
-    "transactionIndex",
-    "logIndex",
-    "finalised",
-    "depositId",
-    "originChainId",
-    "destinationChainId",
-    "inputToken",
-    "outputToken",
-    "inputAmount",
-    "outputAmount",
-    "fillDeadline",
-    "exclusivityDeadline",
-    "exclusiveRelayer",
-    "depositor",
-    "recipient",
-    "message",
-    "relayer",
-    "repaymentChainId",
-    "updatedRecipient",
-    "updatedMessage",
-    "updatedOutputAmount",
-    "fillType",
-  ];
-  const savedSubset: Record<string, any> = {};
-  const expectedSubset: Record<string, any> = {};
-  fields.forEach((f) => {
-    savedSubset[f] = (saved as any)[f];
-    expectedSubset[f] = (expected as any)[f];
-  });
-  expect(savedSubset).to.deep.equal(expectedSubset);
+  compareSubset(saved, expected, FILLED_V3_RELAY_FIELDS);
+};
+
+export const compareExecutedRelayerRefundRootEvents = (
+  saved: Partial<entities.ExecutedRelayerRefundRoot>,
+  expected: Partial<entities.ExecutedRelayerRefundRoot>,
+) => {
+  compareSubset(saved, expected, EXECUTED_RELAYER_REFUND_ROOT_FIELDS);
+};
+
+export const compareRequestedSpeedUpV3DepositEvents = (
+  saved: Partial<entities.RequestedSpeedUpV3Deposit>,
+  expected: Partial<entities.RequestedSpeedUpV3Deposit>,
+) => {
+  compareSubset(saved, expected, REQUESTED_SPEED_UP_V3_DEPOSIT_FIELDS);
 };

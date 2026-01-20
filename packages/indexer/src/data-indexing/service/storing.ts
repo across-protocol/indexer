@@ -10,7 +10,19 @@ const PK_CHAIN_BLOCK_TX_LOG = [
 ];
 const UK_CHAIN_BLOCKHASH_LOG = ["chainId", "blockHash", "logIndex"];
 const UK_INTERNAL_HASH = ["internalHash"];
+const UK_REFUND_ROOT_CHAIN_BUNDLE_LEAF_TXN = [
+  "chainId",
+  "rootBundleId",
+  "leafId",
+  "transactionHash",
+];
 const UPDATE_TRANSACTION_HASH = ["transactionHash"];
+const UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX = [
+  "depositId",
+  "originChainId",
+  "transactionHash",
+  "logIndex",
+];
 
 /**
  * Stores a DepositForBurn event in the database.
@@ -312,5 +324,42 @@ export const storeV3FundsDepositedEvent: Storer<
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
     UPDATE_TRANSACTION_HASH as (keyof entities.V3FundsDeposited)[],
+  );
+};
+
+/**
+ * Stores an ExecutedRelayerRefundRoot event in the database.
+ *
+ * @param event The ExecutedRelayerRefundRoot entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeExecutedRelayerRefundRootEvent: Storer<
+  Partial<entities.ExecutedRelayerRefundRoot>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.ExecutedRelayerRefundRoot>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
+    entities.ExecutedRelayerRefundRoot,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_REFUND_ROOT_CHAIN_BUNDLE_LEAF_TXN as (keyof entities.ExecutedRelayerRefundRoot)[],
+    [],
+  );
+};
+
+export const storeRequestedSpeedUpV3DepositEvent: Storer<
+  Partial<entities.RequestedSpeedUpV3Deposit>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.RequestedSpeedUpV3Deposit>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
+    entities.RequestedSpeedUpV3Deposit,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[], // Uses the unique constraint we checked earlier
+    [],
   );
 };

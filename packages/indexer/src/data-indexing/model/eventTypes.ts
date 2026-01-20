@@ -171,6 +171,27 @@ export interface V3FundsDepositedArgs {
   message: `0x${string}`;
 }
 
+export interface ExecutedRelayerRefundRootArgs {
+  amountToReturn: bigint;
+  chainId: bigint;
+  refundAmounts: bigint[];
+  rootBundleId: number;
+  leafId: number;
+  l2TokenAddress: `0x${string}`;
+  refundAddresses: `0x${string}`[];
+  deferredRefunds: boolean;
+  caller: `0x${string}`;
+}
+
+export interface RequestedSpeedUpV3DepositArgs {
+  updatedOutputAmount: bigint;
+  depositId: number;
+  depositor: `0x${string}`;
+  updatedRecipient: `0x${string}`;
+  updatedMessage: `0x${string}`;
+  depositorSignature: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -186,4 +207,6 @@ export type EventArgs =
   | OFTSentArgs
   | OFTReceivedArgs
   | FilledV3RelayArgs
-  | V3FundsDepositedArgs;
+  | V3FundsDepositedArgs
+  | ExecutedRelayerRefundRootArgs
+  | RequestedSpeedUpV3DepositArgs;
