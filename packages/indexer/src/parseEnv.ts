@@ -336,9 +336,7 @@ export function envToConfig(env: Env): Config {
     env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
       ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
       : 30;
-  const enableWebSocketIndexer = env.ENABLE_WEBSOCKET_INDEXER
-    ? env.ENABLE_WEBSOCKET_INDEXER === "true"
-    : false;
+  const enableWebSocketIndexer = env.ENABLE_WEBSOCKET_INDEXER === "true";
 
   let wsIndexerChainIds: number[] = [];
   if (process.env.WS_INDEXER_CHAIN_IDS) {
