@@ -4,16 +4,21 @@ import { getTestDataSource } from "../../tests/setup";
 import { startChainIndexing } from "../service/indexing";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import { utils as dbUtils } from "@repo/indexer-database";
-import { entities, utils, DataSourceType } from "@repo/indexer-database";
-import { MESSAGE_TRANSMITTER_ADDRESS_MAINNET } from "../service/constants";
+import * as contractUtils from "../../utils/contractUtils";
+import { entities } from "@repo/indexer-database";
 import sinon from "sinon";
 import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { createPublicClient, http, PublicClient } from "viem";
-import { arbitrum, arbitrumSepolia, mainnet } from "viem/chains";
-import { CCTP_PROTOCOL } from "../service/config";
+import {
+  arbitrum,
+  arbitrumSepolia,
+  hyperEvm,
+  mainnet,
+  optimism,
+} from "viem/chains";
+import { CCTP_PROTOCOL, SPONSORED_BRIDGING_PROTOCOL } from "../service/config";
 
-// Setup real clients for fetching data
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
   let chain;
@@ -21,26 +26,30 @@ const getTestPublicClient = (chainId: number): PublicClient => {
 
   if (chainId === CHAIN_IDs.ARBITRUM) {
     chain = arbitrum;
-    transportUrl =
-      process.env.RPC_PROVIDER_URLS_42161?.split(",")[0] ||
-      "https://arb1.arbitrum.io/rpc";
+    transportUrl = process.env.RPC_PROVIDER_URLS_42161?.split(",")[0];
   } else if (chainId === CHAIN_IDs.ARBITRUM_SEPOLIA) {
     chain = arbitrumSepolia;
-    transportUrl =
-      process.env.RPC_PROVIDER_URLS_421614?.split(",")[0] ||
-      "https://sepolia-rollup.arbitrum.io/rpc";
+    transportUrl = process.env.RPC_PROVIDER_URLS_421614?.split(",")[0];
+  } else if (chainId === CHAIN_IDs.HYPEREVM) {
+    chain = hyperEvm;
+    transportUrl = process.env.RPC_PROVIDER_URLS_999?.split(",")[0];
   } else if (chainId === CHAIN_IDs.MAINNET) {
     chain = mainnet;
-    transportUrl =
-      process.env.RPC_PROVIDER_URLS_1?.split(",")[0] ||
-      "https://eth.llamarpc.com";
+    transportUrl = process.env.RPC_PROVIDER_URLS_1?.split(",")[0];
+  } else if (chainId === CHAIN_IDs.OPTIMISM) {
+    chain = optimism;
+    transportUrl = process.env.RPC_PROVIDER_URLS_10?.split(",")[0];
   } else {
     throw new Error(`Unsupported chainId for test client: ${chainId}`);
   }
+  if (!transportUrl) {
+    throw new Error(`No transport URL found for chainId: ${chainId}`);
+  }
+
   return createPublicClient({
     chain,
     transport: http(transportUrl),
-  });
+  }) as PublicClient;
 };
 
 const fetchAndMockTransaction = async (
@@ -203,14 +212,14 @@ describe("Websocket Subscription", () => {
       logIndex: 12,
       finalised: false, // Should be false initially for WS events
       // --- CCTP Event Data ---
-      burnToken: "0xaf88d065e77c8cc2239327c5edb3a432268e5831", // USDC
+      burnToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
       amount: 1000000, // 1 USDC (6 decimals)
       maxFee: 100,
-      depositor: "0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b",
-      mintRecipient: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
+      depositor: "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B",
+      mintRecipient: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
       destinationDomain: 19,
-      destinationTokenMessenger: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
-      destinationCaller: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
+      destinationTokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      destinationCaller: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
 
       minFinalityThreshold: 1000,
 
@@ -269,9 +278,9 @@ describe("Websocket Subscription", () => {
       destinationDomain: 19,
       nonce:
         "0x0000000000000000000000000000000000000000000000000000000000000000",
-      sender: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
-      recipient: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
-      destinationCaller: "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
+      sender: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      recipient: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      destinationCaller: "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f",
       minFinalityThreshold: 1000,
       finalityThresholdExecuted: 0,
       messageBody:
@@ -336,17 +345,127 @@ describe("Websocket Subscription", () => {
       finalised: false,
 
       // Specific Event Data
-      caller: "0x72adb07a487f38321b6665c02d289c413610b081",
+      caller: "0x72adB07A487f38321b6665c02D289C413610B081",
       nonce:
         "0xbf423e1a36b969577de2b0b84e5d80f9386e452f6e1325497fad900b3905fdbe", // Lowercase for db consistency
       sourceDomain: 5,
       // The origin is Solana
-      sender: "cctpv2vpzjs2u2bbsuoscuikbyjnpfmbfsvvujdgumqe", // Transformed from bytes32 to address for domain 5
+      sender: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe", // Transformed from bytes32 to address for domain 5
       finalityThresholdExecuted: 1000,
       messageBody: "0x" + messageBody.toLowerCase(),
     });
   }).timeout(20000);
 
+  it("should ingest the SwapFlowInitialized event from HyperEVM tx 0xfd60...4779", async () => {
+    // Tx: https://hyperevmscan.io/tx/0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779
+    const txHash =
+      "0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    // Contracts can be redeployed, so we need to stub the periphery address to keep the tests from failing if the contract is redeployed
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f");
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_BRIDGING_PROTOCOL],
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify SwapFlowInitialized
+    const initializedRepo = dataSource.getRepository(
+      entities.SwapFlowInitialized,
+    );
+    const savedInitialized = await initializedRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedInitialized).to.exist;
+    expect(savedInitialized).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0xe887e72e2b5dd7ea466bb32701b0e45cc862f4bda3887192f346eb26733d3f4c",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      evmAmountIn: 10998900,
+      bridgingFeesIncurred: 1100,
+      coreAmountIn: 1099890000,
+      minAmountToSend: 1100000000,
+      maxAmountToSend: 1100000000,
+      dataSource: "websocket",
+    });
+  }).timeout(20000);
+
+  it("should ingest SwapFlowFinalized event from HyperEVM tx 0x15d5...fbd3", async () => {
+    // Tx: https://hyperevmscan.io/tx/0x15d5b49cece7e1c90ca03074c809e02ffefa40112f9051aa681d18d856f6fbd3
+    const txHash =
+      "0x15d5b49cece7e1c90ca03074c809e02ffefa40112f9051aa681d18d856f6fbd3";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    // Contracts can be redeployed, so we need to stub the periphery address to keep the tests from failing if the contract is redeployed
+    sinon
+      .stub(contractUtils, "getSponsoredCCTPDstPeripheryAddress")
+      .returns("0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f");
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_BRIDGING_PROTOCOL],
+    });
+
+    await server.waitForSubscription(2);
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const finalizedRepo = dataSource.getRepository(entities.SwapFlowFinalized);
+    const savedFinalized = await finalizedRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedFinalized).to.exist;
+    expect(savedFinalized).to.deep.include({
+      blockNumber: Number(block.number),
+      chainId: CHAIN_IDs.HYPEREVM,
+      transactionHash: txHash,
+      quoteNonce:
+        "0xe887e72e2b5dd7ea466bb32701b0e45cc862f4bda3887192f346eb26733d3f4c",
+      finalRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      finalToken: "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb",
+      totalSent: 1100000000,
+      evmAmountSponsored: 11539,
+      dataSource: "websocket",
+    });
+  }).timeout(20000);
   it("should ingest the DepositForBurn event from Ethereum tx 0x1945...ee93", async () => {
     const txHash =
       "0x1945f68534f3e599b1229c6317672bdbab930061bbb4dc00f96c30da5d4aee93";
@@ -385,14 +504,111 @@ describe("Websocket Subscription", () => {
       chainId: CHAIN_IDs.MAINNET,
       blockNumber: Number(block.number),
       transactionHash: txHash,
-      // Values provided by user
-      burnToken: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      burnToken: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
       amount: 1000000,
-      depositor: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
-      mintRecipient: "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d",
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      mintRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
       destinationDomain: 3,
-      destinationTokenMessenger: "0x28b5a0e9c621a5badaa536219b3a228c8168cf5d",
-      destinationCaller: "0x72adb07a487f38321b6665c02d289c413610b081",
+      destinationTokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      destinationCaller: "0x72adB07A487f38321b6665c02D289C413610B081",
+      maxFee: 100,
+      minFinalityThreshold: 1000,
+      hookData: "0x",
+    });
+  }).timeout(20000);
+  it("should ingest the MintAndWithdraw event from Arbitrum tx 0x3b3d...e813", async () => {
+    // Real Transaction Data
+    const txHash =
+      "0x3b3d12449bc5b30a64e234f3871983ca12ebaaa020998854a8ee94d92bd7e813";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [CCTP_PROTOCOL],
+    });
+
+    await server.waitForSubscription();
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const repo = dataSource.getRepository(entities.MintAndWithdraw);
+    const savedEvent = await repo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 2,
+      finalised: false,
+      amount: 1000000,
+      feeCollected: 0,
+      mintRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      mintToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    });
+  }).timeout(20000);
+  it("should ingest the DepositForBurn event from Optimism tx 0x56e0...99c3", async () => {
+    const txHash =
+      "0x56e01f96998b7a7074a6866aacf3fb987a1802c7abeb96d6354f8b9b699c3941";
+
+    const client = getTestPublicClient(CHAIN_IDs.OPTIMISM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      client,
+      txHash,
+    );
+
+    // Start the Indexer
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.OPTIMISM,
+      protocols: [CCTP_PROTOCOL],
+    });
+
+    await server.waitForSubscription();
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify Persistence
+    const depositRepo = dataSource.getRepository(entities.DepositForBurn);
+    const savedEvent = await depositRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.OPTIMISM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      burnToken: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+      amount: 1000000,
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      mintRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      destinationDomain: 3,
+      destinationTokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      destinationCaller: "0x72adB07A487f38321b6665c02D289C413610B081",
       maxFee: 100,
       minFinalityThreshold: 1000,
       hookData: "0x",

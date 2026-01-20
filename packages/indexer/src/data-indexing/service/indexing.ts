@@ -2,47 +2,8 @@ import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
 } from "./genericIndexing";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
-import { IndexerEventPayload } from "./genericEventListening";
-import { Entity } from "typeorm";
-import {
-  TOKEN_MESSENGER_ADDRESS_MAINNET,
-  DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-  TOKEN_MESSENGER_ADDRESS_TESTNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
-  MESSAGE_RECEIVED_EVENT_NAME,
-} from "./constants";
-import {
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-  CCTP_MESSAGE_SENT_ABI,
-  CCTP_MESSAGE_RECEIVED_ABI,
-} from "../model/abis";
-import {
-  transformDepositForBurnEvent,
-  transformMessageSentEvent,
-  transformMessageReceivedEvent,
-} from "./tranforming";
-import { extractRawArgs } from "./preprocessing";
-import {
-  storeDepositForBurnEvent,
-  storeMessageSentEvent,
-  storeMessageReceivedEvent,
-} from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
-import {
-  filterDepositForBurnEvents,
-  createCctpBurnFilter,
-  filterMessageReceived,
-} from "./filtering";
-import {
-  EventArgs,
-  DepositForBurnArgs,
-  MessageSentArgs,
-  MessageReceivedArgs,
-} from "../model/eventTypes";
 import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
 
 /**
@@ -77,12 +38,11 @@ export async function startChainIndexing<
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
   const { repo, rpcUrl, logger, sigterm, chainId, protocols } = request;
 
-  const testNet = chainId in TEST_NETWORKS;
   // Aggregate events from all supported protocols.
-  // We pass the logger and testNet flag to each protocol so they can configure
+  // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
   const events = protocols.flatMap((protocol) =>
-    protocol.getEventHandlers(!!testNet, logger),
+    protocol.getEventHandlers(logger, chainId),
   );
 
   // Build the concrete configuration
