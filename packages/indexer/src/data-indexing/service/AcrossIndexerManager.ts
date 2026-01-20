@@ -2,7 +2,6 @@ import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
 import { DataSource } from "@repo/indexer-database";
 import { eventProcessorManager } from "@repo/webhooks";
-
 import { Config } from "../../parseEnv";
 import {
   getFinalisedBlockBufferDistance,

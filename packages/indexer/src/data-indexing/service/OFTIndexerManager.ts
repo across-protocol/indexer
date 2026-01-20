@@ -1,8 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { Config } from "../../parseEnv";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import {

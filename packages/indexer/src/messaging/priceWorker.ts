@@ -8,7 +8,6 @@ import { assert } from "@repo/error-handling";
 import * as across from "@across-protocol/sdk";
 import * as constants from "@across-protocol/constants";
 import * as ss from "superstruct";
-
 import { IndexerQueues } from "./service";
 import { findTokenByAddress, yesterday } from "../utils";
 

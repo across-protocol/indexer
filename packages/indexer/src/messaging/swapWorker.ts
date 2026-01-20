@@ -5,10 +5,8 @@ import { Job, Worker } from "bullmq";
 import * as across from "@across-protocol/sdk";
 import * as s from "superstruct";
 import { ethers } from "ethers";
-
 import { DataSource, entities } from "@repo/indexer-database";
 import { assert } from "@repo/error-handling";
-
 import { IndexerQueues } from "./service";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { findTokenByAddress, Token, yesterday } from "../utils";

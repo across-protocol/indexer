@@ -1,9 +1,6 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { Config } from "../../parseEnv";
 import {
   getFinalisedBlockBufferDistance,

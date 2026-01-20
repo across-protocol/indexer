@@ -2,9 +2,7 @@ import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, getDeployedBlockNumber } from "@across-protocol/contracts";
 import Redis from "ioredis";
 import winston from "winston";
-
 import { DataSource, entities } from "@repo/indexer-database";
-
 import { RepeatableTask } from "../generics";
 import { BundleRepository } from "../database/BundleRepository";
 import * as utils from "../utils";

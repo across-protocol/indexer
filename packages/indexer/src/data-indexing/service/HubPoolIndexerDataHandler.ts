@@ -1,6 +1,5 @@
 import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-
 import * as utils from "../../utils";
 import {
   getDeployedBlockNumber,

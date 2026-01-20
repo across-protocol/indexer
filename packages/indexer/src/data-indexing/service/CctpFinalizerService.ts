@@ -1,5 +1,4 @@
 import winston, { Logger } from "winston";
-
 import { RepeatableTask } from "../../generics";
 import { DataSource, entities } from "@repo/indexer-database";
 import { CHAIN_IDs } from "@across-protocol/constants";

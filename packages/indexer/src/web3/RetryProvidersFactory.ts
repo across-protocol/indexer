@@ -2,7 +2,6 @@ import { Logger } from "winston";
 import { ethers } from "ethers";
 import { PUBLIC_NETWORKS } from "@across-protocol/constants";
 import { providers, utils, arch } from "@across-protocol/sdk";
-
 import {
   parseRetryProviderEnvs,
   parseProvidersUrls,

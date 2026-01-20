@@ -1,10 +1,8 @@
 import winston from "winston";
-
 import { RepeatableTask } from "../generics";
 import { DataSource, entities } from "@repo/indexer-database";
 import { providers, utils } from "@across-protocol/sdk";
 import { Signature } from "@solana/kit";
-
 import { SpokePoolProcessor } from "./spokePoolProcessor";
 import {
   RetryProvidersFactory,

@@ -2,7 +2,6 @@ import { Logger } from "winston";
 import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-
 import {
   ArbitraryActionsExecutedLog,
   BlockRange,

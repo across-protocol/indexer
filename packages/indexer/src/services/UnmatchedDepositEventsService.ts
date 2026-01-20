@@ -1,9 +1,7 @@
 import winston from "winston";
-
 import { RepeatableTask } from "../generics";
 import { DataSource, entities } from "@repo/indexer-database";
 import { providers } from "@across-protocol/sdk";
-
 import { SpokePoolProcessor } from "./spokePoolProcessor";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 

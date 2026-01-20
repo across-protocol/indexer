@@ -1,7 +1,5 @@
 import { Logger } from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { Config } from "../parseEnv";
 import { UnmatchedFillEventsService } from "./UnmatchedFillEventsService";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";

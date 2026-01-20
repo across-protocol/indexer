@@ -1,9 +1,7 @@
 import * as across from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import { Logger } from "winston";
-
 import { entities, DataSource } from "@repo/indexer-database";
-
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";

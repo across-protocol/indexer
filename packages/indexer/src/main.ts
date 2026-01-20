@@ -2,8 +2,6 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { WebhookFactory } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
-
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";
 import * as parseEnv from "./parseEnv";

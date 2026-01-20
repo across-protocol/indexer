@@ -12,7 +12,6 @@ import {
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
-
 import * as utils from "../../utils";
 import {
   SpokePoolRepository,
