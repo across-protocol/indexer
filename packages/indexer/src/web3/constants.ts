@@ -48,7 +48,7 @@ export function getNoTtlBlockDistance(chainId: number) {
 // This distance should consider re-orgs, but also the time needed for various RPC providers to agree on chain state.
 // Provider caching will not be allowed for queries whose responses depend on blocks closer than this many blocks.
 // This is intended to be conservative.
-export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
+const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ALEPH_ZERO]: 32,
   [CHAIN_IDs.ARBITRUM]: 32,
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 32,
@@ -127,7 +127,7 @@ export function getMaxBlockLookBack(chainId: number) {
 }
 
 // Average block time in seconds by chain
-export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
+const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   // Mainnets
   [CHAIN_IDs.ALEPH_ZERO]: 2,
   [CHAIN_IDs.ARBITRUM]: 0.25,

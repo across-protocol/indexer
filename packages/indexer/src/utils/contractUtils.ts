@@ -11,14 +11,13 @@ import {
   HubPool__factory as HubPoolFactory,
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
-import { assert } from "@repo/error-handling";
 import { getDeployedAddress as getDeployedAddressBetaRelease } from "@across-protocol/contracts-beta";
 import * as across from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
 
-export const CONFIG_STORE_VERSION = 4;
+const CONFIG_STORE_VERSION = 4;
 
 export type GetEvmSpokeClientParams = {
   provider: providers.Provider;

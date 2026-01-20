@@ -24,11 +24,11 @@ export type Token = {
   coingeckoId: string;
 };
 // mapping the token constants to something easier to search
-export const tokenSymbolsMap = [
+const tokenSymbolsMap = [
   ...Object.values(constants.TOKEN_SYMBOLS_MAP),
 ] as TokenInfo[];
 // map to just a flat list
-export const tokensList = tokenSymbolsMap.reduce((result, token) => {
+const tokensList = tokenSymbolsMap.reduce((result, token) => {
   Object.entries(token.addresses).forEach(([chainId, address]) => {
     result.push({
       name: token.name,

@@ -130,7 +130,7 @@ export function parsePostgresConfig(
   };
 }
 
-function parseProviderConfigs(env: Env): ProviderConfig[] {
+function parseProviderConfigs(_env: Env): ProviderConfig[] {
   const results: ProviderConfig[] = [];
   for (const [key, value] of Object.entries(process.env)) {
     const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);
