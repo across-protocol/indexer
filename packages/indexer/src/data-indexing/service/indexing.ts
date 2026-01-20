@@ -192,9 +192,9 @@ export function startWebSocketIndexing(
             interval: 10_000, // Default is 30,000. Change to 10,000 to be safe. GCP has a default keepAlive of 30 seconds, we need to be below that to avoid connection issues.
           },
           reconnect: {
-            attempts: 100, // Default is 5
+            attempts: 5,
           },
-          retryCount: 100, // Default is 5
+          retryCount: 5,
           timeout: 30_000,
         },
       }),

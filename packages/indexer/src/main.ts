@@ -211,12 +211,18 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   }
 
   let exitRequested = false;
-  process.on("SIGINT", () => {
+  const shutdown = (signal: string) => {
     if (!exitRequested) {
+      exitRequested = true;
       logger.info({
         at: "Indexer#Main",
-        message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
+        message: `Received ${signal}. Starting graceful shutdown...`,
       });
+
+      // Signal the WebSocket indexers to stop and close sockets immediately
+      abortController.abort();
+
+      // Stop all other managers
       integratorIdWorker.close();
       priceWorker?.close();
       swapWorker.close();
@@ -227,7 +233,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
-      abortController.abort(); // Signal WS indexers to stop
       monitoringManager.stopGracefully();
     } else {
       integratorIdWorker.close();
@@ -240,7 +245,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.close();
       across.utils.delay(5).finally(() => process.exit());
     }
-  });
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   logger.debug({
     at: "Indexer#Main",
