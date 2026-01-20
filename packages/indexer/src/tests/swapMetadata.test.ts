@@ -1,8 +1,10 @@
 import { expect } from "chai";
-import { SwapMetadataRepository } from "../database/SwapMetadataRepository";
-import { DataSource } from "@repo/indexer-database";
-import winston from "winston";
 import { ethers } from "ethers";
+import winston from "winston";
+
+import { DataSource } from "@repo/indexer-database";
+
+import { SwapMetadataRepository } from "../database/SwapMetadataRepository";
 
 describe("SwapMetadataRepository Tests", () => {
   let swapMetadataRepository: SwapMetadataRepository;

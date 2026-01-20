@@ -1,5 +1,6 @@
-import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
+
+import { assert } from "@repo/error-handling";
 
 /**
  * @typedef {Object} Config

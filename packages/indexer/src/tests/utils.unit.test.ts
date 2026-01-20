@@ -1,11 +1,12 @@
+import { utils } from "@across-protocol/sdk";
+import { expect } from "chai";
+
 import {
+  getDstOFTHandlerAddress,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
   getSponsoredOFTSrcPeripheryAddress,
-  getDstOFTHandlerAddress,
 } from "../utils/contractUtils";
-import { utils } from "@across-protocol/sdk";
-import { expect } from "chai";
 
 describe("Beta Contract Accessors (using provided JSON)", () => {
   describe("getSponsoredCCTPDstPeripheryAddress", () => {

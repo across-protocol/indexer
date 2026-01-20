@@ -1,3 +1,5 @@
+import { entities } from "@repo/indexer-database";
+
 import {
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
@@ -6,7 +8,6 @@ import {
   SwapFlowFinalizedLog,
   SwapFlowInitializedLog,
 } from "../model";
-import { entities } from "@repo/indexer-database";
 
 /**
  * @constant formatSponsoredAccountActivationEvent

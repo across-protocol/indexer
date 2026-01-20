@@ -1,111 +1,113 @@
+import { TEST_NETWORKS } from "@across-protocol/constants";
+import { Entity } from "typeorm";
+import { Logger } from "winston";
+
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
+import { Config } from "../../parseEnv";
 import {
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils/contractUtils";
 import {
+  getOftChainConfiguration,
+  getSupportOftChainIds,
+} from "../adapter/oft/service";
+import {
+  ARBITRARY_ACTIONS_EXECUTED_ABI,
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
   CCTP_MESSAGE_SENT_ABI,
-  SPONSORED_DEPOSIT_FOR_BURN_ABI,
   CCTP_MINT_AND_WITHDRAW_ABI,
-  SPONSORED_ACCOUNT_ACTIVATION_ABI,
-  SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
-  ARBITRARY_ACTIONS_EXECUTED_ABI,
+  SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SPONSORED_DEPOSIT_FOR_BURN_ABI,
 } from "../model/abis";
 import {
-  DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_RECEIVED_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME,
-  MINT_AND_WITHDRAW_EVENT_NAME,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
-  TOKEN_MESSENGER_ADDRESS_MAINNET,
-  TOKEN_MESSENGER_ADDRESS_TESTNET,
-  SWAP_FLOW_FINALIZED_EVENT_NAME,
-  SWAP_FLOW_INITIALIZED_EVENT_NAME,
-  SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
-  SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
-  FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
-  ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
-  SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
-} from "./constants";
-import { IndexerEventPayload } from "./genericEventListening";
-import { IndexerEventHandler } from "./genericIndexing";
-import { Logger } from "winston";
+  OFT_RECEIVED_ABI,
+  OFT_SENT_ABI,
+  SWAP_FLOW_FINALIZED_ABI,
+  SWAP_FLOW_INITIALIZED_ABI,
+} from "../model/abis";
 import {
-  extractRawArgs,
-  preprocessSponsoredDepositForBurn,
-} from "./preprocessing";
-import {
+  ArbitraryActionsExecutedArgs,
   DepositForBurnArgs,
   EventArgs,
+  FallbackHyperEVMFlowCompletedArgs,
   MessageReceivedArgs,
   MessageSentArgs,
-  SponsoredDepositForBurnArgs,
   MintAndWithdrawArgs,
+  SimpleTransferFlowCompletedArgs,
+  SponsoredAccountActivationArgs,
+  SponsoredDepositForBurnArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
-  SponsoredAccountActivationArgs,
-  SimpleTransferFlowCompletedArgs,
-  FallbackHyperEVMFlowCompletedArgs,
-  ArbitraryActionsExecutedArgs,
 } from "../model/eventTypes";
+import { OFTReceivedArgs, OFTSentArgs } from "../model/eventTypes";
+
+import {
+  ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
+  DEPOSIT_FOR_BURN_EVENT_NAME,
+  FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
+  MESSAGE_RECEIVED_EVENT_NAME,
+  MESSAGE_SENT_EVENT_NAME,
+  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+  MINT_AND_WITHDRAW_EVENT_NAME,
+  SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
+  SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
+  SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
+  SWAP_FLOW_FINALIZED_EVENT_NAME,
+  SWAP_FLOW_INITIALIZED_EVENT_NAME,
+  TOKEN_MESSENGER_ADDRESS_MAINNET,
+  TOKEN_MESSENGER_ADDRESS_TESTNET,
+} from "./constants";
+import { OFT_RECEIVED_EVENT_NAME, OFT_SENT_EVENT_NAME } from "./constants";
 import {
   createCctpBurnFilter,
   createCctpMintFilter,
   filterDepositForBurnEvents,
   filterMessageReceived,
 } from "./filtering";
+import { filterOFTReceivedEvents, filterOFTSentEvents } from "./filtering";
+import { IndexerEventPayload } from "./genericEventListening";
+import { IndexerEventHandler } from "./genericIndexing";
 import {
-  transformDepositForBurnEvent,
-  transformMessageReceivedEvent,
-  transformMessageSentEvent,
-  transformSponsoredDepositForBurnEvent,
-  transformMintAndWithdrawEvent,
-  transformSwapFlowFinalizedEvent,
-  transformSwapFlowInitializedEvent,
-  transformSponsoredAccountActivationEvent,
-  transformSimpleTransferFlowCompletedEvent,
-  transformFallbackHyperEVMFlowCompletedEvent,
-  transformArbitraryActionsExecutedEvent,
-} from "./transforming";
+  extractRawArgs,
+  preprocessSponsoredDepositForBurn,
+} from "./preprocessing";
 import {
+  storeArbitraryActionsExecutedEvent,
   storeDepositForBurnEvent,
+  storeFallbackHyperEVMFlowCompletedEvent,
   storeMessageReceivedEvent,
   storeMessageSentEvent,
-  storeSponsoredDepositForBurnEvent,
   storeMintAndWithdrawEvent,
+  storeOFTReceivedEvent,
+  storeOFTSentEvent,
+  storeSimpleTransferFlowCompletedEvent,
+  storeSponsoredAccountActivationEvent,
+  storeSponsoredDepositForBurnEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
-  storeSponsoredAccountActivationEvent,
-  storeSimpleTransferFlowCompletedEvent,
-  storeFallbackHyperEVMFlowCompletedEvent,
-  storeArbitraryActionsExecutedEvent,
-  storeOFTSentEvent,
-  storeOFTReceivedEvent,
 } from "./storing";
-import { Entity } from "typeorm";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
 import {
-  SWAP_FLOW_FINALIZED_ABI,
-  SWAP_FLOW_INITIALIZED_ABI,
-  OFT_SENT_ABI,
-  OFT_RECEIVED_ABI,
-} from "../model/abis";
-import { OFT_SENT_EVENT_NAME, OFT_RECEIVED_EVENT_NAME } from "./constants";
-import { OFTSentArgs, OFTReceivedArgs } from "../model/eventTypes";
-import { filterOFTSentEvents, filterOFTReceivedEvents } from "./filtering";
-import {
-  transformOFTSentEvent,
-  transformOFTReceivedEvent,
+  transformArbitraryActionsExecutedEvent,
+  transformDepositForBurnEvent,
+  transformFallbackHyperEVMFlowCompletedEvent,
+  transformMessageReceivedEvent,
+  transformMessageSentEvent,
+  transformMintAndWithdrawEvent,
+  transformSimpleTransferFlowCompletedEvent,
+  transformSponsoredAccountActivationEvent,
+  transformSponsoredDepositForBurnEvent,
+  transformSwapFlowFinalizedEvent,
+  transformSwapFlowInitializedEvent,
 } from "./transforming";
 import {
-  getOftChainConfiguration,
-  getSupportOftChainIds,
-} from "../adapter/oft/service";
-import { Config } from "../../parseEnv";
+  transformOFTReceivedEvent,
+  transformOFTSentEvent,
+} from "./transforming";
 
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
   TPreprocessed extends any
@@ -407,8 +409,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
           eventName: OFT_RECEIVED_EVENT_NAME,
         },
         preprocess: extractRawArgs<OFTReceivedArgs>,
-        filter: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
-          filterOFTReceivedEvents(args, payload),
+        filter: (args: OFTReceivedArgs) => filterOFTReceivedEvents(args),
         transform: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
           transformOFTReceivedEvent(args, payload, logger, tokenAddress),
         store: storeOFTReceivedEvent,

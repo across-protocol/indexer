@@ -1,14 +1,7 @@
-import { expect } from "chai";
-import { DataSource } from "typeorm";
-import { getTestDataSource } from "../../tests/setup";
-import { startChainIndexing } from "../service/indexing";
-import { MockWebSocketRPCServer } from "../../tests/testProvider";
-import { utils as dbUtils } from "@repo/indexer-database";
-import * as contractUtils from "../../utils/contractUtils";
-import { entities, DataSourceType } from "@repo/indexer-database";
-import sinon from "sinon";
-import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { expect } from "chai";
+import sinon from "sinon";
+import { DataSource } from "typeorm";
 import { createPublicClient, http, PublicClient } from "viem";
 import {
   arbitrum,
@@ -17,11 +10,20 @@ import {
   mainnet,
   optimism,
 } from "viem/chains";
+import { Logger } from "winston";
+
+import { utils as dbUtils } from "@repo/indexer-database";
+import { DataSourceType, entities } from "@repo/indexer-database";
+
+import { getTestDataSource } from "../../tests/setup";
+import { MockWebSocketRPCServer } from "../../tests/testProvider";
+import * as contractUtils from "../../utils/contractUtils";
 import {
   CCTP_PROTOCOL,
-  SPONSORED_CCTP_PROTOCOL,
   OFT_PROTOCOL,
+  SPONSORED_CCTP_PROTOCOL,
 } from "../service/config";
+import { startChainIndexing } from "../service/indexing";
 
 // Setup generic client for fetching data
 const getTestPublicClient = (chainId: number): PublicClient => {
@@ -68,7 +70,7 @@ const fetchAndMockTransaction = async (
   });
 
   // Helper to convert Viem formatted objects back to JSON-RPC hex strings
-  const toRpcFormat = (val: any, key?: string): any => {
+  const toRpcFormat = (val: any): any => {
     if (val === null || val === undefined) return val;
     if (typeof val === "bigint") return `0x${val.toString(16)}`;
     if (typeof val === "number") {
@@ -106,7 +108,7 @@ const fetchAndMockTransaction = async (
           // If it's already hex or other string
         }
 
-        out[k] = toRpcFormat(val[k], k);
+        out[k] = toRpcFormat(val[k]);
       }
       return out;
     }

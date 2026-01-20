@@ -1,24 +1,20 @@
-import { Logger } from "winston";
-import { ethers, providers, Transaction } from "ethers";
+import { TEST_NETWORKS } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { ethers, providers, Transaction } from "ethers";
+import { Logger } from "winston";
+
+import { entities, SaveQueryResult } from "@repo/indexer-database";
+
+import {
+  BurnEventsPair,
+  CCTPRepository,
+  MintEventsPair,
+} from "../../database/CctpRepository";
 import {
   formatFromAddressToChainFormat,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
 } from "../../utils";
-import {
-  BlockRange,
-  SimpleTransferFlowCompletedLog,
-  ArbitraryActionsExecutedLog,
-  FallbackHyperEVMFlowCompletedLog,
-  SponsoredAccountActivationLog,
-  SwapFlowInitializedLog,
-  SwapFlowFinalizedLog,
-  SPONSORED_ACCOUNT_ACTIVATION_ABI,
-  SWAP_FLOW_FINALIZED_ABI,
-} from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
 import {
   MESSAGE_TRANSMITTER_V2_ABI,
@@ -26,40 +22,47 @@ import {
 } from "../adapter/cctp-v2/abis";
 import {
   DepositForBurnEvent,
-  MessageReceivedEvent,
-  MessageSentLog,
-  MintAndWithdrawLog,
   DepositForBurnWithBlock,
-  MessageSentWithBlock,
+  MessageReceivedEvent,
   MessageReceivedWithBlock,
+  MessageSentLog,
+  MessageSentWithBlock,
+  MintAndWithdrawLog,
   MintAndWithdrawWithBlock,
   SponsoredDepositForBurnLog,
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
 import {
-  CCTPRepository,
-  BurnEventsPair,
-  MintEventsPair,
-} from "../../database/CctpRepository";
-import {
-  getIndexingStartBlockNumber,
   decodeMessage,
   getCctpDestinationChainFromDomain,
+  getIndexingStartBlockNumber,
   isHypercoreWithdraw,
 } from "../adapter/cctp-v2/service";
-import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
-  formatFallbackHyperEVMFlowCompletedEvent,
-  formatSimpleTransferFlowCompletedEvent,
-  formatSponsoredAccountActivationEvent,
-  formatSwapFlowInitializedEvent,
-  formatSwapFlowFinalizedEvent,
-} from "./hyperEvmExecutor";
+  ArbitraryActionsExecutedLog,
+  BlockRange,
+  FallbackHyperEVMFlowCompletedLog,
+  SimpleTransferFlowCompletedLog,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SponsoredAccountActivationLog,
+  SWAP_FLOW_FINALIZED_ABI,
+  SwapFlowFinalizedLog,
+  SwapFlowInitializedLog,
+} from "../model";
+
+import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
 import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
-import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
+import {
+  formatFallbackHyperEVMFlowCompletedEvent,
+  formatSimpleTransferFlowCompletedEvent,
+  formatSponsoredAccountActivationEvent,
+  formatSwapFlowFinalizedEvent,
+  formatSwapFlowInitializedEvent,
+} from "./hyperEvmExecutor";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -754,7 +757,7 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     blocks: Record<string, providers.Block>,
   ): Record<string, Date> {
     return Object.entries(blocks).reduce(
-      (acc, [blockHash, block]) => {
+      (acc, [, block]) => {
         acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },

@@ -1,23 +1,23 @@
-import winston from "winston";
 import { utils } from "@across-protocol/sdk";
+import winston from "winston";
+
 import {
   DataSource,
   entities,
-  utils as dbUtils,
   InsertResult,
-  UpdateResult,
-  SaveQueryResultType,
   Not,
+  UpdateResult,
 } from "@repo/indexer-database";
-import { WebhookTypes, eventProcessorManager } from "@repo/webhooks";
+import { eventProcessorManager, WebhookTypes } from "@repo/webhooks";
+
 import {
   DepositSwapPair,
   FillCallsFailedPair,
   FillSwapMetadataPair,
 } from "../data-indexing/service/SpokePoolIndexerDataHandler";
-import { FillTargetChainActionPair } from "../utils/targetChainActionsUtils";
 import { StoreEventsResult } from "../database/SpokePoolRepository";
 import { getDbLockKeyForDeposit } from "../utils";
+import { FillTargetChainActionPair } from "../utils/targetChainActionsUtils";
 
 enum SpokePoolEvents {
   V3FundsDeposited = "V3FundsDeposited",

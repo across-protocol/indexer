@@ -1,8 +1,9 @@
-import { SaveQueryResult } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
-import { utils } from "@repo/indexer-database";
-import { ObjectLiteral } from "typeorm";
 import { providers } from "ethers";
+import { ObjectLiteral } from "typeorm";
+
+import { SaveQueryResult } from "@repo/indexer-database";
+import { utils } from "@repo/indexer-database";
 
 /**
  * Formats and saves a batch of blockchain events to the database using a provided formatting function.

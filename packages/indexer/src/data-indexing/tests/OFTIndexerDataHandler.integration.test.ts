@@ -1,15 +1,18 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
 import { expect } from "chai";
+import sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import * as across from "@across-protocol/sdk";
-import sinon from "sinon";
-import { CHAIN_IDs } from "@across-protocol/constants";
+
 import { entities } from "@repo/indexer-database";
-import { OFTIndexerDataHandler } from "../service/OFTIndexerDataHandler";
+
 import { OftRepository } from "../../database/OftRepository";
-import { BlockRange } from "../model";
-import { createTestRetryProvider } from "../../tests/testProvider";
 import { getTestDataSource } from "../../tests/setup";
+import { createTestRetryProvider } from "../../tests/testProvider";
+import { BlockRange } from "../model";
+import { OFTIndexerDataHandler } from "../service/OFTIndexerDataHandler";
+
 import { stubContractUtils } from "./utils";
 
 describe("OFTIndexerDataHandler", () => {

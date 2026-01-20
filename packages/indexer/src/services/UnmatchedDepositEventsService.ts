@@ -1,9 +1,11 @@
 import winston from "winston";
-import { RepeatableTask } from "../generics";
+
 import { DataSource, entities } from "@repo/indexer-database";
-import { providers } from "@across-protocol/sdk";
-import { SpokePoolProcessor } from "./spokePoolProcessor";
+
+import { RepeatableTask } from "../generics";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+
+import { SpokePoolProcessor } from "./spokePoolProcessor";
 
 export class UnmatchedDepositEventsService extends RepeatableTask {
   constructor(

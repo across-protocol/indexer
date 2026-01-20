@@ -1,5 +1,7 @@
 import winston from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
+
 import { getDbLockKeyForDeposit } from "../utils";
 
 export class RefundedDepositsStatusService {

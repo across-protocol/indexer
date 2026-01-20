@@ -1,13 +1,15 @@
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
+import winston from "winston";
+
 import {
   DataSource,
   entities,
-  utils as dbUtils,
   SaveQueryResult,
+  utils as dbUtils,
 } from "@repo/indexer-database";
-import * as utils from "../utils";
+
 import { FetchEventsResult } from "../data-indexing/service/SpokePoolIndexerDataHandler";
+import * as utils from "../utils";
 
 export type StoreEventsResult = {
   deposits: SaveQueryResult<entities.V3FundsDeposited>[];

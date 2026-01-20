@@ -1,5 +1,3 @@
-import { ethers, BigNumber } from "ethers";
-import axios from "axios";
 import {
   CCTP_NO_DOMAIN,
   CHAIN_IDs,
@@ -8,6 +6,9 @@ import {
   TEST_NETWORKS,
 } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
+import axios from "axios";
+import { BigNumber, ethers } from "ethers";
+
 import {
   DecodedHyperCoreWithdrawalHookData,
   DecodedMessageBody,

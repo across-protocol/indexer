@@ -1,25 +1,27 @@
-import { subscribeToEvent, EventConfig } from "./genericEventListening";
-import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
-import { processEvent } from "./genericEventProcessing";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import Bottleneck from "bottleneck";
 import {
-  Storer,
-  Transformer,
-  Filter,
-  Preprocessor,
-} from "../model/genericTypes";
-import { Logger } from "winston";
-import {
+  type Chain,
   type PublicClient,
   type Transport,
-  type Chain,
   WebSocketTransportConfig,
 } from "viem";
-import Bottleneck from "bottleneck";
+import { Logger } from "winston";
+
 import {
   DataDogMetricsService,
   withMetrics,
 } from "../../services/MetricsService";
-import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
+import {
+  Filter,
+  Preprocessor,
+  Storer,
+  Transformer,
+} from "../model/genericTypes";
+
+import { EventConfig, subscribeToEvent } from "./genericEventListening";
+import { processEvent } from "./genericEventProcessing";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.

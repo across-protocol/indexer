@@ -1,36 +1,38 @@
-import { Logger } from "winston";
-import { ethers, providers, Transaction } from "ethers";
 import * as across from "@across-protocol/sdk";
+import { ethers, providers, Transaction } from "ethers";
+import { Logger } from "winston";
+
 import { entities, SaveQueryResult } from "@repo/indexer-database";
+
+import { OftRepository } from "../../database/OftRepository";
 import {
-  ArbitraryActionsExecutedLog,
-  BlockRange,
-  FallbackHyperEVMFlowCompletedLog,
-  SimpleTransferFlowCompletedLog,
-  SponsoredAccountActivationLog,
-  SwapFlowFinalizedLog,
-  SwapFlowInitializedLog,
-  SPONSORED_ACCOUNT_ACTIVATION_ABI,
-  SWAP_FLOW_FINALIZED_ABI,
-} from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
-import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
-import {
-  getSponsoredOFTSrcPeripheryAddress,
   getDstOFTHandlerAddress,
+  getSponsoredOFTSrcPeripheryAddress,
 } from "../../utils";
+import { fetchEvents } from "../../utils/contractUtils";
+import { EventDecoder } from "../../web3/EventDecoder";
+import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
 import {
   OFTReceivedEvent,
   OFTSentEvent,
   SponsoredOFTSendLog,
 } from "../adapter/oft/model";
-import { OftRepository } from "../../database/OftRepository";
 import {
   getOftChainConfiguration,
   isEndpointIdSupported,
 } from "../adapter/oft/service";
-import { EventDecoder } from "../../web3/EventDecoder";
-import { fetchEvents } from "../../utils/contractUtils";
+import {
+  ArbitraryActionsExecutedLog,
+  BlockRange,
+  FallbackHyperEVMFlowCompletedLog,
+  SimpleTransferFlowCompletedLog,
+  SPONSORED_ACCOUNT_ACTIVATION_ABI,
+  SponsoredAccountActivationLog,
+  SWAP_FLOW_FINALIZED_ABI,
+  SwapFlowFinalizedLog,
+  SwapFlowInitializedLog,
+} from "../model";
+
 import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
@@ -43,6 +45,7 @@ import {
   formatSwapFlowFinalizedEvent,
   formatSwapFlowInitializedEvent,
 } from "./hyperEvmExecutor";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type FetchEventsResult = {
   oftSentEvents: OFTSentEvent[];
@@ -116,7 +119,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     const startPerfTime = performance.now();
     const events = await this.fetchEventsByRange(blockRange);
     const timeToFetchEvents = performance.now();
-    const storedEvents = await this.storeEvents(
+    await this.storeEvents(
       events,
       lastFinalisedBlock,
       getOftChainConfiguration(this.chainId).tokens[0]!.token,
@@ -505,7 +508,7 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     blocks: Record<string, providers.Block>,
   ): Record<string, Date> {
     return Object.entries(blocks).reduce(
-      (acc, [blockHash, block]) => {
+      (acc, [, block]) => {
         acc[block.number] = new Date(block.timestamp * 1000);
         return acc;
       },

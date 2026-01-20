@@ -1,7 +1,8 @@
-import { interfaces, providers } from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { utils as ethersUtils } from "ethers";
+import { interfaces, providers } from "@across-protocol/sdk";
 import { Signature } from "@solana/kit";
+import { utils as ethersUtils } from "ethers";
+
 import { entities } from "@repo/indexer-database";
 
 import { SvmProvider } from "../web3/RetryProvidersFactory";

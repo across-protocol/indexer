@@ -1,13 +1,15 @@
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
+import winston from "winston";
+
 import {
   DataSource,
   entities,
-  LessThan,
-  utils,
-  Not,
   In,
+  LessThan,
+  Not,
+  utils,
 } from "@repo/indexer-database";
+
 import { getInternalHash } from "../utils/spokePoolUtils";
 
 export type BlockRangeInsertType = {

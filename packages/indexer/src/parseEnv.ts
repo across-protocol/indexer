@@ -1,14 +1,16 @@
-import * as s from "superstruct";
 import { utils } from "@across-protocol/sdk";
+import * as os from "os";
+import * as s from "superstruct";
+
 import { assert } from "@repo/error-handling";
 import { DatabaseConfig } from "@repo/indexer-database";
 import {
   Config as WebhooksConfig,
-  WebhookTypes,
   parseWebhookClientsFromString,
+  WebhookTypes,
 } from "@repo/webhooks";
+
 import { getNoTtlBlockDistance } from "./web3/constants";
-import * as os from "os";
 
 export type Config = {
   redisConfig: RedisConfig;

@@ -1,15 +1,18 @@
-import { Logger } from "winston";
-import { Config } from "../parseEnv";
-import { BundleBuilderService } from "./BundleBuilderService";
 import { Redis } from "ioredis";
+import { Logger } from "winston";
+
 import { DataSource } from "@repo/indexer-database";
+
+import { BundleRepository } from "../database/BundleRepository";
+import { Config } from "../parseEnv";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-import { BundleRepository } from "../database/BundleRepository";
+
+import { BundleBuilderService } from "./BundleBuilderService";
 import { BundleIncludedEventsService } from "./BundleIncludedEventsService";
 import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";
 

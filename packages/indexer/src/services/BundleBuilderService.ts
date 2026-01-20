@@ -1,14 +1,16 @@
 import {
   caching,
   clients,
+  providers,
   typechain,
   utils,
-  providers,
 } from "@across-protocol/sdk";
-import { entities } from "@repo/indexer-database";
-import { assert } from "@repo/error-handling";
 import Redis from "ioredis";
 import winston from "winston";
+
+import { assert } from "@repo/error-handling";
+import { entities } from "@repo/indexer-database";
+
 import { BundleRepository } from "../database/BundleRepository";
 import { RepeatableTask } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";

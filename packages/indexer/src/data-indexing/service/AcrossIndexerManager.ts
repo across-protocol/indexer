@@ -1,17 +1,20 @@
-import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
+import { Logger } from "winston";
+
 import { DataSource } from "@repo/indexer-database";
 import { eventProcessorManager } from "@repo/webhooks";
+
+// Repositories
+import { BundleRepository } from "../../database/BundleRepository";
+import { CallsFailedRepository } from "../../database/CallsFailedRepository";
+import { HubPoolRepository } from "../../database/HubPoolRepository";
+import { SpokePoolRepository } from "../../database/SpokePoolRepository";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
+import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
+import { IndexerQueuesService } from "../../messaging/service";
 import { Config } from "../../parseEnv";
-import {
-  getFinalisedBlockBufferDistance,
-  getIndexingDelaySeconds,
-} from "./constants";
-// Indexers
-import { Indexer, SvmIndexer, EvmIndexer } from "./Indexer";
-import { HubPoolIndexerDataHandler } from "./HubPoolIndexerDataHandler";
-import { SpokePoolIndexerDataHandler } from "./SpokePoolIndexerDataHandler";
-import { SvmSpokePoolIndexerDataHandler } from "./SvmSpokePoolIndexerDataHandler";
+// Processors
+import { BundleEventsProcessor, SpokePoolProcessor } from "../../services";
 // Factories
 import {
   ConfigStoreClientFactory,
@@ -22,16 +25,16 @@ import {
   RetryProvidersFactory,
   SvmProvider,
 } from "../../web3/RetryProvidersFactory";
-// Processors
-import { BundleEventsProcessor, SpokePoolProcessor } from "../../services";
-import { IndexerQueuesService } from "../../messaging/service";
-// Repositories
-import { BundleRepository } from "../../database/BundleRepository";
-import { HubPoolRepository } from "../../database/HubPoolRepository";
-import { SpokePoolRepository } from "../../database/SpokePoolRepository";
-import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
-import { CallsFailedRepository } from "../../database/CallsFailedRepository";
-import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
+
+import {
+  getFinalisedBlockBufferDistance,
+  getIndexingDelaySeconds,
+} from "./constants";
+import { HubPoolIndexerDataHandler } from "./HubPoolIndexerDataHandler";
+// Indexers
+import { EvmIndexer, Indexer, SvmIndexer } from "./Indexer";
+import { SpokePoolIndexerDataHandler } from "./SpokePoolIndexerDataHandler";
+import { SvmSpokePoolIndexerDataHandler } from "./SvmSpokePoolIndexerDataHandler";
 
 export class AcrossIndexerManager {
   private hubPoolIndexer?: Indexer;

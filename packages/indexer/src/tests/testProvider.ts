@@ -1,9 +1,10 @@
 import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import { Logger } from "winston";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { WebSocket, WebSocketServer } from "ws";
+
 import { RedisCache } from "../redis/redisCache";
-import { WebSocketServer, WebSocket } from "ws";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
 /**
  * Creates a test instance of a RetryProvider.
@@ -84,7 +85,7 @@ export class MockWebSocketRPCServer {
         this.activeSocket = ws;
         ws.on("message", (msg) => this.handleMessage(ws, msg));
         // Handle socket errors to prevent them from bubbling up as unhandled events
-        ws.on("error", (err) => {
+        ws.on("error", (_) => {
           // excessive noise, ignoring mostly as these are expected during teardown
         });
       });

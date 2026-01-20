@@ -1,23 +1,26 @@
-import * as across from "@across-protocol/sdk";
 import { CHAIN_IDs, getDeployedBlockNumber } from "@across-protocol/contracts";
+import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
-import { RepeatableTask } from "../generics";
+
 import { BundleRepository } from "../database/BundleRepository";
+import { RepeatableTask } from "../generics";
+import { Config } from "../parseEnv";
 import * as utils from "../utils";
+import {
+  buildPoolRebalanceRoot,
+  DEFAULT_ARWEAVE_GATEWAY,
+  getBlockRangeBetweenBundles,
+  getBundleBlockRanges,
+} from "../utils/bundleBuilderUtils";
 import { getBlockTime } from "../web3/constants";
 import {
   RetryProvidersFactory,
   SvmProvider,
 } from "../web3/RetryProvidersFactory";
-import {
-  buildPoolRebalanceRoot,
-  getBlockRangeBetweenBundles,
-  getBundleBlockRanges,
-  DEFAULT_ARWEAVE_GATEWAY,
-} from "../utils/bundleBuilderUtils";
-import { Config } from "../parseEnv";
+
 import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";
 
 export type BundleConfig = {

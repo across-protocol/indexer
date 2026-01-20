@@ -1,16 +1,6 @@
-import { ethers } from "ethers";
 import { MulticallHandler__factory } from "@across-protocol/contracts";
-import {
-  SwapBeforeBridgeEvent,
-  CallsFailedEvent,
-  TransferEvent,
-  SwapMetadataEvent,
-} from "./model/events";
-import {
-  BASE_SWAP_BEFORE_BRIDGE_ABI,
-  SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
-  METADATA_EMITTED_ABI,
-} from "./model/abis";
+import { ethers } from "ethers";
+
 import {
   MessageSentLog,
   MintAndWithdrawLog,
@@ -22,6 +12,18 @@ import {
   SwapFlowFinalizedLog,
   SwapFlowInitializedLog,
 } from "../data-indexing/model/hyperEvmExecutor";
+
+import {
+  BASE_SWAP_BEFORE_BRIDGE_ABI,
+  METADATA_EMITTED_ABI,
+  SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
+} from "./model/abis";
+import {
+  CallsFailedEvent,
+  SwapBeforeBridgeEvent,
+  SwapMetadataEvent,
+  TransferEvent,
+} from "./model/events";
 
 export class EventDecoder {
   static decodeSwapBeforeBridgeEvents(

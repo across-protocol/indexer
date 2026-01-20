@@ -1,15 +1,18 @@
-import Redis from "ioredis";
-import winston from "winston";
-import { DateTime } from "luxon";
-import { Job, Worker } from "bullmq";
 import * as across from "@across-protocol/sdk";
-import * as s from "superstruct";
+import { Job, Worker } from "bullmq";
 import { ethers } from "ethers";
-import { DataSource, entities } from "@repo/indexer-database";
+import Redis from "ioredis";
+import { DateTime } from "luxon";
+import * as s from "superstruct";
+import winston from "winston";
+
 import { assert } from "@repo/error-handling";
-import { IndexerQueues } from "./service";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { DataSource, entities } from "@repo/indexer-database";
+
 import { findTokenByAddress, Token, yesterday } from "../utils";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+
+import { IndexerQueues } from "./service";
 
 export const SwapMessage = s.object({
   swapEventId: s.number(),

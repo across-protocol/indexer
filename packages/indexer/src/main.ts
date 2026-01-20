@@ -1,42 +1,44 @@
-import winston from "winston";
-import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
+import Redis from "ioredis";
+import winston from "winston";
+
+import { utils as dbUtils } from "@repo/indexer-database";
 import { WebhookFactory } from "@repo/webhooks";
+
+// Managers
+import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
+import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
+import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
+import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
+// Repositories
+import { BundleRepository } from "./database/BundleRepository";
+import { CallsFailedRepository } from "./database/CallsFailedRepository";
+import { CCTPRepository } from "./database/CctpRepository";
 import { connectToDatabase } from "./database/database.provider";
-import { RedisCache } from "./redis/redisCache";
+import { HubPoolRepository } from "./database/HubPoolRepository";
+import { OftRepository } from "./database/OftRepository";
+import { SpokePoolRepository } from "./database/SpokePoolRepository";
+import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
+import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
+import { PriceWorker } from "./messaging/priceWorker";
+// Queues Workers
+import { IndexerQueuesService } from "./messaging/service";
+import { SwapWorker } from "./messaging/swapWorker";
+import { MonitoringManager } from "./monitoring/MonitoringManager";
 import * as parseEnv from "./parseEnv";
-// Factories
-import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
+import { RedisCache } from "./redis/redisCache";
+import { BundleServicesManager } from "./services/BundleServicesManager";
+import { HotfixServicesManager } from "./services/HotfixServicesManager";
+import { DataDogMetricsService } from "./services/MetricsService";
 import {
   ConfigStoreClientFactory,
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "./utils/contractFactoryUtils";
-// Managers
-import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
-import { BundleServicesManager } from "./services/BundleServicesManager";
-import { HotfixServicesManager } from "./services/HotfixServicesManager";
-// Repositories
-import { BundleRepository } from "./database/BundleRepository";
-import { HubPoolRepository } from "./database/HubPoolRepository";
-import { SpokePoolRepository } from "./database/SpokePoolRepository";
-import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
-import { utils as dbUtils } from "@repo/indexer-database";
-// Queues Workers
-import { IndexerQueuesService } from "./messaging/service";
-import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
-import { PriceWorker } from "./messaging/priceWorker";
-import { SwapWorker } from "./messaging/swapWorker";
-import { CallsFailedRepository } from "./database/CallsFailedRepository";
-import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
-import { CCTPRepository } from "./database/CctpRepository";
-import { OftRepository } from "./database/OftRepository";
-import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
-import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
-import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
-import { startWebSocketIndexing } from "./data-indexing/service/indexing";
-import { DataDogMetricsService } from "./services/MetricsService";
-import { MonitoringManager } from "./monitoring/MonitoringManager";
+// Factories
+import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
