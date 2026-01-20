@@ -1,15 +1,6 @@
 import { IndexerEventPayload } from "./genericEventListening";
-import {
-  Abi,
-  parseAbi,
-  parseEventLogs,
-  TransactionReceipt,
-  decodeEventLog,
-} from "viem";
-import {
-  SPONSORED_DEPOSIT_FOR_BURN_ABI,
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-} from "../model/abis";
+import { Abi, parseAbi, parseEventLogs, TransactionReceipt } from "viem";
+import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
 import { DEPOSIT_FOR_BURN_EVENT_NAME } from "./constants";
 import {
   DepositForBurnArgs,
