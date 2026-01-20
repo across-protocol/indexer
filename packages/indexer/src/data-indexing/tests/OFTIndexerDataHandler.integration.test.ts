@@ -4,15 +4,12 @@ import { expect } from "chai";
 import sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { OftRepository } from "../../database/OftRepository";
 import { getTestDataSource } from "../../tests/setup";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { BlockRange } from "../model";
 import { OFTIndexerDataHandler } from "../service/OFTIndexerDataHandler";
-
 import { stubContractUtils } from "./utils";
 
 describe("OFTIndexerDataHandler", () => {

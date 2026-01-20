@@ -5,16 +5,13 @@ import { ethers } from "ethers";
 import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { CCTPRepository } from "../../database/CctpRepository";
 import { getTestDataSource } from "../../tests/setup";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { decodeHookData, decodeMessageBody } from "../adapter/cctp-v2/service";
 import { BlockRange } from "../model";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
-
 import { stubContractUtils } from "./utils";
 
 /**

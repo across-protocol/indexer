@@ -1,5 +1,4 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
-
 import { Config } from "../../parseEnv";
 
 // taken from https://github.com/UMAprotocol/bot-configs/blob/ed878f5f80509ad4ca55c8200e40670ba50e3b26/serverless-bots/across-v2-bot-config.json#L330C1-L342C25

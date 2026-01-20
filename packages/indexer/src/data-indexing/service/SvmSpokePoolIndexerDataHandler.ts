@@ -5,13 +5,11 @@ import {
 import * as across from "@across-protocol/sdk";
 import { Signature } from "@solana/kit";
 import { Logger } from "winston";
-
 import {
   entities,
   SaveQueryResultType,
   utils as indexerDatabaseUtils,
 } from "@repo/indexer-database";
-
 import {
   SpokePoolRepository,
   StoreEventsResult,
@@ -23,7 +21,6 @@ import * as utils from "../../utils";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
 import { BlockRange } from "../model";
-
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type FetchEventsResult = {

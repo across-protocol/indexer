@@ -1,5 +1,4 @@
 import { Logger } from "winston";
-
 import {
   EventSource,
   Filter,

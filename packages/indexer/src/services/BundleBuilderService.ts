@@ -7,10 +7,8 @@ import {
 } from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
-
 import { assert } from "@repo/error-handling";
 import { entities } from "@repo/indexer-database";
-
 import { BundleRepository } from "../database/BundleRepository";
 import { RepeatableTask } from "../generics";
 import { BundleLeavesCache } from "../redis/bundleLeavesCache";

@@ -5,13 +5,11 @@ import {
 import * as across from "@across-protocol/sdk";
 import { ethers, providers } from "ethers";
 import { Logger } from "winston";
-
 import {
   entities,
   SaveQueryResultType,
   utils as indexerDatabaseUtils,
 } from "@repo/indexer-database";
-
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import {
   SpokePoolRepository,
@@ -28,7 +26,6 @@ import { matchFillEventsWithTargetChainActions } from "../../utils/targetChainAc
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { EventDecoder } from "../../web3/EventDecoder";
 import { BlockRange } from "../model";
-
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type FetchEventsResult = {

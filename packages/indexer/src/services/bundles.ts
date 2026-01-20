@@ -1,5 +1,4 @@
 import winston from "winston";
-
 import {
   BlockRangeInsertType,
   BundleRepository,

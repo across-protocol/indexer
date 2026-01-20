@@ -1,5 +1,4 @@
 import sinon from "sinon";
-
 import * as contractUtils from "../../utils/contractUtils";
 
 export const stubContractUtils = (

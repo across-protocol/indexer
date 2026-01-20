@@ -2,14 +2,12 @@ import { PUBLIC_NETWORKS } from "@across-protocol/constants";
 import { arch, providers, utils } from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import { Logger } from "winston";
-
 import {
   parseProvidersUrls,
   parseRetryProviderEnvs,
   RetryProviderConfig,
 } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";
-
 import { getChainCacheFollowDistance } from "./constants";
 
 // SVM provider helper type.

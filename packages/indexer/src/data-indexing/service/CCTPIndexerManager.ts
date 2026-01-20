@@ -1,13 +1,10 @@
 import * as across from "@across-protocol/sdk";
 import { Logger } from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { CCTPRepository } from "../../database/CctpRepository";
 import { Config } from "../../parseEnv";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-
 import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import {
   getFinalisedBlockBufferDistance,

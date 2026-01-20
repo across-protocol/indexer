@@ -1,9 +1,7 @@
 import * as across from "@across-protocol/sdk";
 import { ethers, providers, Transaction } from "ethers";
 import { Logger } from "winston";
-
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-
 import { OftRepository } from "../../database/OftRepository";
 import {
   getDstOFTHandlerAddress,
@@ -32,7 +30,6 @@ import {
   SwapFlowFinalizedLog,
   SwapFlowInitializedLog,
 } from "../model";
-
 import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,

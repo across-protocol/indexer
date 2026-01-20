@@ -2,12 +2,9 @@ import { providers } from "@across-protocol/sdk";
 import { Job, Worker } from "bullmq";
 import Redis from "ioredis";
 import winston from "winston";
-
 import { DataSource, entities } from "@repo/indexer-database";
-
 import { getIntegratorId } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-
 import { IndexerQueues } from "./service";
 
 export type IntegratorIdMessage = {

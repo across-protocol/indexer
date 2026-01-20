@@ -1,10 +1,8 @@
 import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import winston from "winston";
-
 import { utils as dbUtils } from "@repo/indexer-database";
 import { WebhookFactory } from "@repo/webhooks";
-
 // Managers
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";

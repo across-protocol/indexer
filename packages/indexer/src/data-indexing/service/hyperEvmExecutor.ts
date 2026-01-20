@@ -1,5 +1,4 @@
 import { entities } from "@repo/indexer-database";
-
 import {
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,

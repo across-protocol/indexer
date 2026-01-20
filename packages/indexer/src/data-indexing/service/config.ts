@@ -1,7 +1,6 @@
 import { TEST_NETWORKS } from "@across-protocol/constants";
 import { Entity } from "typeorm";
 import { Logger } from "winston";
-
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
 import { Config } from "../../parseEnv";
 import {
@@ -44,7 +43,6 @@ import {
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
 import { OFTReceivedArgs, OFTSentArgs } from "../model/eventTypes";
-
 import {
   ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
   DEPOSIT_FOR_BURN_EVENT_NAME,

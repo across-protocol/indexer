@@ -1,11 +1,8 @@
 import { Logger } from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { IndexerQueuesService } from "../messaging/service";
 import { Config } from "../parseEnv";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-
 import { UnmatchedDepositEventsService } from "./UnmatchedDepositEventsService";
 import { UnmatchedFillEventsService } from "./UnmatchedFillEventsService";
 export class HotfixServicesManager {

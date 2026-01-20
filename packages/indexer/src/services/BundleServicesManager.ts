@@ -1,8 +1,6 @@
 import { Redis } from "ioredis";
 import { Logger } from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { BundleRepository } from "../database/BundleRepository";
 import { Config } from "../parseEnv";
 import {
@@ -11,7 +9,6 @@ import {
   SpokePoolClientFactory,
 } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
-
 import { BundleBuilderService } from "./BundleBuilderService";
 import { BundleIncludedEventsService } from "./BundleIncludedEventsService";
 import { RefundedDepositsStatusService } from "./RefundedDepositsStatusService";

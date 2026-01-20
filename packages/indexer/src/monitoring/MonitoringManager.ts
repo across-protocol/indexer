@@ -1,9 +1,6 @@
 import { Logger } from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { Config } from "../parseEnv";
-
 import { IncorrectDepositStatusMonitor } from "./IncorrectDepositStatusMonitor";
 
 export enum MonitoringServices {

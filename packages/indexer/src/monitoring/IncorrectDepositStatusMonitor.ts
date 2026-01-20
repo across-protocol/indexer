@@ -1,7 +1,5 @@
 import winston from "winston";
-
 import { DataSource, entities } from "@repo/indexer-database";
-
 import { RepeatableTask } from "../generics";
 
 type ResultLog = {

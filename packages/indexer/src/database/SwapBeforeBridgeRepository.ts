@@ -1,8 +1,6 @@
 import * as across from "@across-protocol/sdk";
 import winston from "winston";
-
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
-
 import { SwapBeforeBridgeEvent } from "../web3/model/events";
 
 export class SwapBeforeBridgeRepository extends dbUtils.BlockchainEventRepository {

@@ -6,12 +6,9 @@ import Redis from "ioredis";
 import { DateTime } from "luxon";
 import * as ss from "superstruct";
 import winston from "winston";
-
 import { assert } from "@repo/error-handling";
 import { DataSource, entities } from "@repo/indexer-database";
-
 import { findTokenByAddress, yesterday } from "../utils";
-
 import { IndexerQueues } from "./service";
 
 export const PriceMessage = ss.object({

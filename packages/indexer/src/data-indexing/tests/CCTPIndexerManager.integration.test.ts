@@ -4,9 +4,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { CCTPRepository } from "../../database/CctpRepository";
 import { Config, parseProvidersUrls } from "../../parseEnv";
 import { RedisCache } from "../../redis/redisCache";
@@ -14,7 +12,6 @@ import { getTestDataSource } from "../../tests/setup";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { CCTPIndexerManager } from "../service/CCTPIndexerManager";
-
 import { stubContractUtils } from "./utils";
 
 describe("CCTPIndexerManager", () => {

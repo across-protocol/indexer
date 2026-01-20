@@ -1,5 +1,4 @@
 import { PubSub, Topic } from "@google-cloud/pubsub";
-
 import { Config } from "../parseEnv";
 
 /**

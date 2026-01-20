@@ -4,9 +4,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { CCTPRepository } from "../../database/CctpRepository";
 import { PubSubService } from "../../pubsub/service";
 import { getTestDataSource } from "../../tests/setup";
@@ -14,7 +12,6 @@ import { createTestRetryProvider } from "../../tests/testProvider";
 import { BlockRange } from "../model";
 import { CctpFinalizerService } from "../service/CctpFinalizerService";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
-
 import { stubContractUtils } from "./utils";
 
 describe("CctpFinalizerService", () => {

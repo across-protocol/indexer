@@ -1,9 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
 import winston from "winston";
-
 import { DataSource } from "@repo/indexer-database";
-
 import { SwapMetadataRepository } from "../database/SwapMetadataRepository";
 
 describe("SwapMetadataRepository Tests", () => {

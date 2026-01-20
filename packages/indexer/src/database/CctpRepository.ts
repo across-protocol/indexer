@@ -1,14 +1,12 @@
 import * as across from "@across-protocol/sdk";
 import { ethers } from "ethers";
 import winston from "winston";
-
 import {
   DataSource,
   entities,
   SaveQueryResult,
   utils as dbUtils,
 } from "@repo/indexer-database";
-
 import {
   DepositForBurnWithBlock,
   MessageReceivedWithBlock,

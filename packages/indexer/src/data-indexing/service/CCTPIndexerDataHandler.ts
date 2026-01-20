@@ -2,9 +2,7 @@ import { TEST_NETWORKS } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
 import { ethers, providers, Transaction } from "ethers";
 import { Logger } from "winston";
-
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-
 import {
   BurnEventsPair,
   CCTPRepository,
@@ -49,7 +47,6 @@ import {
   SwapFlowFinalizedLog,
   SwapFlowInitializedLog,
 } from "../model";
-
 import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
 import {
   formatAndSaveEvents,

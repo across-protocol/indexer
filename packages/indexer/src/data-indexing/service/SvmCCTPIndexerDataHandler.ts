@@ -8,9 +8,7 @@ import * as across from "@across-protocol/sdk";
 import { address, signature } from "@solana/kit";
 import { ethers } from "ethers";
 import { Logger } from "winston";
-
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-
 import {
   BurnEventsPair,
   CCTPRepository,
@@ -33,7 +31,6 @@ import {
   getIndexingStartBlockNumber,
 } from "../adapter/cctp-v2/service";
 import { BlockRange } from "../model";
-
 import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type SolanaBurnEventsPair = {

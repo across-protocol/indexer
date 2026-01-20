@@ -4,9 +4,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { CCTPRepository } from "../../database/CctpRepository";
 import { getTestDataSource } from "../../tests/setup";
 import { createTestRetryProvider } from "../../tests/testProvider";

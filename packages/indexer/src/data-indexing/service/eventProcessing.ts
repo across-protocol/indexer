@@ -1,7 +1,6 @@
 import * as across from "@across-protocol/sdk";
 import { providers } from "ethers";
 import { ObjectLiteral } from "typeorm";
-
 import { SaveQueryResult } from "@repo/indexer-database";
 import { utils } from "@repo/indexer-database";
 

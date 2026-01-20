@@ -1,9 +1,7 @@
 import * as across from "@across-protocol/sdk";
 import { arrayify } from "ethers/lib/utils";
 import { Logger } from "winston";
-
 import { entities } from "@repo/indexer-database";
-
 import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import {
   decodeMessage,
@@ -24,7 +22,6 @@ import {
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
-
 import { getFinalisedBlockBufferDistance } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 

@@ -1,6 +1,5 @@
 import { MulticallHandler__factory } from "@across-protocol/contracts";
 import { ethers } from "ethers";
-
 import {
   MessageSentLog,
   MintAndWithdrawLog,
@@ -12,7 +11,6 @@ import {
   SwapFlowFinalizedLog,
   SwapFlowInitializedLog,
 } from "../data-indexing/model/hyperEvmExecutor";
-
 import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   METADATA_EMITTED_ABI,

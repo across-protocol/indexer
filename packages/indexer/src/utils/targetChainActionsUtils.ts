@@ -1,7 +1,5 @@
 import { providers } from "ethers";
-
 import { entities } from "@repo/indexer-database";
-
 import { EventDecoder } from "../web3/EventDecoder";
 
 const TARGET_CHAIN_ACTION_ADDRESSES: Record<string, string> = {

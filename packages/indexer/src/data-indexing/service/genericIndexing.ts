@@ -7,7 +7,6 @@ import {
   WebSocketTransportConfig,
 } from "viem";
 import { Logger } from "winston";
-
 import {
   DataDogMetricsService,
   withMetrics,
@@ -19,7 +18,6 @@ import {
   Storer,
   Transformer,
 } from "../model/genericTypes";
-
 import { EventConfig, subscribeToEvent } from "./genericEventListening";
 import { processEvent } from "./genericEventProcessing";
 

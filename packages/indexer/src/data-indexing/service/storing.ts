@@ -1,6 +1,5 @@
 import { entities } from "@repo/indexer-database";
 import { DataSourceType, utils as dbUtils } from "@repo/indexer-database";
-
 import { Storer } from "../model/genericTypes";
 
 const PK_CHAIN_BLOCK_TX_LOG = [

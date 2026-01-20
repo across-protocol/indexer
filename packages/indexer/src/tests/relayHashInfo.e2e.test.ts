@@ -2,7 +2,6 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 import { arch, interfaces, utils } from "@across-protocol/sdk";
 import { expect } from "chai";
 import winston from "winston";
-
 import {
   createDataSource,
   DataSource,
@@ -10,7 +9,6 @@ import {
   fixtures,
   Repository,
 } from "@repo/indexer-database";
-
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
 import { parsePostgresConfig } from "../parseEnv";
 import { RefundedDepositsStatusService } from "../services/RefundedDepositsStatusService";

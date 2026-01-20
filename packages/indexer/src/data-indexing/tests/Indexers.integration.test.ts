@@ -11,10 +11,8 @@ import {
   optimism,
 } from "viem/chains";
 import { Logger } from "winston";
-
 import { utils as dbUtils } from "@repo/indexer-database";
 import { DataSourceType, entities } from "@repo/indexer-database";
-
 import { getTestDataSource } from "../../tests/setup";
 import { MockWebSocketRPCServer } from "../../tests/testProvider";
 import * as contractUtils from "../../utils/contractUtils";

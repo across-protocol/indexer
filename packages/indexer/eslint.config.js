@@ -27,14 +27,8 @@ module.exports = [
           groups: [
             // Side effect imports
             ["^\\u0000"],
-            // Node.js builtins and external packages
-            ["^@?\\w"],
-            // @repo packages
-            ["^@repo/"],
-            // Parent imports (../)
-            ["^\\.\\.(?!/?$)", "^\\.\\./?$"],
-            // Other relative imports (./), same folder
-            ["^\\./"],
+            // External packages, @repo packages, then relative - all without blank lines
+            ["^@?\\w", "^@repo/", "^\\."],
           ],
         },
       ],

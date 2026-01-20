@@ -2,7 +2,6 @@ import * as across from "@across-protocol/sdk";
 import Redis from "ioredis";
 import { Logger } from "winston";
 import { WebSocket, WebSocketServer } from "ws";
-
 import { RedisCache } from "../redis/redisCache";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 
