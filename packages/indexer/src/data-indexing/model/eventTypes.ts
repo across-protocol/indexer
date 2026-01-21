@@ -198,6 +198,21 @@ export interface RelayedRootBundleArgs {
   slowRelayRoot: `0x${string}`;
 }
 
+export interface RequestedSlowFillArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  originChainId: bigint;
+  depositId: bigint;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  exclusiveRelayer: `0x${string}`;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  messageHash: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -216,4 +231,5 @@ export type EventArgs =
   | V3FundsDepositedArgs
   | ExecutedRelayerRefundRootArgs
   | RequestedSpeedUpV3DepositArgs
-  | RelayedRootBundleArgs;
+  | RelayedRootBundleArgs
+  | RequestedSlowFillArgs;

@@ -34,6 +34,7 @@ import {
   compareFilledRelayEvents,
   compareExecutedRelayerRefundRootEvents,
   compareRelayedRootBundleEvents,
+  compareRequestedSlowFillEvents,
 } from "./utils";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
@@ -683,7 +684,6 @@ describe("Websocket Subscription", () => {
         chainId: CHAIN_IDs.ARBITRUM,
       }).length,
     );
-
     receipt.logs.forEach((log) => server.pushEvent(log));
 
     // Verify Persistence
@@ -1550,5 +1550,68 @@ describe("Websocket Subscription", () => {
 
     expect(savedEvent).to.exist;
     compareRelayedRootBundleEvents(savedEvent, sanityCheckResult);
+  }).timeout(40000);
+
+  it("should ingest the RequestedSlowFill event from Arbitrum tx 0xaa0...78e2", async () => {
+    const txHash =
+      "0xaa0b0bc339ffbe359fc6fe34735189620dec3d425b9ba765248b5a5f737c78e2";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const pollingRepo = dataSource.getRepository(entities.RequestedV3SlowFill);
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: pollingRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: pollingRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    compareRequestedSlowFillEvents(savedEvent, sanityCheckResult);
   }).timeout(40000);
 });

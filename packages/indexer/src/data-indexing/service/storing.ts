@@ -325,7 +325,7 @@ export const storeV3FundsDepositedEvent: Storer<
     entities.V3FundsDeposited,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
-    UPDATE_TRANSACTION_HASH as (keyof entities.V3FundsDeposited)[],
+    [],
   );
 };
 
@@ -384,6 +384,28 @@ export const storeRelayedRootBundleEvent: Storer<
     entities.RelayedRootBundle,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     UK_RELAYED_ROOT_BUNDLE as (keyof entities.RelayedRootBundle)[],
+    [],
+  );
+};
+
+/**
+ * Stores a RequestedSlowFill event in the database.
+ *
+ * @param event The RequestedV3SlowFill entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeRequestedSlowFillEvent: Storer<
+  Partial<entities.RequestedV3SlowFill>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.RequestedV3SlowFill>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
+    entities.RequestedV3SlowFill,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_INTERNAL_HASH as (keyof entities.RequestedV3SlowFill)[],
     [],
   );
 };

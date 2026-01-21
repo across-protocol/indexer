@@ -286,6 +286,27 @@ const EXECUTED_RELAYER_REFUND_ROOT_FIELDS = [
   "caller",
 ];
 
+const REQUESTED_SLOW_FILL_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "depositId",
+  "originChainId",
+  "destinationChainId",
+  "inputToken",
+  "outputToken",
+  "inputAmount",
+  "outputAmount",
+  "fillDeadline",
+  "exclusivityDeadline",
+  "exclusiveRelayer",
+  "depositor",
+  "recipient",
+  "message",
+];
+
 const RELAYED_ROOT_BUNDLE_FIELDS = [
   "chainId",
   "blockNumber",
@@ -338,4 +359,11 @@ export const compareRelayedRootBundleEvents = (
   expected: Partial<entities.RelayedRootBundle>,
 ) => {
   compareSubset(saved, expected, RELAYED_ROOT_BUNDLE_FIELDS);
+};
+
+export const compareRequestedSlowFillEvents = (
+  saved: Partial<entities.RequestedV3SlowFill>,
+  expected: Partial<entities.RequestedV3SlowFill>,
+) => {
+  compareSubset(saved, expected, REQUESTED_SLOW_FILL_FIELDS);
 };

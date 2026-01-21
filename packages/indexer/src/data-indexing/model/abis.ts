@@ -83,3 +83,7 @@ export const REQUESTED_SPEED_UP_V3_DEPOSIT_ABI = [
 export const RELAYED_ROOT_BUNDLE_ABI = [
   "event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 indexed relayerRefundRoot, bytes32 indexed slowRelayRoot)",
 ];
+
+export const REQUESTED_SLOW_FILL_ABI = [
+  "event RequestedSlowFill(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed originChainId, uint256 indexed depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 exclusiveRelayer, bytes32 depositor, bytes32 recipient, bytes32 messageHash)",
+];

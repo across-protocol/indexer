@@ -30,6 +30,7 @@ import {
   ExecutedRelayerRefundRootArgs,
   RequestedSpeedUpV3DepositArgs,
   RelayedRootBundleArgs,
+  RequestedSlowFillArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -785,5 +786,87 @@ export const transformRelayedRootBundleEvent = (
     rootBundleId: preprocessed.rootBundleId,
     relayerRefundRoot: preprocessed.relayerRefundRoot,
     slowRelayRoot: preprocessed.slowRelayRoot,
+  };
+};
+
+export const transformRequestedSlowFillEvent = (
+  preprocessed: RequestedSlowFillArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RequestedV3SlowFill> => {
+  const base = baseTransformer(payload, logger);
+  const destinationChainId = Number(base.chainId);
+  const originChainId = Number(preprocessed.originChainId);
+
+  const relayData = {
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken.toString(),
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken.toString(),
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
+    fillDeadline: preprocessed.fillDeadline,
+    exclusivityDeadline: preprocessed.exclusivityDeadline,
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer.toString(),
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor.toString(),
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient.toString(),
+      destinationChainId,
+    ),
+    messageHash: preprocessed.messageHash,
+  } as Omit<across.interfaces.RelayData, "message">;
+
+  const internalHash = getInternalHash(
+    relayData,
+    preprocessed.messageHash,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    internalHash,
+    depositId: preprocessed.depositId.toString(),
+    originChainId: originChainId.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
+    message: preprocessed.messageHash,
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
+    exclusivityDeadline:
+      preprocessed.exclusivityDeadline === 0
+        ? undefined
+        : new Date(preprocessed.exclusivityDeadline * 1000),
+    fillDeadline: new Date(preprocessed.fillDeadline * 1000),
   };
 };

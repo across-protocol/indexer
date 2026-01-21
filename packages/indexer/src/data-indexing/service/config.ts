@@ -19,6 +19,7 @@ import {
   EXECUTED_RELAYER_REFUND_ROOT_ABI,
   REQUESTED_SPEED_UP_V3_DEPOSIT_ABI,
   RELAYED_ROOT_BUNDLE_ABI,
+  REQUESTED_SLOW_FILL_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -41,6 +42,7 @@ import {
   EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME,
   REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME,
   RELAYED_ROOT_BUNDLE_EVENT_NAME,
+  REQUESTED_SLOW_FILL_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -67,6 +69,7 @@ import {
   ExecutedRelayerRefundRootArgs,
   RequestedSpeedUpV3DepositArgs,
   RelayedRootBundleArgs,
+  RequestedSlowFillArgs,
 } from "../model/eventTypes";
 
 import {
@@ -92,6 +95,7 @@ import {
   transformExecutedRelayerRefundRootEvent,
   transformRequestedSpeedUpV3DepositEvent,
   transformRelayedRootBundleEvent,
+  transformRequestedSlowFillEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -112,6 +116,7 @@ import {
   storeExecutedRelayerRefundRootEvent,
   storeRequestedSpeedUpV3DepositEvent,
   storeRelayedRootBundleEvent,
+  storeRequestedSlowFillEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -536,6 +541,20 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           payload: IndexerEventPayload,
         ) => transformRelayedRootBundleEvent(args, payload, logger),
         store: storeRelayedRootBundleEvent,
+      },
+      {
+        config: {
+          abi: REQUESTED_SLOW_FILL_ABI,
+          eventName: REQUESTED_SLOW_FILL_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<RequestedSlowFillArgs>,
+        filter: async () => true,
+        transform: (
+          args: RequestedSlowFillArgs,
+          payload: IndexerEventPayload,
+        ) => transformRequestedSlowFillEvent(args, payload, logger),
+        store: storeRequestedSlowFillEvent,
       },
     ];
   },
