@@ -78,12 +78,8 @@ export class SponsoredOFTSend {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({
-    type: "simple-enum",
-    enum: DataSourceType,
-    default: DataSourceType.POLLING,
-  })
-  dataSource: DataSourceType;
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;

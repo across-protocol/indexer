@@ -8,7 +8,7 @@ export class AddDataSourceToSponsoredOFTSend1768178183001
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "evm"."sponsored_oft_send"
-      ADD COLUMN "dataSource" character varying NOT NULL DEFAULT 'polling'
+      ADD COLUMN "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'
     `);
   }
 
