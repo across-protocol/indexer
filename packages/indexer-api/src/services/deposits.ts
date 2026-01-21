@@ -1388,6 +1388,7 @@ export class DepositsService {
             destinationChainId: CHAIN_IDs.HYPERCORE,
             amount: deposit.amount,
             token: deposit.token,
+            nonce: deposit.nonce,
             destinationBlockTimestamp: deposit.blockTimestamp,
           };
         }),
@@ -1425,6 +1426,7 @@ export class DepositsService {
           destinationChainId: withdrawal.destinationChainId
             ? parseInt(withdrawal.destinationChainId)
             : null,
+          nonce: withdrawal.hypercoreNonce,
           destinationBlockTimestamp: withdrawal.createdAt, // Timestamp of the block on the destination chain
         };
       });

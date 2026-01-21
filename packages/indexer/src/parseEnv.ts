@@ -22,6 +22,7 @@ export type Config = {
   enableBundleBuilder: boolean;
   cctpIndexerChainIds: number[];
   enableCctpFinalizer: boolean;
+  enableCctpFinalizerPubSub: boolean;
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
@@ -291,6 +292,9 @@ export function envToConfig(env: Env): Config {
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
     : false;
+  const enableCctpFinalizerPubSub = env.ENABLE_CCTP_FINALIZER_PUBSUB
+    ? env.ENABLE_CCTP_FINALIZER_PUBSUB === "true"
+    : false;
   const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
   const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
   const datadogConfig = parseDatadogConfig(env);
@@ -363,6 +367,7 @@ export function envToConfig(env: Env): Config {
     enableOftIndexer,
     enableHyperliquidIndexer,
     enableCctpFinalizer,
+    enableCctpFinalizerPubSub,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,
     datadogConfig,

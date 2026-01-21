@@ -48,6 +48,7 @@ export class CctpFinalizerServiceManager {
         this.logger,
         this.postgres,
         this.pubSubService,
+        this.config.enableCctpFinalizerPubSub,
       );
       this.monitorService = new CctpUnfinalizedBurnMonitorService(
         this.logger,
@@ -87,6 +88,7 @@ export class CctpFinalizerService extends RepeatableTask {
     logger: winston.Logger,
     private readonly postgres: DataSource,
     private readonly pubSubService: PubSubService,
+    private readonly enablePubSub: boolean,
   ) {
     super(logger, "cctp-finalizer-service");
   }
@@ -263,7 +265,8 @@ export class CctpFinalizerService extends RepeatableTask {
         .execute();
 
       // Skip PubSub publishing for Hyperliquid deposits (they go through HyperEVM, not standard finalization)
-      if (!skipPubSub) {
+      // Also skip if pubsub is disabled via ENABLE_CCTP_FINALIZER_PUBSUB
+      if (!skipPubSub && this.enablePubSub) {
         this.logger.debug({
           at: "CctpFinalizerService#publishBurnEvent",
           message: "Publishing burn event to pubsub",
