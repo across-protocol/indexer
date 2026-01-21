@@ -21,6 +21,7 @@ import {
   CCTP_PROTOCOL,
   SPONSORED_CCTP_PROTOCOL,
   OFT_PROTOCOL,
+  SPONSORED_OFT_PROTOCOL,
 } from "../service/config";
 
 // Setup generic client for fetching data
@@ -1048,5 +1049,138 @@ describe("Websocket Subscription", () => {
     expect(savedEvent!.blockTimestamp.toISOString()).to.exist;
     expect(savedEvent!.deletedAt).to.be.null;
     expect(savedEvent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
+  }).timeout(20000);
+
+  it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {
+    // Tx: https://arbiscan.io/tx/0x0400453f05403a252798c7615005c788c525cd80f3f79f4b3dbc352432caf1cb
+    const txHash =
+      "0x0400453f05403a252798c7615005c788c525cd80f3f79f4b3dbc352432caf1cb";
+
+    const client = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    // Stub the SponsoredOFTSrcPeriphery address
+    sinon
+      .stub(contractUtils, "getSponsoredOFTSrcPeripheryAddress")
+      .returns("0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE");
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      client,
+      txHash,
+    );
+
+    // Start the Indexer with SPONSORED_OFT_PROTOCOL
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPONSORED_OFT_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(
+      SPONSORED_OFT_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM)
+        .length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify OFTSent Persistence (base OFT event)
+    const oftSentRepo = dataSource.getRepository(entities.OFTSent);
+    const savedOftSent = await oftSentRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedOftSent).to.exist;
+    expect(savedOftSent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
+
+    // Verify SponsoredOFTSend Persistence
+    const sponsoredRepo = dataSource.getRepository(entities.SponsoredOFTSend);
+    const savedSponsored = await sponsoredRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+    expect(savedSponsored).to.exist;
+    expect(savedSponsored!).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+
+    // Verify essential SponsoredOFTSend fields exist
+    expect(savedSponsored!.quoteNonce).to.exist;
+    expect(savedSponsored!.originSender).to.exist;
+    expect(savedSponsored!.finalRecipient).to.exist;
+    expect(savedSponsored!.destinationHandler).to.exist;
+    expect(savedSponsored!.quoteDeadline).to.exist;
+    expect(savedSponsored!.finalToken).to.exist;
+    expect(savedSponsored!.sig).to.exist;
+    expect(savedSponsored!.blockTimestamp.toISOString()).to.exist;
+  }).timeout(20000);
+
+  it("should ingest SwapFlowFinalized via OFT on HyperEVM tx 0xc2be...b837", async () => {
+    // Tx: https://hyperevmscan.io/tx/0xc2be02ce762323192064d18bc5ca814cf2f5d8693e7f31e86e9edc4d5170b837
+    const txHash =
+      "0xc2be02ce762323192064d18bc5ca814cf2f5d8693e7f31e86e9edc4d5170b837";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
+
+    // Stub the DstOFTHandler address
+    sinon
+      .stub(contractUtils, "getDstOFTHandlerAddress")
+      .returns("0xc8786D517b4e224bB43985A38dBeF8588D7354CD");
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      hyperClient,
+      txHash,
+    );
+
+    startChainIndexing({
+      repo: blockchainRepository,
+      rpcUrl: rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.HYPEREVM,
+      protocols: [SPONSORED_OFT_PROTOCOL],
+      transportOptions: { reconnect: false, timeout: 30_000 },
+    });
+
+    await server.waitForSubscription(
+      SPONSORED_OFT_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
+        .length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for insertion
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify SwapFlowFinalized Persistence
+    const finalizedRepo = dataSource.getRepository(entities.SwapFlowFinalized);
+    const savedFinalized = await finalizedRepo.findOne({
+      where: { transactionHash: txHash },
+    });
+
+    expect(savedFinalized).to.exist;
+    expect(savedFinalized!).to.deep.include({
+      chainId: CHAIN_IDs.HYPEREVM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+
+    // Verify essential SwapFlowFinalized fields exist
+    expect(savedFinalized!.quoteNonce).to.exist;
+    expect(savedFinalized!.finalRecipient).to.exist;
+    expect(savedFinalized!.finalToken).to.exist;
+    expect(savedFinalized!.totalSent).to.exist;
+    expect(savedFinalized!.evmAmountSponsored).to.exist;
+    expect(savedFinalized!.blockTimestamp.toISOString()).to.exist;
   }).timeout(20000);
 });

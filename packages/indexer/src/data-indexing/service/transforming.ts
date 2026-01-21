@@ -21,6 +21,7 @@ import {
   ArbitraryActionsExecutedArgs,
   OFTSentArgs,
   OFTReceivedArgs,
+  SponsoredOFTSendArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { arrayify } from "ethers/lib/utils";
@@ -491,5 +492,42 @@ export const transformOFTReceivedEvent = (
     toAddress: preprocessed.toAddress,
     amountReceivedLD: preprocessed.amountReceivedLD.toString(),
     token: tokenAddress,
+  };
+};
+
+/**
+ * Transforms a raw `SponsoredOFTSend` event payload into a partial `SponsoredOFTSend` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on block number
+ * and the configured finality buffer.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @returns A partial `SponsoredOFTSend` entity ready for storage.
+ */
+export const transformSponsoredOFTSendEvent = (
+  preprocessed: SponsoredOFTSendArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SponsoredOFTSend> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = parseInt(base.chainId);
+
+  // Transform bytes32 addresses to chain format
+  const finalRecipient = transformAddress(preprocessed.finalRecipient, chainId);
+  const finalToken = transformAddress(preprocessed.finalToken, chainId);
+
+  return {
+    ...base,
+    chainId: base.chainId.toString(),
+    quoteNonce: preprocessed.quoteNonce,
+    originSender: preprocessed.originSender,
+    finalRecipient,
+    destinationHandler: preprocessed.destinationHandler,
+    quoteDeadline: new Date(Number(preprocessed.quoteDeadline) * 1000),
+    maxBpsToSponsor: preprocessed.maxBpsToSponsor.toString(),
+    maxUserSlippageBps: preprocessed.maxUserSlippageBps.toString(),
+    finalToken,
+    sig: preprocessed.sig,
   };
 };
