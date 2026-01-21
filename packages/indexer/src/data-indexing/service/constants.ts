@@ -96,14 +96,21 @@ export function getIndexingDelaySeconds(chainId: number, config: Config) {
   return indexingDelay;
 }
 
+const POLLING_INDEXER_LONG_DELAY_SECONDS = 300;
+
 /**
  * Get the seconds delay for the polling indexing.
- * This is not configured per chain, but a global value that can be overridden
- * by the `INDEXING_DELAY_SECONDS` environment variable.
+ * If the websocket is enabled for the chain, use the long delay.
+ * Otherwise, use the standard polling delay.
  */
-export function getPollingIndexingDelaySeconds(config: Config) {
-  // For now keep a simple default value of 5 minutes.
-  return config.indexingDelaySeconds || 300;
+export function getPollingIndexerDelaySeconds(chainId: number, config: Config) {
+  if (
+    config.enableWebSocketIndexer &&
+    config.wsIndexerChainIds.includes(chainId)
+  ) {
+    return POLLING_INDEXER_LONG_DELAY_SECONDS;
+  }
+  return getIndexingDelaySeconds(chainId, config);
 }
 
 /* ==================================================================================
