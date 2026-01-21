@@ -87,3 +87,7 @@ export const RELAYED_ROOT_BUNDLE_ABI = [
 export const REQUESTED_SLOW_FILL_ABI = [
   "event RequestedSlowFill(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed originChainId, uint256 indexed depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 exclusiveRelayer, bytes32 depositor, bytes32 recipient, bytes32 messageHash)",
 ];
+
+export const TOKENS_BRIDGED_ABI = [
+  "event TokensBridged(uint256 amountToReturn, uint256 indexed chainId, uint32 indexed leafId, bytes32 indexed l2TokenAddress, address caller)",
+];

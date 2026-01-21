@@ -319,6 +319,19 @@ const RELAYED_ROOT_BUNDLE_FIELDS = [
   "slowRelayRoot",
 ];
 
+const TOKENS_BRIDGED_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "chainId",
+  "leafId",
+  "l2TokenAddress",
+  "amountToReturn",
+  "caller",
+];
+
 const compareSubset = <T>(
   saved: Partial<T>,
   expected: Partial<T>,
@@ -366,4 +379,11 @@ export const compareRequestedSlowFillEvents = (
   expected: Partial<entities.RequestedV3SlowFill>,
 ) => {
   compareSubset(saved, expected, REQUESTED_SLOW_FILL_FIELDS);
+};
+
+export const compareTokensBridgedEvents = (
+  saved: Partial<entities.TokensBridged>,
+  expected: Partial<entities.TokensBridged>,
+) => {
+  compareSubset(saved, expected, TOKENS_BRIDGED_FIELDS);
 };

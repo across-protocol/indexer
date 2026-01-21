@@ -213,6 +213,14 @@ export interface RequestedSlowFillArgs {
   messageHash: `0x${string}`;
 }
 
+export interface TokensBridgedArgs {
+  amountToReturn: bigint;
+  chainId: bigint;
+  leafId: number;
+  l2TokenAddress: `0x${string}`;
+  caller: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -232,4 +240,5 @@ export type EventArgs =
   | ExecutedRelayerRefundRootArgs
   | RequestedSpeedUpV3DepositArgs
   | RelayedRootBundleArgs
-  | RequestedSlowFillArgs;
+  | RequestedSlowFillArgs
+  | TokensBridgedArgs;

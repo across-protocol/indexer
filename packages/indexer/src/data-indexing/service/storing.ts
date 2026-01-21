@@ -23,8 +23,13 @@ const UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX = [
   "transactionHash",
   "logIndex",
 ];
-
 const UK_RELAYED_ROOT_BUNDLE = ["chainId", "rootBundleId", "transactionHash"];
+const UK_TOKENS_BRIDGED = [
+  "chainId",
+  "leafId",
+  "l2TokenAddress",
+  "transactionHash",
+];
 
 /**
  * Stores a DepositForBurn event in the database.
@@ -407,5 +412,27 @@ export const storeRequestedSlowFillEvent: Storer<
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     UK_INTERNAL_HASH as (keyof entities.RequestedV3SlowFill)[],
     [],
+  );
+};
+
+/**
+ * Stores a TokensBridged event in the database.
+ *
+ * @param event The TokensBridged entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeTokensBridgedEvent: Storer<
+  Partial<entities.TokensBridged>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.TokensBridged>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.TokensBridged>(
+    entities.TokensBridged,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_TOKENS_BRIDGED as (keyof entities.TokensBridged)[],
+    UPDATE_TRANSACTION_HASH as (keyof entities.TokensBridged)[],
   );
 };

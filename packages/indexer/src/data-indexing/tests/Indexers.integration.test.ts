@@ -35,6 +35,7 @@ import {
   compareExecutedRelayerRefundRootEvents,
   compareRelayedRootBundleEvents,
   compareRequestedSlowFillEvents,
+  compareTokensBridgedEvents,
 } from "./utils";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
@@ -1613,5 +1614,58 @@ describe("Websocket Subscription", () => {
 
     expect(savedEvent).to.exist;
     compareRequestedSlowFillEvents(savedEvent, sanityCheckResult);
+  }).timeout(40000);
+
+  it("should ingest the TokensBridged event from Arbitrum tx 0x5683...202c", async () => {
+    const txHash =
+      "0x56830e8e938d993c1f7fe94d222c4bb7fe1cc311da488da6214b9a5ff471202c";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.TokensBridged);
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    expect(savedEvent.blockNumber).to.equal(Number(block.number));
+    expect(savedEvent.transactionHash).to.equal(txHash);
+    expect(savedEvent.leafId).to.equal(40);
+    expect(savedEvent.amountToReturn).to.equal("757612815391");
   }).timeout(40000);
 });

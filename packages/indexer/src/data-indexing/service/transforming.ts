@@ -31,6 +31,7 @@ import {
   RequestedSpeedUpV3DepositArgs,
   RelayedRootBundleArgs,
   RequestedSlowFillArgs,
+  TokensBridgedArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -868,5 +869,33 @@ export const transformRequestedSlowFillEvent = (
         ? undefined
         : new Date(preprocessed.exclusivityDeadline * 1000),
     fillDeadline: new Date(preprocessed.fillDeadline * 1000),
+  };
+};
+
+/**
+ * Transforms a TokensBridged event into a database entity.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The indexer event payload.
+ * @param logger The logger.
+ * @returns The transformed TokensBridged entity.
+ */
+export const transformTokensBridgedEvent = (
+  preprocessed: TokensBridgedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.TokensBridged> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(preprocessed.chainId);
+
+  return {
+    ...base,
+    chainId: chainId.toString(),
+    leafId: preprocessed.leafId,
+    l2TokenAddress: transformAddress(
+      preprocessed.l2TokenAddress.toString(),
+      chainId,
+    ),
+    amountToReturn: preprocessed.amountToReturn.toString(),
+    caller: transformAddress(preprocessed.caller.toString(), chainId),
   };
 };

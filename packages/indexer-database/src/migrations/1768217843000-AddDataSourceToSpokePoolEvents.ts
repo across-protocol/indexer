@@ -21,6 +21,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     await queryRunner.query(
       `ALTER TABLE "evm"."requested_v3_slow_fill" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."tokens_bridged" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -38,6 +41,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     );
     await queryRunner.query(
       `ALTER TABLE "evm"."requested_v3_slow_fill" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."tokens_bridged" DROP COLUMN "dataSource"`,
     );
   }
 }

@@ -20,6 +20,7 @@ import {
   REQUESTED_SPEED_UP_V3_DEPOSIT_ABI,
   RELAYED_ROOT_BUNDLE_ABI,
   REQUESTED_SLOW_FILL_ABI,
+  TOKENS_BRIDGED_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -43,6 +44,7 @@ import {
   REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME,
   RELAYED_ROOT_BUNDLE_EVENT_NAME,
   REQUESTED_SLOW_FILL_EVENT_NAME,
+  TOKENS_BRIDGED_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -70,6 +72,7 @@ import {
   RequestedSpeedUpV3DepositArgs,
   RelayedRootBundleArgs,
   RequestedSlowFillArgs,
+  TokensBridgedArgs,
 } from "../model/eventTypes";
 
 import {
@@ -96,6 +99,7 @@ import {
   transformRequestedSpeedUpV3DepositEvent,
   transformRelayedRootBundleEvent,
   transformRequestedSlowFillEvent,
+  transformTokensBridgedEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -117,6 +121,7 @@ import {
   storeRequestedSpeedUpV3DepositEvent,
   storeRelayedRootBundleEvent,
   storeRequestedSlowFillEvent,
+  storeTokensBridgedEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -555,6 +560,18 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           payload: IndexerEventPayload,
         ) => transformRequestedSlowFillEvent(args, payload, logger),
         store: storeRequestedSlowFillEvent,
+      },
+      {
+        config: {
+          abi: TOKENS_BRIDGED_ABI,
+          eventName: TOKENS_BRIDGED_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<TokensBridgedArgs>,
+        filter: async () => true,
+        transform: (args: TokensBridgedArgs, payload: IndexerEventPayload) =>
+          transformTokensBridgedEvent(args, payload, logger),
+        store: storeTokensBridgedEvent,
       },
     ];
   },
