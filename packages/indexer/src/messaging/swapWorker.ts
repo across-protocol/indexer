@@ -5,8 +5,10 @@ import Redis from "ioredis";
 import { DateTime } from "luxon";
 import * as s from "superstruct";
 import winston from "winston";
+
 import { assert } from "@repo/error-handling";
 import { DataSource, entities } from "@repo/indexer-database";
+
 import { findTokenByAddress, Token, yesterday } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { IndexerQueues } from "./service";

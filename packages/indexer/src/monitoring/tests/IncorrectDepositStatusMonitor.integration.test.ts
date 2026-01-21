@@ -1,7 +1,9 @@
 import { expect } from "chai";
 import sinon from "sinon";
 import { Logger } from "winston";
+
 import { DataSource, entities, fixtures } from "@repo/indexer-database";
+
 import { getTestDataSource } from "../../tests/setup";
 import { IncorrectDepositStatusMonitor } from "../IncorrectDepositStatusMonitor";
 

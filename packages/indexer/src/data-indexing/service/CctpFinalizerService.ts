@@ -1,7 +1,9 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { utils } from "@across-protocol/sdk";
 import winston, { Logger } from "winston";
+
 import { DataSource, entities } from "@repo/indexer-database";
+
 import { RepeatableTask } from "../../generics";
 import { Config } from "../../parseEnv";
 import { PubSubService } from "../../pubsub/service";

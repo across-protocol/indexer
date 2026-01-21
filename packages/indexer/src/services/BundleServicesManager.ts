@@ -1,6 +1,8 @@
 import { Redis } from "ioredis";
 import { Logger } from "winston";
+
 import { DataSource } from "@repo/indexer-database";
+
 import { BundleRepository } from "../database/BundleRepository";
 import { Config } from "../parseEnv";
 import {

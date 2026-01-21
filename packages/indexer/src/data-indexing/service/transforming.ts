@@ -1,7 +1,9 @@
 import * as across from "@across-protocol/sdk";
 import { arrayify } from "ethers/lib/utils";
 import { Logger } from "winston";
+
 import { entities } from "@repo/indexer-database";
+
 import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
 import {
   decodeMessage,

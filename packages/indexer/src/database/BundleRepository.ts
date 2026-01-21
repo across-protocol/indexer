@@ -1,5 +1,6 @@
 import * as across from "@across-protocol/sdk";
 import winston from "winston";
+
 import {
   DataSource,
   entities,
@@ -8,6 +9,7 @@ import {
   Not,
   utils,
 } from "@repo/indexer-database";
+
 import { getInternalHash } from "../utils/spokePoolUtils";
 
 export type BlockRangeInsertType = {

@@ -1,5 +1,7 @@
 import { expect } from "chai";
+
 import { entities, fixtures, Repository } from "@repo/indexer-database";
+
 import { getTestDataSource } from "./setup";
 
 describe("example", () => {

@@ -4,6 +4,7 @@ import {
 } from "@across-protocol/contracts";
 import * as across from "@across-protocol/sdk";
 import { Logger } from "winston";
+
 import { HubPoolRepository } from "../../database/HubPoolRepository";
 import { BundleEventsProcessor } from "../../services";
 import * as utils from "../../utils";

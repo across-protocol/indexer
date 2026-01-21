@@ -13,6 +13,7 @@ import {
   type Transport,
 } from "viem";
 import { Logger } from "winston";
+
 import {
   DataDogMetricsService,
   withMetrics,

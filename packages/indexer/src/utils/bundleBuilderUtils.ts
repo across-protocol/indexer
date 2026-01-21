@@ -1,7 +1,9 @@
 import { getDeployedBlockNumber } from "@across-protocol/contracts";
 import { clients, interfaces, providers, utils } from "@across-protocol/sdk";
 import winston from "winston";
+
 import { entities } from "@repo/indexer-database";
+
 import { BundleRepository } from "../database/BundleRepository";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 

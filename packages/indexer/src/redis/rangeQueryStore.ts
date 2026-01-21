@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+
 import { assert } from "@repo/error-handling";
 
 /**

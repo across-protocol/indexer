@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { PriceWorker } from "../messaging/priceWorker";
 
 describe("PriceWorker", function () {

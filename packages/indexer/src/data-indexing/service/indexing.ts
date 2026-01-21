@@ -1,6 +1,8 @@
 import { WebSocketTransportConfig } from "viem";
 import { Logger } from "winston";
+
 import { utils as dbUtils } from "@repo/indexer-database";
+
 import { Config } from "../../parseEnv";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { getChainProtocols, SupportedProtocols } from "./config";

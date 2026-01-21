@@ -6,6 +6,7 @@ import {
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 import pRetry from "p-retry";
 import { Logger } from "winston";
+
 import { DatadogConfig } from "../parseEnv";
 
 const MAX_RETRY_TIMEOUT = 60000;

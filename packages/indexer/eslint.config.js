@@ -27,8 +27,12 @@ module.exports = [
           groups: [
             // Side effect imports
             ["^\\u0000"],
-            // External packages, @repo packages, then relative - all without blank lines
-            ["^@?\\w", "^@repo/", "^\\."],
+            // External packages (packages starting with a letter or @ followed by a letter)
+            ["^@?\\w"],
+            // @repo packages
+            ["^@repo/"],
+            // Relative imports (parent imports then sibling imports)
+            ["^\\."],
           ],
         },
       ],

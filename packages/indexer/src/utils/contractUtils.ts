@@ -14,6 +14,7 @@ import { Contract, providers } from "ethers";
 import { ethers } from "ethers";
 import winston from "winston";
 import { Logger } from "winston";
+
 import { SvmProvider } from "../web3/RetryProvidersFactory";
 import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
 

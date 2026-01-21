@@ -1,6 +1,7 @@
 import { utils } from "@across-protocol/sdk";
 import * as os from "os";
 import * as s from "superstruct";
+
 import { assert } from "@repo/error-handling";
 import { DatabaseConfig } from "@repo/indexer-database";
 import {
@@ -8,6 +9,7 @@ import {
   parseWebhookClientsFromString,
   WebhookTypes,
 } from "@repo/webhooks";
+
 import { getNoTtlBlockDistance } from "./web3/constants";
 
 export type Config = {
