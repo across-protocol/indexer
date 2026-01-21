@@ -7,6 +7,7 @@ import {
   DeleteDateColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_simpleTransferFlowCompleted_chain_block_tx_log", [
@@ -74,4 +75,7 @@ export class SimpleTransferFlowCompleted {
 
   @Column({ nullable: true })
   contractAddress?: string;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource?: DataSourceType;
 }

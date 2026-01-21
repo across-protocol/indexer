@@ -2,9 +2,51 @@ import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
 } from "./genericIndexing";
+import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { IndexerEventPayload } from "./genericEventListening";
+import { Entity } from "typeorm";
+import {
+  TOKEN_MESSENGER_ADDRESS_MAINNET,
+  DEPOSIT_FOR_BURN_EVENT_NAME,
+  MESSAGE_SENT_EVENT_NAME,
+  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
+  TOKEN_MESSENGER_ADDRESS_TESTNET,
+  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
+  MESSAGE_RECEIVED_EVENT_NAME,
+} from "./constants";
+import {
+  CCTP_DEPOSIT_FOR_BURN_ABI,
+  CCTP_MESSAGE_SENT_ABI,
+  CCTP_MESSAGE_RECEIVED_ABI,
+} from "../model/abis";
+import {
+  transformDepositForBurnEvent,
+  transformMessageSentEvent,
+  transformMessageReceivedEvent,
+} from "./transforming";
+import { extractRawArgs } from "./preprocessing";
+import {
+  storeDepositForBurnEvent,
+  storeMessageSentEvent,
+  storeMessageReceivedEvent,
+} from "./storing";
 import { utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
-import { CHAIN_PROTOCOLS, SupportedProtocols } from "./config";
+import {
+  filterDepositForBurnEvents,
+  createCctpBurnFilter,
+  filterMessageReceived,
+} from "./filtering";
+import {
+  EventArgs,
+  DepositForBurnArgs,
+  MessageSentArgs,
+  MessageReceivedArgs,
+} from "../model/eventTypes";
+import { getChainProtocols, SupportedProtocols } from "./config";
+import { DataDogMetricsService } from "../../services/MetricsService";
+import { WebSocketTransportConfig } from "viem";
+import { Config } from "../../parseEnv";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -28,6 +70,9 @@ export interface StartIndexerRequest<
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
   protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
+  metrics?: DataDogMetricsService;
+  /** Optional WebSocket transport options */
+  transportOptions?: WebSocketTransportConfig;
 }
 
 export async function startChainIndexing<
@@ -36,7 +81,16 @@ export async function startChainIndexing<
   TPayload,
   TPreprocessed,
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
-  const { repo, rpcUrl, logger, sigterm, chainId, protocols } = request;
+  const {
+    repo,
+    rpcUrl,
+    logger,
+    sigterm,
+    chainId,
+    protocols,
+    metrics,
+    transportOptions,
+  } = request;
 
   // Aggregate events from all supported protocols.
   // We pass the logger and chainId to each protocol so they can configure
@@ -55,6 +109,7 @@ export async function startChainIndexing<
     chainId,
     rpcUrl,
     events,
+    transportOptions,
   };
 
   logger.info({
@@ -70,6 +125,7 @@ export async function startChainIndexing<
     indexerConfig,
     logger,
     sigterm,
+    metrics,
   });
 }
 
@@ -82,8 +138,8 @@ export interface StartIndexersRequest {
   /** Map of ChainID to list of RPC URLs */
   providers: Map<number, string[]>;
   sigterm?: AbortSignal;
-  /** List of chains to start indexing for */
-  chainIds: number[];
+  metrics?: DataDogMetricsService;
+  config: Config;
 }
 
 /**
@@ -94,8 +150,10 @@ export interface StartIndexersRequest {
 export function startWebSocketIndexing(
   request: StartIndexersRequest,
 ): Promise<void>[] {
-  const { providers, logger, chainIds } = request;
+  const { providers, logger, config, metrics } = request;
   const handlers: Promise<void>[] = [];
+  const chainProtocols = getChainProtocols(request.config);
+  const chainIds = config.wsIndexerChainIds;
 
   for (const chainId of chainIds) {
     // Get RPC Provider
@@ -110,7 +168,7 @@ export function startWebSocketIndexing(
     const rpcUrl = chainProviders[0];
 
     // Get Supported Protocols
-    const protocols = CHAIN_PROTOCOLS[chainId];
+    const protocols = chainProtocols[chainId];
     if (!protocols || protocols.length === 0) {
       logger.warn({
         at: "indexing#startIndexing",
@@ -128,6 +186,17 @@ export function startWebSocketIndexing(
         sigterm: request.sigterm,
         chainId,
         protocols,
+        metrics,
+        transportOptions: {
+          keepAlive: {
+            interval: 10_000, // Default is 30,000. Change to 10,000 to be safe. GCP has a default keepAlive of 30 seconds, we need to be below that to avoid connection issues.
+          },
+          reconnect: {
+            attempts: 100, // Default is 5
+          },
+          retryCount: 100, // Default is 5
+          timeout: 30_000,
+        },
       }),
     );
   }
