@@ -32,6 +32,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 172800,
   [CHAIN_IDs.ZORA]: 86400,
   [CHAIN_IDs.MEGAETH]: 86400,
+  [CHAIN_IDs.HYPERCORE]: 172800,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 432000,
 };
@@ -77,6 +78,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 512,
   [CHAIN_IDs.ZORA]: 120,
   [CHAIN_IDs.MEGAETH]: 120,
+  [CHAIN_IDs.HYPERCORE]: 120,
 
   // Testnets:
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 0,
@@ -105,6 +107,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.BOBA]: 4990,
   [CHAIN_IDs.LINEA]: 5000,
   [CHAIN_IDs.MAINNET]: 7000,
+  [CHAIN_IDs.HYPERCORE]: 1000,
   [CHAIN_IDs.MONAD]: 1000,
   [CHAIN_IDs.REDSTONE]: 9000,
   [CHAIN_IDs.SCROLL]: 3000,
@@ -154,6 +157,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 1,
   [CHAIN_IDs.ZORA]: 2,
   [CHAIN_IDs.MEGAETH]: 1,
+  [CHAIN_IDs.HYPERCORE]: 1,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 0.4,
 };
