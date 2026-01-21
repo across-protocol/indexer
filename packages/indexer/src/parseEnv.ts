@@ -25,6 +25,7 @@ export type Config = {
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
+  enableHyperliquidIndexer: boolean;
   datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -284,6 +285,9 @@ export function envToConfig(env: Env): Config {
   const enableOftIndexer = env.ENABLE_OFT_INDEXER
     ? env.ENABLE_OFT_INDEXER === "true"
     : false;
+  const enableHyperliquidIndexer = env.ENABLE_HYPERLIQUID_INDEXER
+    ? env.ENABLE_HYPERLIQUID_INDEXER === "true"
+    : false;
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
     : false;
@@ -357,6 +361,7 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     cctpIndexerChainIds,
     enableOftIndexer,
+    enableHyperliquidIndexer,
     enableCctpFinalizer,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,

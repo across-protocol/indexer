@@ -12,6 +12,7 @@ const finalisedBlockBufferDistances: Record<number, number> = {
   [CHAIN_IDs.BSC]: 60,
   [CHAIN_IDs.HYPEREVM]: 60,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 60,
+  [CHAIN_IDs.HYPERCORE]: 0,
   [CHAIN_IDs.INK]: 60,
   [CHAIN_IDs.LENS]: 120,
   [CHAIN_IDs.LINEA]: 40,
@@ -59,6 +60,7 @@ const indexingDelaySeconds: Record<number, number> = {
   [CHAIN_IDs.BSC]: 1,
   [CHAIN_IDs.HYPEREVM]: 4,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 4,
+  [CHAIN_IDs.HYPERCORE]: 4,
   [CHAIN_IDs.INK]: 4,
   [CHAIN_IDs.LENS]: 10,
   [CHAIN_IDs.LISK]: 3,
@@ -146,6 +148,11 @@ export const SPONSORED_CCTP_SRC_PERIPHERY_ADDRESS: {
 };
 
 export const SWAP_API_CALLDATA_MARKER = "73c0de";
+
+export const CCTP_FORWARD_MAGIC_BYTES = "636374702d666f7277617264"; // "cctp-forward" in hex
+export const HYPERLIQUID_CORE_DEPOSIT_WALLET =
+  "0x6b9e773128f453f5c2c60935ee2de2cbc5390a24";
+
 export const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x72adB07A487f38321b6665c02D289C413610B081",
