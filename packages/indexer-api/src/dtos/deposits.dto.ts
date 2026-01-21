@@ -126,6 +126,7 @@ export type HyperliquidTransferResponse = {
   destinationChainId: number | null;
   amount?: string | null;
   token?: string | null;
+  nonce?: string | null;
   destinationBlockTimestamp?: Date | null; // Timestamp of the block on the destination chain (HyperEVM)
 };
 
