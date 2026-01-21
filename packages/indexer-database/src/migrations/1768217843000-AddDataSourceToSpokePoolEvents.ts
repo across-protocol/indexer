@@ -12,6 +12,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     await queryRunner.query(
       `ALTER TABLE "evm"."v3_funds_deposited" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."relayed_root_bundle" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -20,6 +23,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     );
     await queryRunner.query(
       `ALTER TABLE "evm"."filled_v3_relay" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."relayed_root_bundle" DROP COLUMN "dataSource"`,
     );
   }
 }

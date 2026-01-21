@@ -182,3 +182,4 @@ export const EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME =
   "ExecutedRelayerRefundRoot";
 export const REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME =
   "RequestedSpeedUpV3Deposit";
+export const RELAYED_ROOT_BUNDLE_EVENT_NAME = "RelayedRootBundle";

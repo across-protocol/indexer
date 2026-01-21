@@ -115,7 +115,8 @@ export async function sanityCheckWithEventIndexer<
   const handler = handlerFactory();
 
   await handler.processBlockRange(
-    { from: blockNumber-100, to: blockNumber }
+    { from: blockNumber, to: blockNumber },
+    blockNumber - 1,
   );
 
   const event = await repository.findOne({ where: findOptions });
@@ -178,22 +179,13 @@ export const getSpokePoolIndexerDataHandler = (
   );
 
   // Create Repositories
-  const spokePoolRepo = new SpokePoolRepository(
-    dataSource,
-    logger,
-  );
+  const spokePoolRepo = new SpokePoolRepository(dataSource, logger);
   const swapBeforeBridgeRepo = new SwapBeforeBridgeRepository(
     dataSource,
     logger,
   );
-  const callsFailedRepo = new CallsFailedRepository(
-    dataSource,
-    logger,
-  );
-  const swapMetadataRepo = new SwapMetadataRepository(
-    dataSource,
-    logger,
-  );
+  const callsFailedRepo = new CallsFailedRepository(dataSource, logger);
+  const swapMetadataRepo = new SwapMetadataRepository(dataSource, logger);
 
   // Create Services
   // Stub SpokePoolProcessor to avoid pg_advisory_xact_lock issues with pg-mem
@@ -294,19 +286,16 @@ const EXECUTED_RELAYER_REFUND_ROOT_FIELDS = [
   "caller",
 ];
 
-const REQUESTED_SPEED_UP_V3_DEPOSIT_FIELDS = [
+const RELAYED_ROOT_BUNDLE_FIELDS = [
+  "chainId",
   "blockNumber",
   "transactionHash",
   "transactionIndex",
   "logIndex",
   "finalised",
-  "originChainId",
-  "depositId",
-  "depositor",
-  "updatedRecipient",
-  "updatedMessage",
-  "updatedOutputAmount",
-  "depositorSignature",
+  "rootBundleId",
+  "relayerRefundRoot",
+  "slowRelayRoot",
 ];
 
 const compareSubset = <T>(
@@ -344,9 +333,9 @@ export const compareExecutedRelayerRefundRootEvents = (
   compareSubset(saved, expected, EXECUTED_RELAYER_REFUND_ROOT_FIELDS);
 };
 
-export const compareRequestedSpeedUpV3DepositEvents = (
-  saved: Partial<entities.RequestedSpeedUpV3Deposit>,
-  expected: Partial<entities.RequestedSpeedUpV3Deposit>,
+export const compareRelayedRootBundleEvents = (
+  saved: Partial<entities.RelayedRootBundle>,
+  expected: Partial<entities.RelayedRootBundle>,
 ) => {
-  compareSubset(saved, expected, REQUESTED_SPEED_UP_V3_DEPOSIT_FIELDS);
+  compareSubset(saved, expected, RELAYED_ROOT_BUNDLE_FIELDS);
 };

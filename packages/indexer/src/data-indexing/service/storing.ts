@@ -24,6 +24,8 @@ const UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX = [
   "logIndex",
 ];
 
+const UK_RELAYED_ROOT_BUNDLE = ["chainId", "rootBundleId", "transactionHash"];
+
 /**
  * Stores a DepositForBurn event in the database.
  *
@@ -360,6 +362,28 @@ export const storeRequestedSpeedUpV3DepositEvent: Storer<
     entities.RequestedSpeedUpV3Deposit,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
     UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[], // Uses the unique constraint we checked earlier
+    [],
+  );
+};
+
+/**
+ * Stores a RelayedRootBundle event in the database.
+ *
+ * @param event The RelayedRootBundle entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeRelayedRootBundleEvent: Storer<
+  Partial<entities.RelayedRootBundle>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.RelayedRootBundle>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
+    entities.RelayedRootBundle,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    UK_RELAYED_ROOT_BUNDLE as (keyof entities.RelayedRootBundle)[],
     [],
   );
 };

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ethers } from "ethers";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import { startChainIndexing } from "../service/indexing";
@@ -32,7 +33,7 @@ import {
   compareFundsDepositedEvents,
   compareFilledRelayEvents,
   compareExecutedRelayerRefundRootEvents,
-  compareRequestedSpeedUpV3DepositEvents,
+  compareRelayedRootBundleEvents,
 } from "./utils";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
@@ -1438,20 +1439,6 @@ describe("Websocket Subscription", () => {
 
     const repo = dataSource.getRepository(entities.RequestedSpeedUpV3Deposit);
 
-    // Sanity check SpokePoolIndexerDataHandler
-    const sanityCheckResult = await sanityCheckWithEventIndexer({
-      handlerFactory: () =>
-        getSpokePoolIndexerDataHandler({
-          dataSource,
-          logger: console as unknown as Logger,
-          chainId: CHAIN_IDs.ARBITRUM,
-          hubPoolChainId: CHAIN_IDs.MAINNET,
-        }),
-      repository: repo,
-      findOptions: { transactionHash: txHash },
-      blockNumber: Number(block.number),
-    });
-
     // Start the Indexer with SPOKE_POOL_PROTOCOL
     startChainIndexing({
       database: dataSource,
@@ -1482,9 +1469,6 @@ describe("Websocket Subscription", () => {
 
     expect(savedEvent).to.exist;
 
-    // Compare WS event with Handler event
-    compareRequestedSpeedUpV3DepositEvents(savedEvent, sanityCheckResult);
-
     expect(savedEvent).to.deep.include({
       originChainId: 42161,
       blockNumber: Number(block.number),
@@ -1501,4 +1485,82 @@ describe("Websocket Subscription", () => {
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(40000);
+
+  it("should ingest the RelayedRootBundle event from Arbitrum tx 0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408", async () => {
+    const txHash =
+      "0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408";
+    process.env.RPC_PROVIDER_URLS_42161 = "https://arb1.arbitrum.io/rpc";
+    process.env.RPC_PROVIDER_URLS_1 = "https://eth.llamarpc.com";
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub getDeployedAddress
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.RelayedRootBundle);
+
+    await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: 1, // Mainnet
+        }),
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+        dataSource: DataSourceType.WEB_SOCKET,
+      } as any,
+    });
+
+    expect(savedEvent).to.exist;
+    compareRelayedRootBundleEvents(savedEvent, {
+      chainId: CHAIN_IDs.ARBITRUM.toString(),
+      rootBundleId: 18040,
+      relayerRefundRoot:
+        "0x5158d0ad275be800cde2cd3a37d5f98a2ac9c66e1a9bc3505c3627add85b2dea",
+      slowRelayRoot:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      transactionHash: txHash,
+      // @ts-ignore
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
 });

@@ -18,6 +18,7 @@ import {
   FUNDS_DEPOSITED_V3_ABI,
   EXECUTED_RELAYER_REFUND_ROOT_ABI,
   REQUESTED_SPEED_UP_V3_DEPOSIT_ABI,
+  RELAYED_ROOT_BUNDLE_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -39,6 +40,7 @@ import {
   FUNDS_DEPOSITED_V3_EVENT_NAME,
   EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME,
   REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME,
+  RELAYED_ROOT_BUNDLE_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -64,6 +66,7 @@ import {
   V3FundsDepositedArgs,
   ExecutedRelayerRefundRootArgs,
   RequestedSpeedUpV3DepositArgs,
+  RelayedRootBundleArgs,
 } from "../model/eventTypes";
 
 import {
@@ -88,6 +91,7 @@ import {
   transformV3FundsDepositedEvent,
   transformExecutedRelayerRefundRootEvent,
   transformRequestedSpeedUpV3DepositEvent,
+  transformRelayedRootBundleEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -107,6 +111,7 @@ import {
   storeV3FundsDepositedEvent,
   storeExecutedRelayerRefundRootEvent,
   storeRequestedSpeedUpV3DepositEvent,
+  storeRelayedRootBundleEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -517,6 +522,20 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           payload: IndexerEventPayload,
         ) => transformRequestedSpeedUpV3DepositEvent(args, payload, logger),
         store: storeRequestedSpeedUpV3DepositEvent,
+      },
+      {
+        config: {
+          abi: RELAYED_ROOT_BUNDLE_ABI,
+          eventName: RELAYED_ROOT_BUNDLE_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<RelayedRootBundleArgs>,
+        filter: async () => true,
+        transform: (
+          args: RelayedRootBundleArgs,
+          payload: IndexerEventPayload,
+        ) => transformRelayedRootBundleEvent(args, payload, logger),
+        store: storeRelayedRootBundleEvent,
       },
     ];
   },

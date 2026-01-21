@@ -192,6 +192,12 @@ export interface RequestedSpeedUpV3DepositArgs {
   depositorSignature: `0x${string}`;
 }
 
+export interface RelayedRootBundleArgs {
+  rootBundleId: number;
+  relayerRefundRoot: `0x${string}`;
+  slowRelayRoot: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -209,4 +215,5 @@ export type EventArgs =
   | FilledV3RelayArgs
   | V3FundsDepositedArgs
   | ExecutedRelayerRefundRootArgs
-  | RequestedSpeedUpV3DepositArgs;
+  | RequestedSpeedUpV3DepositArgs
+  | RelayedRootBundleArgs;

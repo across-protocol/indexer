@@ -29,6 +29,7 @@ import {
   V3FundsDepositedArgs,
   ExecutedRelayerRefundRootArgs,
   RequestedSpeedUpV3DepositArgs,
+  RelayedRootBundleArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -761,5 +762,28 @@ export const transformRequestedSpeedUpV3DepositEvent = (
     updatedMessage: preprocessed.updatedMessage,
     updatedOutputAmount: preprocessed.updatedOutputAmount.toString(),
     depositorSignature: preprocessed.depositorSignature,
+  };
+};
+
+/**
+ * Transforms a raw `RelayedRootBundle` event payload into a partial `RelayedRootBundle` entity.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @returns A partial `RelayedRootBundle` entity ready for storage.
+ */
+export const transformRelayedRootBundleEvent = (
+  preprocessed: RelayedRootBundleArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RelayedRootBundle> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    rootBundleId: preprocessed.rootBundleId,
+    relayerRefundRoot: preprocessed.relayerRefundRoot,
+    slowRelayRoot: preprocessed.slowRelayRoot,
   };
 };
