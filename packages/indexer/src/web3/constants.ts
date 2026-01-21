@@ -13,6 +13,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BSC]: 115200,
   [CHAIN_IDs.HYPEREVM]: 172800,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 172800,
+  [CHAIN_IDs.HYPERCORE]: 172800,
   [CHAIN_IDs.INK]: 86400,
   [CHAIN_IDs.LENS]: 172800,
   [CHAIN_IDs.LINEA]: 57600,
@@ -58,6 +59,7 @@ export const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BSC]: 120,
   [CHAIN_IDs.HYPEREVM]: 120,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 120,
+  [CHAIN_IDs.HYPERCORE]: 0,
   [CHAIN_IDs.INK]: 120,
   [CHAIN_IDs.LENS]: 512,
   [CHAIN_IDs.LISK]: 120,
@@ -137,6 +139,7 @@ export const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.BOBA]: 2,
   [CHAIN_IDs.BSC]: 1.5,
   [CHAIN_IDs.HYPEREVM]: 1,
+  [CHAIN_IDs.HYPERCORE]: 1,
   [CHAIN_IDs.INK]: 1,
   [CHAIN_IDs.LENS]: 600, // TODO: Update to 1 when Lens go live
   [CHAIN_IDs.LINEA]: 3,

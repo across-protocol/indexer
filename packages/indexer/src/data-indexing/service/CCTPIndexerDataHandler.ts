@@ -46,6 +46,7 @@ import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
+  isHypercoreDeposit,
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
@@ -60,9 +61,10 @@ import {
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
 import {
-  SPONSORED_CCTP_DST_PERIPHERY_ADDRESS,
   SWAP_API_CALLDATA_MARKER,
+  CCTP_FORWARD_MAGIC_BYTES,
   WHITELISTED_FINALIZERS,
+  SPONSORED_CCTP_DST_PERIPHERY_ADDRESS,
 } from "./constants";
 
 export type EvmBurnEventsPair = {
@@ -240,11 +242,21 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     const depositForBurnTransactions = await this.getTransactions([
       ...new Set(depositForBurnEvents.map((event) => event.transactionHash)),
     ]);
-    const filteredDepositForBurnEvents =
-      await this.filterTransactionsFromSwapApi(
-        depositForBurnTransactions,
-        depositForBurnEvents,
-      );
+    const hyperliquidDeposits = await this.filterHyperliquidDeposits(
+      depositForBurnTransactions,
+      depositForBurnEvents,
+    );
+    const swapApiDeposits = await this.filterTransactionsFromSwapApi(
+      depositForBurnTransactions,
+      depositForBurnEvents,
+    );
+    // Combine and deduplicate by transactionHash to avoid processing the same event twice
+    const allFilteredEvents = [...hyperliquidDeposits, ...swapApiDeposits];
+    const filteredDepositForBurnEvents = Array.from(
+      new Map(
+        allFilteredEvents.map((event) => [event.transactionHash, event]),
+      ).values(),
+    );
 
     const filteredMessageReceivedEvents = this.filterMintTransactions(
       messageReceivedEvents,
@@ -424,21 +436,46 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     );
   }
 
+  /**
+   * Filters for Hyperliquid deposits by checking for CCTP forward magic bytes.
+   * Hyperliquid deposits should NOT be filtered by destinationCaller.
+   */
+  private async filterHyperliquidDeposits(
+    transactions: Record<string, Transaction>,
+    depositForBurnEvents: DepositForBurnEvent[],
+  ): Promise<DepositForBurnEvent[]> {
+    return depositForBurnEvents.filter((event) => {
+      const transaction = transactions[event.transactionHash];
+      if (!transaction) {
+        return false;
+      }
+
+      const dataLower = transaction.data.toLowerCase();
+      // Only check for CCTP forward magic bytes - do not filter by destinationCaller
+      return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
+    });
+  }
+
+  /**
+   * Filters for Swap API deposits by checking for Swap API marker and whitelisted destinationCaller.
+   */
   private async filterTransactionsFromSwapApi(
     transactions: Record<string, Transaction>,
     depositForBurnEvents: DepositForBurnEvent[],
-  ) {
-    const transactionHashes = Object.values(transactions)
-      .filter((transaction) => {
-        return transaction.data.includes(SWAP_API_CALLDATA_MARKER);
-      })
-      .map((transaction) => transaction.hash);
-
+  ): Promise<DepositForBurnEvent[]> {
     return depositForBurnEvents.filter((event) => {
-      // Filter by transaction hash (Swap API marker)
-      if (!transactionHashes.includes(event.transactionHash)) {
+      const transaction = transactions[event.transactionHash];
+      if (!transaction) {
         return false;
       }
+
+      const dataLower = transaction.data.toLowerCase();
+
+      // Check for Swap API marker
+      if (!dataLower.includes(SWAP_API_CALLDATA_MARKER.toLowerCase())) {
+        return false;
+      }
+
       // Filter also by destinationCaller.
       // The Swap API marker alone is insufficient since "73c0de" can appear
       // in the calldata of transactions unrelated to Across.
@@ -454,12 +491,22 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       if (WHITELISTED_FINALIZERS.includes(event.args.caller)) {
         return true;
       }
-      const result = isHypercoreWithdraw(event.args.messageBody, {
+      // Check if it's a HyperCore withdrawal (for withdrawals)
+      const withdrawResult = isHypercoreWithdraw(event.args.messageBody, {
         logger: this.logger,
         chainId: this.chainId,
         transactionHash: event.transactionHash,
       });
-      return result.isValid;
+      if (withdrawResult.isValid) {
+        return true;
+      }
+      // Check if it's a HyperCore deposit (CCTP deposit to Hyperliquid)
+      const isDeposit = isHypercoreDeposit(event.args.messageBody, {
+        logger: this.logger,
+        chainId: this.chainId,
+        transactionHash: event.transactionHash,
+      });
+      return isDeposit;
     });
   }
 
