@@ -9,9 +9,10 @@ import {
 } from "typeorm";
 
 @Entity({ schema: "evm" })
-@Unique("UK_userAccountActivated_block_chain_log", [
-  "blockNumber",
+@Unique("UK_userAccountActivated_chain_block_tx_log", [
   "chainId",
+  "blockNumber",
+  "transactionHash",
   "logIndex",
 ])
 @Index("IX_userAccountActivated_finalised", ["finalised"])

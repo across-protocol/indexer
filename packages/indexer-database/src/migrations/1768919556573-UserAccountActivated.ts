@@ -19,7 +19,7 @@ export class UserAccountActivated1768919556573 implements MigrationInterface {
         "blockTimestamp" TIMESTAMP,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "deletedAt" TIMESTAMP,
-        CONSTRAINT "UK_userAccountActivated_block_chain_log" UNIQUE ("blockNumber","chainId","logIndex"),
+        CONSTRAINT "UK_userAccountActivated_chain_block_tx_log" UNIQUE ("chainId","blockNumber","transactionHash","logIndex"),
         CONSTRAINT "PK_43116bd9abab63a65f61df3e443" PRIMARY KEY ("id")
         )`,
     );
