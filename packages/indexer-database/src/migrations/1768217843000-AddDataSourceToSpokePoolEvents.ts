@@ -15,6 +15,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     await queryRunner.query(
       `ALTER TABLE "evm"."relayed_root_bundle" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."executed_relayer_refund_root" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -26,6 +29,9 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     );
     await queryRunner.query(
       `ALTER TABLE "evm"."relayed_root_bundle" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."executed_relayer_refund_root" DROP COLUMN "dataSource"`,
     );
   }
 }

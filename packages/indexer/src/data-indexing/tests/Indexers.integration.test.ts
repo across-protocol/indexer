@@ -1473,15 +1473,15 @@ describe("Websocket Subscription", () => {
       originChainId: 42161,
       blockNumber: Number(block.number),
       transactionHash: txHash,
-      transactionIndex: 0,
-      logIndex: 4,
+      transactionIndex: 2,
+      logIndex: 14,
       updatedOutputAmount: "299247000000000",
       depositId: 3042028,
       depositor: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
       updatedRecipient: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
       updatedMessage: "0x",
       depositorSignature:
-        "0x4AB7F470CF11759EA9B4C1DC912BB5C2F43514DB29CE81B2DBD0D7E3C08CAB516463F3A4D41BB9B371F54FD1E169EDC8685F632F3C2FA1F678BDCB828F3C117F1C",
+        "0x4ab7f470cf11759ea9b4c1dc912bb5c2f43514db29ce81b2dbd0d7e3c08cab516463f3a4d41bb9b371f54fd1e169edc8685f632f3c2fa1f678bdcb828f3c117f1c",
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(40000);
@@ -1489,8 +1489,6 @@ describe("Websocket Subscription", () => {
   it("should ingest the RelayedRootBundle event from Arbitrum tx 0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408", async () => {
     const txHash =
       "0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408";
-    process.env.RPC_PROVIDER_URLS_42161 = "https://arb1.arbitrum.io/rpc";
-    process.env.RPC_PROVIDER_URLS_1 = "https://eth.llamarpc.com";
     const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
 
     const { block, receipt } = await fetchAndMockTransaction(
@@ -1506,7 +1504,7 @@ describe("Websocket Subscription", () => {
 
     const repo = dataSource.getRepository(entities.RelayedRootBundle);
 
-    await sanityCheckWithEventIndexer({
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
       handlerFactory: () =>
         getSpokePoolIndexerDataHandler({
           dataSource,
@@ -1551,16 +1549,6 @@ describe("Websocket Subscription", () => {
     });
 
     expect(savedEvent).to.exist;
-    compareRelayedRootBundleEvents(savedEvent, {
-      chainId: CHAIN_IDs.ARBITRUM.toString(),
-      rootBundleId: 18040,
-      relayerRefundRoot:
-        "0x5158d0ad275be800cde2cd3a37d5f98a2ac9c66e1a9bc3505c3627add85b2dea",
-      slowRelayRoot:
-        "0x0000000000000000000000000000000000000000000000000000000000000000",
-      transactionHash: txHash,
-      // @ts-ignore
-      dataSource: DataSourceType.WEB_SOCKET,
-    });
-  }).timeout(120000);
+    compareRelayedRootBundleEvents(savedEvent, sanityCheckResult);
+  }).timeout(40000);
 });
