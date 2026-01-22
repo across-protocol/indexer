@@ -380,18 +380,6 @@ export interface IsHypercoreWithdrawOptions {
   transactionHash?: string;
 }
 
-export interface IsHypercoreDepositOptions {
-  logger?: {
-    warn: (log: {
-      at: string;
-      message: string;
-      transactionHash?: string;
-    }) => void;
-  };
-  chainId?: number;
-  transactionHash?: string;
-}
-
 export interface HypercoreWithdrawResult {
   isValid: boolean;
   decodedHookData: DecodedHyperCoreWithdrawalHookData | null;
@@ -471,18 +459,23 @@ export function isHypercoreWithdraw(
 }
 
 /**
- * Validates if a message body represents a valid HyperCore deposit (CCTP deposit to Hyperliquid).
- * Checks for "cctp-forward" magic bytes directly in the message body.
+ * Validates if a deposit event represents a Hyperliquid deposit.
+ * This function has two overloads:
+ * 1. For mint events: checks if sourceDomain is HyperEVM and messageBody contains magic bytes
+ * 2. For burn events: checks if destinationDomain is HyperEVM and transactionData contains magic bytes
  *
- * @param messageBody The raw message body hex string from MessageReceived event
- * @param options Optional logger, chainId, and transactionHash for warning messages
- * @returns True if the message body contains "cctp-forward" magic bytes
+ * @overload
+ * @param domain The CCTP domain (sourceDomain for mint, destinationDomain for burn)
+ * @param data The data to check (messageBody for mint, transactionData for burn)
+ * @returns True if the domain is HyperEVM and the data contains "cctp-forward" magic bytes
  */
-export function isHypercoreDeposit(
-  messageBody: string,
-  options?: IsHypercoreDepositOptions,
-): boolean {
-  // Check if the magic bytes appear in the message body (case-insensitive)
-  const messageBodyLower = messageBody.toLowerCase();
-  return messageBodyLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
+export function isHyperliquidDeposit(domain: number, data: string): boolean {
+  // Check if the domain is HyperEVM
+  if (domain !== getCctpDomainForChainId(CHAIN_IDs.HYPEREVM)) {
+    return false;
+  }
+
+  // Check if the magic bytes appear in the data (case-insensitive)
+  const dataLower = data.toLowerCase();
+  return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
 }
