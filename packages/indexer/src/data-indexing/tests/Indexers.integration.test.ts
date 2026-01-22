@@ -1551,6 +1551,21 @@ describe("Websocket Subscription", () => {
 
     expect(savedEvent).to.exist;
     compareRelayedRootBundleEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      rootBundleId: 18040,
+      relayerRefundRoot:
+        "0x5158d0ad275be800cde2cd3a37d5f98a2ac9c66e1a9bc3505c3627add85b2dea",
+      slowRelayRoot:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 2,
+      blockNumber: Number(block.number),
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
   }).timeout(40000);
 
   it("should ingest the RequestedSlowFill event from Arbitrum tx 0xaa0...78e2", async () => {
@@ -1633,7 +1648,20 @@ describe("Websocket Subscription", () => {
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
 
     const repo = dataSource.getRepository(entities.TokensBridged);
-
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
     // Start the Indexer with SPOKE_POOL_PROTOCOL
     startChainIndexing({
       database: dataSource,
@@ -1661,11 +1689,20 @@ describe("Websocket Subscription", () => {
         transactionHash: txHash,
       },
     });
+    compareTokensBridgedEvents(savedEvent, sanityCheckResult);
 
-    expect(savedEvent).to.exist;
-    expect(savedEvent.blockNumber).to.equal(Number(block.number));
-    expect(savedEvent.transactionHash).to.equal(txHash);
-    expect(savedEvent.leafId).to.equal(40);
-    expect(savedEvent.amountToReturn).to.equal("757612815391");
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      leafId: 40,
+      l2TokenAddress: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      amountToReturn: "757612815391",
+      caller: "0xf7bAc63fc7CEaCf0589F25454Ecf5C2ce904997c",
+      transactionHash: txHash,
+      transactionIndex: 1,
+      logIndex: 29,
+      blockNumber: Number(block.number),
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
   }).timeout(40000);
 });
