@@ -46,8 +46,7 @@ import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
-  isHypercoreDeposit,
-  getCctpDomainForChainId,
+  isHyperliquidDeposit,
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
@@ -61,11 +60,7 @@ import {
   formatAndSaveEvents,
   getEventsFromTransactionReceipts,
 } from "./eventProcessing";
-import {
-  SWAP_API_CALLDATA_MARKER,
-  CCTP_FORWARD_MAGIC_BYTES,
-  WHITELISTED_FINALIZERS,
-} from "./constants";
+import { SWAP_API_CALLDATA_MARKER, WHITELISTED_FINALIZERS } from "./constants";
 
 export type EvmBurnEventsPair = {
   depositForBurn: DepositForBurnEvent;
@@ -445,21 +440,15 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     depositForBurnEvents: DepositForBurnEvent[],
   ): Promise<DepositForBurnEvent[]> {
     return depositForBurnEvents.filter((event) => {
-      if (
-        event.args.destinationDomain !==
-        getCctpDomainForChainId(CHAIN_IDs.HYPEREVM)
-      ) {
-        return false;
-      }
-
       const transaction = transactions[event.transactionHash];
       if (!transaction) {
         return false;
       }
 
-      const dataLower = transaction.data.toLowerCase();
-      // Only check for CCTP forward magic bytes - do not filter by destinationCaller
-      return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
+      return isHyperliquidDeposit(
+        event.args.destinationDomain,
+        transaction.data,
+      );
     });
   }
 
@@ -507,13 +496,11 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
       if (withdrawResult.isValid) {
         return true;
       }
-      // Check if it's a HyperCore deposit (CCTP deposit to Hyperliquid)
-      const isDeposit = isHypercoreDeposit(event.args.messageBody, {
-        logger: this.logger,
-        chainId: this.chainId,
-        transactionHash: event.transactionHash,
-      });
-      return isDeposit;
+      // Check if it's a Hyperliquid deposit (CCTP deposit to Hyperliquid)
+      return isHyperliquidDeposit(
+        event.args.sourceDomain,
+        event.args.messageBody,
+      );
     });
   }
 

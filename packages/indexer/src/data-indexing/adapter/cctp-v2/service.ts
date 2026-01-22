@@ -380,18 +380,6 @@ export interface IsHypercoreWithdrawOptions {
   transactionHash?: string;
 }
 
-export interface IsHypercoreDepositOptions {
-  logger?: {
-    warn: (log: {
-      at: string;
-      message: string;
-      transactionHash?: string;
-    }) => void;
-  };
-  chainId?: number;
-  transactionHash?: string;
-}
-
 export interface HypercoreWithdrawResult {
   isValid: boolean;
   decodedHookData: DecodedHyperCoreWithdrawalHookData | null;
@@ -471,18 +459,19 @@ export function isHypercoreWithdraw(
 }
 
 /**
- * Validates if a message body represents a valid HyperCore deposit (CCTP deposit to Hyperliquid).
- * Checks for "cctp-forward" magic bytes directly in the message body.
+ * Validates if a deposit or mint event corresponds to a Hyperliquid transfer.
  *
- * @param messageBody The raw message body hex string from MessageReceived event
- * @param options Optional logger, chainId, and transactionHash for warning messages
- * @returns True if the message body contains "cctp-forward" magic bytes
+ * @param domain The CCTP domain
+ * @param data The data to check
+ * @returns True if the domain is HyperEVM and the data contains "cctp-forward" magic bytes for a Hyperliquid transfer
  */
-export function isHypercoreDeposit(
-  messageBody: string,
-  options?: IsHypercoreDepositOptions,
-): boolean {
-  // Check if the magic bytes appear in the message body (case-insensitive)
-  const messageBodyLower = messageBody.toLowerCase();
-  return messageBodyLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
+export function isHyperliquidDeposit(domain: number, data: string): boolean {
+  // Check if the domain is HyperEVM
+  if (domain !== getCctpDomainForChainId(CHAIN_IDs.HYPEREVM)) {
+    return false;
+  }
+
+  // Check if the magic bytes appear in the data (case-insensitive)
+  const dataLower = data.toLowerCase();
+  return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
 }
