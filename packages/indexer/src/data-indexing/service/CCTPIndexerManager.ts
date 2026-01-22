@@ -7,7 +7,7 @@ import { DataSource } from "@repo/indexer-database";
 import { Config } from "../../parseEnv";
 import {
   getFinalisedBlockBufferDistance,
-  getIndexingDelaySeconds,
+  getPollingIndexerDelaySeconds,
 } from "./constants";
 import { Indexer, EvmIndexer, SvmIndexer } from "./Indexer";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
@@ -73,8 +73,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds:
-            getIndexingDelaySeconds(chainId, this.config) * 2,
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),
@@ -124,7 +126,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new SvmIndexer(
         {
-          indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),

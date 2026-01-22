@@ -11,6 +11,7 @@ import {
   getCctpDomainForChainId,
   isProductionNetwork,
 } from "../adapter/cctp-v2/service";
+import { CCTP_FORWARD_MAGIC_BYTES } from "./constants";
 import { utils } from "@across-protocol/sdk";
 import {
   formatFromAddressToChainFormat,
@@ -47,6 +48,7 @@ export class CctpFinalizerServiceManager {
         this.logger,
         this.postgres,
         this.pubSubService,
+        this.config.enableCctpFinalizerPubSub,
       );
       this.monitorService = new CctpUnfinalizedBurnMonitorService(
         this.logger,
@@ -86,6 +88,7 @@ export class CctpFinalizerService extends RepeatableTask {
     logger: winston.Logger,
     private readonly postgres: DataSource,
     private readonly pubSubService: PubSubService,
+    private readonly enablePubSub: boolean,
   ) {
     super(logger, "cctp-finalizer-service");
   }
@@ -137,7 +140,7 @@ export class CctpFinalizerService extends RepeatableTask {
 
         if (sponsoredEvent) {
           // If there's a matching sponsored event, publish with signature
-          await this.publishBurnEvent(
+          await this.processBurnEvent(
             burnEvent,
             sponsoredEvent.signature,
             sponsoredEvent.id,
@@ -159,7 +162,16 @@ export class CctpFinalizerService extends RepeatableTask {
             });
           } else {
             // Otherwise, publish without signature
-            await this.publishBurnEvent(burnEvent);
+            const isHyperliquidDeposit =
+              burnEvent.hookData
+                ?.toLowerCase()
+                .includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase()) ?? false;
+            await this.processBurnEvent(
+              burnEvent,
+              undefined,
+              undefined,
+              isHyperliquidDeposit,
+            );
           }
         }
       }
@@ -179,10 +191,11 @@ export class CctpFinalizerService extends RepeatableTask {
     return Promise.resolve();
   }
 
-  private async publishBurnEvent(
+  private async processBurnEvent(
     burnEvent: entities.DepositForBurn,
     signature?: string,
     sponsoredDepositForBurnId?: number,
+    skipPubSub?: boolean,
   ) {
     try {
       const { chainId, transactionHash, minFinalityThreshold, blockTimestamp } =
@@ -250,46 +263,54 @@ export class CctpFinalizerService extends RepeatableTask {
           { chainId, blockNumber: burnEvent.blockNumber, transactionHash },
         )
         .execute();
-      this.logger.debug({
-        at: "CctpFinalizerService#publishBurnEvent",
-        message: "Publishing burn event to pubsub",
-        chainId,
-        transactionHash,
-        minFinalityThreshold,
-        blockTimestamp,
-        attestationTimeSeconds,
-        elapsedSeconds,
-      });
-      const destinationChainId = getCctpDestinationChainFromDomain(
-        burnEvent.destinationDomain,
-      );
-      await this.pubSubService.publishCctpFinalizerMessage(
-        transactionHash,
-        Number(chainId),
-        message,
-        attestation,
-        destinationChainId,
-        signature,
-      );
 
-      const jobValues: {
-        attestation: string;
-        message: string;
-        burnEventId: number;
-        sponsoredDepositForBurnId?: number;
-      } = {
-        attestation,
-        message,
-        burnEventId: burnEvent.id,
-        ...(sponsoredDepositForBurnId && { sponsoredDepositForBurnId }),
-      };
+      // Skip PubSub publishing for Hyperliquid deposits (they go through HyperEVM, not standard finalization)
+      // Also skip if pubsub is disabled via ENABLE_CCTP_FINALIZER_PUBSUB
+      if (!skipPubSub && this.enablePubSub) {
+        this.logger.debug({
+          at: "CctpFinalizerService#publishBurnEvent",
+          message: "Publishing burn event to pubsub",
+          chainId,
+          transactionHash,
+          minFinalityThreshold,
+          blockTimestamp,
+          attestationTimeSeconds,
+          elapsedSeconds,
+        });
+        const destinationChainId = getCctpDestinationChainFromDomain(
+          burnEvent.destinationDomain,
+        );
+        await this.pubSubService.publishCctpFinalizerMessage(
+          transactionHash,
+          Number(chainId),
+          message,
+          attestation,
+          destinationChainId,
+          signature,
+        );
 
-      await this.postgres
-        .createQueryBuilder(entities.CctpFinalizerJob, "j")
-        .insert()
-        .values(jobValues)
-        .orUpdate(["attestation", "sponsoredDepositForBurnId"], ["burnEventId"])
-        .execute();
+        const jobValues: {
+          attestation: string;
+          message: string;
+          burnEventId: number;
+          sponsoredDepositForBurnId?: number;
+        } = {
+          attestation,
+          message,
+          burnEventId: burnEvent.id,
+          ...(sponsoredDepositForBurnId && { sponsoredDepositForBurnId }),
+        };
+
+        await this.postgres
+          .createQueryBuilder(entities.CctpFinalizerJob, "j")
+          .insert()
+          .values(jobValues)
+          .orUpdate(
+            ["attestation", "sponsoredDepositForBurnId"],
+            ["burnEventId"],
+          )
+          .execute();
+      }
     } catch (error) {
       this.logger.error({
         at: "CctpFinalizerService#publishBurnEvent",

@@ -2,6 +2,8 @@ import {
   getAddress,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
+  getSponsoredOFTSrcPeripheryAddress,
+  getDstOFTHandlerAddress,
 } from "../../utils/contractUtils";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import {
@@ -97,6 +99,7 @@ import {
   storeOFTReceivedEvent,
   storeFilledV3RelayEvent,
   storeV3FundsDepositedEvent,
+  storeSponsoredOFTSendEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -105,13 +108,23 @@ import {
   SWAP_FLOW_INITIALIZED_ABI,
   OFT_SENT_ABI,
   OFT_RECEIVED_ABI,
+  SPONSORED_OFT_SEND_ABI,
 } from "../model/abis";
-import { OFT_SENT_EVENT_NAME, OFT_RECEIVED_EVENT_NAME } from "./constants";
-import { OFTSentArgs, OFTReceivedArgs } from "../model/eventTypes";
+import {
+  OFT_SENT_EVENT_NAME,
+  OFT_RECEIVED_EVENT_NAME,
+  SPONSORED_OFT_SEND_EVENT_NAME,
+} from "./constants";
+import {
+  OFTSentArgs,
+  OFTReceivedArgs,
+  SponsoredOFTSendArgs,
+} from "../model/eventTypes";
 import { filterOFTSentEvents, filterOFTReceivedEvents } from "./filtering";
 import {
   transformOFTSentEvent,
   transformOFTReceivedEvent,
+  transformSponsoredOFTSendEvent,
 } from "./transforming";
 import {
   getOftChainConfiguration,
@@ -485,6 +498,53 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
 };
 
 /**
+ * Configuration for OFT protocol with sponsored events.
+ * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
+ */
+export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
+    // Get base OFT handlers (OFTSent, OFTReceived)
+    const handlers = OFT_PROTOCOL.getEventHandlers({ logger, chainId });
+
+    // Add SponsoredOFTSend handler if source periphery exists for this chain
+    const sourcePeripheryAddress = getSponsoredOFTSrcPeripheryAddress(
+      chainId,
+    ) as `0x${string}`;
+    if (sourcePeripheryAddress) {
+      handlers.push({
+        config: {
+          address: sourcePeripheryAddress,
+          abi: SPONSORED_OFT_SEND_ABI,
+          eventName: SPONSORED_OFT_SEND_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<SponsoredOFTSendArgs>,
+        filter: async () => true,
+        transform: (args: SponsoredOFTSendArgs, payload: IndexerEventPayload) =>
+          transformSponsoredOFTSendEvent(args, payload, logger),
+        store: storeSponsoredOFTSendEvent,
+      });
+    }
+
+    // Add destination handler events if DstOFTHandler exists for this chain
+    const dstOftHandlerAddress = getDstOFTHandlerAddress(
+      chainId,
+    ) as `0x${string}`;
+    if (dstOftHandlerAddress) {
+      handlers.push(
+        ...getSponsoredBridgingEventHandlers(dstOftHandlerAddress, logger),
+      );
+    }
+
+    return handlers;
+  },
+};
+
+/**
  * Get configuration for supported protocols on different chains.
  */
 export const getChainProtocols: (
@@ -515,11 +575,11 @@ export const getChainProtocols: (
     >,
   );
 
-  // Add OFT protocol events configuration
+  // Add OFT protocol events configuration (with sponsored events)
   if (config.enableOftIndexer) {
     for (const chainId of getSupportOftChainIds()) {
       if (chainProtocols[chainId]) {
-        chainProtocols[chainId].push(OFT_PROTOCOL);
+        chainProtocols[chainId].push(SPONSORED_OFT_PROTOCOL);
       }
     }
   }

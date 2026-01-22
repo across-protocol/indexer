@@ -98,9 +98,37 @@ export const DepositStatusParams = s.object({
    */
   from: s.optional(parseAddressField),
   hypercoreWithdrawalNonce: s.optional(s.string()),
+
+  /**
+   * Hyperliquid Deposits
+   */
+  hypercoreDepositNonce: s.optional(s.string()),
+  recipient: s.optional(parseAddressField),
 });
 
 export type DepositStatusParams = s.Infer<typeof DepositStatusParams>;
+
+export const HyperliquidTransfersParams = s.object({
+  direction: s.enums(["in", "out"]),
+  user: parseAddressField,
+  skip: s.defaulted(stringToInt, 0),
+  limit: s.defaulted(stringToInt, 50),
+});
+
+export type HyperliquidTransfersParams = s.Infer<
+  typeof HyperliquidTransfersParams
+>;
+
+export type HyperliquidTransferResponse = {
+  depositTxnRef: string | null;
+  fillTxnRef: string | null;
+  originChainId: number | null;
+  destinationChainId: number | null;
+  amount?: string | null;
+  token?: string | null;
+  nonce?: string | null;
+  destinationBlockTimestamp?: Date | null; // Timestamp of the block on the destination chain (HyperEVM)
+};
 
 export const FilterDepositsParams = s.object({
   originChainId: s.optional(stringToInt),
