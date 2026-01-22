@@ -153,3 +153,4 @@ export const SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME = "SponsoredDepositForBurn";
 
 export const OFT_SENT_EVENT_NAME = "OFTSent";
 export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";
+export const SPONSORED_OFT_SEND_EVENT_NAME = "SponsoredOFTSend";
