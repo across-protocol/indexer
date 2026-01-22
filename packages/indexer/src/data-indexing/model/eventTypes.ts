@@ -126,6 +126,18 @@ export interface OFTReceivedArgs {
   amountReceivedLD: bigint;
 }
 
+export interface SponsoredOFTSendArgs {
+  quoteNonce: `0x${string}`;
+  originSender: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  destinationHandler: `0x${string}`;
+  quoteDeadline: bigint;
+  maxBpsToSponsor: bigint;
+  maxUserSlippageBps: bigint;
+  finalToken: `0x${string}`;
+  sig: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -139,4 +151,5 @@ export type EventArgs =
   | FallbackHyperEVMFlowCompletedArgs
   | ArbitraryActionsExecutedArgs
   | OFTSentArgs
-  | OFTReceivedArgs;
+  | OFTReceivedArgs
+  | SponsoredOFTSendArgs;
