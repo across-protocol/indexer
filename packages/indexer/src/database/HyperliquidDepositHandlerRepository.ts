@@ -42,7 +42,7 @@ export class HyperliquidDepositHandlerRepository extends dbUtils.BlockchainEvent
         this.saveAndHandleFinalisationBatch<entities.UserAccountActivated>(
           entities.UserAccountActivated,
           eventsChunk,
-          ["blockNumber", "chainId", "logIndex"],
+          ["chainId", "blockNumber", "transactionHash", "logIndex"],
           [],
         ),
       ),
