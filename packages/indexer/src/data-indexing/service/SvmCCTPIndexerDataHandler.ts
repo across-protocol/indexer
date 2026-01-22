@@ -5,8 +5,8 @@ import {
   MessageTransmitterV2Client,
   TokenMessengerMinterV2Idl,
   MessageTransmitterV2Idl,
+  SponsoredCctpSrcPeripheryIdl,
 } from "@across-protocol/contracts";
-import { SponsoredCctpSrcPeripheryIdl } from "@across-protocol/contracts-beta";
 import { address, signature } from "@solana/kit";
 import { BlockRange } from "../model";
 import { IndexerDataHandler } from "./IndexerDataHandler";
@@ -21,7 +21,6 @@ import {
   decodeMessage,
   getCctpDestinationChainFromDomain,
 } from "../adapter/cctp-v2/service";
-import { formatFromAddressToChainFormat } from "../../utils/adressUtils";
 import {
   SolanaDepositForBurnEvent,
   SolanaMessageSentEvent,
@@ -30,7 +29,10 @@ import {
   SolanaSponsoredDepositForBurnEvent,
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
-import { getSponsoredCCTPSrcPeripheryAddress } from "../../utils";
+import {
+  getSponsoredCCTPSrcPeripheryAddress,
+  formatFromAddressToChainFormat,
+} from "../../utils";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 
 export type SolanaBurnEventsPair = {

@@ -1,5 +1,4 @@
 import { utils, arch } from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 const { chainIsEvm, chainIsSvm } = utils;
 

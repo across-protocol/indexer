@@ -1,9 +1,8 @@
 import winston from "winston";
-import { providers, Contract } from "ethers";
+import { ethers, providers, Contract } from "ethers";
 import { address } from "@solana/kit";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { Logger } from "winston";
-import * as sdk from "@across-protocol/sdk";
+import * as across from "@across-protocol/sdk";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
@@ -11,10 +10,6 @@ import {
   HubPool__factory as HubPoolFactory,
   AcrossConfigStore__factory as AcrossConfigStoreFactory,
 } from "@across-protocol/contracts";
-import { assert } from "@repo/error-handling";
-import { getDeployedAddress as getDeployedAddressBetaRelease } from "@across-protocol/contracts-beta";
-import * as across from "@across-protocol/sdk";
-import { ethers } from "ethers";
 import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
 
@@ -312,89 +307,64 @@ export async function fetchEvents(
 export const BN_ZERO = across.utils.bnZero;
 
 /**
- * Union type representing the valid beta contract names available for sponsored flows.
- */
-type BetaContractName =
-  | "SponsoredCCTPDstPeriphery"
-  | "DstOFTHandler"
-  | "SponsoredCCTPSrcPeriphery"
-  | "SponsoredCctpSrcPeriphery"
-  | "SponsoredOFTSrcPeriphery";
-
-/**
- * Retrieves the deployed address for a specific beta release contract on a given chain.
- *
- * @param {BetaContractName} name - The specific name of the beta contract to look up.
- * @param {number} chainId - The numeric ID of the blockchain network.
- * @returns {string | undefined} The deployed contract address or undefined if it was not found.
- */
-function getBetaContractAddress(
-  name: BetaContractName,
-  chainId: number,
-  logger?: Logger,
-): string | undefined {
-  // getDeployedAddressBetaRelease throws an error if the address does not exist
-  try {
-    const address = getDeployedAddressBetaRelease(name, chainId);
-    if (!address) {
-      throw new Error(`Address for contract ${name} on ${chainId} not found `);
-    }
-    return across.utils.chainIsSvm(chainId)
-      ? address
-      : ethers.utils.getAddress(address);
-  } catch (error) {
-    const message = `Error trying to fetch contract address for ${name} on chain with chain ID ${chainId}`;
-    if (logger) {
-      logger.error({
-        at: "Indexer#getBetaContractAddress",
-        message,
-        error,
-        errorJson: JSON.stringify(error),
-      });
-    }
-  }
-}
-
-/**
  * Gets the Sponsored CCTP Destination Periphery address.
- * * @param {number} [chainId=CHAIN_IDs.HYPEREVM] - The chain ID to fetch the address for. Defaults to HyperEVM.
- * @returns {string} The deployed contract address.
+ * @param {number} [chainId=CHAIN_IDs.HYPEREVM] - The chain ID to fetch the address for. Defaults to HyperEVM.
+ * @returns {string | undefined} The deployed contract address or undefined if not found.
  */
 export const getSponsoredCCTPDstPeripheryAddress = (
   chainId: number = CHAIN_IDs.HYPEREVM,
-) => {
-  if (chainId === CHAIN_IDs.MAINNET) {
-    // Temporary until deployments are added to the contracts package
-    return "0x5616194d65638086a3191B1fEF436f503ff329eC";
+): string | undefined => {
+  try {
+    return getAddress("SponsoredCCTPDstPeriphery", chainId);
+  } catch {
+    return undefined;
   }
-  return getBetaContractAddress("SponsoredCCTPDstPeriphery", chainId);
 };
 
 /**
  * Gets the Sponsored CCTP Source Periphery address.
- * * @param {number} chainId - The chain ID to fetch the address for.
- * @returns {string} The deployed contract address.
+ * @param {number} chainId - The chain ID to fetch the address for.
+ * @returns {string | undefined} The deployed contract address or undefined if not found.
  */
-export const getSponsoredCCTPSrcPeripheryAddress = (chainId: number) =>
-  getBetaContractAddress(
-    sdk.utils.chainIsSvm(chainId)
+export const getSponsoredCCTPSrcPeripheryAddress = (
+  chainId: number,
+): string | undefined => {
+  try {
+    const contractName = across.utils.chainIsSvm(chainId)
       ? "SponsoredCctpSrcPeriphery"
-      : "SponsoredCCTPSrcPeriphery",
-    chainId,
-  );
+      : "SponsoredCCTPSrcPeriphery";
+    return getAddress(contractName, chainId);
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Gets the Sponsored OFT Source Periphery address.
- * * @param {number} chainId - The chain ID to fetch the address for.
- * @returns {string} The deployed contract address.
+ * @param {number} chainId - The chain ID to fetch the address for.
+ * @returns {string | undefined} The deployed contract address or undefined if not found.
  */
-export const getSponsoredOFTSrcPeripheryAddress = (chainId: number) =>
-  getBetaContractAddress("SponsoredOFTSrcPeriphery", chainId);
+export const getSponsoredOFTSrcPeripheryAddress = (
+  chainId: number,
+): string | undefined => {
+  try {
+    return getAddress("SponsoredOFTSrcPeriphery", chainId);
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Gets the Destination OFT Handler address.
- * * @param {number} [chainId=CHAIN_IDs.HYPEREVM] - The chain ID to fetch the address for. Defaults to HyperEVM.
- * @returns {string} The deployed contract address.
+ * @param {number} [chainId=CHAIN_IDs.HYPEREVM] - The chain ID to fetch the address for. Defaults to HyperEVM.
+ * @returns {string | undefined} The deployed contract address or undefined if not found.
  */
-export const getDstOFTHandlerAddress = (chainId = CHAIN_IDs.HYPEREVM) =>
-  getBetaContractAddress("DstOFTHandler", chainId);
+export const getDstOFTHandlerAddress = (
+  chainId = CHAIN_IDs.HYPEREVM,
+): string | undefined => {
+  try {
+    return getAddress("DstOFTHandler", chainId);
+  } catch {
+    return undefined;
+  }
+};
