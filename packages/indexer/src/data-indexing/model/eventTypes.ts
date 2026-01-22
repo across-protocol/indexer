@@ -126,6 +126,18 @@ export interface OFTReceivedArgs {
   amountReceivedLD: bigint;
 }
 
+export interface SponsoredOFTSendArgs {
+  quoteNonce: `0x${string}`;
+  originSender: `0x${string}`;
+  finalRecipient: `0x${string}`;
+  destinationHandler: `0x${string}`;
+  quoteDeadline: bigint;
+  maxBpsToSponsor: bigint;
+  maxUserSlippageBps: bigint;
+  finalToken: `0x${string}`;
+  sig: `0x${string}`;
+}
+
 /* ==================================================================================
  * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
  * * Specific event types for the Spoke Pool Protocol.
@@ -169,18 +181,6 @@ export interface V3FundsDepositedArgs {
   recipient: `0x${string}`;
   exclusiveRelayer: `0x${string}`;
   message: `0x${string}`;
-}
-
-export interface SponsoredOFTSendArgs {
-  quoteNonce: `0x${string}`;
-  originSender: `0x${string}`;
-  finalRecipient: `0x${string}`;
-  destinationHandler: `0x${string}`;
-  quoteDeadline: bigint;
-  maxBpsToSponsor: bigint;
-  maxUserSlippageBps: bigint;
-  finalToken: `0x${string}`;
-  sig: `0x${string}`;
 }
 
 export type EventArgs =
