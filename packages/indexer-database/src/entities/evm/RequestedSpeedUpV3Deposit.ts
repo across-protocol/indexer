@@ -54,9 +54,11 @@ export class RequestedSpeedUpV3Deposit {
   @Column()
   blockNumber: number;
 
-  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
-  dataSource: DataSourceType;
-
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
   @CreateDateColumn()
   createdAt: Date;
 }

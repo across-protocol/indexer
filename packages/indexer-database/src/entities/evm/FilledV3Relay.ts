@@ -89,9 +89,11 @@ export class FilledV3Relay {
   @Column({ type: "enum", enum: interfaces.FillType })
   fillType: interfaces.FillType;
 
-  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
-  dataSource: DataSourceType;
-
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
   @Column()
   relayer: string;
 

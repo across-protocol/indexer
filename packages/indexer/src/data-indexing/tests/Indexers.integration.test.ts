@@ -898,7 +898,7 @@ describe("Websocket Subscription", () => {
       arbitrumClient,
       txHash,
     );
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
@@ -1232,7 +1232,7 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    // Stub getDeployedAddress for SpokePool on Base
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool for SpokePool on Base
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0x09aea4b2242abc8bb4bb78d537a67a245a7bec64");
@@ -1310,7 +1310,6 @@ describe("Websocket Subscription", () => {
   }).timeout(40000);
 
   it("should ingest the ExecutedRelayerRefundRoot event from Arbitrum tx 0x51f7...b86a", async () => {
-    // Real Transaction Data:
     // https://arbiscan.io/tx/0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a#eventlog#15
     const txHash =
       "0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a";
@@ -1323,7 +1322,7 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
@@ -1421,7 +1420,7 @@ describe("Websocket Subscription", () => {
   }).timeout(40000);
 
   it("should ingest the RequestedSpeedUpV3Deposit event from Arbitrum tx 0x39a0...823", async () => {
-    // Real Transaction Data:
+    // https://arbiscan.io/tx/0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823#eventlog#15
     const txHash =
       "0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823";
 
@@ -1433,7 +1432,7 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
@@ -1498,7 +1497,7 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
@@ -1578,7 +1577,7 @@ describe("Websocket Subscription", () => {
       arbitrumClient,
       txHash,
     );
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
@@ -1642,7 +1641,7 @@ describe("Websocket Subscription", () => {
       txHash,
     );
 
-    // Stub getDeployedAddress
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
       .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");

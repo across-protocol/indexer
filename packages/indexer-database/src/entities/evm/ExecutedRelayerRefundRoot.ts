@@ -60,7 +60,11 @@ export class ExecutedRelayerRefundRoot {
   @Column()
   finalised: boolean;
 
-  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
   dataSource: DataSourceType;
 
   @CreateDateColumn()

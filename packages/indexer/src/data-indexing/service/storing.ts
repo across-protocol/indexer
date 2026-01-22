@@ -366,7 +366,7 @@ export const storeRequestedSpeedUpV3DepositEvent: Storer<
   return repository.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
     entities.RequestedSpeedUpV3Deposit,
     [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[], // Uses the unique constraint we checked earlier
+    UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[],
     [],
   );
 };
