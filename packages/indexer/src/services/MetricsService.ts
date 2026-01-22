@@ -1,11 +1,12 @@
 import { client, v2 } from "@datadog/datadog-api-client";
-import pRetry from "p-retry";
 import { MetricIntakeType } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2";
 import {
   COUNT,
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import pRetry from "p-retry";
 import { Logger } from "winston";
+
 import { DatadogConfig } from "../parseEnv";
 
 const MAX_RETRY_TIMEOUT = 60000;

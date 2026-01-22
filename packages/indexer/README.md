@@ -163,6 +163,7 @@ sequenceDiagram
 ```
 
 ### Getting Started
+
 To run the websocket indexer, execute the following command from the **root** of the monorepo:
 
 ```bash
@@ -217,8 +218,8 @@ To listen to a new event (or protocol):
 1.  Define a new `SupportedProtocols` object (or update an existing one like `CCTP_PROTOCOL`).
 2.  Implement the `getEventHandlers` function.
 3.  Return an array of event handler configurations, where each handler includes:
-    *   `config`: Contract address, ABI, and event name.
-    *   `preprocess`, `filter`, `transform`, `store`: The pure functions for the pipeline.
+    - `config`: Contract address, ABI, and event name.
+    - `preprocess`, `filter`, `transform`, `store`: The pure functions for the pipeline.
 
 ```typescript
 export const MY_NEW_PROTOCOL: SupportedProtocols<...> = {

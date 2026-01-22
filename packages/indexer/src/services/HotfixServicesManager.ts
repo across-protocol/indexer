@@ -2,11 +2,11 @@ import { Logger } from "winston";
 
 import { DataSource } from "@repo/indexer-database";
 
-import { Config } from "../parseEnv";
-import { UnmatchedFillEventsService } from "./UnmatchedFillEventsService";
-import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { IndexerQueuesService } from "../messaging/service";
+import { Config } from "../parseEnv";
+import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
 import { UnmatchedDepositEventsService } from "./UnmatchedDepositEventsService";
+import { UnmatchedFillEventsService } from "./UnmatchedFillEventsService";
 export class HotfixServicesManager {
   private unmatchedFillEventsService?: UnmatchedFillEventsService;
   private unmatchedDepositEventsService?: UnmatchedDepositEventsService;

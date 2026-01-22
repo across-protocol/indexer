@@ -1,5 +1,5 @@
-import { BigNumber, ethers, providers } from "ethers";
 import { Address, Signature, UnixTimestamp } from "@solana/kit";
+import { BigNumber, ethers, providers } from "ethers";
 
 // ============================================================================
 // EVM Event Types

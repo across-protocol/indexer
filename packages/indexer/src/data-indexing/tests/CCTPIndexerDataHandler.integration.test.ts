@@ -1,17 +1,19 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
 import { assert, expect } from "chai";
+import { ethers } from "ethers";
+import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import * as across from "@across-protocol/sdk";
-import * as sinon from "sinon";
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { getTestDataSource } from "../../tests/setup";
-import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
-import { CCTPRepository } from "../../database/CctpRepository";
-import { BlockRange } from "../model";
-import { createTestRetryProvider } from "../../tests/testProvider";
+
 import { entities } from "@repo/indexer-database";
+
+import { CCTPRepository } from "../../database/CctpRepository";
+import { getTestDataSource } from "../../tests/setup";
+import { createTestRetryProvider } from "../../tests/testProvider";
 import { decodeHookData, decodeMessageBody } from "../adapter/cctp-v2/service";
-import { ethers } from "ethers";
+import { BlockRange } from "../model";
+import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
 import { stubContractUtils } from "./utils";
 
 /**

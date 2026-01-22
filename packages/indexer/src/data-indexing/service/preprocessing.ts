@@ -1,22 +1,14 @@
-import { IndexerEventPayload } from "./genericEventListening";
-import {
-  Abi,
-  parseAbi,
-  parseEventLogs,
-  TransactionReceipt,
-  decodeEventLog,
-} from "viem";
-import {
-  SPONSORED_DEPOSIT_FOR_BURN_ABI,
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-} from "../model/abis";
-import { DEPOSIT_FOR_BURN_EVENT_NAME } from "./constants";
+import { Abi, parseAbi, parseEventLogs, TransactionReceipt } from "viem";
+import { Logger } from "winston";
+
+import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
+import { CCTP_DEPOSIT_FOR_BURN_ABI } from "../model/abis";
 import {
   DepositForBurnArgs,
   SponsoredDepositForBurnArgs,
 } from "../model/eventTypes";
-import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
-import { Logger } from "winston";
+import { DEPOSIT_FOR_BURN_EVENT_NAME } from "./constants";
+import { IndexerEventPayload } from "./genericEventListening";
 
 /**
  * extracts and decodes a specific event from a transaction receipt's logs.

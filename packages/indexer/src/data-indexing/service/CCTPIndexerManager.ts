@@ -1,20 +1,19 @@
-import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { Logger } from "winston";
 
 import { DataSource } from "@repo/indexer-database";
 
+import { CCTPRepository } from "../../database/CctpRepository";
 import { Config } from "../../parseEnv";
+import { getMaxBlockLookBack } from "../../web3/constants";
+import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import {
   getFinalisedBlockBufferDistance,
   getPollingIndexerDelaySeconds,
 } from "./constants";
-import { Indexer, EvmIndexer, SvmIndexer } from "./Indexer";
-import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
-import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
+import { EvmIndexer, Indexer, SvmIndexer } from "./Indexer";
 import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
-import { CCTPRepository } from "../../database/CctpRepository";
-import { getMaxBlockLookBack } from "../../web3/constants";
 
 export class CCTPIndexerManager {
   private evmIndexers?: Indexer[];

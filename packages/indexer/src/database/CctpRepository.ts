@@ -1,16 +1,18 @@
-import winston from "winston";
-import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
+import { ethers } from "ethers";
+import winston from "winston";
+
 import {
   DataSource,
   entities,
-  utils as dbUtils,
   SaveQueryResult,
+  utils as dbUtils,
 } from "@repo/indexer-database";
+
 import {
   DepositForBurnWithBlock,
-  MessageSentWithBlock,
   MessageReceivedWithBlock,
+  MessageSentWithBlock,
   MintAndWithdrawWithBlock,
   SponsoredDepositForBurnWithBlock,
 } from "../data-indexing/adapter/cctp-v2/model";
@@ -19,13 +21,11 @@ import {
   isHypercoreWithdraw,
   isProductionNetwork,
 } from "../data-indexing/adapter/cctp-v2/service";
-import { formatFromAddressToChainFormat } from "../utils";
 import {
-  SimpleTransferFlowCompletedLog,
   ArbitraryActionsExecutedLog,
   FallbackHyperEVMFlowCompletedLog,
-  SponsoredAccountActivationLog,
 } from "../data-indexing/model";
+import { formatFromAddressToChainFormat } from "../utils";
 
 // Chain-agnostic types - both EVM and SVM handlers must convert to these
 export type BurnEventsPair = {
@@ -446,7 +446,7 @@ export class CCTPRepository extends dbUtils.BlockchainEventRepository {
     blockDates: Record<number, Date>,
   ) {
     const formattedEvents: Partial<entities.DepositForBurn>[] =
-      depositForBurnEvents.map((event, index) => {
+      depositForBurnEvents.map((event) => {
         const destinationChainId = getCctpDestinationChainFromDomain(
           event.destinationDomain,
         );

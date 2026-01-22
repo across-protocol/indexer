@@ -1,17 +1,18 @@
 import { Logger } from "winston";
-import { DataSource, entities } from "@repo/indexer-database";
-import { IndexerDataHandler } from "./IndexerDataHandler";
-import { BlockRange } from "../model";
+
+import { IndexerError } from "@repo/error-handling";
+import { entities } from "@repo/indexer-database";
+
+import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 import {
-  HyperliquidRpcClient,
   HyperliquidBlock,
+  HyperliquidRpcClient,
   HyperliquidStreamType,
 } from "../adapter/hyperliquid/HyperliquidRpcClient";
 import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
-import { HyperliquidRepository } from "../../database/HyperliquidRepository";
-import * as across from "@across-protocol/sdk";
+import { BlockRange } from "../model";
 import { HYPERLIQUID_CORE_DEPOSIT_WALLET } from "./constants";
-import { IndexerError } from "@repo/error-handling";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
 /**
  * Error thrown when a required field is missing from a Hyperliquid deposit event
@@ -96,10 +97,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     });
 
     // Store deposits
-    const storedDeposits = await this.storeDeposits(
-      deposits,
-      lastFinalisedBlock,
-    );
+    await this.storeDeposits(deposits, lastFinalisedBlock);
     const timeToStoreDeposits = performance.now();
 
     const finalPerfTime = performance.now();

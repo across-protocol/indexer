@@ -1,18 +1,20 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { arch, interfaces, utils } from "@across-protocol/sdk";
 import { expect } from "chai";
 import winston from "winston";
-import { CHAIN_IDs } from "@across-protocol/constants";
+
 import {
   createDataSource,
   DataSource,
-  Repository,
   entities,
   fixtures,
+  Repository,
 } from "@repo/indexer-database";
-import { utils, arch, interfaces } from "@across-protocol/sdk";
-import { parsePostgresConfig } from "../parseEnv";
+
 import { SpokePoolRepository } from "../database/SpokePoolRepository";
-import { SpokePoolProcessor } from "../services/spokePoolProcessor";
+import { parsePostgresConfig } from "../parseEnv";
 import { RefundedDepositsStatusService } from "../services/RefundedDepositsStatusService";
+import { SpokePoolProcessor } from "../services/spokePoolProcessor";
 
 describe("RelayHashInfo Tests", () => {
   // Set up

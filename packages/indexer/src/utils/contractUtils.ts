@@ -1,24 +1,24 @@
-import winston from "winston";
-import { providers, Contract } from "ethers";
-import { address } from "@solana/kit";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { Logger } from "winston";
-import * as sdk from "@across-protocol/sdk";
 import {
+  AcrossConfigStore__factory as AcrossConfigStoreFactory,
   getDeployedAddress,
   getDeployedBlockNumber,
-  SpokePool__factory as SpokePoolFactory,
   HubPool__factory as HubPoolFactory,
-  AcrossConfigStore__factory as AcrossConfigStoreFactory,
+  SpokePool__factory as SpokePoolFactory,
 } from "@across-protocol/contracts";
-import { assert } from "@repo/error-handling";
 import { getDeployedAddress as getDeployedAddressBetaRelease } from "@across-protocol/contracts-beta";
+import * as sdk from "@across-protocol/sdk";
 import * as across from "@across-protocol/sdk";
+import { address } from "@solana/kit";
+import { Contract, providers } from "ethers";
 import { ethers } from "ethers";
-import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
-import { SvmProvider } from "../web3/RetryProvidersFactory";
+import winston from "winston";
+import { Logger } from "winston";
 
-export const CONFIG_STORE_VERSION = 4;
+import { SvmProvider } from "../web3/RetryProvidersFactory";
+import { EvmSpokePoolClient, SvmSpokePoolClient } from "./clients";
+
+const CONFIG_STORE_VERSION = 4;
 
 export type GetEvmSpokeClientParams = {
   provider: providers.Provider;

@@ -1,9 +1,5 @@
 {
-  "extension": [
-    "ts"
-  ],
-  "require": [
-    "ts-node/register", "dotenv/config"
-  ],
+  "extension": ["ts"],
+  "require": ["ts-node/register", "dotenv/config"],
   "recursive": true
 }

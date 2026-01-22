@@ -1,5 +1,5 @@
+import { BulkJobOptions, JobsOptions, Queue } from "bullmq";
 import Redis from "ioredis";
-import { Queue, JobsOptions, BulkJobOptions } from "bullmq";
 
 export enum IndexerQueues {
   IntegratorId = "IntegratorId",

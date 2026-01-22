@@ -1,4 +1,5 @@
 import winston from "winston";
+
 import { createDataSource, DatabaseConfig } from "@repo/indexer-database";
 
 export async function connectToDatabase(

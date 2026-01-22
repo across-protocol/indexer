@@ -1,29 +1,27 @@
-import { pad, decodeEventLog, TransactionReceipt, parseAbi } from "viem";
+import { pad, parseAbi } from "viem";
 import { Logger } from "winston";
-import {
-  SWAP_API_CALLDATA_MARKER,
-  WHITELISTED_FINALIZERS,
-  DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_RECEIVED_EVENT_NAME,
-} from "./constants";
-import { Filter } from "../model/genericTypes";
-import { entities } from "@repo/indexer-database";
-import { IndexerEventPayload } from "./genericEventListening";
+
+import { safeJsonStringify } from "../../utils";
+import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
+import { isEndpointIdSupported } from "../adapter/oft/service";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
 } from "../model/abis";
-import { decodeEventFromReceipt } from "./preprocessing";
 import {
   DepositForBurnArgs,
   MessageReceivedArgs,
-  MintAndWithdrawArgs,
-  OFTSentArgs,
   OFTReceivedArgs,
+  OFTSentArgs,
 } from "../model/eventTypes";
-import { safeJsonStringify } from "../../utils";
-import { isHypercoreWithdraw } from "../adapter/cctp-v2/service";
-import { isEndpointIdSupported } from "../adapter/oft/service";
+import {
+  DEPOSIT_FOR_BURN_EVENT_NAME,
+  MESSAGE_RECEIVED_EVENT_NAME,
+  SWAP_API_CALLDATA_MARKER,
+  WHITELISTED_FINALIZERS,
+} from "./constants";
+import { IndexerEventPayload } from "./genericEventListening";
+import { decodeEventFromReceipt } from "./preprocessing";
 
 /**
  * Checks if a DepositForBurn event should be indexed.
@@ -205,12 +203,8 @@ export const filterOFTSentEvents = (
  * Validates that the source endpoint ID is supported.
  *
  * @param args The event arguments.
- * @param payload The event payload.
  * @returns True if the event should be indexed.
  */
-export const filterOFTReceivedEvents = (
-  args: OFTReceivedArgs,
-  payload: IndexerEventPayload,
-): boolean => {
+export const filterOFTReceivedEvents = (args: OFTReceivedArgs): boolean => {
   return isEndpointIdSupported(args.srcEid);
 };

@@ -1,30 +1,32 @@
-import { entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
-import { IndexerEventPayload } from "./genericEventListening";
-import {
-  getCctpDestinationChainFromDomain,
-  decodeMessage,
-} from "../adapter/cctp-v2/service";
+import { arrayify } from "ethers/lib/utils";
+import { Logger } from "winston";
+
+import { entities } from "@repo/indexer-database";
+
 import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
-import { getFinalisedBlockBufferDistance } from "./constants";
 import {
+  decodeMessage,
+  getCctpDestinationChainFromDomain,
+} from "../adapter/cctp-v2/service";
+import {
+  ArbitraryActionsExecutedArgs,
   DepositForBurnArgs,
+  FallbackHyperEVMFlowCompletedArgs,
   MessageReceivedArgs,
   MessageSentArgs,
-  SponsoredDepositForBurnArgs,
   MintAndWithdrawArgs,
+  OFTReceivedArgs,
+  OFTSentArgs,
+  SimpleTransferFlowCompletedArgs,
+  SponsoredAccountActivationArgs,
+  SponsoredDepositForBurnArgs,
+  SponsoredOFTSendArgs,
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
-  SponsoredAccountActivationArgs,
-  SimpleTransferFlowCompletedArgs,
-  FallbackHyperEVMFlowCompletedArgs,
-  ArbitraryActionsExecutedArgs,
-  OFTSentArgs,
-  OFTReceivedArgs,
-  SponsoredOFTSendArgs,
 } from "../model/eventTypes";
-import { Logger } from "winston";
-import { arrayify } from "ethers/lib/utils";
+import { getFinalisedBlockBufferDistance } from "./constants";
+import { IndexerEventPayload } from "./genericEventListening";
 
 /**
  * A generic transformer for addresses.

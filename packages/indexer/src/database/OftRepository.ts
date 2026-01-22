@@ -1,6 +1,6 @@
-import winston from "winston";
-import { ethers } from "ethers";
 import * as across from "@across-protocol/sdk";
+import { ethers } from "ethers";
+import winston from "winston";
 
 import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
 

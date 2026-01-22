@@ -1,14 +1,16 @@
-import * as s from "superstruct";
 import { utils } from "@across-protocol/sdk";
+import * as os from "os";
+import * as s from "superstruct";
+
 import { assert } from "@repo/error-handling";
 import { DatabaseConfig } from "@repo/indexer-database";
 import {
   Config as WebhooksConfig,
-  WebhookTypes,
   parseWebhookClientsFromString,
+  WebhookTypes,
 } from "@repo/webhooks";
+
 import { getNoTtlBlockDistance } from "./web3/constants";
-import * as os from "os";
 
 export type Config = {
   redisConfig: RedisConfig;
@@ -133,7 +135,7 @@ export function parsePostgresConfig(
   };
 }
 
-function parseProviderConfigs(env: Env): ProviderConfig[] {
+function parseProviderConfigs(_env: Env): ProviderConfig[] {
   const results: ProviderConfig[] = [];
   for (const [key, value] of Object.entries(process.env)) {
     const match = key.match(/^RPC_PROVIDER_URLS_(\d+)$/);

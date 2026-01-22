@@ -1,19 +1,19 @@
-import { Logger } from "winston";
 import * as across from "@across-protocol/sdk";
+import { Logger } from "winston";
 
 import { DataSource } from "@repo/indexer-database";
 
+import { OftRepository } from "../../database/OftRepository";
 import { Config } from "../../parseEnv";
+import { getMaxBlockLookBack } from "../../web3/constants";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
+import { getSupportOftChainIds } from "../adapter/oft/service";
 import {
   getFinalisedBlockBufferDistance,
   getPollingIndexerDelaySeconds,
 } from "./constants";
 import { EvmIndexer, Indexer } from "./Indexer";
 import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
-import { OftRepository } from "../../database/OftRepository";
-import { getSupportOftChainIds } from "../adapter/oft/service";
-import { getMaxBlockLookBack } from "../../web3/constants";
 
 export class OFTIndexerManager {
   private indexers: Indexer[] = [];

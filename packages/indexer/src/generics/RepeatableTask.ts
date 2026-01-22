@@ -1,5 +1,5 @@
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
+import winston from "winston";
 
 /**
  * Base class to be implemented by tasks that need to be run repeatedly.

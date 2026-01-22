@@ -1,5 +1,3 @@
-import { ethers, BigNumber } from "ethers";
-import axios from "axios";
 import {
   CCTP_NO_DOMAIN,
   CHAIN_IDs,
@@ -8,11 +6,14 @@ import {
   TEST_NETWORKS,
 } from "@across-protocol/constants";
 import * as across from "@across-protocol/sdk";
+import axios from "axios";
+import { BigNumber, ethers } from "ethers";
+
+import { CCTP_FORWARD_MAGIC_BYTES } from "../../service/constants";
 import {
   DecodedHyperCoreWithdrawalHookData,
   DecodedMessageBody,
 } from "./model";
-import { CCTP_FORWARD_MAGIC_BYTES } from "../../service/constants";
 
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
@@ -475,13 +476,9 @@ export function isHypercoreWithdraw(
  * Checks for "cctp-forward" magic bytes directly in the message body.
  *
  * @param messageBody The raw message body hex string from MessageReceived event
- * @param options Optional logger, chainId, and transactionHash for warning messages
  * @returns True if the message body contains "cctp-forward" magic bytes
  */
-export function isHypercoreDeposit(
-  messageBody: string,
-  options?: IsHypercoreDepositOptions,
-): boolean {
+export function isHypercoreDeposit(messageBody: string): boolean {
   // Check if the magic bytes appear in the message body (case-insensitive)
   const messageBodyLower = messageBody.toLowerCase();
   return messageBodyLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());

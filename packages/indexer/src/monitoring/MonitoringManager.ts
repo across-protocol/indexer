@@ -1,5 +1,7 @@
-import winston, { Logger } from "winston";
+import { Logger } from "winston";
+
 import { DataSource } from "@repo/indexer-database";
+
 import { Config } from "../parseEnv";
 import { IncorrectDepositStatusMonitor } from "./IncorrectDepositStatusMonitor";
 

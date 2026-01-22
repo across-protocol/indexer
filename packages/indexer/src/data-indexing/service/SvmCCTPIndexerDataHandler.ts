@@ -1,37 +1,39 @@
-import { Logger } from "winston";
-import { ethers } from "ethers";
-import * as across from "@across-protocol/sdk";
 import {
   MessageTransmitterV2Client,
-  TokenMessengerMinterV2Idl,
   MessageTransmitterV2Idl,
+  TokenMessengerMinterV2Idl,
 } from "@across-protocol/contracts";
 import { SponsoredCctpSrcPeripheryIdl } from "@across-protocol/contracts-beta";
+import * as across from "@across-protocol/sdk";
 import { address, signature } from "@solana/kit";
-import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
-import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import { ethers } from "ethers";
+import { Logger } from "winston";
+
+import { entities, SaveQueryResult } from "@repo/indexer-database";
+
 import {
-  CCTPRepository,
   BurnEventsPair,
+  CCTPRepository,
   MintEventsPair,
 } from "../../database/CctpRepository";
-import {
-  getIndexingStartBlockNumber,
-  decodeMessage,
-  getCctpDestinationChainFromDomain,
-} from "../adapter/cctp-v2/service";
+import { getSponsoredCCTPSrcPeripheryAddress } from "../../utils";
 import { formatFromAddressToChainFormat } from "../../utils/adressUtils";
+import { SvmProvider } from "../../web3/RetryProvidersFactory";
 import {
   SolanaDepositForBurnEvent,
-  SolanaMessageSentEvent,
   SolanaMessageReceivedEvent,
+  SolanaMessageSentEvent,
   SolanaMintAndWithdrawEvent,
   SolanaSponsoredDepositForBurnEvent,
   SponsoredDepositForBurnWithBlock,
 } from "../adapter/cctp-v2/model";
-import { getSponsoredCCTPSrcPeripheryAddress } from "../../utils";
-import { entities, SaveQueryResult } from "@repo/indexer-database";
+import {
+  decodeMessage,
+  getCctpDestinationChainFromDomain,
+  getIndexingStartBlockNumber,
+} from "../adapter/cctp-v2/service";
+import { BlockRange } from "../model";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type SolanaBurnEventsPair = {
   depositForBurn: SolanaDepositForBurnEvent;
@@ -253,9 +255,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     ];
 
     const swapApiSignatures = new Set<string>();
-    let checkedCount = 0;
     await across.utils.forEachAsync(uniqueSignatures, async (sig) => {
-      checkedCount++;
       const isSwapApi = await this.isSwapApiTransaction(sig);
 
       if (isSwapApi) {

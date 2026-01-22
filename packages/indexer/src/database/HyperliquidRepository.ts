@@ -1,12 +1,9 @@
-import winston from "winston";
-import { MoreThan } from "typeorm";
 import * as across from "@across-protocol/sdk";
-import {
-  DataSource,
-  entities,
-  utils as dbUtils,
-  SaveQueryResult,
-} from "@repo/indexer-database";
+import { MoreThan } from "typeorm";
+import winston from "winston";
+
+import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
+
 import { HyperliquidDepositEvent } from "../data-indexing/adapter/hyperliquid/model";
 
 export class HyperliquidRepository extends dbUtils.BlockchainEventRepository {

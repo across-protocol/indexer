@@ -1,18 +1,19 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
 import { expect } from "chai";
+import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
+
 import { entities } from "@repo/indexer-database";
-import * as sinon from "sinon";
-import * as across from "@across-protocol/sdk";
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { getTestDataSource } from "../../tests/setup";
-import { SvmCCTPIndexerDataHandler } from "../service/SvmCCTPIndexerDataHandler";
+
 import { CCTPRepository } from "../../database/CctpRepository";
-import { BlockRange } from "../model";
+import { getTestDataSource } from "../../tests/setup";
 import { createTestRetryProvider } from "../../tests/testProvider";
-import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 import { formatFromAddressToChainFormat } from "../../utils";
 import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
+import { BlockRange } from "../model";
+import { SvmCCTPIndexerDataHandler } from "../service/SvmCCTPIndexerDataHandler";
 
 describe("SvmCCTPIndexerDataHandler Integration", () => {
   let dataSource: DataSource;

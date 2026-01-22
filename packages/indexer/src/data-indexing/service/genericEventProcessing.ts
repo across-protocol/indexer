@@ -1,11 +1,12 @@
+import { Logger } from "winston";
+
 import {
   EventSource,
-  Storer,
-  Transformer,
   Filter,
   Preprocessor,
+  Storer,
+  Transformer,
 } from "../model/genericTypes";
-import { Logger } from "winston";
 
 /**
  * @file Implements the "Event Processor" service.

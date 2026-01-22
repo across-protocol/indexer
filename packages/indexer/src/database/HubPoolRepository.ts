@@ -1,5 +1,6 @@
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
+import winston from "winston";
+
 import { DataSource, entities, utils } from "@repo/indexer-database";
 
 import { FetchEventsResult } from "../data-indexing/service/HubPoolIndexerDataHandler";

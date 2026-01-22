@@ -1,21 +1,19 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
 import { expect } from "chai";
+import * as sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import * as sinon from "sinon";
-import { CHAIN_IDs } from "@across-protocol/constants";
+
+import { entities } from "@repo/indexer-database";
+
+import { CCTPRepository } from "../../database/CctpRepository";
+import { PubSubService } from "../../pubsub/service";
 import { getTestDataSource } from "../../tests/setup";
+import { createTestRetryProvider } from "../../tests/testProvider";
+import { BlockRange } from "../model";
 import { CctpFinalizerService } from "../service/CctpFinalizerService";
 import { CCTPIndexerDataHandler } from "../service/CCTPIndexerDataHandler";
-import { CCTPRepository } from "../../database/CctpRepository";
-import { BlockRange } from "../model";
-import { createTestRetryProvider } from "../../tests/testProvider";
-import { entities } from "@repo/indexer-database";
-import { PubSubService } from "../../pubsub/service";
-import * as across from "@across-protocol/sdk";
-import {
-  getSponsoredCCTPDstPeripheryAddress,
-  getSponsoredCCTPSrcPeripheryAddress,
-} from "../../utils";
 import { stubContractUtils } from "./utils";
 
 describe("CctpFinalizerService", () => {

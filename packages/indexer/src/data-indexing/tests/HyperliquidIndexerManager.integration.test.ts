@@ -1,10 +1,11 @@
 import { expect } from "chai";
+import sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import sinon from "sinon";
-import { HyperliquidIndexerManager } from "../service/HyperliquidIndexerManager";
-import { parseProvidersUrls, Config } from "../../parseEnv";
+
+import { Config, parseProvidersUrls } from "../../parseEnv";
 import { getTestDataSource } from "../../tests/setup";
+import { HyperliquidIndexerManager } from "../service/HyperliquidIndexerManager";
 import { HyperliquidIndexer } from "../service/Indexer";
 
 describe("HyperliquidIndexerManager", () => {

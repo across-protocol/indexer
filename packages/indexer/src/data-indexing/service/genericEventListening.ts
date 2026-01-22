@@ -1,22 +1,23 @@
-import pRetry from "p-retry";
+import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 import Bottleneck from "bottleneck";
+import PLazy from "p-lazy";
+import pRetry from "p-retry";
 import {
-  parseAbi,
-  type Log,
-  type PublicClient,
-  type Transport,
   type Chain,
+  GetBlockReturnType,
+  type Log,
+  parseAbi,
+  type PublicClient,
   type Transaction,
   TransactionReceipt,
-  GetBlockReturnType,
+  type Transport,
 } from "viem";
 import { Logger } from "winston";
-import PLazy from "p-lazy";
+
 import {
   DataDogMetricsService,
   withMetrics,
 } from "../../services/MetricsService";
-import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
  * @file Implements the "WebSocket Listener" service.

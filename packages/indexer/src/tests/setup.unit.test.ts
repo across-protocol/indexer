@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { DataSource } from "typeorm";
+
 import { entities } from "@repo/indexer-database";
+
 import { getTestDataSource } from "./setup";
 
 /**

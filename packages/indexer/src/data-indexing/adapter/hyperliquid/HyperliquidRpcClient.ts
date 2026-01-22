@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
-import { Logger } from "winston";
 import pRetry from "p-retry";
+import { Logger } from "winston";
 
 export enum HyperliquidStreamType {
   TRADES = "trades",

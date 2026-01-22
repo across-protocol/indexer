@@ -1,10 +1,16 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { utils } from "@across-protocol/sdk";
 import winston, { Logger } from "winston";
 
-import { RepeatableTask } from "../../generics";
 import { DataSource, entities } from "@repo/indexer-database";
-import { CHAIN_IDs } from "@across-protocol/constants";
-import { PubSubService } from "../../pubsub/service";
+
+import { RepeatableTask } from "../../generics";
 import { Config } from "../../parseEnv";
+import { PubSubService } from "../../pubsub/service";
+import {
+  formatFromAddressToChainFormat,
+  getSponsoredCCTPDstPeripheryAddress,
+} from "../../utils";
 import {
   fetchAttestationsForTxn,
   getCctpDestinationChainFromDomain,
@@ -12,11 +18,6 @@ import {
   isProductionNetwork,
 } from "../adapter/cctp-v2/service";
 import { CCTP_FORWARD_MAGIC_BYTES } from "./constants";
-import { utils } from "@across-protocol/sdk";
-import {
-  formatFromAddressToChainFormat,
-  getSponsoredCCTPDstPeripheryAddress,
-} from "../../utils";
 
 export const CCTP_FINALIZER_DELAY_SECONDS = 10;
 export const CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS = 5 * 60; // 5 minutes

@@ -1,8 +1,10 @@
-import winston from "winston";
 import * as across from "@across-protocol/sdk";
-import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
-import { SwapMetadataEvent } from "../web3/model/events";
 import { ethers } from "ethers";
+import winston from "winston";
+
+import { DataSource, entities, utils as dbUtils } from "@repo/indexer-database";
+
+import { SwapMetadataEvent } from "../web3/model/events";
 
 export class SwapMetadataRepository extends dbUtils.BlockchainEventRepository {
   constructor(

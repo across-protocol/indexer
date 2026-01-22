@@ -1,18 +1,19 @@
 import { expect } from "chai";
+import sinon from "sinon";
 import { DataSource } from "typeorm";
 import { Logger } from "winston";
-import sinon from "sinon";
+
 import { entities } from "@repo/indexer-database";
-import { HyperliquidIndexerDataHandler } from "../service/HyperliquidIndexerDataHandler";
+
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
+import { getTestDataSource } from "../../tests/setup";
 import {
-  HyperliquidRpcClient,
   HyperliquidBlock,
-  HyperliquidStreamType,
+  HyperliquidRpcClient,
 } from "../adapter/hyperliquid/HyperliquidRpcClient";
 import { BlockRange } from "../model";
-import { getTestDataSource } from "../../tests/setup";
 import { HYPERLIQUID_CORE_DEPOSIT_WALLET } from "../service/constants";
+import { HyperliquidIndexerDataHandler } from "../service/HyperliquidIndexerDataHandler";
 
 describe("HyperliquidIndexerDataHandler", () => {
   let dataSource: DataSource;
@@ -290,8 +291,6 @@ describe("HyperliquidIndexerDataHandler", () => {
       from: mockBlockNumber,
       to: mockBlockNumber,
     };
-
-    const userWallet = "0x2222222222222222222222222222222222222222";
 
     // Mock the RPC response without destination
     const mockBlock: HyperliquidBlock = {

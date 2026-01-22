@@ -1,14 +1,13 @@
-import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
+import { Logger } from "winston";
+
 import { DataSource } from "@repo/indexer-database";
-import { Config, parseProvidersUrls } from "../../parseEnv";
-import {
-  getFinalisedBlockBufferDistance,
-  getIndexingDelaySeconds,
-} from "./constants";
-import { HyperliquidIndexer } from "./Indexer";
-import { HyperliquidIndexerDataHandler } from "./HyperliquidIndexerDataHandler";
+
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
+import { Config, parseProvidersUrls } from "../../parseEnv";
+import { getIndexingDelaySeconds } from "./constants";
+import { HyperliquidIndexerDataHandler } from "./HyperliquidIndexerDataHandler";
+import { HyperliquidIndexer } from "./Indexer";
 
 /**
  * Starting block number for Hyperliquid indexing

@@ -1,6 +1,6 @@
-import { Logger } from "winston";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { clients, providers, utils } from "@across-protocol/sdk";
+import { Logger } from "winston";
 
 import { getMaxBlockLookBack } from "../web3/constants";
 import {
@@ -9,8 +9,8 @@ import {
 } from "../web3/RetryProvidersFactory";
 import {
   getConfigStoreClient,
-  getHubPoolClient,
   getEvmSpokeClient,
+  getHubPoolClient,
   getSvmSpokeClient,
 } from "./contractUtils";
 

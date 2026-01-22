@@ -1,7 +1,7 @@
-import { interfaces, providers } from "@across-protocol/sdk";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { utils as ethersUtils } from "ethers";
+import { interfaces, providers } from "@across-protocol/sdk";
 import { Signature } from "@solana/kit";
+import { utils as ethersUtils } from "ethers";
 
 import { entities } from "@repo/indexer-database";
 
@@ -132,20 +132,9 @@ export function getDbLockKeyForDeposit(
 }
 
 /**
- * Generates a lock key for oft events
- * @param event - The oft event
- * @returns The event's gui identifier hashed as a 32-bit integer
- */
-export function getDbLockKeyForOftEvent(
-  event: entities.OFTSent | entities.OFTReceived,
-) {
-  return [relayHashToInt32(event.guid)];
-}
-
-/**
  * Generates a 32bit integer based on an input string
  */
-export function relayHashToInt32(relayHash: string): number {
+function relayHashToInt32(relayHash: string): number {
   let hash = 0;
   let chr;
 

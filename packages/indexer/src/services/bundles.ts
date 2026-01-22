@@ -1,6 +1,5 @@
-import Redis from "ioredis";
 import winston from "winston";
-import { DataSource } from "@repo/indexer-database";
+
 import {
   BlockRangeInsertType,
   BundleRepository,

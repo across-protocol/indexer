@@ -1,11 +1,7 @@
 import { expect } from "chai";
-import { parsePostgresConfig } from "../parseEnv";
-import {
-  createDataSource,
-  Repository,
-  entities,
-  fixtures,
-} from "@repo/indexer-database";
+
+import { entities, fixtures, Repository } from "@repo/indexer-database";
+
 import { getTestDataSource } from "./setup";
 
 describe("example", () => {

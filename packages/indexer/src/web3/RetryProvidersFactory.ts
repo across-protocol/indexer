@@ -1,11 +1,11 @@
-import { Logger } from "winston";
-import { ethers } from "ethers";
 import { PUBLIC_NETWORKS } from "@across-protocol/constants";
-import { providers, utils, arch } from "@across-protocol/sdk";
+import { arch, providers, utils } from "@across-protocol/sdk";
+import { ethers } from "ethers";
+import { Logger } from "winston";
 
 import {
-  parseRetryProviderEnvs,
   parseProvidersUrls,
+  parseRetryProviderEnvs,
   RetryProviderConfig,
 } from "../parseEnv";
 import { RedisCache } from "../redis/redisCache";

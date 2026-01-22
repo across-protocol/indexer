@@ -1,16 +1,17 @@
+import * as constants from "@across-protocol/constants";
+import * as across from "@across-protocol/sdk";
+import { Job, Worker } from "bullmq";
+import { ethers } from "ethers";
 import Redis from "ioredis";
 import { DateTime } from "luxon";
-import winston from "winston";
-import { Job, Worker } from "bullmq";
-import { DataSource, entities } from "@repo/indexer-database";
-import { ethers } from "ethers";
-import { assert } from "@repo/error-handling";
-import * as across from "@across-protocol/sdk";
-import * as constants from "@across-protocol/constants";
 import * as ss from "superstruct";
+import winston from "winston";
 
-import { IndexerQueues } from "./service";
+import { assert } from "@repo/error-handling";
+import { DataSource, entities } from "@repo/indexer-database";
+
 import { findTokenByAddress, yesterday } from "../utils";
+import { IndexerQueues } from "./service";
 
 export const PriceMessage = ss.object({
   fillEventId: ss.number(),

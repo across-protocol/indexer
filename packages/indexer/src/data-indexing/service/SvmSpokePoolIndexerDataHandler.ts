@@ -1,28 +1,29 @@
-import { Logger } from "winston";
-import { Signature } from "@solana/kit";
-import * as across from "@across-protocol/sdk";
 import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import * as across from "@across-protocol/sdk";
+import { Signature } from "@solana/kit";
+import { Logger } from "winston";
+
 import {
   entities,
   SaveQueryResultType,
   utils as indexerDatabaseUtils,
 } from "@repo/indexer-database";
 
-import * as utils from "../../utils";
-import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
-import { getMaxBlockLookBack } from "../../web3/constants";
-import { SvmProvider } from "../../web3/RetryProvidersFactory";
 import {
   SpokePoolRepository,
   StoreEventsResult,
 } from "../../database/SpokePoolRepository";
-import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
-import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
 import { PriceMessage } from "../../messaging/priceWorker";
+import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
+import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
+import * as utils from "../../utils";
+import { getMaxBlockLookBack } from "../../web3/constants";
+import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import { BlockRange } from "../model";
+import { IndexerDataHandler } from "./IndexerDataHandler";
 
 export type FetchEventsResult = {
   fundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
