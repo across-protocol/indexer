@@ -47,6 +47,7 @@ import {
   getCctpDestinationChainFromDomain,
   isHypercoreWithdraw,
   isHypercoreDeposit,
+  getCctpDomainForChainId,
 } from "../adapter/cctp-v2/service";
 import { entities, SaveQueryResult } from "@repo/indexer-database";
 import {
@@ -445,6 +446,13 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     depositForBurnEvents: DepositForBurnEvent[],
   ): Promise<DepositForBurnEvent[]> {
     return depositForBurnEvents.filter((event) => {
+      if (
+        event.args.destinationDomain !==
+        getCctpDomainForChainId(CHAIN_IDs.HYPEREVM)
+      ) {
+        return false;
+      }
+
       const transaction = transactions[event.transactionHash];
       if (!transaction) {
         return false;
