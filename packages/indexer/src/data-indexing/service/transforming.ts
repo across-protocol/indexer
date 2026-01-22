@@ -32,6 +32,7 @@ import {
   RelayedRootBundleArgs,
   RequestedSlowFillArgs,
   TokensBridgedArgs,
+  ClaimedRelayerRefundArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -897,5 +898,22 @@ export const transformTokensBridgedEvent = (
     ),
     amountToReturn: preprocessed.amountToReturn.toString(),
     caller: transformAddress(preprocessed.caller.toString(), chainId),
+  };
+};
+
+export const transformClaimedRelayerRefundEvent = (
+  preprocessed: ClaimedRelayerRefundArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.ClaimedRelayerRefunds> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    l2TokenAddress: transformAddress(preprocessed.l2TokenAddress, chainId),
+    refundAddress: transformAddress(preprocessed.refundAddress, chainId),
+    amount: preprocessed.amount.toString(),
+    caller: transformAddress(preprocessed.caller, chainId),
   };
 };

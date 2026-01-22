@@ -185,3 +185,4 @@ export const REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME =
 export const RELAYED_ROOT_BUNDLE_EVENT_NAME = "RelayedRootBundle";
 export const REQUESTED_SLOW_FILL_EVENT_NAME = "RequestedSlowFill";
 export const TOKENS_BRIDGED_EVENT_NAME = "TokensBridged";
+export const CLAIMED_RELAYER_REFUND_EVENT_NAME = "ClaimedRelayerRefund";

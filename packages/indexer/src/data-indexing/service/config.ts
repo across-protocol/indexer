@@ -21,6 +21,7 @@ import {
   RELAYED_ROOT_BUNDLE_ABI,
   REQUESTED_SLOW_FILL_ABI,
   TOKENS_BRIDGED_ABI,
+  CLAIMED_RELAYER_REFUND_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -45,6 +46,7 @@ import {
   RELAYED_ROOT_BUNDLE_EVENT_NAME,
   REQUESTED_SLOW_FILL_EVENT_NAME,
   TOKENS_BRIDGED_EVENT_NAME,
+  CLAIMED_RELAYER_REFUND_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -73,6 +75,7 @@ import {
   RelayedRootBundleArgs,
   RequestedSlowFillArgs,
   TokensBridgedArgs,
+  ClaimedRelayerRefundArgs,
 } from "../model/eventTypes";
 
 import {
@@ -100,6 +103,7 @@ import {
   transformRelayedRootBundleEvent,
   transformRequestedSlowFillEvent,
   transformTokensBridgedEvent,
+  transformClaimedRelayerRefundEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -122,6 +126,7 @@ import {
   storeRelayedRootBundleEvent,
   storeRequestedSlowFillEvent,
   storeTokensBridgedEvent,
+  storeClaimedRelayerRefundEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -572,6 +577,20 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         transform: (args: TokensBridgedArgs, payload: IndexerEventPayload) =>
           transformTokensBridgedEvent(args, payload, logger),
         store: storeTokensBridgedEvent,
+      },
+      {
+        config: {
+          abi: CLAIMED_RELAYER_REFUND_ABI,
+          eventName: CLAIMED_RELAYER_REFUND_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<ClaimedRelayerRefundArgs>,
+        filter: async () => true,
+        transform: (
+          args: ClaimedRelayerRefundArgs,
+          payload: IndexerEventPayload,
+        ) => transformClaimedRelayerRefundEvent(args, payload, logger),
+        store: storeClaimedRelayerRefundEvent,
       },
     ];
   },

@@ -24,26 +24,38 @@ export class AddDataSourceToSpokePoolEvents1768217843000
     await queryRunner.query(
       `ALTER TABLE "evm"."tokens_bridged" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."claimed_relayer_refunds" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."requested_speed_up_v3_deposit" ADD "dataSource" "evm"."datasource_type_enum" DEFAULT 'polling'`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "evm"."v3_funds_deposited" DROP COLUMN "dataSource"`,
+      `ALTER TABLE "evm"."requested_speed_up_v3_deposit" DROP COLUMN "dataSource"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."filled_v3_relay" DROP COLUMN "dataSource"`,
+      `ALTER TABLE "evm"."claimed_relayer_refunds" DROP COLUMN "dataSource"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."relayed_root_bundle" DROP COLUMN "dataSource"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "evm"."executed_relayer_refund_root" DROP COLUMN "dataSource"`,
+      `ALTER TABLE "evm"."tokens_bridged" DROP COLUMN "dataSource"`,
     );
     await queryRunner.query(
       `ALTER TABLE "evm"."requested_v3_slow_fill" DROP COLUMN "dataSource"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."tokens_bridged" DROP COLUMN "dataSource"`,
+      `ALTER TABLE "evm"."executed_relayer_refund_root" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."relayed_root_bundle" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."v3_funds_deposited" DROP COLUMN "dataSource"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "evm"."filled_v3_relay" DROP COLUMN "dataSource"`,
     );
   }
 }

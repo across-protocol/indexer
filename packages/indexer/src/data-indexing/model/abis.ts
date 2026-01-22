@@ -91,3 +91,7 @@ export const REQUESTED_SLOW_FILL_ABI = [
 export const TOKENS_BRIDGED_ABI = [
   "event TokensBridged(uint256 amountToReturn, uint256 indexed chainId, uint32 indexed leafId, bytes32 indexed l2TokenAddress, address caller)",
 ];
+
+export const CLAIMED_RELAYER_REFUND_ABI = [
+  "event ClaimedRelayerRefund(bytes32 indexed l2TokenAddress, bytes32 indexed refundAddress, uint256 amount, address indexed caller)",
+];

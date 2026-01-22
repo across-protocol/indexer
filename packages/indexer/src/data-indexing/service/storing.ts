@@ -436,3 +436,25 @@ export const storeTokensBridgedEvent: Storer<
     UPDATE_TRANSACTION_HASH as (keyof entities.TokensBridged)[],
   );
 };
+
+/**
+ * Stores a ClaimedRelayerRefund event in the database.
+ *
+ * @param event The ClaimedRelayerRefunds entity to store.
+ * @param repository The BlockchainEventRepository instance.
+ * @returns A promise that resolves to the result of the save operation.
+ */
+export const storeClaimedRelayerRefundEvent: Storer<
+  Partial<entities.ClaimedRelayerRefunds>,
+  dbUtils.BlockchainEventRepository
+> = async (
+  event: Partial<entities.ClaimedRelayerRefunds>,
+  repository: dbUtils.BlockchainEventRepository,
+) => {
+  return repository.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
+    entities.ClaimedRelayerRefunds,
+    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ClaimedRelayerRefunds)[],
+    [],
+  );
+};

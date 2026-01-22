@@ -221,6 +221,13 @@ export interface TokensBridgedArgs {
   caller: `0x${string}`;
 }
 
+export interface ClaimedRelayerRefundArgs {
+  l2TokenAddress: `0x${string}`;
+  refundAddress: `0x${string}`;
+  amount: bigint;
+  caller: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -241,4 +248,5 @@ export type EventArgs =
   | RequestedSpeedUpV3DepositArgs
   | RelayedRootBundleArgs
   | RequestedSlowFillArgs
-  | TokensBridgedArgs;
+  | TokensBridgedArgs
+  | ClaimedRelayerRefundArgs;
