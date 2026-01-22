@@ -459,15 +459,11 @@ export function isHypercoreWithdraw(
 }
 
 /**
- * Validates if a deposit event represents a Hyperliquid deposit.
- * This function has two overloads:
- * 1. For mint events: checks if sourceDomain is HyperEVM and messageBody contains magic bytes
- * 2. For burn events: checks if destinationDomain is HyperEVM and transactionData contains magic bytes
+ * Validates if a deposit or mint event corresponds to a Hyperliquid transfer.
  *
- * @overload
- * @param domain The CCTP domain (sourceDomain for mint, destinationDomain for burn)
- * @param data The data to check (messageBody for mint, transactionData for burn)
- * @returns True if the domain is HyperEVM and the data contains "cctp-forward" magic bytes
+ * @param domain The CCTP domain
+ * @param data The data to check
+ * @returns True if the domain is HyperEVM and the data contains "cctp-forward" magic bytes for a Hyperliquid transfer
  */
 export function isHyperliquidDeposit(domain: number, data: string): boolean {
   // Check if the domain is HyperEVM
