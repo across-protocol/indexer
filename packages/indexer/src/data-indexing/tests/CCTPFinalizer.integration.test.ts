@@ -55,6 +55,7 @@ describe("CctpFinalizerService", () => {
       logger,
       dataSource,
       pubSubServiceStub as unknown as PubSubService,
+      true, // enablePubSub - set to true for tests to verify pubsub calls
     );
   });
 

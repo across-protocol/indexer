@@ -9,6 +9,7 @@ import * as across from "@across-protocol/sdk";
 import axios from "axios";
 import { BigNumber, ethers } from "ethers";
 
+import { CCTP_FORWARD_MAGIC_BYTES } from "../../service/constants";
 import {
   DecodedHyperCoreWithdrawalHookData,
   DecodedMessageBody,
@@ -21,6 +22,7 @@ const STARTING_BLOCK_NUMBERS = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 200000000,
   [CHAIN_IDs.BASE]: 36193725,
   [CHAIN_IDs.HYPEREVM]: 15083577,
+  [CHAIN_IDs.HYPERCORE]: 0,
   [CHAIN_IDs.INK]: 26328532,
   [CHAIN_IDs.LINEA]: 26258551,
   [CHAIN_IDs.MAINNET]: 23474786,
@@ -379,6 +381,18 @@ export interface IsHypercoreWithdrawOptions {
   transactionHash?: string;
 }
 
+export interface IsHypercoreDepositOptions {
+  logger?: {
+    warn: (log: {
+      at: string;
+      message: string;
+      transactionHash?: string;
+    }) => void;
+  };
+  chainId?: number;
+  transactionHash?: string;
+}
+
 export interface HypercoreWithdrawResult {
   isValid: boolean;
   decodedHookData: DecodedHyperCoreWithdrawalHookData | null;
@@ -455,4 +469,17 @@ export function isHypercoreWithdraw(
     isValid: isValidMagicBytes,
     decodedHookData,
   };
+}
+
+/**
+ * Validates if a message body represents a valid HyperCore deposit (CCTP deposit to Hyperliquid).
+ * Checks for "cctp-forward" magic bytes directly in the message body.
+ *
+ * @param messageBody The raw message body hex string from MessageReceived event
+ * @returns True if the message body contains "cctp-forward" magic bytes
+ */
+export function isHypercoreDeposit(messageBody: string): boolean {
+  // Check if the magic bytes appear in the message body (case-insensitive)
+  const messageBodyLower = messageBody.toLowerCase();
+  return messageBodyLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
 }

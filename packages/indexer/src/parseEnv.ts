@@ -24,9 +24,11 @@ export type Config = {
   enableBundleBuilder: boolean;
   cctpIndexerChainIds: number[];
   enableCctpFinalizer: boolean;
+  enableCctpFinalizerPubSub: boolean;
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
+  enableHyperliquidIndexer: boolean;
   datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -53,6 +55,7 @@ export type Config = {
    * The list of chain IDs for which the WebSocket indexing is enabled.
    */
   wsIndexerChainIds: number[];
+  enableWebSocketIndexer: boolean;
 };
 
 export type RedisConfig = {
@@ -285,8 +288,14 @@ export function envToConfig(env: Env): Config {
   const enableOftIndexer = env.ENABLE_OFT_INDEXER
     ? env.ENABLE_OFT_INDEXER === "true"
     : false;
+  const enableHyperliquidIndexer = env.ENABLE_HYPERLIQUID_INDEXER
+    ? env.ENABLE_HYPERLIQUID_INDEXER === "true"
+    : false;
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
+    : false;
+  const enableCctpFinalizerPubSub = env.ENABLE_CCTP_FINALIZER_PUBSUB
+    ? env.ENABLE_CCTP_FINALIZER_PUBSUB === "true"
     : false;
   const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
   const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
@@ -337,6 +346,7 @@ export function envToConfig(env: Env): Config {
     env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS
       ? parseInt(env.BUNDLE_EVENTS_SERVICE_DELAY_SECONDS)
       : 30;
+  const enableWebSocketIndexer = env.ENABLE_WEBSOCKET_INDEXER === "true";
 
   let wsIndexerChainIds: number[] = [];
   if (process.env.WS_INDEXER_CHAIN_IDS) {
@@ -357,7 +367,9 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     cctpIndexerChainIds,
     enableOftIndexer,
+    enableHyperliquidIndexer,
     enableCctpFinalizer,
+    enableCctpFinalizerPubSub,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,
     datadogConfig,
@@ -370,5 +382,6 @@ export function envToConfig(env: Env): Config {
     indexingDelaySeconds,
     bundleEventsServiceDelaySeconds: bundleIncludedEventsServiceDelaySeconds,
     wsIndexerChainIds,
+    enableWebSocketIndexer,
   };
 }

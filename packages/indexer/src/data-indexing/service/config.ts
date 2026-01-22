@@ -5,8 +5,10 @@ import { Logger } from "winston";
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
 import { Config } from "../../parseEnv";
 import {
+  getDstOFTHandlerAddress,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
+  getSponsoredOFTSrcPeripheryAddress,
 } from "../../utils/contractUtils";
 import {
   getOftChainConfiguration,
@@ -22,6 +24,7 @@ import {
   SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
   SPONSORED_ACCOUNT_ACTIVATION_ABI,
   SPONSORED_DEPOSIT_FOR_BURN_ABI,
+  SPONSORED_OFT_SEND_ABI,
 } from "../model/abis";
 import {
   OFT_RECEIVED_ABI,
@@ -43,7 +46,11 @@ import {
   SwapFlowFinalizedArgs,
   SwapFlowInitializedArgs,
 } from "../model/eventTypes";
-import { OFTReceivedArgs, OFTSentArgs } from "../model/eventTypes";
+import {
+  OFTReceivedArgs,
+  OFTSentArgs,
+  SponsoredOFTSendArgs,
+} from "../model/eventTypes";
 import {
   ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -53,15 +60,17 @@ import {
   MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
   MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
   MINT_AND_WITHDRAW_EVENT_NAME,
+  OFT_RECEIVED_EVENT_NAME,
+  OFT_SENT_EVENT_NAME,
   SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
   SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
   SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
+  SPONSORED_OFT_SEND_EVENT_NAME,
   SWAP_FLOW_FINALIZED_EVENT_NAME,
   SWAP_FLOW_INITIALIZED_EVENT_NAME,
   TOKEN_MESSENGER_ADDRESS_MAINNET,
   TOKEN_MESSENGER_ADDRESS_TESTNET,
 } from "./constants";
-import { OFT_RECEIVED_EVENT_NAME, OFT_SENT_EVENT_NAME } from "./constants";
 import {
   createCctpBurnFilter,
   createCctpMintFilter,
@@ -87,6 +96,7 @@ import {
   storeSimpleTransferFlowCompletedEvent,
   storeSponsoredAccountActivationEvent,
   storeSponsoredDepositForBurnEvent,
+  storeSponsoredOFTSendEvent,
   storeSwapFlowFinalizedEvent,
   storeSwapFlowInitializedEvent,
 } from "./storing";
@@ -97,15 +107,14 @@ import {
   transformMessageReceivedEvent,
   transformMessageSentEvent,
   transformMintAndWithdrawEvent,
+  transformOFTReceivedEvent,
+  transformOFTSentEvent,
   transformSimpleTransferFlowCompletedEvent,
   transformSponsoredAccountActivationEvent,
   transformSponsoredDepositForBurnEvent,
+  transformSponsoredOFTSendEvent,
   transformSwapFlowFinalizedEvent,
   transformSwapFlowInitializedEvent,
-} from "./transforming";
-import {
-  transformOFTReceivedEvent,
-  transformOFTSentEvent,
 } from "./transforming";
 
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
@@ -418,6 +427,53 @@ export const OFT_PROTOCOL: SupportedProtocols<
 };
 
 /**
+ * Configuration for OFT protocol with sponsored events.
+ * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
+ */
+export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
+  Partial<typeof Entity>,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: (logger: Logger, chainId: number) => {
+    // Get base OFT handlers (OFTSent, OFTReceived)
+    const handlers = OFT_PROTOCOL.getEventHandlers(logger, chainId);
+
+    // Add SponsoredOFTSend handler if source periphery exists for this chain
+    const sourcePeripheryAddress = getSponsoredOFTSrcPeripheryAddress(
+      chainId,
+    ) as `0x${string}`;
+    if (sourcePeripheryAddress) {
+      handlers.push({
+        config: {
+          address: sourcePeripheryAddress,
+          abi: SPONSORED_OFT_SEND_ABI,
+          eventName: SPONSORED_OFT_SEND_EVENT_NAME,
+        },
+        preprocess: extractRawArgs<SponsoredOFTSendArgs>,
+        filter: async () => true,
+        transform: (args: SponsoredOFTSendArgs, payload: IndexerEventPayload) =>
+          transformSponsoredOFTSendEvent(args, payload, logger),
+        store: storeSponsoredOFTSendEvent,
+      });
+    }
+
+    // Add destination handler events if DstOFTHandler exists for this chain
+    const dstOftHandlerAddress = getDstOFTHandlerAddress(
+      chainId,
+    ) as `0x${string}`;
+    if (dstOftHandlerAddress) {
+      handlers.push(
+        ...getSponsoredBridgingEventHandlers(dstOftHandlerAddress, logger),
+      );
+    }
+
+    return handlers;
+  },
+};
+
+/**
  * Get configuration for supported protocols on different chains.
  */
 export const getChainProtocols: (
@@ -448,11 +504,11 @@ export const getChainProtocols: (
     >,
   );
 
-  // Add OFT protocol events configuration
+  // Add OFT protocol events configuration (with sponsored events)
   if (config.enableOftIndexer) {
     for (const chainId of getSupportOftChainIds()) {
       if (chainProtocols[chainId]) {
-        chainProtocols[chainId].push(OFT_PROTOCOL);
+        chainProtocols[chainId].push(SPONSORED_OFT_PROTOCOL);
       }
     }
   }

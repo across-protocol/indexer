@@ -10,7 +10,7 @@ import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import {
   getFinalisedBlockBufferDistance,
-  getIndexingDelaySeconds,
+  getPollingIndexerDelaySeconds,
 } from "./constants";
 import { EvmIndexer, Indexer, SvmIndexer } from "./Indexer";
 import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
@@ -72,8 +72,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds:
-            getIndexingDelaySeconds(chainId, this.config) * 2,
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),
@@ -123,7 +125,10 @@ export class CCTPIndexerManager {
       );
       const indexer = new SvmIndexer(
         {
-          indexingDelaySeconds: getIndexingDelaySeconds(chainId, this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance:
             getFinalisedBlockBufferDistance(chainId),
           maxBlockRangeSize: getMaxBlockLookBack(chainId),

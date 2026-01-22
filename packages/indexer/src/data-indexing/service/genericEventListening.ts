@@ -139,17 +139,31 @@ export const subscribeToEvent = <TPayload>(
     eventName: config.eventName,
     onLogs: (logs: Log[]) => {
       // Fire and forget: Add the batch processing to the queue
-      processingQueue.schedule(() =>
-        processLogBatch({
-          logs,
-          config,
-          chainId,
-          client,
-          onEvent,
-          logger,
-          metrics,
-        }),
-      );
+      processingQueue
+        .schedule(() =>
+          processLogBatch({
+            logs,
+            config,
+            chainId,
+            client,
+            onEvent,
+            logger,
+            metrics,
+          }).catch((error) => {
+            logger.debug({
+              at: "genericEventListener#subscribeToEvent",
+              message: `Uncaught error in processLogBatch`,
+              error,
+            });
+          }),
+        )
+        .catch((error) => {
+          logger.debug({
+            at: "genericEventListener#subscribeToEvent",
+            message: `Uncaught error in processingQueue.schedule`,
+            error,
+          });
+        });
     },
     onError: (error: Error) => {
       logger.error({

@@ -10,7 +10,7 @@ import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { getSupportOftChainIds } from "../adapter/oft/service";
 import {
   getFinalisedBlockBufferDistance,
-  getPollingIndexingDelaySeconds,
+  getPollingIndexerDelaySeconds,
 } from "./constants";
 import { EvmIndexer, Indexer } from "./Indexer";
 import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
@@ -66,7 +66,10 @@ export class OFTIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds: getPollingIndexingDelaySeconds(this.config),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
+            this.config,
+          ),
           finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
             Number(chainId),
           ),

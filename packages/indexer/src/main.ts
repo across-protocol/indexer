@@ -9,6 +9,7 @@ import { WebhookFactory } from "@repo/webhooks";
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
+import { HyperliquidIndexerManager } from "./data-indexing/service/HyperliquidIndexerManager";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 // Repositories
@@ -23,7 +24,6 @@ import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepositor
 import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
-// Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { SwapWorker } from "./messaging/swapWorker";
 import { MonitoringManager } from "./monitoring/MonitoringManager";
@@ -37,7 +37,6 @@ import {
   HubPoolClientFactory,
   SpokePoolClientFactory,
 } from "./utils/contractFactoryUtils";
-// Factories
 import { RetryProvidersFactory } from "./web3/RetryProvidersFactory";
 
 async function initializeRedis(
@@ -157,6 +156,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     postgres,
   );
+  const hyperliquidIndexerManager = new HyperliquidIndexerManager(
+    logger,
+    config,
+    postgres,
+  );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
 
   // Set up message workers
@@ -230,6 +234,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       acrossIndexerManager.stopGracefully();
       cctpIndexerManager.stopGracefully();
       oftIndexerManager.stopGracefully();
+      hyperliquidIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
@@ -260,6 +265,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     acrossIndexerManagerResult,
     cctpIndexerManagerResult,
     oftIndexerManagerResult,
+    hyperliquidIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
     monitoringManagerResults,
@@ -269,6 +275,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     acrossIndexerManager.start(),
     cctpIndexerManager.start(),
     oftIndexerManager.start(),
+    hyperliquidIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
     monitoringManager.start(),
@@ -288,6 +295,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         cctpIndexerManagerResult.status === "fulfilled",
       oftIndexerManagerRunSuccess:
         oftIndexerManagerResult.status === "fulfilled",
+      hyperliquidIndexerManagerRunSuccess:
+        hyperliquidIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
       monitoringManagerRunSuccess:

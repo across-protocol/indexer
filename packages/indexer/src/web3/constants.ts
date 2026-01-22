@@ -13,6 +13,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BSC]: 115200,
   [CHAIN_IDs.HYPEREVM]: 172800,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 172800,
+  [CHAIN_IDs.HYPERCORE]: 172800,
   [CHAIN_IDs.INK]: 86400,
   [CHAIN_IDs.LENS]: 172800,
   [CHAIN_IDs.LINEA]: 57600,
@@ -32,6 +33,7 @@ const DEFAULT_NO_TTL_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 172800,
   [CHAIN_IDs.ZORA]: 86400,
   [CHAIN_IDs.MEGAETH]: 86400,
+  [CHAIN_IDs.HYPERCORE]: 172800,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 432000,
 };
@@ -58,6 +60,7 @@ const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.BSC]: 120,
   [CHAIN_IDs.HYPEREVM]: 120,
   [CHAIN_IDs.HYPEREVM_TESTNET]: 120,
+  [CHAIN_IDs.HYPERCORE]: 0,
   [CHAIN_IDs.INK]: 120,
   [CHAIN_IDs.LENS]: 512,
   [CHAIN_IDs.LISK]: 120,
@@ -77,6 +80,7 @@ const CHAIN_CACHE_FOLLOW_DISTANCE: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 512,
   [CHAIN_IDs.ZORA]: 120,
   [CHAIN_IDs.MEGAETH]: 120,
+  [CHAIN_IDs.HYPERCORE]: 120,
 
   // Testnets:
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 0,
@@ -105,6 +109,7 @@ const MAX_BLOCK_LOOK_BACK = {
   [CHAIN_IDs.BOBA]: 4990,
   [CHAIN_IDs.LINEA]: 5000,
   [CHAIN_IDs.MAINNET]: 7000,
+  [CHAIN_IDs.HYPERCORE]: 1000,
   [CHAIN_IDs.MONAD]: 1000,
   [CHAIN_IDs.REDSTONE]: 9000,
   [CHAIN_IDs.SCROLL]: 3000,
@@ -136,6 +141,7 @@ const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.BOBA]: 2,
   [CHAIN_IDs.BSC]: 1.5,
   [CHAIN_IDs.HYPEREVM]: 1,
+  [CHAIN_IDs.HYPERCORE]: 1,
   [CHAIN_IDs.INK]: 1,
   [CHAIN_IDs.LENS]: 600, // TODO: Update to 1 when Lens go live
   [CHAIN_IDs.LINEA]: 3,
@@ -154,6 +160,7 @@ const BLOCK_TIME_SECONDS: { [chainId: number]: number } = {
   [CHAIN_IDs.ZK_SYNC]: 1,
   [CHAIN_IDs.ZORA]: 2,
   [CHAIN_IDs.MEGAETH]: 1,
+  [CHAIN_IDs.HYPERCORE]: 1,
   // Testnets:
   [CHAIN_IDs.SOLANA_DEVNET]: 0.4,
 };
