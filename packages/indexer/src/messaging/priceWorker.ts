@@ -215,7 +215,7 @@ export class PriceWorker {
       relayHashInfo.outputPriceUsd
     ) {
       const errorMessage = "Skipping already processed relay hash";
-      this.logger.warn({
+      this.logger.debug({
         at: "PriceWorker",
         message: errorMessage,
         ...params,

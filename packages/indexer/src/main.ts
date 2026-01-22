@@ -34,9 +34,11 @@ import { CCTPRepository } from "./database/CctpRepository";
 import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
+import { HyperliquidIndexerManager } from "./data-indexing/service/HyperliquidIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
 import { DataDogMetricsService } from "./services/MetricsService";
+import { MonitoringManager } from "./monitoring/MonitoringManager";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -155,6 +157,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     config,
     postgres,
   );
+  const hyperliquidIndexerManager = new HyperliquidIndexerManager(
+    logger,
+    config,
+    postgres,
+  );
+  const monitoringManager = new MonitoringManager(logger, config, postgres);
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -209,12 +217,18 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   }
 
   let exitRequested = false;
-  process.on("SIGINT", () => {
+  const shutdown = (signal: string) => {
     if (!exitRequested) {
+      exitRequested = true;
       logger.info({
         at: "Indexer#Main",
-        message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
+        message: `Received ${signal}. Starting graceful shutdown...`,
       });
+
+      // Signal the WebSocket indexers to stop and close sockets immediately
+      abortController.abort();
+
+      // Stop all other managers
       integratorIdWorker.close();
       priceWorker?.close();
       swapWorker.close();
@@ -222,10 +236,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       acrossIndexerManager.stopGracefully();
       cctpIndexerManager.stopGracefully();
       oftIndexerManager.stopGracefully();
+      hyperliquidIndexerManager.stopGracefully();
       bundleServicesManager.stop();
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
-      abortController.abort(); // Signal WS indexers to stop
+      monitoringManager.stopGracefully();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
@@ -237,7 +252,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.close();
       across.utils.delay(5).finally(() => process.exit());
     }
-  });
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   logger.debug({
     at: "Indexer#Main",
@@ -249,16 +267,20 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     acrossIndexerManagerResult,
     cctpIndexerManagerResult,
     oftIndexerManagerResult,
+    hyperliquidIndexerManagerResult,
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
+    monitoringManagerResults,
     ...wsIndexerResults
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
     cctpIndexerManager.start(),
     oftIndexerManager.start(),
+    hyperliquidIndexerManager.start(),
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
+    monitoringManager.start(),
     ...wsIndexerPromises,
   ]);
   logger.info({
@@ -275,8 +297,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         cctpIndexerManagerResult.status === "fulfilled",
       oftIndexerManagerRunSuccess:
         oftIndexerManagerResult.status === "fulfilled",
+      hyperliquidIndexerManagerRunSuccess:
+        hyperliquidIndexerManagerResult.status === "fulfilled",
       cctpFinalizerServiceManagerRunSuccess:
         cctpFinalizerServiceManagerResults.status === "fulfilled",
+      monitoringManagerRunSuccess:
+        monitoringManagerResults.status === "fulfilled",
       wsIndexerRunSuccess: wsIndexerResults.every(
         (r) => r.status === "fulfilled",
       ),

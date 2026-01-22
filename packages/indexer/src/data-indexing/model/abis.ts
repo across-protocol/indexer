@@ -60,6 +60,10 @@ export const OFT_RECEIVED_ABI = [
   "event OFTReceived(bytes32 indexed guid, uint32 srcEid, address indexed toAddress, uint256 amountReceivedLD)",
 ];
 
+export const SPONSORED_OFT_SEND_ABI = [
+  "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
+];
+
 /* ==================================================================================
  * FILLED V3 RELAY DOMAIN LOGIC & CONFIGURATION
  * * Specific ABIs for the FILLED V3 RELAY Protocol.

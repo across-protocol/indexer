@@ -59,6 +59,8 @@ export class RequestedSpeedUpV3Deposit {
     enum: DataSourceType,
     default: DataSourceType.POLLING,
   })
+  dataSource: DataSourceType;
+
   @CreateDateColumn()
   createdAt: Date;
 }

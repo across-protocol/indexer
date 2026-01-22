@@ -94,6 +94,8 @@ export class FilledV3Relay {
     enum: DataSourceType,
     default: DataSourceType.POLLING,
   })
+  dataSource: DataSourceType;
+
   @Column()
   relayer: string;
 

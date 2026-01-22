@@ -131,6 +131,7 @@ export class V3FundsDeposited {
     enum: DataSourceType,
     default: DataSourceType.POLLING,
   })
+  dataSource: DataSourceType;
 
   /**
    * This is just the reverse side of the relationship,
