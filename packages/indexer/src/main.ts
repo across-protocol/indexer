@@ -22,6 +22,7 @@ import { BundleRepository } from "./database/BundleRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
 import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+import { utils as dbUtils } from "@repo/indexer-database";
 // Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
@@ -34,6 +35,8 @@ import { OftRepository } from "./database/OftRepository";
 import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
+import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import { DataDogMetricsService } from "./services/MetricsService";
 import { MonitoringManager } from "./monitoring/MonitoringManager";
 
 async function initializeRedis(
@@ -178,16 +181,51 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   );
 
+  const metrics = new DataDogMetricsService({
+    configuration: config.datadogConfig,
+    logger,
+  });
+
+  // WebSocket Indexer setup
+  const wsIndexerPromises: Promise<void>[] = [];
+  const abortController = new AbortController();
+
+  if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
+    // Merge providers, allowing WS providers to override RPC providers if defined for a chain
+    const allProviders = new Map([
+      ...parseEnv.parseProvidersUrls("RPC_PROVIDER_URLS_"),
+      ...parseEnv.parseProvidersUrls("WS_RPC_PROVIDER_URLS_"),
+    ]);
+
+    // Start all configured WS indexers
+    const handlers = startWebSocketIndexing({
+      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      logger,
+      providers: allProviders,
+      sigterm: abortController.signal,
+      metrics,
+      config,
+    });
+    wsIndexerPromises.push(...handlers);
+  }
+
   let exitRequested = false;
-  process.on("SIGINT", () => {
+  const shutdown = (signal: string) => {
     if (!exitRequested) {
+      exitRequested = true;
       logger.info({
         at: "Indexer#Main",
-        message: "Wait for shutdown, or press Ctrl+C again to forcefully exit.",
+        message: `Received ${signal}. Starting graceful shutdown...`,
       });
+
+      // Signal the WebSocket indexers to stop and close sockets immediately
+      abortController.abort();
+
+      // Stop all other managers
       integratorIdWorker.close();
       priceWorker?.close();
       swapWorker.close();
+      metrics.close();
       acrossIndexerManager.stopGracefully();
       cctpIndexerManager.stopGracefully();
       oftIndexerManager.stopGracefully();
@@ -198,6 +236,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     } else {
       integratorIdWorker.close();
       swapWorker.close();
+      metrics.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();
@@ -205,7 +244,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       logger.close();
       across.utils.delay(5).finally(() => process.exit());
     }
-  });
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   logger.debug({
     at: "Indexer#Main",
@@ -220,6 +262,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     hotfixServicesManagerResults,
     cctpFinalizerServiceManagerResults,
     monitoringManagerResults,
+    ...wsIndexerResults
   ] = await Promise.allSettled([
     bundleServicesManager.start(),
     acrossIndexerManager.start(),
@@ -228,6 +271,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     hotfixServicesManager.start(),
     cctpFinalizerServiceManager.start(),
     monitoringManager.start(),
+    ...wsIndexerPromises,
   ]);
   logger.info({
     at: "Indexer#Main",
@@ -247,9 +291,13 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
         cctpFinalizerServiceManagerResults.status === "fulfilled",
       monitoringManagerRunSuccess:
         monitoringManagerResults.status === "fulfilled",
+      wsIndexerRunSuccess: wsIndexerResults.every(
+        (r) => r.status === "fulfilled",
+      ),
     },
   });
   await integratorIdWorker.close();
+  metrics.close();
   redis?.quit();
   postgres?.destroy();
   logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
