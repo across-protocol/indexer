@@ -95,8 +95,8 @@ export class OFTIndexerManager {
       at: "Indexer#OFTIndexerManager#startEvmIndexer",
       message: "Starting EVM OFT indexers",
     });
-    await Promise.all(indexers.map((indexer) => indexer.start()));
     this.indexers = indexers;
+    await Promise.all(indexers.map((indexer) => indexer.start()));
 
     return Promise.resolve();
   }

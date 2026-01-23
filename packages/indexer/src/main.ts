@@ -216,101 +216,125 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     wsIndexerPromises.push(...handlers);
   }
 
-  let exitRequested = false;
-  const shutdown = (signal: string) => {
-    if (!exitRequested) {
-      exitRequested = true;
+  let isShuttingDown = false;
+  let shutdownTimestamp = 0; // Track when the first shutdown started
+  const shutdown = async (signal: string) => {
+    const now = Date.now();
+    if (isShuttingDown) {
+      // If the second signal arrives within 2 seconds of the first, ignore it
+      // This filters out the "echo" signal from process managers
+      if (now - shutdownTimestamp < 2000) {
+        return;
+      }
       logger.info({
         at: "Indexer#Main",
-        message: `Received ${signal}. Starting graceful shutdown...`,
+        message: `Received second signal ${signal}, forcing exit.`,
       });
-
-      // Signal the WebSocket indexers to stop and close sockets immediately
-      abortController.abort();
-
-      // Stop all other managers
-      integratorIdWorker.close();
-      priceWorker?.close();
-      swapWorker.close();
-      metrics.close();
-      acrossIndexerManager.stopGracefully();
-      cctpIndexerManager.stopGracefully();
-      oftIndexerManager.stopGracefully();
-      hyperliquidIndexerManager.stopGracefully();
-      bundleServicesManager.stop();
-      hotfixServicesManager.stop();
-      cctpFinalizerServiceManager.stopGracefully();
-      monitoringManager.stopGracefully();
-    } else {
-      integratorIdWorker.close();
-      swapWorker.close();
-      metrics.close();
-      logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
-      redis?.quit();
-      postgres?.destroy();
-      logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
-      logger.close();
-      across.utils.delay(5).finally(() => process.exit());
+      process.exit(1);
     }
+    isShuttingDown = true;
+    shutdownTimestamp = now;
+    logger.info({
+      at: "Indexer#Main",
+      message: `Received ${signal}. Starting graceful shutdown...`,
+    });
+
+    // Signal the WebSocket indexers to stop and close sockets immediately
+    abortController.abort();
+    await Promise.allSettled([
+      integratorIdWorker.close(),
+      priceWorker?.close(),
+      swapWorker.close(),
+      acrossIndexerManager.stopGracefully(),
+      cctpIndexerManager.stopGracefully(),
+      oftIndexerManager.stopGracefully(),
+      hyperliquidIndexerManager.stopGracefully(),
+      bundleServicesManager.stop(),
+      hotfixServicesManager.stop(),
+      cctpFinalizerServiceManager.stopGracefully(),
+      monitoringManager.stopGracefully(),
+      metrics.close(),
+    ]);
+    // Stop all other managers
+
+    logger.info({
+      at: "Indexer#Main",
+      message:
+        "Graceful shutdown trigger complete. Indexer loop should finish shortly.",
+    });
   };
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  logger.debug({
-    at: "Indexer#Main",
-    message: "Running indexers",
-  });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [
-    bundleServicesManagerResults,
-    acrossIndexerManagerResult,
-    cctpIndexerManagerResult,
-    oftIndexerManagerResult,
-    hyperliquidIndexerManagerResult,
-    hotfixServicesManagerResults,
-    cctpFinalizerServiceManagerResults,
-    monitoringManagerResults,
-    ...wsIndexerResults
-  ] = await Promise.allSettled([
-    bundleServicesManager.start(),
-    acrossIndexerManager.start(),
-    cctpIndexerManager.start(),
-    oftIndexerManager.start(),
-    hyperliquidIndexerManager.start(),
-    hotfixServicesManager.start(),
-    cctpFinalizerServiceManager.start(),
-    monitoringManager.start(),
-    ...wsIndexerPromises,
-  ]);
-  logger.info({
-    at: "Indexer#Main",
-    message: "Indexer loop completed",
-    results: {
-      bundleServicesManagerRunSuccess:
-        bundleServicesManagerResults.status === "fulfilled",
-      hotfixServicesManagerRunSuccess:
-        hotfixServicesManagerResults.status === "fulfilled",
-      acrossIndexerManagerRunSuccess:
-        acrossIndexerManagerResult.status === "fulfilled",
-      cctpIndexerManagerRunSuccess:
-        cctpIndexerManagerResult.status === "fulfilled",
-      oftIndexerManagerRunSuccess:
-        oftIndexerManagerResult.status === "fulfilled",
-      hyperliquidIndexerManagerRunSuccess:
-        hyperliquidIndexerManagerResult.status === "fulfilled",
-      cctpFinalizerServiceManagerRunSuccess:
-        cctpFinalizerServiceManagerResults.status === "fulfilled",
-      monitoringManagerRunSuccess:
-        monitoringManagerResults.status === "fulfilled",
-      wsIndexerRunSuccess: wsIndexerResults.every(
-        (r) => r.status === "fulfilled",
-      ),
+  const indexerPromises = [
+    { name: "bundleServicesManager", promise: bundleServicesManager.start() },
+    { name: "acrossIndexerManager", promise: acrossIndexerManager.start() },
+    { name: "cctpIndexerManager", promise: cctpIndexerManager.start() },
+    { name: "oftIndexerManager", promise: oftIndexerManager.start() },
+    {
+      name: "hyperliquidIndexerManager",
+      promise: hyperliquidIndexerManager.start(),
     },
+    { name: "hotfixServicesManager", promise: hotfixServicesManager.start() },
+    {
+      name: "cctpFinalizerServiceManager",
+      promise: cctpFinalizerServiceManager.start(),
+    },
+    { name: "monitoringManager", promise: monitoringManager.start() },
+    ...wsIndexerPromises.map((p, i) => ({
+      name: `wsIndexer-${i}`,
+      promise: p,
+    })),
+  ];
+
+  // Track pending services for debugging shutdown hangs
+  const pendingServices = new Set<string>();
+  const wrappedPromises = indexerPromises.map((item) => {
+    pendingServices.add(item.name);
+    return item.promise.finally(() => {
+      pendingServices.delete(item.name);
+    });
   });
-  await integratorIdWorker.close();
-  metrics.close();
+
+  // Log pending services every 20 seconds if we are stuck waiting
+  const monitorInterval = setInterval(() => {
+    if (pendingServices.size > 0) {
+      logger.debug({
+        at: "Indexer#Main",
+        message: "Services currently running",
+        pending: Array.from(pendingServices),
+      });
+    }
+  }, 20000);
+
+  const results = await Promise.allSettled(wrappedPromises);
+  clearInterval(monitorInterval);
+
+  const resultsMap: Record<string, boolean> = {};
+  results.forEach((result, index) => {
+    const item = indexerPromises[index];
+    if (!item) return;
+    const { name } = item as { name: string };
+    if (result.status === "fulfilled") {
+      resultsMap[`${name} RunSuccess`] = true;
+    } else {
+      resultsMap[`${name} RunSuccess`] = false;
+      logger.error({
+        at: "Indexer#Main",
+        message: `${name} failed`,
+        error: result.reason,
+      });
+    }
+  });
+
   redis?.quit();
-  postgres?.destroy();
+  await postgres?.destroy();
   logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+  await new Promise<void>((resolve) => {
+    logger.on("finish", resolve);
+    logger.end();
+  });
+  process.exit(0);
 }

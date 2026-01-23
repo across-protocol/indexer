@@ -18,7 +18,7 @@ import { getMaxBlockLookBack } from "../../web3/constants";
 
 export class CCTPIndexerManager {
   private evmIndexers?: Indexer[];
-  private svmIndexer?: Indexer;
+  private svmIndexer?: Indexer[];
 
   constructor(
     private logger: Logger,
@@ -52,7 +52,7 @@ export class CCTPIndexerManager {
 
   public async stopGracefully() {
     this.evmIndexers?.map((indexer) => indexer.stopGracefully());
-    this.svmIndexer?.stopGracefully();
+    this.svmIndexer?.map((indexer) => indexer.stopGracefully());
   }
 
   private async startEvmIndexer() {
@@ -155,6 +155,9 @@ export class CCTPIndexerManager {
       message: "Starting SVM CCTP indexers",
       chainIds: svmChains,
     });
-    return Promise.all(indexers.map((indexer) => indexer.start()));
+    this.svmIndexer = indexers;
+    await Promise.all(indexers.map((indexer) => indexer.start()));
+
+    return Promise.resolve();
   }
 }
