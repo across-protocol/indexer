@@ -45,6 +45,7 @@ import {
   getIndexingStartBlockNumber,
   decodeMessage,
   getCctpDestinationChainFromDomain,
+  getCctpDomainForChainId,
   isHypercoreWithdraw,
   isHyperliquidDeposit,
 } from "../adapter/cctp-v2/service";
@@ -502,10 +503,9 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
         return true;
       }
       // Check if it's a Hyperliquid deposit (CCTP deposit to Hyperliquid)
-      return isHyperliquidDeposit(
-        event.args.sourceDomain,
-        event.args.messageBody,
-      );
+      // For MessageReceived events, we're on the destination chain, so check if destination is HyperEVM
+      const destinationDomain = getCctpDomainForChainId(this.chainId);
+      return isHyperliquidDeposit(destinationDomain, event.args.messageBody);
     });
   }
 
