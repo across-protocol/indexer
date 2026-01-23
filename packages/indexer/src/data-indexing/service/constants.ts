@@ -96,6 +96,23 @@ export function getIndexingDelaySeconds(chainId: number, config: Config) {
   return indexingDelay;
 }
 
+const POLLING_INDEXER_LONG_DELAY_SECONDS = 300;
+
+/**
+ * Get the seconds delay for the polling indexing.
+ * If the websocket is enabled for the chain, use the long delay.
+ * Otherwise, use the standard polling delay.
+ */
+export function getPollingIndexerDelaySeconds(chainId: number, config: Config) {
+  if (
+    config.enableWebSocketIndexer &&
+    config.wsIndexerChainIds.includes(chainId)
+  ) {
+    return POLLING_INDEXER_LONG_DELAY_SECONDS;
+  }
+  return getIndexingDelaySeconds(chainId, config);
+}
+
 /* ==================================================================================
  * CCTP DOMAIN LOGIC & CONFIGURATION
  * * Specific implementations for the Circle Cross-Chain Transfer Protocol (CCTP).

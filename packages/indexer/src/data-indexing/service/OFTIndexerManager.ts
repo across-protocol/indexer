@@ -7,7 +7,7 @@ import { Config } from "../../parseEnv";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import {
   getFinalisedBlockBufferDistance,
-  getIndexingDelaySeconds,
+  getPollingIndexerDelaySeconds,
 } from "./constants";
 import { EvmIndexer, Indexer } from "./Indexer";
 import { OFTIndexerDataHandler } from "./OFTIndexerDataHandler";
@@ -66,8 +66,8 @@ export class OFTIndexerManager {
       );
       const indexer = new EvmIndexer(
         {
-          indexingDelaySeconds: getIndexingDelaySeconds(
-            Number(chainId),
+          indexingDelaySeconds: getPollingIndexerDelaySeconds(
+            chainId,
             this.config,
           ),
           finalisedBlockBufferDistance: getFinalisedBlockBufferDistance(
