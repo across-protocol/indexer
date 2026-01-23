@@ -194,7 +194,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   });
 
   // WebSocket Indexer setup
-  const wsIndexerPromises: Promise<void>[] = [];
+  const wsIndexerPromises: { chainId: number; promise: Promise<void> }[] = [];
   const abortController = new AbortController();
 
   if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
@@ -245,14 +245,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close(),
       priceWorker?.close(),
       swapWorker.close(),
-      acrossIndexerManager.stopGracefully(),
-      cctpIndexerManager.stopGracefully(),
-      oftIndexerManager.stopGracefully(),
-      hyperliquidIndexerManager.stopGracefully(),
       bundleServicesManager.stop(),
       hotfixServicesManager.stop(),
-      cctpFinalizerServiceManager.stopGracefully(),
-      monitoringManager.stopGracefully(),
       metrics.close(),
     ]);
     // Stop all other managers
@@ -269,23 +263,35 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const indexerPromises = [
-    { name: "bundleServicesManager", promise: bundleServicesManager.start() },
-    { name: "acrossIndexerManager", promise: acrossIndexerManager.start() },
-    { name: "cctpIndexerManager", promise: cctpIndexerManager.start() },
-    { name: "oftIndexerManager", promise: oftIndexerManager.start() },
+    {
+      name: "bundleServicesManager",
+      promise: bundleServicesManager.start(),
+    },
+    {
+      name: "acrossIndexerManager",
+      promise: acrossIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "cctpIndexerManager",
+      promise: cctpIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "oftIndexerManager",
+      promise: oftIndexerManager.start(abortController.signal),
+    },
     {
       name: "hyperliquidIndexerManager",
-      promise: hyperliquidIndexerManager.start(),
+      promise: hyperliquidIndexerManager.start(abortController.signal),
     },
     { name: "hotfixServicesManager", promise: hotfixServicesManager.start() },
     {
       name: "cctpFinalizerServiceManager",
-      promise: cctpFinalizerServiceManager.start(),
+      promise: cctpFinalizerServiceManager.start(abortController.signal),
     },
     { name: "monitoringManager", promise: monitoringManager.start() },
-    ...wsIndexerPromises.map((p, i) => ({
-      name: `wsIndexer-${i}`,
-      promise: p,
+    ...wsIndexerPromises.map((p) => ({
+      name: `wsIndexer-${p.chainId}`,
+      promise: p.promise,
     })),
   ];
 
@@ -295,6 +301,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     pendingServices.add(item.name);
     return item.promise.finally(() => {
       pendingServices.delete(item.name);
+      logger.debug({
+        at: "Indexer#Main",
+        message: `Service ${item.name} stopped successfully`,
+      });
     });
   });
 
@@ -323,7 +333,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       resultsMap[`${name} RunSuccess`] = false;
       logger.error({
         at: "Indexer#Main",
-        message: `${name} failed`,
+        message: `${name} failed to run`,
         error: result.reason,
       });
     }

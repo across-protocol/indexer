@@ -32,7 +32,7 @@ export class CctpFinalizerServiceManager {
     private postgres: DataSource,
   ) {}
 
-  public async start() {
+  public async start(signal?: AbortSignal) {
     try {
       this.pubSubService = new PubSubService(this.config);
       if (!this.config.enableCctpFinalizer) {
@@ -68,11 +68,6 @@ export class CctpFinalizerServiceManager {
       });
       throw error;
     }
-  }
-
-  public async stopGracefully() {
-    this.finalizerService?.stop();
-    this.monitorService?.stop();
   }
 }
 

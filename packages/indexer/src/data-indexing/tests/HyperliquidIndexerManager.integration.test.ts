@@ -34,9 +34,6 @@ describe("HyperliquidIndexerManager", () => {
 
   afterEach(async () => {
     sinon.restore();
-    if (manager) {
-      await manager.stopGracefully();
-    }
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }

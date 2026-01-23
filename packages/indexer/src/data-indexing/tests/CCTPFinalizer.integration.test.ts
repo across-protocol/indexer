@@ -80,7 +80,10 @@ describe("CctpFinalizerService", () => {
     // that might miss the swap api marker or other criteria.
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
   }
 
   it("should publish with signature when sponsored event exists", async () => {

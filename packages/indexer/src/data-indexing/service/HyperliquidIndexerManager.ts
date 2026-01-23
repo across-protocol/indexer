@@ -25,7 +25,7 @@ export class HyperliquidIndexerManager {
     private postgres: DataSource,
   ) {}
 
-  public async start() {
+  public async start(signal?: AbortSignal) {
     try {
       if (!this.config.enableHyperliquidIndexer) {
         this.logger.warn({
@@ -95,7 +95,7 @@ export class HyperliquidIndexerManager {
         startBlockNumber,
       });
 
-      return indexer.start();
+      return indexer.start(signal);
     } catch (error) {
       this.logger.error({
         at: "Indexer#HyperliquidIndexerManager#start",
@@ -105,9 +105,5 @@ export class HyperliquidIndexerManager {
       });
       throw error;
     }
-  }
-
-  public async stopGracefully() {
-    this.indexer?.stopGracefully();
   }
 }

@@ -1,6 +1,9 @@
 import { Logger } from "winston";
 import { DataSource, entities } from "@repo/indexer-database";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import {
   HyperliquidRpcClient,
@@ -9,7 +12,6 @@ import {
 } from "../adapter/hyperliquid/HyperliquidRpcClient";
 import { HyperliquidDepositEvent } from "../adapter/hyperliquid/model";
 import { HyperliquidRepository } from "../../database/HyperliquidRepository";
-import * as across from "@across-protocol/sdk";
 import { HYPERLIQUID_CORE_DEPOSIT_WALLET } from "./constants";
 import { IndexerError } from "@repo/error-handling";
 
@@ -65,11 +67,8 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     return this.startBlockNumber;
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#HyperliquidIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,
@@ -96,10 +95,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     });
 
     // Store deposits
-    const storedDeposits = await this.storeDeposits(
-      deposits,
-      lastFinalisedBlock,
-    );
+    await this.storeDeposits(deposits, lastFinalisedBlock);
     const timeToStoreDeposits = performance.now();
 
     const finalPerfTime = performance.now();
