@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_tokensBridged_chain_leaf_l2Token_txHash", [
@@ -46,6 +47,13 @@ export class TokensBridged {
 
   @Column()
   finalised: boolean;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @CreateDateColumn()
   createdAt: Date;

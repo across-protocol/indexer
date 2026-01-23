@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_claimedRelayerRefunds_chain_block_tx_log", [
@@ -49,4 +50,11 @@ export class ClaimedRelayerRefunds {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 }
