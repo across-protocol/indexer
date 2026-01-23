@@ -326,15 +326,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const results = await Promise.allSettled(wrappedPromises);
   clearInterval(monitorInterval);
 
-  const resultsMap: Record<string, boolean> = {};
   results.forEach((result, index) => {
     const item = indexerPromises[index];
     if (!item) return;
     const { name } = item as { name: string };
-    if (result.status === "fulfilled") {
-      resultsMap[`${name} RunSuccess`] = true;
-    } else {
-      resultsMap[`${name} RunSuccess`] = false;
+    if (result.status === "rejected") {
       logger.error({
         at: "Indexer#Main",
         message: `${name} failed to run`,
