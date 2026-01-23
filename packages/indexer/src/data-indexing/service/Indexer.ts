@@ -49,11 +49,11 @@ export class Indexer {
     private dataSource: DataSource,
   ) {}
 
-  public async start(signal?: AbortSignal) {
+  public async start(signal: AbortSignal) {
     let blockRangeResult: BlockRangeResult | undefined = undefined;
     let blockRangeProcessedSuccessfully = true;
 
-    while (!signal?.aborted) {
+    while (!signal.aborted) {
       try {
         // if the previous block range was processed successfully or if this is the first loop iteration,
         // get the next block range to process

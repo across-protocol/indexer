@@ -18,18 +18,14 @@ export class HotfixServicesManager {
     private providersFactory: RetryProvidersFactory,
     private indexerQueuesService: IndexerQueuesService,
   ) {}
-  public start() {
+  public start(signal: AbortSignal) {
     return Promise.all([
-      this.startUnmatchedFillEventsService(),
-      this.startUnmatchedDepositEventsService(),
+      this.startUnmatchedFillEventsService(signal),
+      this.startUnmatchedDepositEventsService(signal),
     ]);
   }
 
-  public stop() {
-    this.unmatchedFillEventsService?.stop();
-  }
-
-  private startUnmatchedFillEventsService() {
+  private startUnmatchedFillEventsService(signal: AbortSignal) {
     if (!this.config.enableHotfixServices) {
       this.logger.warn({
         at: "HotfixServicesManager#startUnmatchedFillEventsService",
@@ -43,10 +39,10 @@ export class HotfixServicesManager {
       this.indexerQueuesService,
       this.logger,
     );
-    return this.unmatchedFillEventsService.start(60 * 60);
+    return this.unmatchedFillEventsService.start(60 * 60, signal);
   }
 
-  private startUnmatchedDepositEventsService() {
+  private startUnmatchedDepositEventsService(signal: AbortSignal) {
     if (!this.config.enableHotfixServices) {
       this.logger.warn({
         at: "HotfixServicesManager#startUnmatchedDepositEventsService",
@@ -59,6 +55,6 @@ export class HotfixServicesManager {
       this.providersFactory,
       this.logger,
     );
-    return this.unmatchedDepositEventsService.start(60 * 60);
+    return this.unmatchedDepositEventsService.start(60 * 60, signal);
   }
 }

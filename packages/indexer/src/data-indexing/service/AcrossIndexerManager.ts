@@ -53,7 +53,7 @@ export class AcrossIndexerManager {
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
-  public async start(signal?: AbortSignal) {
+  public async start(signal: AbortSignal) {
     return Promise.all([
       this.startHubPoolIndexer(signal),
       this.startEvmSpokePoolIndexers(signal),
@@ -61,7 +61,7 @@ export class AcrossIndexerManager {
     ]);
   }
 
-  private startHubPoolIndexer(signal?: AbortSignal) {
+  private startHubPoolIndexer(signal: AbortSignal) {
     if (!this.config.enableHubPoolIndexer) {
       this.logger.warn({
         at: "Indexer#AcrossIndexerManager#startHubPoolIndexer",
@@ -98,7 +98,7 @@ export class AcrossIndexerManager {
     return hubPoolIndexer.start(signal);
   }
 
-  private async startEvmSpokePoolIndexers(signal?: AbortSignal) {
+  private async startEvmSpokePoolIndexers(signal: AbortSignal) {
     const evmSpokePoolIndexers = this.config.evmSpokePoolChainsEnabled.map(
       (chainId) => {
         const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
@@ -153,7 +153,7 @@ export class AcrossIndexerManager {
     );
   }
 
-  private startSvmSpokePoolIndexers(signal?: AbortSignal) {
+  private startSvmSpokePoolIndexers(signal: AbortSignal) {
     const svmSpokePoolIndexers = this.config.svmSpokePoolChainsEnabled.map(
       (chainId) => {
         const svmSpokePoolIndexerDataHandler =

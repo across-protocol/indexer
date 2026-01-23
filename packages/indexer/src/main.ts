@@ -245,8 +245,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close(),
       priceWorker?.close(),
       swapWorker.close(),
-      bundleServicesManager.stop(),
-      hotfixServicesManager.stop(),
       metrics.close(),
     ]);
     // Stop all other managers
@@ -265,7 +263,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const indexerPromises = [
     {
       name: "bundleServicesManager",
-      promise: bundleServicesManager.start(),
+      promise: bundleServicesManager.start(abortController.signal),
     },
     {
       name: "acrossIndexerManager",
@@ -283,12 +281,18 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       name: "hyperliquidIndexerManager",
       promise: hyperliquidIndexerManager.start(abortController.signal),
     },
-    { name: "hotfixServicesManager", promise: hotfixServicesManager.start() },
+    {
+      name: "hotfixServicesManager",
+      promise: hotfixServicesManager.start(abortController.signal),
+    },
     {
       name: "cctpFinalizerServiceManager",
       promise: cctpFinalizerServiceManager.start(abortController.signal),
     },
-    { name: "monitoringManager", promise: monitoringManager.start() },
+    {
+      name: "monitoringManager",
+      promise: monitoringManager.start(abortController.signal),
+    },
     ...wsIndexerPromises.map((p) => ({
       name: `wsIndexer-${p.chainId}`,
       promise: p.promise,

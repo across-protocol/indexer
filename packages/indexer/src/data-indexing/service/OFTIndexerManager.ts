@@ -26,7 +26,7 @@ export class OFTIndexerManager {
     private oftRepository: OftRepository,
   ) {}
 
-  public async start(signal?: AbortSignal) {
+  public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableOftIndexer) {
         this.logger.warn({
@@ -48,7 +48,7 @@ export class OFTIndexerManager {
     }
   }
 
-  private async startEvmIndexer(signal?: AbortSignal) {
+  private async startEvmIndexer(signal: AbortSignal) {
     const indexers = getSupportOftChainIds().map((chainId) => {
       const provider = this.retryProvidersFactory.getCustomEvmProvider({
         chainId: Number(chainId),

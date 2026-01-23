@@ -25,7 +25,7 @@ export class CCTPIndexerManager {
     private cctpRepository: CCTPRepository,
   ) {}
 
-  public async start(signal?: AbortSignal) {
+  public async start(signal: AbortSignal) {
     try {
       if (this.config.cctpIndexerChainIds.length === 0) {
         this.logger.warn({
@@ -50,7 +50,7 @@ export class CCTPIndexerManager {
     }
   }
 
-  private async startEvmIndexer(signal?: AbortSignal) {
+  private async startEvmIndexer(signal: AbortSignal) {
     const evmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsEvm(chainId),
     );
@@ -101,7 +101,7 @@ export class CCTPIndexerManager {
     await Promise.all(indexers.map((indexer) => indexer.start(signal)));
   }
 
-  private async startSvmIndexer(signal?: AbortSignal) {
+  private async startSvmIndexer(signal: AbortSignal) {
     const svmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsSvm(chainId),
     );
