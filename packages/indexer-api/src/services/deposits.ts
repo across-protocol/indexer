@@ -1402,18 +1402,20 @@ export class DepositsService {
       return results;
     } else {
       // Fetch withdrawals from hypercore_cctp_withdraw table with pagination
+      // Use case-insensitive comparison since API normalizes addresses to lowercase
+      // but database stores them in checksummed/mixed case format
       const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
-      const withdrawals = await repo.find({
-        where: {
-          fromAddress: user,
-        },
-        relations: ["burnEvent", "mintEvent"],
-        order: {
-          createdAt: "DESC",
-        },
-        skip: skip,
-        take: limit,
-      });
+      const withdrawals = await repo
+        .createQueryBuilder("withdrawal")
+        .leftJoinAndSelect("withdrawal.burnEvent", "burnEvent")
+        .leftJoinAndSelect("withdrawal.mintEvent", "mintEvent")
+        .where("LOWER(withdrawal.fromAddress) = LOWER(:user)", {
+          user: params.user,
+        })
+        .orderBy("withdrawal.createdAt", "DESC")
+        .skip(skip)
+        .take(limit)
+        .getMany();
 
       return withdrawals.map((withdrawal) => {
         return {
