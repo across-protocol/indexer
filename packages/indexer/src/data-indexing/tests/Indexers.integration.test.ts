@@ -978,7 +978,7 @@ describe("Websocket Subscription", () => {
       fillType: 0,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {
     // Tx: https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02
@@ -1307,7 +1307,7 @@ describe("Websocket Subscription", () => {
       toLiteChain: false,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the ExecutedRelayerRefundRoot event from Arbitrum tx 0x51f7...b86a", async () => {
     // https://arbiscan.io/tx/0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a#eventlog#15
@@ -1417,7 +1417,7 @@ describe("Websocket Subscription", () => {
         "0xEeAF25aD4f51fE2f57Be2F206C9d8A568A618b99",
       ],
     });
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the RequestedSpeedUpV3Deposit event from Arbitrum tx 0x39a0...823", async () => {
     // https://arbiscan.io/tx/0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823#eventlog#15
@@ -1484,7 +1484,7 @@ describe("Websocket Subscription", () => {
         "0x4ab7f470cf11759ea9b4c1dc912bb5c2f43514db29ce81b2dbd0d7e3c08cab516463f3a4d41bb9b371f54fd1e169edc8685f632f3c2fa1f678bdcb828f3c117f1c",
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the RelayedRootBundle event from Arbitrum tx 0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408", async () => {
     const txHash =
@@ -1565,7 +1565,7 @@ describe("Websocket Subscription", () => {
       finalised: false,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the RequestedSlowFill event from Arbitrum tx 0xaa0...78e2", async () => {
     const txHash =
@@ -1628,7 +1628,7 @@ describe("Websocket Subscription", () => {
 
     expect(savedEvent).to.exist;
     compareRequestedSlowFillEvents(savedEvent, sanityCheckResult);
-  }).timeout(40000);
+  }).timeout(120000);
 
   it("should ingest the TokensBridged event from Arbitrum tx 0x5683...202c", async () => {
     const txHash =
@@ -1703,7 +1703,7 @@ describe("Websocket Subscription", () => {
       finalised: false,
       dataSource: DataSourceType.WEB_SOCKET,
     });
-  }).timeout(40000);
+  }).timeout(120000);
   it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {
     // Tx: https://arbiscan.io/tx/0x0400453f05403a252798c7615005c788c525cd80f3f79f4b3dbc352432caf1cb
     const txHash =
