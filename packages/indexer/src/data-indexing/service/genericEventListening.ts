@@ -169,6 +169,7 @@ export const subscribeToEvent = <TPayload>(
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
         error: error,
+        jsonError: JSON.stringify(error),
         notificationPath: "across-indexer-error",
       });
 
