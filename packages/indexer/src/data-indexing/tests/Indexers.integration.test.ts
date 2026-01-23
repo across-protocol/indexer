@@ -1800,7 +1800,7 @@ describe("Websocket Subscription", () => {
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
-      chainId: CHAIN_IDs.ARBITRUM,
+      chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_OFT_PROTOCOL],
       transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
