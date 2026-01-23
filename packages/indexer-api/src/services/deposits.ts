@@ -3,6 +3,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
 import { utils } from "@across-protocol/sdk";
+import { findCctpBurnEventForHyperliquidDeposit } from "@repo/indexer";
 import type {
   DepositParams,
   DepositsParams,
@@ -1305,16 +1306,17 @@ export class DepositsService {
         nonce: nonce,
         user: recipient,
       },
-      relations: ["cctpBurnEvent"],
     });
 
     if (!deposit) {
       throw new HyperliquidDepositNotFoundException();
     }
 
-    // Get the DepositForBurn from the directly linked event
-    const depositForBurn: entities.DepositForBurn | null =
-      deposit.cctpBurnEvent || null;
+    // Find the CCTP burn event using the transaction hash
+    const depositForBurn = await findCctpBurnEventForHyperliquidDeposit(
+      this.db,
+      deposit.transactionHash,
+    );
 
     if (!depositForBurn) {
       throw new HyperliquidDepositNotFoundException();
@@ -1363,7 +1365,6 @@ export class DepositsService {
         where: {
           user: user,
         },
-        relations: ["cctpBurnEvent"],
         order: {
           blockTimestamp: "DESC",
         },
@@ -1374,11 +1375,15 @@ export class DepositsService {
       // Process deposits with async operations
       const results = await Promise.all(
         deposits.map(async (deposit) => {
-          // Try to get depositTxnRef from linked burn event or via reverse traversal
-          let depositTxnRef: string | null =
-            deposit.cctpBurnEvent?.transactionHash || null;
-          let originChainId: number | null = deposit.cctpBurnEvent
-            ? parseInt(deposit.cctpBurnEvent.chainId)
+          // Find the CCTP burn event using the transaction hash
+          const depositForBurn = await findCctpBurnEventForHyperliquidDeposit(
+            this.db,
+            deposit.transactionHash,
+          );
+
+          const depositTxnRef = depositForBurn?.transactionHash || null;
+          const originChainId = depositForBurn
+            ? parseInt(depositForBurn.chainId)
             : null;
 
           return {
@@ -1397,18 +1402,20 @@ export class DepositsService {
       return results;
     } else {
       // Fetch withdrawals from hypercore_cctp_withdraw table with pagination
+      // Use case-insensitive comparison since API normalizes addresses to lowercase
+      // but database stores them in checksummed/mixed case format
       const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
-      const withdrawals = await repo.find({
-        where: {
-          fromAddress: user,
-        },
-        relations: ["burnEvent", "mintEvent"],
-        order: {
-          createdAt: "DESC",
-        },
-        skip: skip,
-        take: limit,
-      });
+      const withdrawals = await repo
+        .createQueryBuilder("withdrawal")
+        .leftJoinAndSelect("withdrawal.burnEvent", "burnEvent")
+        .leftJoinAndSelect("withdrawal.mintEvent", "mintEvent")
+        .where("LOWER(withdrawal.fromAddress) = LOWER(:user)", {
+          user: params.user,
+        })
+        .orderBy("withdrawal.createdAt", "DESC")
+        .skip(skip)
+        .take(limit)
+        .getMany();
 
       return withdrawals.map((withdrawal) => {
         return {

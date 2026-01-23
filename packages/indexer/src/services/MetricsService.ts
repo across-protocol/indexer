@@ -151,12 +151,6 @@ export class DataDogMetricsService {
           retries: RETRY_ATTEMPTS,
           factor: RETRY_BACKOFF_EXPONENT,
           maxTimeout: MAX_RETRY_TIMEOUT,
-          onFailedAttempt: (error) => {
-            this.logger?.warn({
-              message: `Failed to submit metrics to Datadog, retrying... (Attempt ${error.attemptNumber} of ${RETRY_ATTEMPTS + 1})`,
-              error,
-            });
-          },
         },
       );
     } catch (error) {
