@@ -1405,7 +1405,7 @@ export class DepositsService {
       const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
       const withdrawals = await repo.find({
         where: {
-          fromAddress: user,
+          fromAddress: params.user,
         },
         relations: ["burnEvent", "mintEvent"],
         order: {
