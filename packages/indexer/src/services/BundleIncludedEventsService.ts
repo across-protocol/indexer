@@ -37,6 +37,7 @@ export type BundleConfig = {
 
 const EXCLUDED_CHAIN_IDS_FROM_BUNDLE_RECONSTRUCTION: number[] = [
   CHAIN_IDs.REDSTONE,
+  CHAIN_IDs.MEGAETH,
 ];
 
 export class BundleIncludedEventsService extends RepeatableTask {
