@@ -63,6 +63,7 @@ export class HyperliquidIndexerManager {
         rpcUrl,
         hyperliquidRepository,
         startBlockNumber,
+        this.postgres,
       );
 
       let indexingDelaySeconds = 4; // Default delay
