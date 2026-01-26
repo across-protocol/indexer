@@ -518,11 +518,11 @@ export const getChainProtocols: (
   }
 
   // Add CCTP protocol events configuration
-  // for (const chainId of config.cctpIndexerChainIds) {
-  //   if (chainProtocols[chainId]) {
-  //     chainProtocols[chainId].push(SPONSORED_CCTP_PROTOCOL);
-  //   }
-  // }
+  for (const chainId of config.cctpIndexerChainIds) {
+    if (chainProtocols[chainId]) {
+      chainProtocols[chainId].push(SPONSORED_CCTP_PROTOCOL);
+    }
+  }
 
   return chainProtocols;
 };
