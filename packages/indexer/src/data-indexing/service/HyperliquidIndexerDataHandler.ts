@@ -171,6 +171,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
         });
 
         // Skip the block range by updating progress to latest block
+        // Temporary workaround until this is handled on the RPC side
         await this.skipBlockRangeAndUpdateProgress(blockRange);
 
         // Return empty deposits so processing can continue
