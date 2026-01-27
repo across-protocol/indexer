@@ -20,6 +20,7 @@ describe("HyperliquidIndexerDataHandler", () => {
   let logger: Logger;
   let handler: HyperliquidIndexerDataHandler;
   let rpcClientStub: sinon.SinonStub;
+  let getLatestBlockNumberStub: sinon.SinonStub;
 
   const mockRpcUrl = "https://test-rpc-url.com/hypercore";
   const mockBlockNumber = 859481445;
@@ -43,12 +44,17 @@ describe("HyperliquidIndexerDataHandler", () => {
       mockRpcUrl,
       hyperliquidRepository,
       0,
+      dataSource,
     );
 
-    // Stub the HyperliquidRpcClient constructor to return a mock
+    // Stub the HyperliquidRpcClient methods
     rpcClientStub = sinon.stub(
       HyperliquidRpcClient.prototype,
       "getBatchBlocks",
+    );
+    getLatestBlockNumberStub = sinon.stub(
+      HyperliquidRpcClient.prototype,
+      "getLatestBlockNumber",
     );
   });
 
@@ -413,5 +419,49 @@ describe("HyperliquidIndexerDataHandler", () => {
         ),
     );
     expect(warnCall).to.exist;
+  }).timeout(20000);
+
+  it("should skip block range and update database when Hyperliquid RPC error occurs", async () => {
+    const blockRange: BlockRange = {
+      from: mockBlockNumber,
+      to: mockBlockNumber + 10,
+    };
+
+    const latestBlockNumber = mockBlockNumber + 50;
+
+    // Mock RPC error with code -32000 (format matches HyperliquidRpcClient error format)
+    const rpcError = new Error(
+      "Hyperliquid RPC error: Failed to retrieve blocks (code: -32000)",
+    );
+    rpcClientStub.rejects(rpcError);
+
+    // Mock getLatestBlockNumber to return a value
+    getLatestBlockNumberStub.resolves(latestBlockNumber);
+
+    // Process should complete without throwing
+    await handler.processBlockRange(blockRange, mockBlockNumber);
+
+    // Verify that the database progress was updated
+    const progressRepo = dataSource.getRepository(entities.IndexerProgressInfo);
+    const progress = await progressRepo.findOne({
+      where: {
+        id: handler.getDataIdentifier(),
+      },
+    });
+
+    expect(progress).to.exist;
+    expect(progress!.lastFinalisedBlock).to.equal(blockRange.to);
+    expect(progress!.latestBlockNumber).to.equal(latestBlockNumber);
+
+    // Verify that no deposits were saved (empty deposits returned)
+    const hyperliquidDepositRepo = dataSource.getRepository(
+      entities.HyperliquidDeposit,
+    );
+    const savedDeposits = await hyperliquidDepositRepo.find({
+      where: {
+        blockNumber: mockBlockNumber,
+      },
+    });
+    expect(savedDeposits).to.have.length(0);
   }).timeout(20000);
 });
