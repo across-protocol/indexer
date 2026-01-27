@@ -2,7 +2,7 @@ import { CHAIN_IDs } from "@across-protocol/constants";
 
 export type OftTokenKey = "usdt0";
 
-// Taken from https://docs.usdt0.to/technical-documentation/developer/usdt0-deployments
+// Taken from https://docs.usdt0.to/technical-documentation/deployments
 const OFT_SUPPORTED_CHAINS: Record<
   number,
   {
@@ -45,6 +45,17 @@ const OFT_SUPPORTED_CHAINS: Record<
         adapter: "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee",
         token: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         startBlockNumber: 23400000,
+      },
+    ],
+  },
+  [CHAIN_IDs.MEGAETH]: {
+    endpointId: 30398,
+    tokens: [
+      {
+        key: "usdt0",
+        adapter: "0x9151434b16b9763660705744891fA906F660EcC5",
+        token: "0xb8ce59fc3717ada4C02eaDF9682A9e934F625ebb",
+        startBlockNumber: 6036500,
       },
     ],
   },
