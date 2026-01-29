@@ -126,3 +126,31 @@ export const METADATA_EMITTED_ABI = [
     type: "event",
   },
 ];
+
+export const USER_ACCOUNT_ACTIVATED_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amountRequiredToActivate",
+        type: "uint256",
+      },
+    ],
+    name: "UserAccountActivated",
+    type: "event",
+  },
+];
