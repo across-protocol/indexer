@@ -74,6 +74,32 @@ describe("IncorrectDepositStatusMonitor", () => {
       const logCall = loggerDebugSpy.lastCall.args[0];
       expect(logCall.deposits).to.be.an("array").that.is.empty;
     });
+
+    it("should NOT detect deposits with inputAmount = 0", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+          fillDeadline: new Date(Date.now() - 120 * 60 * 1000), // 2 hours ago
+          inputAmount: "0",
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Expired,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.deposits).to.be.an("array").that.is.empty;
+    });
   });
 
   describe("Status Detection Cases", () => {
