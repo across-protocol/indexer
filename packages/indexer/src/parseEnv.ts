@@ -22,9 +22,11 @@ export type Config = {
   enableBundleBuilder: boolean;
   cctpIndexerChainIds: number[];
   enableCctpFinalizer: boolean;
+  enableCctpFinalizerPubSub: boolean;
   pubSubCctpFinalizerTopic: string;
   pubSubGcpProjectId: string;
   enableOftIndexer: boolean;
+  enableHyperliquidIndexer: boolean;
   datadogConfig: DatadogConfig;
   webhookConfig: WebhooksConfig;
   maxBlockRangeSize?: number;
@@ -284,8 +286,14 @@ export function envToConfig(env: Env): Config {
   const enableOftIndexer = env.ENABLE_OFT_INDEXER
     ? env.ENABLE_OFT_INDEXER === "true"
     : false;
+  const enableHyperliquidIndexer = env.ENABLE_HYPERLIQUID_INDEXER
+    ? env.ENABLE_HYPERLIQUID_INDEXER === "true"
+    : false;
   const enableCctpFinalizer = env.ENABLE_CCTP_FINALIZER
     ? env.ENABLE_CCTP_FINALIZER === "true"
+    : false;
+  const enableCctpFinalizerPubSub = env.ENABLE_CCTP_FINALIZER_PUBSUB
+    ? env.ENABLE_CCTP_FINALIZER_PUBSUB === "true"
     : false;
   const pubSubCctpFinalizerTopic = env.PUBSUB_CCTP_FINALIZER_TOPIC ?? "";
   const pubSubGcpProjectId = env.PUBSUB_GCP_PROJECT_ID ?? "";
@@ -357,7 +365,9 @@ export function envToConfig(env: Env): Config {
     enableBundleBuilder,
     cctpIndexerChainIds,
     enableOftIndexer,
+    enableHyperliquidIndexer,
     enableCctpFinalizer,
+    enableCctpFinalizerPubSub,
     pubSubCctpFinalizerTopic,
     pubSubGcpProjectId,
     datadogConfig,

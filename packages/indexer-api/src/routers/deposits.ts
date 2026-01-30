@@ -13,5 +13,6 @@ export function getRouter(db: DataSource, redis: Redis): Router {
   router.get("/deposit/status", controller.getDepositStatus);
   router.get("/deposits/unfilled", controller.getUnfilledDeposits);
   router.get("/deposits/filled", controller.getFilledDeposits);
+  router.get("/hyperliquid-transfers", controller.getHyperliquidTransfers);
   return router;
 }

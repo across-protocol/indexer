@@ -3,6 +3,7 @@ import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { DataSource, entities } from "@repo/indexer-database";
 import * as across from "@across-protocol/sdk";
 import { utils } from "@across-protocol/sdk";
+import { findCctpBurnEventForHyperliquidDeposit } from "@repo/indexer";
 import type {
   DepositParams,
   DepositsParams,
@@ -11,10 +12,13 @@ import type {
   ParsedDepositReturnType,
   DepositStatusResponse,
   DepositStatusParams,
+  HyperliquidTransfersParams,
+  HyperliquidTransferResponse,
 } from "../dtos/deposits.dto";
 import {
   DepositNotFoundException,
   HyperliquidWithdrawalNotFoundException,
+  HyperliquidDepositNotFoundException,
   IncorrectQueryParamsException,
   IndexParamOutOfRangeException,
 } from "./exceptions";
@@ -674,7 +678,8 @@ export class DepositsService {
         params.depositTxHash ||
         params.depositTxnRef ||
         params.relayDataHash ||
-        (params.from && params.hypercoreWithdrawalNonce)
+        (params.from && params.hypercoreWithdrawalNonce) ||
+        (params.hypercoreDepositNonce && params.recipient)
       )
     ) {
       throw new IncorrectQueryParamsException();
@@ -691,6 +696,11 @@ export class DepositsService {
     if (params.from && params.hypercoreWithdrawalNonce) {
       // Hyperliquid Withdrawal status check
       return this.getHyperliquidWithdrawalStatus(params);
+    }
+
+    if (params.hypercoreDepositNonce && params.recipient) {
+      // Hyperliquid Deposit status check
+      return this.getHyperliquidDepositStatus(params);
     }
 
     // no cached data, so we need to query the database
@@ -1283,6 +1293,153 @@ export class DepositsService {
     return result;
   }
 
+  private async getHyperliquidDepositStatus(params: DepositStatusParams) {
+    const cacheKey = this.getDepositStatusCacheKey(params);
+    const repo = this.db.getRepository(entities.HyperliquidDeposit);
+
+    // Normalize the nonce to string and recipient to lowercase for comparison
+    const nonce = params.hypercoreDepositNonce?.toString() || "";
+    const recipient = params.recipient?.toLowerCase() || "";
+
+    const deposit = await repo.findOne({
+      where: {
+        nonce: nonce,
+        user: recipient,
+      },
+    });
+
+    if (!deposit) {
+      throw new HyperliquidDepositNotFoundException();
+    }
+
+    // Find the CCTP burn event using the transaction hash
+    const depositForBurn = await findCctpBurnEventForHyperliquidDeposit(
+      this.db,
+      deposit.transactionHash,
+    );
+
+    if (!depositForBurn) {
+      throw new HyperliquidDepositNotFoundException();
+    }
+
+    const depositTxnRef = depositForBurn.transactionHash;
+    const originChainId = parseInt(depositForBurn.chainId);
+
+    const result = {
+      status: "filled",
+      originChainId: originChainId,
+      depositId: params.hypercoreDepositNonce as string,
+      depositTxnRef: depositTxnRef,
+      fillTxnRef: deposit.transactionHash,
+      destinationChainId: CHAIN_IDs.HYPERCORE,
+      depositRefundTxnRef: null,
+      actionsSucceeded: null,
+      pagination: {
+        currentIndex: 0,
+        maxIndex: 0,
+      },
+    };
+
+    const cacheTtlSeconds = 60 * 5; // 5 minutes
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      cacheTtlSeconds,
+    );
+
+    return result;
+  }
+
+  public async getHyperliquidTransfers(
+    params: HyperliquidTransfersParams,
+  ): Promise<HyperliquidTransferResponse[]> {
+    const user = params.user.toLowerCase();
+    const skip = params.skip || 0;
+    const limit = params.limit || 50;
+
+    if (params.direction === "in") {
+      // Fetch deposits from hyperliquid_deposit table with pagination
+      const repo = this.db.getRepository(entities.HyperliquidDeposit);
+      const deposits = await repo.find({
+        where: {
+          user: user,
+        },
+        order: {
+          blockTimestamp: "DESC",
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      // Process deposits with async operations
+      const results = await Promise.all(
+        deposits.map(async (deposit) => {
+          // Find the CCTP burn event using the transaction hash
+          const depositForBurn = await findCctpBurnEventForHyperliquidDeposit(
+            this.db,
+            deposit.transactionHash,
+          );
+
+          const depositTxnRef = depositForBurn?.transactionHash || null;
+          const originChainId = depositForBurn
+            ? parseInt(depositForBurn.chainId)
+            : null;
+
+          return {
+            depositTxnRef: depositTxnRef,
+            fillTxnRef: deposit.transactionHash,
+            originChainId: originChainId,
+            destinationChainId: CHAIN_IDs.HYPERCORE,
+            amount: deposit.amount,
+            token: deposit.token,
+            nonce: deposit.nonce,
+            destinationBlockTimestamp: deposit.blockTimestamp,
+          };
+        }),
+      );
+
+      return results;
+    } else {
+      // Fetch withdrawals from hypercore_cctp_withdraw table with pagination
+      // Use case-insensitive comparison since API normalizes addresses to lowercase
+      // but database stores them in checksummed/mixed case format
+      const repo = this.db.getRepository(entities.HypercoreCctpWithdraw);
+      const withdrawals = await repo
+        .createQueryBuilder("withdrawal")
+        .leftJoinAndSelect("withdrawal.burnEvent", "burnEvent")
+        .leftJoinAndSelect("withdrawal.mintEvent", "mintEvent")
+        .where("LOWER(withdrawal.fromAddress) = LOWER(:user)", {
+          user: params.user,
+        })
+        .orderBy("withdrawal.createdAt", "DESC")
+        .skip(skip)
+        .take(limit)
+        .getMany();
+
+      return withdrawals.map((withdrawal) => {
+        return {
+          depositTxnRef:
+            withdrawal.burnTxnHash ||
+            withdrawal.burnEvent?.transactionHash ||
+            null,
+          fillTxnRef:
+            withdrawal.mintTxnHash ||
+            withdrawal.mintEvent?.transactionHash ||
+            null,
+          originChainId: withdrawal.originChainId
+            ? parseInt(withdrawal.originChainId)
+            : null,
+          destinationChainId: withdrawal.destinationChainId
+            ? parseInt(withdrawal.destinationChainId)
+            : null,
+          nonce: withdrawal.hypercoreNonce,
+          destinationBlockTimestamp: withdrawal.createdAt, // Timestamp of the block on the destination chain
+        };
+      });
+    }
+  }
+
   public async getDeposit(params: DepositParams) {
     // in the validation rules each of these params are marked as optional
     // but we need to check that at least one of them is present
@@ -1678,6 +1835,10 @@ export class DepositsService {
 
     if (params.from && params.hypercoreWithdrawalNonce) {
       return `depositStatus-${params.from}-${params.hypercoreWithdrawalNonce}`;
+    }
+
+    if (params.hypercoreDepositNonce && params.recipient) {
+      return `depositStatus-${params.hypercoreDepositNonce}-${params.recipient}`;
     }
 
     // in theory this should never happen because we have already checked

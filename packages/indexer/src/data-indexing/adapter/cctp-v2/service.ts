@@ -12,6 +12,7 @@ import {
   DecodedHyperCoreWithdrawalHookData,
   DecodedMessageBody,
 } from "./model";
+import { CCTP_FORWARD_MAGIC_BYTES } from "../../service/constants";
 
 // we need to fetch only recent events, so
 // roughly starting with date of Oct 1st, 2025
@@ -20,6 +21,7 @@ const STARTING_BLOCK_NUMBERS = {
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: 200000000,
   [CHAIN_IDs.BASE]: 36193725,
   [CHAIN_IDs.HYPEREVM]: 15083577,
+  [CHAIN_IDs.HYPERCORE]: 0,
   [CHAIN_IDs.INK]: 26328532,
   [CHAIN_IDs.LINEA]: 26258551,
   [CHAIN_IDs.MAINNET]: 23474786,
@@ -454,4 +456,22 @@ export function isHypercoreWithdraw(
     isValid: isValidMagicBytes,
     decodedHookData,
   };
+}
+
+/**
+ * Validates if a deposit or mint event corresponds to a Hyperliquid transfer.
+ *
+ * @param domain The CCTP domain
+ * @param data The data to check
+ * @returns True if the domain is HyperEVM and the data contains "cctp-forward" magic bytes for a Hyperliquid transfer
+ */
+export function isHyperliquidDeposit(domain: number, data: string): boolean {
+  // Check if the domain is HyperEVM
+  if (domain !== getCctpDomainForChainId(CHAIN_IDs.HYPEREVM)) {
+    return false;
+  }
+
+  // Check if the magic bytes appear in the data (case-insensitive)
+  const dataLower = data.toLowerCase();
+  return dataLower.includes(CCTP_FORWARD_MAGIC_BYTES.toLowerCase());
 }
