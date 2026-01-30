@@ -14,7 +14,10 @@ import {
   SPONSORED_ACCOUNT_ACTIVATION_ABI,
   SWAP_FLOW_FINALIZED_ABI,
 } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { O_ADAPTER_UPGRADEABLE_ABI } from "../adapter/oft/abis";
 import {
   getSponsoredOFTSrcPeripheryAddress,
@@ -96,11 +99,8 @@ export class OFTIndexerDataHandler implements IndexerDataHandler {
     return getOftChainConfiguration(this.chainId).tokens[0]!.startBlockNumber;
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#OFTIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,

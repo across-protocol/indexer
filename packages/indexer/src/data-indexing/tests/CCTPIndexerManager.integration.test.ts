@@ -103,7 +103,8 @@ describe("CCTPIndexerManager", () => {
       CHAIN_IDs.ARBITRUM_SEPOLIA,
     );
 
-    const indexerPromise = manager.start();
+    const controller = new AbortController();
+    const indexerPromise = manager.start(controller.signal);
 
     // Wait a moment for the indexer to run and process the block.
     await across.utils.delay(2);
@@ -116,7 +117,7 @@ describe("CCTPIndexerManager", () => {
     });
 
     // Gracefully stop the indexer and wait for it to shut down.
-    await manager.stopGracefully();
+    controller.abort();
     await indexerPromise;
 
     expect(savedEvent).to.exist;

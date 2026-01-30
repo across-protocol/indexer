@@ -6,7 +6,10 @@ import {
   getDeployedBlockNumber,
   getDeployedAddress,
 } from "@across-protocol/contracts";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
 import { BundleEventsProcessor } from "../../services";
@@ -51,10 +54,8 @@ export class HubPoolIndexerDataHandler implements IndexerDataHandler {
     return deployedBlockNumber;
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock } = request;
     this.logger.debug({
       at: "Indexer#HubPoolIndexerDataHandler#processBlockRange",
       message: `Start processing block range ${this.getDataIdentifier()}`,

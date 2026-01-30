@@ -69,7 +69,10 @@ describe("SvmCCTPIndexerDataHandler Integration", () => {
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(0);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
     const savedDeposit = await depositRepo.findOne({

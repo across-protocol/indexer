@@ -25,15 +25,11 @@ export class MonitoringManager {
     private postgres: DataSource,
   ) {}
 
-  public async start() {
-    return Promise.all([this.startIncorrectDepositStatusMonitor()]);
+  public async start(signal: AbortSignal) {
+    return Promise.all([this.startIncorrectDepositStatusMonitor(signal)]);
   }
 
-  public async stopGracefully() {
-    this.incorrectDepositStatusMonitor?.stop();
-  }
-
-  private async startIncorrectDepositStatusMonitor() {
+  private async startIncorrectDepositStatusMonitor(signal: AbortSignal) {
     if (
       !this.config.enabledMonitors.includes(
         MonitoringServices.IncorrectDepositStatus,
@@ -53,6 +49,7 @@ export class MonitoringManager {
 
     return this.incorrectDepositStatusMonitor.start(
       INCORRECT_DEPOSIT_STATUS_MONITOR_DELAY_SECONDS,
+      signal,
     );
   }
 }
