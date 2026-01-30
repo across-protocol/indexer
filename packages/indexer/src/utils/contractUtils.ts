@@ -26,7 +26,7 @@ export type GetEvmSpokeClientParams = {
   disableQuoteBlockLookup?: boolean;
 };
 
-function getAddress(contractName: string, chainId: number): string {
+export function getAddress(contractName: string, chainId: number): string {
   const address = getDeployedAddress(contractName, chainId);
   if (!address) {
     throw new Error(

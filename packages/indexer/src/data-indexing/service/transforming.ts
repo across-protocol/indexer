@@ -5,7 +5,11 @@ import {
   getCctpDestinationChainFromDomain,
   decodeMessage,
 } from "../adapter/cctp-v2/service";
-import { formatFromAddressToChainFormat, safeJsonStringify } from "../../utils";
+import {
+  formatFromAddressToChainFormat,
+  safeJsonStringify,
+  getInternalHash,
+} from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
 import {
   DepositForBurnArgs,
@@ -21,9 +25,12 @@ import {
   ArbitraryActionsExecutedArgs,
   OFTSentArgs,
   OFTReceivedArgs,
+  FilledV3RelayArgs,
+  V3FundsDepositedArgs,
   SponsoredOFTSendArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
+import { BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
 
 /**
@@ -492,6 +499,217 @@ export const transformOFTReceivedEvent = (
     toAddress: preprocessed.toAddress,
     amountReceivedLD: preprocessed.amountReceivedLD.toString(),
     token: tokenAddress,
+  };
+};
+
+/**
+ * Transforms a raw `FilledV3Relay` event payload into a partial `FilledV3Relay` entity.
+ * Transforms a raw `SponsoredOFTSend` event payload into a partial `SponsoredOFTSend` entity.
+ * The 'finalised' property is set by the `baseTransformer` based on block number
+ * and the configured finality buffer.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+
+ * @returns A partial `FilledV3Relay` entity ready for storage.
+ */
+export const transformFilledV3RelayEvent = (
+  preprocessed: FilledV3RelayArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.FilledV3Relay> => {
+  const base = baseTransformer(payload, logger);
+  const destinationChainId = Number(base.chainId); // Event emitted on destination chain
+  const originChainId = Number(preprocessed.originChainId);
+
+  const relayData = {
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken.toString(),
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken.toString(),
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
+    fillDeadline: preprocessed.fillDeadline,
+    exclusivityDeadline: preprocessed.exclusivityDeadline,
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer.toString(),
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor.toString(),
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient.toString(),
+      destinationChainId,
+    ),
+    messageHash: preprocessed.messageHash,
+  } as Omit<across.interfaces.RelayData, "message">;
+
+  const internalHash = getInternalHash(
+    relayData,
+    preprocessed.messageHash,
+    Number(destinationChainId),
+  );
+
+  // Transform addresses
+  const relayer = transformAddress(
+    preprocessed.relayer.toString(),
+    Number(preprocessed.repaymentChainId),
+  );
+  const updatedRecipient = transformAddress(
+    preprocessed.relayExecutionInfo.updatedRecipient.toString(),
+    Number(destinationChainId),
+  );
+
+  return {
+    ...base,
+    internalHash,
+    depositId: preprocessed.depositId.toString(),
+    originChainId: preprocessed.originChainId.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
+    message: preprocessed.messageHash,
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
+    exclusivityDeadline:
+      preprocessed.exclusivityDeadline === 0
+        ? undefined
+        : new Date(preprocessed.exclusivityDeadline * 1000),
+    fillDeadline: new Date(preprocessed.fillDeadline * 1000),
+    relayer,
+    repaymentChainId: Number(preprocessed.repaymentChainId),
+    updatedRecipient,
+    updatedMessage: preprocessed.relayExecutionInfo.updatedMessageHash,
+    updatedOutputAmount:
+      preprocessed.relayExecutionInfo.updatedOutputAmount.toString(),
+    fillType: preprocessed.relayExecutionInfo.fillType,
+  };
+};
+
+/**
+ * Transforms a raw `V3FundsDeposited` event payload into a partial `V3FundsDeposited` entity.
+ *
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The event payload containing the raw log.
+ * @param logger The logger instance.
+ * @returns A partial `V3FundsDeposited` entity ready for storage.
+ */
+export const transformV3FundsDepositedEvent = (
+  preprocessed: V3FundsDepositedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.V3FundsDeposited> => {
+  const base = baseTransformer(payload, logger);
+  const originChainId = Number(base.chainId);
+  const destinationChainId = Number(preprocessed.destinationChainId);
+  const messageHash = across.utils.getMessageHash(preprocessed.message);
+
+  const relayData = {
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken.toString(),
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken.toString(),
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
+    fillDeadline: preprocessed.fillDeadline,
+    exclusivityDeadline: preprocessed.exclusivityDeadline,
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer.toString(),
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor.toString(),
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient.toString(),
+      destinationChainId,
+    ),
+    message: preprocessed.message,
+  } as across.interfaces.RelayData;
+
+  const internalHash = getInternalHash(
+    relayData,
+    messageHash,
+    destinationChainId,
+  );
+
+  const relayHash = across.utils.getRelayHashFromEvent({
+    ...relayData,
+    destinationChainId,
+  });
+
+  return {
+    ...base,
+    internalHash,
+    relayHash,
+    depositId: preprocessed.depositId.toString(),
+    originChainId: originChainId.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
+    quoteTimestamp: new Date(preprocessed.quoteTimestamp * 1000),
+    fillDeadline: new Date(preprocessed.fillDeadline * 1000),
+    exclusivityDeadline:
+      preprocessed.exclusivityDeadline === 0
+        ? undefined
+        : new Date(preprocessed.exclusivityDeadline * 1000),
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
+    message: preprocessed.message,
+    fromLiteChain: false,
+    toLiteChain: false,
   };
 };
 

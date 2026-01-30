@@ -9,6 +9,7 @@ import {
   Unique,
 } from "typeorm";
 import { RelayHashInfo } from "../RelayHashInfo";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_FundsDeposited_relayHash_block_txnHash_logIdx", [
@@ -124,6 +125,9 @@ export class V3FundsDeposited {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  @Column({ type: "simple-enum", enum: DataSourceType, nullable: true })
+  dataSource: DataSourceType;
 
   /**
    * This is just the reverse side of the relationship,

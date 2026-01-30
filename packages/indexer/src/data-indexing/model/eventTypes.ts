@@ -138,6 +138,51 @@ export interface SponsoredOFTSendArgs {
   sig: `0x${string}`;
 }
 
+/* ==================================================================================
+ * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Spoke Pool Protocol.
+ * ================================================================================== */
+export interface RelayExecutionInfo {
+  updatedRecipient: `0x${string}`;
+  updatedMessageHash: `0x${string}`;
+  updatedOutputAmount: bigint;
+  fillType: number;
+}
+
+export interface FilledV3RelayArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  repaymentChainId: bigint;
+  originChainId: bigint;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  exclusiveRelayer: `0x${string}`;
+  relayer: `0x${string}`;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  messageHash: `0x${string}`;
+  relayExecutionInfo: RelayExecutionInfo;
+}
+
+export interface V3FundsDepositedArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  destinationChainId: bigint;
+  depositId: number;
+  quoteTimestamp: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  exclusiveRelayer: `0x${string}`;
+  message: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -152,4 +197,6 @@ export type EventArgs =
   | ArbitraryActionsExecutedArgs
   | OFTSentArgs
   | OFTReceivedArgs
+  | FilledV3RelayArgs
+  | V3FundsDepositedArgs
   | SponsoredOFTSendArgs;

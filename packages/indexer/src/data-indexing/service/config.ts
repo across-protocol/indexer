@@ -1,10 +1,11 @@
-import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils";
 import {
+  getAddress,
   getSponsoredCCTPDstPeripheryAddress,
   getSponsoredCCTPSrcPeripheryAddress,
   getSponsoredOFTSrcPeripheryAddress,
   getDstOFTHandlerAddress,
 } from "../../utils/contractUtils";
+import { DataDogMetricsService } from "../../services/MetricsService";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
@@ -15,6 +16,8 @@ import {
   SIMPLE_TRANSFER_FLOW_COMPLETED_ABI,
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_ABI,
   ARBITRARY_ACTIONS_EXECUTED_ABI,
+  FILLED_RELAY_V3_ABI,
+  FUNDS_DEPOSITED_V3_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -32,6 +35,8 @@ import {
   FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
   ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
   SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
+  FILLED_RELAY_V3_EVENT_NAME,
+  FUNDS_DEPOSITED_V3_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -53,7 +58,10 @@ import {
   SimpleTransferFlowCompletedArgs,
   FallbackHyperEVMFlowCompletedArgs,
   ArbitraryActionsExecutedArgs,
+  FilledV3RelayArgs,
+  V3FundsDepositedArgs,
 } from "../model/eventTypes";
+
 import {
   createCctpBurnFilter,
   createCctpMintFilter,
@@ -72,6 +80,8 @@ import {
   transformSimpleTransferFlowCompletedEvent,
   transformFallbackHyperEVMFlowCompletedEvent,
   transformArbitraryActionsExecutedEvent,
+  transformFilledV3RelayEvent,
+  transformV3FundsDepositedEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -87,10 +97,12 @@ import {
   storeArbitraryActionsExecutedEvent,
   storeOFTSentEvent,
   storeOFTReceivedEvent,
+  storeFilledV3RelayEvent,
+  storeV3FundsDepositedEvent,
   storeSponsoredOFTSendEvent,
 } from "./storing";
 import { Entity } from "typeorm";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
+import { TEST_NETWORKS } from "@across-protocol/constants";
 import {
   SWAP_FLOW_FINALIZED_ABI,
   SWAP_FLOW_INITIALIZED_ABI,
@@ -119,12 +131,32 @@ import {
   getSupportOftChainIds,
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
+import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
 
+/**
+ * Array of event handlers.
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the event payload from the event listener.
+ * @template TEventEntity The type of the structured database entity.
+ * @template TPreprocessed The type of the preprocessed data.
+ */
 type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
   TPreprocessed extends any
     ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
     : never
 >;
+
+/**
+ * Request object for getting event handlers.
+ * @property logger - The logger instance.
+ * @property chainId - The chain ID.
+ * @property metrics - The metrics service instance.
+ */
+type GetEventHandlersRequest = {
+  logger: Logger;
+  chainId: number;
+  metrics?: DataDogMetricsService;
+};
 
 /**
  * Configuration for a complete indexing subsystem.
@@ -145,8 +177,7 @@ export interface SupportedProtocols<
    * It means: "Allow an array where items can be Handler<Deposit> OR Handler<Message>".
    */
   getEventHandlers: (
-    logger: Logger,
-    chainId: number,
+    request: GetEventHandlersRequest,
   ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
 }
 
@@ -163,7 +194,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
     return [
       {
@@ -337,9 +368,9 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
-    const handlers = CCTP_PROTOCOL.getEventHandlers(logger, chainId);
+    const handlers = CCTP_PROTOCOL.getEventHandlers({ logger, chainId });
 
     // Now let's see if for the given chainId there exists a sponsored CCTP src periphery
     const sourceSponsorhipContractAddress = getSponsoredCCTPSrcPeripheryAddress(
@@ -393,7 +424,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
     const oftConfig = getOftChainConfiguration(chainId);
     const adapterAddress = oftConfig.tokens[0]!.adapter;
@@ -430,6 +461,42 @@ export const OFT_PROTOCOL: SupportedProtocols<
   },
 };
 
+export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
+  any,
+  BlockchainEventRepository,
+  IndexerEventPayload,
+  EventArgs
+> = {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
+    return [
+      {
+        config: {
+          abi: FILLED_RELAY_V3_ABI,
+          eventName: FILLED_RELAY_V3_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<FilledV3RelayArgs>,
+        filter: async () => true,
+        transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
+          transformFilledV3RelayEvent(args, payload, logger),
+        store: storeFilledV3RelayEvent,
+      },
+      {
+        config: {
+          abi: FUNDS_DEPOSITED_V3_ABI,
+          eventName: FUNDS_DEPOSITED_V3_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<V3FundsDepositedArgs>,
+        filter: async () => true,
+        transform: (args: V3FundsDepositedArgs, payload: IndexerEventPayload) =>
+          transformV3FundsDepositedEvent(args, payload, logger),
+        store: storeV3FundsDepositedEvent,
+      },
+    ];
+  },
+};
+
 /**
  * Configuration for OFT protocol with sponsored events.
  * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
@@ -440,9 +507,9 @@ export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
   IndexerEventPayload,
   EventArgs
 > = {
-  getEventHandlers: (logger: Logger, chainId: number) => {
+  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get base OFT handlers (OFTSent, OFTReceived)
-    const handlers = OFT_PROTOCOL.getEventHandlers(logger, chainId);
+    const handlers = OFT_PROTOCOL.getEventHandlers({ logger, chainId });
 
     // Add SponsoredOFTSend handler if source periphery exists for this chain
     const sourcePeripheryAddress = getSponsoredOFTSrcPeripheryAddress(
@@ -514,6 +581,13 @@ export const getChainProtocols: (
       if (chainProtocols[chainId]) {
         chainProtocols[chainId].push(SPONSORED_OFT_PROTOCOL);
       }
+    }
+  }
+
+  // Add SpokePool protocol events configuration
+  for (const chainId of config.evmSpokePoolChainsEnabled) {
+    if (chainProtocols[chainId]) {
+      chainProtocols[chainId].push(SPOKE_POOL_PROTOCOL);
     }
   }
 

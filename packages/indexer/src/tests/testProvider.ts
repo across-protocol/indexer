@@ -6,6 +6,31 @@ import { RedisCache } from "../redis/redisCache";
 import { WebSocketServer, WebSocket } from "ws";
 
 /**
+ * Creates a test instance of a RetryProvidersFactory.
+ *
+ * This function simplifies the creation of a `RetryProvidersFactory` for testing purposes.
+ * It sets up a `RetryProvidersFactory` with a dummy Redis cache and a provided logger,
+ * then returns a new factory instance.
+ *
+ * @param logger A logger instance for the factory to use.
+ * @returns An instance of `RetryProvidersFactory` configured for testing.
+ */
+export function createTestRetryProviderFactory(
+  logger: Logger,
+): RetryProvidersFactory {
+  const dummyRedis = {
+    get: () => Promise.resolve(null),
+    set: () => Promise.resolve("OK"),
+    publish: () => Promise.resolve(1),
+    subscribe: () => Promise.resolve(),
+    on: () => {},
+  } as unknown as Redis;
+  const redisCache = new RedisCache(dummyRedis);
+  const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
+  return retryProvidersFactory;
+}
+
+/**
  * Creates a test instance of a RetryProvider.
  *
  * This function simplifies the creation of a `RetryProvider` for testing purposes.
@@ -22,15 +47,7 @@ export function createTestRetryProvider(
   chainId: number,
   logger: Logger,
 ): across.providers.RetryProvider {
-  const dummyRedis = {
-    get: () => Promise.resolve(null),
-    set: () => Promise.resolve("OK"),
-    publish: () => Promise.resolve(1),
-    subscribe: () => Promise.resolve(),
-    on: () => {},
-  } as unknown as Redis;
-  const redisCache = new RedisCache(dummyRedis);
-  const retryProvidersFactory = new RetryProvidersFactory(redisCache, logger);
+  const retryProvidersFactory = createTestRetryProviderFactory(logger);
   // If the chain is SVM, we need to use the SVM provider
   if (across.utils.chainIsSvm(chainId)) {
     retryProvidersFactory.initializeProviders();

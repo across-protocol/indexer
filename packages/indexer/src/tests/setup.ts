@@ -1,4 +1,4 @@
-import { newDb } from "pg-mem";
+import { DataType, newDb } from "pg-mem";
 import { DataSource } from "typeorm";
 import { createDataSource as createRealDataSource } from "@repo/indexer-database";
 
@@ -21,6 +21,12 @@ export async function getTestDataSource(): Promise<DataSource> {
   db.createSchema("evm");
 
   db.public.registerFunction({ name: "version", implementation: () => "test" });
+  db.public.registerFunction({
+    name: "pg_advisory_xact_lock",
+    args: [DataType.text, DataType.text], // or [DataType.int, DataType.int] depending on usage
+    returns: DataType.null,
+    implementation: () => null, // Do nothing
+  });
   db.public.registerFunction({
     name: "current_database",
     implementation: () => "test",
