@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_speedUpV3_depositId_originChain_txHash_logIdx", [
@@ -52,6 +53,13 @@ export class RequestedSpeedUpV3Deposit {
 
   @Column()
   blockNumber: number;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @CreateDateColumn()
   createdAt: Date;

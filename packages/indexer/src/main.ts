@@ -192,6 +192,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const metrics = new DataDogMetricsService({
     configuration: config.datadogConfig,
     logger,
+    tags: ["websocket"],
   });
 
   // WebSocket Indexer setup
@@ -207,7 +208,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
-      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      database: postgres,
       logger,
       providers: allProviders,
       sigterm: abortController.signal,

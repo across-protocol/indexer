@@ -180,3 +180,19 @@ export const SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME = "SponsoredDepositForBurn";
 export const OFT_SENT_EVENT_NAME = "OFTSent";
 export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";
 export const SPONSORED_OFT_SEND_EVENT_NAME = "SponsoredOFTSend";
+
+/* ==================================================================================
+ * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Spoke Pool Protocol.
+ * ================================================================================== */
+
+export const FILLED_RELAY_V3_EVENT_NAME = "FilledRelay";
+export const FUNDS_DEPOSITED_V3_EVENT_NAME = "FundsDeposited";
+export const EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME =
+  "ExecutedRelayerRefundRoot";
+export const REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME =
+  "RequestedSpeedUpV3Deposit";
+export const RELAYED_ROOT_BUNDLE_EVENT_NAME = "RelayedRootBundle";
+export const REQUESTED_SLOW_FILL_EVENT_NAME = "RequestedSlowFill";
+export const TOKENS_BRIDGED_EVENT_NAME = "TokensBridged";
+export const CLAIMED_RELAYER_REFUND_EVENT_NAME = "ClaimedRelayerRefund";
