@@ -7,7 +7,7 @@ import {
 import { utils } from "@across-protocol/sdk";
 import { expect } from "chai";
 
-describe("Beta Contract Accessors (using provided JSON)", () => {
+describe("Sponsored Contract Accessors", () => {
   describe("getSponsoredCCTPDstPeripheryAddress", () => {
     it("should return the correct address for HyperEVM (999) explicitly", () => {
       const result = getSponsoredCCTPDstPeripheryAddress(999);

@@ -53,6 +53,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     private rpcUrl: string,
     private hyperliquidRepository: HyperliquidRepository,
     private startBlockNumber: number,
+    private dataSource: DataSource,
   ) {
     this.isInitialized = false;
   }
@@ -150,6 +151,30 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
 
       return { deposits };
     } catch (error: any) {
+      // Check if this is a Hyperliquid RPC block retrieval error (code -32000)
+      const isHyperliquidRpcError =
+        error.message?.includes("Failed to retrieve blocks") ||
+        error.message?.includes("code: -32000");
+
+      if (isHyperliquidRpcError) {
+        this.logger.warn({
+          at: "HyperliquidIndexerDataHandler#fetchDepositsByRange",
+          message:
+            "Hyperliquid RPC error detected, skipping block range and updating to latest block",
+          error: error.message,
+          errorJson: JSON.stringify(error),
+          blockRange,
+        });
+
+        // Skip the block range by updating progress to latest block
+        // Temporary workaround until this is handled on the RPC side
+        await this.skipBlockRangeAndUpdateProgress(blockRange);
+
+        // Return empty deposits so processing can continue
+        return { deposits: [] };
+      }
+
+      // For non-RPC errors, log and throw
       this.logger.error({
         at: "HyperliquidIndexerDataHandler#fetchDepositsByRange",
         message: "Error fetching deposits from Hyperliquid RPC",
@@ -264,6 +289,52 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
     }
 
     return deposits;
+  }
+
+  /**
+   * Skips a failed block range by updating the database progress to the latest block
+   */
+  private async skipBlockRangeAndUpdateProgress(
+    blockRange: BlockRange,
+  ): Promise<void> {
+    try {
+      // Get the latest block number from RPC
+      const rpcClient = new HyperliquidRpcClient(this.rpcUrl, this.logger);
+      const latestBlockNumber = await rpcClient.getLatestBlockNumber(
+        this.STREAM_TYPE,
+      );
+
+      // Update the database to skip the failed block range
+      const skippedBlock = Math.min(blockRange.to, latestBlockNumber);
+
+      await this.dataSource.getRepository(entities.IndexerProgressInfo).upsert(
+        {
+          id: this.getDataIdentifier(),
+          lastFinalisedBlock: skippedBlock,
+          latestBlockNumber: latestBlockNumber,
+          isBackfilling: false,
+        },
+        { conflictPaths: ["id"] },
+      );
+
+      this.logger.info({
+        at: "HyperliquidIndexerDataHandler#skipBlockRangeAndUpdateProgress",
+        message: "Skipped failed block range and updated progress",
+        skippedBlockRange: blockRange,
+        newLastFinalisedBlock: skippedBlock,
+        latestBlockNumber,
+      });
+    } catch (error: any) {
+      this.logger.error({
+        at: "HyperliquidIndexerDataHandler#skipBlockRangeAndUpdateProgress",
+        message: "Error skipping block range and updating progress",
+        blockRange,
+        error: error.message,
+        errorJson: JSON.stringify(error),
+      });
+      // Re-throw so the indexer knows something went wrong
+      throw error;
+    }
   }
 
   /**
