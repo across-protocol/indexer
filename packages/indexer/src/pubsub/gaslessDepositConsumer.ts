@@ -187,6 +187,13 @@ export class GaslessDepositPubSubConsumer {
       return;
     }
 
+    this.logger.debug({
+      at: "GaslessDepositPubSubConsumer#handleMessage",
+      message: "Pulled gasless deposit message from Pub/Sub",
+      messageId: message.id,
+      ...fields,
+    });
+
     try {
       const repo = this.postgres.getRepository(GaslessDeposit);
       await repo
