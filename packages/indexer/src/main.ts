@@ -167,6 +167,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const gaslessDepositPubSubConsumer = new GaslessDepositPubSubConsumer(
     config,
     logger,
+    postgres,
   );
 
   // Set up message workers

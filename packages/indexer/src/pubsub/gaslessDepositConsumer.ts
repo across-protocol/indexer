@@ -1,14 +1,48 @@
 import { PubSub } from "@google-cloud/pubsub";
 import type { Message } from "@google-cloud/pubsub";
+import type { DataSource } from "typeorm";
 import type { Logger } from "winston";
 
+import { GaslessDeposit } from "@repo/indexer-database";
 import type { Config } from "../parseEnv";
+
+interface GaslessDepositPayload {
+  swapTx?: {
+    chainId?: number;
+    data?: {
+      depositId?: string;
+      witness?: Array<{
+        data?: {
+          baseDepositData?: { destinationChainId?: number };
+          depositData?: { destinationChainId?: number };
+        };
+      }>;
+    };
+  };
+}
+
+function getDestinationChainIdFromWitness(
+  witness: unknown,
+): number | undefined {
+  if (!Array.isArray(witness) || witness.length === 0) return undefined;
+  const first = witness[0] as
+    | {
+        data?: {
+          baseDepositData?: { destinationChainId?: number };
+          depositData?: { destinationChainId?: number };
+        };
+      }
+    | undefined;
+  return (
+    first?.data?.baseDepositData?.destinationChainId ??
+    first?.data?.depositData?.destinationChainId
+  );
+}
 
 /**
  * Pull consumer for the gasless-deposit-created PubSub topic.
  * Subscribes to the configured subscription and processes each message.
- * Status tracking (deposit-pending, deposit-failed, fill-pending, filled) can be
- * implemented in the message handler once storage is ready.
+ * Persists originChainId, destinationChainId, and depositId to the gasless_deposit table.
  */
 export class GaslessDepositPubSubConsumer {
   private subscription: ReturnType<PubSub["subscription"]> | null = null;
@@ -17,6 +51,7 @@ export class GaslessDepositPubSubConsumer {
   constructor(
     private readonly config: Config,
     private readonly logger: Logger,
+    private readonly postgres: DataSource,
   ) {}
 
   /**
@@ -92,8 +127,36 @@ export class GaslessDepositPubSubConsumer {
   }
 
   /**
-   * Process a single message. Today we log and ack; later this will validate,
-   * persist with status, and then ack.
+   * Extract originChainId, destinationChainId, and depositId from the GCP message payload.
+   * Returns null if any required field is missing.
+   */
+  private static extractGaslessDepositFields(payload: unknown): {
+    originChainId: string;
+    destinationChainId: string;
+    depositId: string;
+  } | null {
+    const p = payload as GaslessDepositPayload;
+    const swapTx = p?.swapTx;
+    const data = swapTx?.data;
+    const originChainId = swapTx?.chainId;
+    const depositId = data?.depositId;
+    const destinationChainId = getDestinationChainIdFromWitness(data?.witness);
+    if (
+      originChainId == null ||
+      depositId == null ||
+      destinationChainId == null
+    ) {
+      return null;
+    }
+    return {
+      originChainId: String(originChainId),
+      destinationChainId: String(destinationChainId),
+      depositId: String(depositId),
+    };
+  }
+
+  /**
+   * Process a single message: parse payload, persist to gasless_deposit table, then ack.
    */
   private async handleMessage(message: Message): Promise<void> {
     const raw = message.data?.toString("utf8") ?? "";
@@ -111,14 +174,55 @@ export class GaslessDepositPubSubConsumer {
       return;
     }
 
+    const fields =
+      GaslessDepositPubSubConsumer.extractGaslessDepositFields(payload);
+    if (!fields) {
+      this.logger.warn({
+        at: "GaslessDepositPubSubConsumer#handleMessage",
+        message:
+          "Gasless deposit message missing required fields (originChainId, destinationChainId, depositId)",
+        messageId: message.id,
+      });
+      message.ack();
+      return;
+    }
+
+    try {
+      const repo = this.postgres.getRepository(GaslessDeposit);
+      await repo
+        .createQueryBuilder()
+        .insert()
+        .into(GaslessDeposit)
+        .values({
+          originChainId: fields.originChainId,
+          destinationChainId: fields.destinationChainId,
+          depositId: fields.depositId,
+        })
+        .orIgnore()
+        .execute();
+    } catch (err: unknown) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? (err as { code: string }).code
+          : undefined;
+      if (code === "23505") {
+        this.logger.debug({
+          at: "GaslessDepositPubSubConsumer#handleMessage",
+          message: "Gasless deposit already stored (duplicate), skipping",
+          messageId: message.id,
+          ...fields,
+        });
+      } else {
+        throw err;
+      }
+    }
+
     this.logger.debug({
       at: "GaslessDepositPubSubConsumer#handleMessage",
-      message: "Received gasless deposit message",
+      message: "Stored gasless deposit",
       messageId: message.id,
-      payload,
+      ...fields,
     });
-
-    // TODO: validate payload, store gasless deposit with status (e.g. deposit-pending), then ack
     message.ack();
   }
 
