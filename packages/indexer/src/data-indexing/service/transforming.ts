@@ -27,6 +27,12 @@ import {
   OFTReceivedArgs,
   FilledV3RelayArgs,
   V3FundsDepositedArgs,
+  ExecutedRelayerRefundRootArgs,
+  RequestedSpeedUpV3DepositArgs,
+  RelayedRootBundleArgs,
+  RequestedSlowFillArgs,
+  TokensBridgedArgs,
+  ClaimedRelayerRefundArgs,
   SponsoredOFTSendArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
@@ -716,13 +722,206 @@ export const transformV3FundsDepositedEvent = (
 };
 
 /**
- * Transforms a raw `SponsoredOFTSend` event payload into a partial `SponsoredOFTSend` entity.
- * The 'finalised' property is set by the `baseTransformer` based on block number
- * and the configured finality buffer.
+ * Transforms a raw `ExecutedRelayerRefundRoot` event payload into a partial `ExecutedRelayerRefundRoot` entity.
+ * @returns A partial `ExecutedRelayerRefundRoot` entity ready for storage.
+ */
+export const transformExecutedRelayerRefundRootEvent = (
+  preprocessed: ExecutedRelayerRefundRootArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.ExecutedRelayerRefundRoot> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    chainId: preprocessed.chainId.toString(),
+    rootBundleId: preprocessed.rootBundleId,
+    leafId: preprocessed.leafId,
+    l2TokenAddress: transformAddress(preprocessed.l2TokenAddress, chainId),
+    amountToReturn: preprocessed.amountToReturn.toString(),
+    refundAmounts: preprocessed.refundAmounts.map((amount) =>
+      amount.toString(),
+    ),
+    refundAddresses: preprocessed.refundAddresses.map((address) =>
+      transformAddress(address, chainId),
+    ),
+    deferredRefunds: preprocessed.deferredRefunds,
+    caller: transformAddress(preprocessed.caller, chainId),
+  };
+};
+
+export const transformRequestedSpeedUpV3DepositEvent = (
+  preprocessed: RequestedSpeedUpV3DepositArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RequestedSpeedUpV3Deposit> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    originChainId: base.chainId.toString(),
+    depositId: preprocessed.depositId.toString(),
+    depositor: transformAddress(preprocessed.depositor, chainId),
+    updatedRecipient: transformAddress(preprocessed.updatedRecipient, chainId),
+    updatedMessage: preprocessed.updatedMessage,
+    updatedOutputAmount: preprocessed.updatedOutputAmount.toString(),
+    depositorSignature: preprocessed.depositorSignature,
+  };
+};
+
+/**
+ * Transforms a raw `RelayedRootBundle` event payload into a partial `RelayedRootBundle` entity.
  *
  * @param preprocessed The preprocessed event arguments.
  * @param payload The event payload containing the raw log.
  * @param logger The logger instance.
+ * @returns A partial `RelayedRootBundle` entity ready for storage.
+ */
+export const transformRelayedRootBundleEvent = (
+  preprocessed: RelayedRootBundleArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RelayedRootBundle> => {
+  const base = baseTransformer(payload, logger);
+
+  return {
+    ...base,
+    rootBundleId: preprocessed.rootBundleId,
+    relayerRefundRoot: preprocessed.relayerRefundRoot,
+    slowRelayRoot: preprocessed.slowRelayRoot,
+  };
+};
+
+export const transformRequestedSlowFillEvent = (
+  preprocessed: RequestedSlowFillArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.RequestedV3SlowFill> => {
+  const base = baseTransformer(payload, logger);
+  const destinationChainId = Number(base.chainId);
+  const originChainId = Number(preprocessed.originChainId);
+
+  const relayData = {
+    originChainId,
+    depositId: BigNumber.from(preprocessed.depositId),
+    inputToken: across.utils.toAddressType(
+      preprocessed.inputToken.toString(),
+      originChainId,
+    ),
+    outputToken: across.utils.toAddressType(
+      preprocessed.outputToken.toString(),
+      destinationChainId,
+    ),
+    inputAmount: BigNumber.from(preprocessed.inputAmount),
+    outputAmount: BigNumber.from(preprocessed.outputAmount),
+    fillDeadline: preprocessed.fillDeadline,
+    exclusivityDeadline: preprocessed.exclusivityDeadline,
+    exclusiveRelayer: across.utils.toAddressType(
+      preprocessed.exclusiveRelayer.toString(),
+      destinationChainId,
+    ),
+    depositor: across.utils.toAddressType(
+      preprocessed.depositor.toString(),
+      originChainId,
+    ),
+    recipient: across.utils.toAddressType(
+      preprocessed.recipient.toString(),
+      destinationChainId,
+    ),
+    messageHash: preprocessed.messageHash,
+  } as Omit<across.interfaces.RelayData, "message">;
+
+  const internalHash = getInternalHash(
+    relayData,
+    preprocessed.messageHash,
+    destinationChainId,
+  );
+
+  return {
+    ...base,
+    internalHash,
+    depositId: preprocessed.depositId.toString(),
+    originChainId: originChainId.toString(),
+    destinationChainId: destinationChainId.toString(),
+    depositor: formatFromAddressToChainFormat(
+      relayData.depositor,
+      originChainId,
+    ),
+    recipient: formatFromAddressToChainFormat(
+      relayData.recipient,
+      destinationChainId,
+    ),
+    inputToken: formatFromAddressToChainFormat(
+      relayData.inputToken,
+      originChainId,
+    ),
+    inputAmount: relayData.inputAmount.toString(),
+    outputToken: formatFromAddressToChainFormat(
+      relayData.outputToken,
+      destinationChainId,
+    ),
+    outputAmount: relayData.outputAmount.toString(),
+    message: preprocessed.messageHash,
+    exclusiveRelayer: formatFromAddressToChainFormat(
+      relayData.exclusiveRelayer,
+      destinationChainId,
+    ),
+    exclusivityDeadline:
+      preprocessed.exclusivityDeadline === 0
+        ? undefined
+        : new Date(preprocessed.exclusivityDeadline * 1000),
+    fillDeadline: new Date(preprocessed.fillDeadline * 1000),
+  };
+};
+
+/**
+ * Transforms a TokensBridged event into a database entity.
+ * @param preprocessed The preprocessed event arguments.
+ * @param payload The indexer event payload.
+ * @param logger The logger.
+ * @returns The transformed TokensBridged entity.
+ */
+export const transformTokensBridgedEvent = (
+  preprocessed: TokensBridgedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.TokensBridged> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(preprocessed.chainId);
+
+  return {
+    ...base,
+    chainId: chainId.toString(),
+    leafId: preprocessed.leafId,
+    l2TokenAddress: transformAddress(
+      preprocessed.l2TokenAddress.toString(),
+      chainId,
+    ),
+    amountToReturn: preprocessed.amountToReturn.toString(),
+    caller: transformAddress(preprocessed.caller.toString(), chainId),
+  };
+};
+
+export const transformClaimedRelayerRefundEvent = (
+  preprocessed: ClaimedRelayerRefundArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.ClaimedRelayerRefunds> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    l2TokenAddress: transformAddress(preprocessed.l2TokenAddress, chainId),
+    refundAddress: transformAddress(preprocessed.refundAddress, chainId),
+    amount: preprocessed.amount.toString(),
+    caller: transformAddress(preprocessed.caller, chainId),
+  };
+};
+
+/**
  * @returns A partial `SponsoredOFTSend` entity ready for storage.
  */
 export const transformSponsoredOFTSendEvent = (

@@ -18,6 +18,12 @@ import {
   ARBITRARY_ACTIONS_EXECUTED_ABI,
   FILLED_RELAY_V3_ABI,
   FUNDS_DEPOSITED_V3_ABI,
+  EXECUTED_RELAYER_REFUND_ROOT_ABI,
+  REQUESTED_SPEED_UP_V3_DEPOSIT_ABI,
+  RELAYED_ROOT_BUNDLE_ABI,
+  REQUESTED_SLOW_FILL_ABI,
+  TOKENS_BRIDGED_ABI,
+  CLAIMED_RELAYER_REFUND_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -37,6 +43,12 @@ import {
   SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME,
   FILLED_RELAY_V3_EVENT_NAME,
   FUNDS_DEPOSITED_V3_EVENT_NAME,
+  EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME,
+  REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME,
+  RELAYED_ROOT_BUNDLE_EVENT_NAME,
+  REQUESTED_SLOW_FILL_EVENT_NAME,
+  TOKENS_BRIDGED_EVENT_NAME,
+  CLAIMED_RELAYER_REFUND_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -60,6 +72,12 @@ import {
   ArbitraryActionsExecutedArgs,
   FilledV3RelayArgs,
   V3FundsDepositedArgs,
+  ExecutedRelayerRefundRootArgs,
+  RequestedSpeedUpV3DepositArgs,
+  RelayedRootBundleArgs,
+  RequestedSlowFillArgs,
+  TokensBridgedArgs,
+  ClaimedRelayerRefundArgs,
 } from "../model/eventTypes";
 
 import {
@@ -82,6 +100,12 @@ import {
   transformArbitraryActionsExecutedEvent,
   transformFilledV3RelayEvent,
   transformV3FundsDepositedEvent,
+  transformExecutedRelayerRefundRootEvent,
+  transformRequestedSpeedUpV3DepositEvent,
+  transformRelayedRootBundleEvent,
+  transformRequestedSlowFillEvent,
+  transformTokensBridgedEvent,
+  transformClaimedRelayerRefundEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -99,6 +123,12 @@ import {
   storeOFTReceivedEvent,
   storeFilledV3RelayEvent,
   storeV3FundsDepositedEvent,
+  storeExecutedRelayerRefundRootEvent,
+  storeRequestedSpeedUpV3DepositEvent,
+  storeRelayedRootBundleEvent,
+  storeRequestedSlowFillEvent,
+  storeTokensBridgedEvent,
+  storeClaimedRelayerRefundEvent,
   storeSponsoredOFTSendEvent,
 } from "./storing";
 import { Entity } from "typeorm";
@@ -462,7 +492,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
 };
 
 export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
-  any,
+  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
   EventArgs
@@ -492,6 +522,88 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         transform: (args: V3FundsDepositedArgs, payload: IndexerEventPayload) =>
           transformV3FundsDepositedEvent(args, payload, logger),
         store: storeV3FundsDepositedEvent,
+      },
+      {
+        config: {
+          abi: EXECUTED_RELAYER_REFUND_ROOT_ABI,
+          eventName: EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<ExecutedRelayerRefundRootArgs>,
+        filter: async () => true,
+        transform: (
+          args: ExecutedRelayerRefundRootArgs,
+          payload: IndexerEventPayload,
+        ) => transformExecutedRelayerRefundRootEvent(args, payload, logger),
+        store: storeExecutedRelayerRefundRootEvent,
+      },
+      {
+        config: {
+          abi: REQUESTED_SPEED_UP_V3_DEPOSIT_ABI,
+          eventName: REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<RequestedSpeedUpV3DepositArgs>,
+        filter: async () => true,
+        transform: (
+          args: RequestedSpeedUpV3DepositArgs,
+          payload: IndexerEventPayload,
+        ) => transformRequestedSpeedUpV3DepositEvent(args, payload, logger),
+        store: storeRequestedSpeedUpV3DepositEvent,
+      },
+      {
+        config: {
+          abi: RELAYED_ROOT_BUNDLE_ABI,
+          eventName: RELAYED_ROOT_BUNDLE_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<RelayedRootBundleArgs>,
+        filter: async () => true,
+        transform: (
+          args: RelayedRootBundleArgs,
+          payload: IndexerEventPayload,
+        ) => transformRelayedRootBundleEvent(args, payload, logger),
+        store: storeRelayedRootBundleEvent,
+      },
+      {
+        config: {
+          abi: REQUESTED_SLOW_FILL_ABI,
+          eventName: REQUESTED_SLOW_FILL_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<RequestedSlowFillArgs>,
+        filter: async () => true,
+        transform: (
+          args: RequestedSlowFillArgs,
+          payload: IndexerEventPayload,
+        ) => transformRequestedSlowFillEvent(args, payload, logger),
+        store: storeRequestedSlowFillEvent,
+      },
+      {
+        config: {
+          abi: TOKENS_BRIDGED_ABI,
+          eventName: TOKENS_BRIDGED_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<TokensBridgedArgs>,
+        filter: async () => true,
+        transform: (args: TokensBridgedArgs, payload: IndexerEventPayload) =>
+          transformTokensBridgedEvent(args, payload, logger),
+        store: storeTokensBridgedEvent,
+      },
+      {
+        config: {
+          abi: CLAIMED_RELAYER_REFUND_ABI,
+          eventName: CLAIMED_RELAYER_REFUND_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`,
+        },
+        preprocess: extractRawArgs<ClaimedRelayerRefundArgs>,
+        filter: async () => true,
+        transform: (
+          args: ClaimedRelayerRefundArgs,
+          payload: IndexerEventPayload,
+        ) => transformClaimedRelayerRefundEvent(args, payload, logger),
+        store: storeClaimedRelayerRefundEvent,
       },
     ];
   },
