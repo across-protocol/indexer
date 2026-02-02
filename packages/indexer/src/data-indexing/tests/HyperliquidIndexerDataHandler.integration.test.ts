@@ -460,7 +460,10 @@ describe("HyperliquidIndexerDataHandler", () => {
     getLatestBlockNumberStub.resolves(latestBlockNumber);
 
     // Process should complete without throwing
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     // Verify that the database progress was updated
     const progressRepo = dataSource.getRepository(entities.IndexerProgressInfo);
