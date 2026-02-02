@@ -530,6 +530,7 @@ export const transformFilledV3RelayEvent = (
       preprocessed.inputToken.toString(),
       originChainId,
     ),
+    // TODO: On backfilling derive address from hubpool event
     outputToken: across.utils.toAddressType(
       preprocessed.outputToken.toString(),
       destinationChainId,
@@ -638,6 +639,7 @@ export const transformV3FundsDepositedEvent = (
       preprocessed.inputToken.toString(),
       originChainId,
     ),
+    // TODO: On backfilling derive address from hubpool event
     outputToken: across.utils.toAddressType(
       preprocessed.outputToken.toString(),
       destinationChainId,
