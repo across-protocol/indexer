@@ -2,7 +2,6 @@ import winston from "winston";
 import Redis from "ioredis";
 import * as across from "@across-protocol/sdk";
 import { WebhookFactory } from "@repo/webhooks";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
 import { connectToDatabase } from "./database/database.provider";
 import { RedisCache } from "./redis/redisCache";
@@ -191,6 +190,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const metrics = new DataDogMetricsService({
     configuration: config.datadogConfig,
     logger,
+    tags: ["websocket"],
   });
 
   // WebSocket Indexer setup
@@ -206,7 +206,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
-      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      database: postgres,
       logger,
       providers: allProviders,
       sigterm: abortController.signal,
