@@ -7,7 +7,6 @@ export type ProcessBlockRangeRequest = {
   blockRange: BlockRange;
   lastFinalisedBlock: number;
   isBackfilling?: boolean;
-  signal?: AbortSignal;
 };
 
 export interface IndexerDataHandler {

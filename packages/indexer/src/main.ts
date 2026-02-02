@@ -339,7 +339,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     }
   });
 
-  redis?.quit();
+  await redis?.quit();
   await postgres?.destroy();
   logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
   await new Promise<void>((resolve) => {

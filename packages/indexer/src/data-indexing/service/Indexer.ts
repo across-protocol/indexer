@@ -73,7 +73,6 @@ export class Indexer {
             blockRange: blockRangeResult.blockRange,
             lastFinalisedBlock: blockRangeResult.lastFinalisedBlock,
             isBackfilling: blockRangeResult.isBackfilling,
-            signal,
           });
           // When the block range is processed successfully and the indexer is ready to start
           // processing the next block range, save the progress in the database. The most important
