@@ -74,7 +74,7 @@ export class AcrossIndexerManager {
 
   private startHubPoolIndexer() {
     if (!this.config.enableHubPoolIndexer) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#AcrossIndexerManager#startHubPoolIndexer",
         message: "Hub pool indexer is disabled",
       });
@@ -209,7 +209,7 @@ export class AcrossIndexerManager {
     this.svmSpokePoolIndexers = svmSpokePoolIndexers;
 
     if (this.svmSpokePoolIndexers.length === 0) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#AcrossIndexerManager#startSvmSpokePoolIndexers",
         message: "No SVM spoke pool indexers to start",
       });

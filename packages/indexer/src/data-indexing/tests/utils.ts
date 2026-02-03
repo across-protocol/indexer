@@ -18,6 +18,7 @@ import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
+import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueuesService } from "../../messaging/service";
 import { entities } from "@repo/indexer-database";
@@ -186,6 +187,10 @@ export const getSpokePoolIndexerDataHandler = (
   );
   const callsFailedRepo = new CallsFailedRepository(dataSource, logger);
   const swapMetadataRepo = new SwapMetadataRepository(dataSource, logger);
+  const hyperliquidDepositHandlerRepo = new HyperliquidDepositHandlerRepository(
+    dataSource,
+    logger,
+  );
 
   // Create Services
   // Stub SpokePoolProcessor to avoid pg_advisory_xact_lock issues with pg-mem
@@ -210,6 +215,7 @@ export const getSpokePoolIndexerDataHandler = (
     swapBeforeBridgeRepo,
     callsFailedRepo,
     swapMetadataRepo,
+    hyperliquidDepositHandlerRepo,
     spokePoolProcessor,
     indexerQueuesService,
   );

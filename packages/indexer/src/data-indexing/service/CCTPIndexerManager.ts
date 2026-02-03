@@ -31,7 +31,7 @@ export class CCTPIndexerManager {
   public async start() {
     try {
       if (this.config.cctpIndexerChainIds.length === 0) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#CCTPIndexerManager#start",
           message: "CCTP indexer is disabled",
         });
