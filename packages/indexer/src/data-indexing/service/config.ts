@@ -24,6 +24,7 @@ import {
   REQUESTED_SLOW_FILL_ABI,
   TOKENS_BRIDGED_ABI,
   CLAIMED_RELAYER_REFUND_ABI,
+  SWAP_BEFORE_BRIDGE_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -49,6 +50,7 @@ import {
   REQUESTED_SLOW_FILL_EVENT_NAME,
   TOKENS_BRIDGED_EVENT_NAME,
   CLAIMED_RELAYER_REFUND_EVENT_NAME,
+  SWAP_BEFORE_BRIDGE_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -78,6 +80,7 @@ import {
   RequestedSlowFillArgs,
   TokensBridgedArgs,
   ClaimedRelayerRefundArgs,
+  SwapBeforeBridgeArgs,
 } from "../model/eventTypes";
 
 import {
@@ -106,6 +109,7 @@ import {
   transformRequestedSlowFillEvent,
   transformTokensBridgedEvent,
   transformClaimedRelayerRefundEvent,
+  transformSwapBeforeBridgeEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -130,6 +134,7 @@ import {
   storeTokensBridgedEvent,
   storeClaimedRelayerRefundEvent,
   storeSponsoredOFTSendEvent,
+  storeSwapBeforeBridgeEvent,
 } from "./storing";
 import { Entity } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -161,20 +166,20 @@ import {
   getSupportOftChainIds,
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
+import { utils as dbUtils, DataSource, entities, SaveQueryResult } from "@repo/indexer-database";
+import { postProcessDepositEvent, postProcessSwapBeforeBridge } from "./postprocessing";
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
 
 /**
  * Array of event handlers.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
- * @template TEventEntity The type of the structured database entity.
+ * @template TTransformed The type of the structured database entity.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TStoredEventEntity The type of what is returned after storage (e.g., SaveQueryResult<T> or SaveQueryResult<T>[]).
+ * @template TRepository The type of the repository used for storage.
  */
-type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
-  TPreprocessed extends any
-    ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
-    : never
->;
+type EventHandlers<TDb, TPayload, TTransformed, TPreprocessed, TStoredEventEntity, TRepository> = Array<IndexerEventHandler<TDb, TPayload, TTransformed, TPreprocessed, TStoredEventEntity, TRepository>>;
 
 /**
  * Request object for getting event handlers.
@@ -190,16 +195,20 @@ type GetEventHandlersRequest = {
 
 /**
  * Configuration for a complete indexing subsystem.
- * @template TEventEntity The type of the structured database entity.
+ * @template TTransformed The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TStoredEventEntity The type of what is returned after storage (e.g., SaveQueryResult<T> or SaveQueryResult<T>[]).
+ * @template TRepository The type of the repository used for storage.
  */
 export interface SupportedProtocols<
-  TEventEntity,
+  TTransformed,
   TDb,
   TPayload,
   TPreprocessed,
+  TStoredEventEntity,
+  TRepository
 > {
   /**
    * Returns the list of event configurations for this protocol.
@@ -208,7 +217,7 @@ export interface SupportedProtocols<
    */
   getEventHandlers: (
     request: GetEventHandlersRequest,
-  ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
+  ) => EventHandlers<TDb, TPayload, TTransformed, TPreprocessed, TStoredEventEntity, TRepository>;
 }
 
 /**
@@ -220,9 +229,11 @@ export interface SupportedProtocols<
  */
 export const CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  typeof Entity,
+  BlockchainEventRepository
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
@@ -301,10 +312,12 @@ export const getSponsoredBridgingEventHandlers = (
   sponsorshipContractAddress: string,
   logger: Logger,
 ): EventHandlers<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   Partial<typeof Entity>,
-  EventArgs
+  EventArgs,
+  SaveQueryResult<typeof Entity>,
+  BlockchainEventRepository,
 > => {
   return [
     {
@@ -394,9 +407,11 @@ export const getSponsoredBridgingEventHandlers = (
 
 export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  typeof Entity,
+  BlockchainEventRepository
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
@@ -450,9 +465,11 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
  */
 export const OFT_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  typeof Entity,
+  BlockchainEventRepository
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
@@ -493,9 +510,11 @@ export const OFT_PROTOCOL: SupportedProtocols<
 
 export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  typeof Entity,
+  BlockchainEventRepository
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     return [
@@ -522,6 +541,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         transform: (args: V3FundsDepositedArgs, payload: IndexerEventPayload) =>
           transformV3FundsDepositedEvent(args, payload, logger),
         store: storeV3FundsDepositedEvent,
+        postProcess: async (
+          db: DataSource,
+          storedItem: entities.V3FundsDeposited,
+        ) => {
+          await postProcessDepositEvent(db, storedItem);
+        },
       },
       {
         config: {
@@ -605,6 +630,30 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         ) => transformClaimedRelayerRefundEvent(args, payload, logger),
         store: storeClaimedRelayerRefundEvent,
       },
+      {
+        config: {
+          abi: SWAP_BEFORE_BRIDGE_ABI,
+          eventName: SWAP_BEFORE_BRIDGE_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`, // TODO: Check if address is correct for SwapBeforeBridge? It's periphery?
+        },
+        preprocess: extractRawArgs<SwapBeforeBridgeArgs>,
+        filter: async () => true,
+        transform: (args: SwapBeforeBridgeArgs, payload: IndexerEventPayload) =>
+          transformSwapBeforeBridgeEvent(args, payload, logger),
+        store: storeSwapBeforeBridgeEvent,
+        postProcess: async (
+          db: DataSource,
+          storedItem: entities.SwapBeforeBridge,
+          payload: IndexerEventPayload,
+        ) => {
+          await postProcessSwapBeforeBridge({
+            db,
+            storedItem,
+            payload,
+            logger,
+          });
+        },
+      },
     ];
   },
 };
@@ -614,10 +663,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
  * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
  */
 export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
-  BlockchainEventRepository,
+  any,
+  DataSource,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  typeof Entity,
+  BlockchainEventRepository
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get base OFT handlers (OFTSent, OFTReceived)
@@ -638,7 +689,7 @@ export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
         filter: async () => true,
         transform: (args: SponsoredOFTSendArgs, payload: IndexerEventPayload) =>
           transformSponsoredOFTSendEvent(args, payload, logger),
-        store: storeSponsoredOFTSendEvent,
+        store: (db, storedItem) => storeSponsoredOFTSendEvent(, storedItem),
       });
     }
 
@@ -665,9 +716,11 @@ export const getChainProtocols: (
   number,
   SupportedProtocols<
     Partial<typeof Entity>,
-    BlockchainEventRepository,
+    DataSource,
     IndexerEventPayload,
-    EventArgs
+    EventArgs,
+    typeof Entity,
+    BlockchainEventRepository
   >[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.
@@ -680,9 +733,11 @@ export const getChainProtocols: (
       number,
       SupportedProtocols<
         Partial<typeof Entity>,
-        BlockchainEventRepository,
+        DataSource,
         IndexerEventPayload,
-        EventArgs
+        EventArgs,
+        typeof Entity,
+        BlockchainEventRepository
       >[]
     >,
   );

@@ -6,6 +6,7 @@ import {
   Transformer,
   Filter,
   Preprocessor,
+  PostProcessor,
 } from "../model/genericTypes";
 import { Logger } from "winston";
 import {
@@ -20,6 +21,8 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { utils as dbUtils, DataSource } from "@repo/indexer-database";
+type BlockchainEventRepository = dbUtils.BlockchainEventRepository;
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -35,30 +38,43 @@ import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-cli
  * An event handler for a specific event.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
- * @template TEventEntity The type of the structured database entity.
+ * @template TTransformed The type of the structured database entity.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TRepository The type of the repository used for storage.
  */
 export interface IndexerEventHandler<
   TDb,
   TPayload,
-  TEventEntity,
+  TTransformed,
   TPreprocessed,
+  TRepository,
+  TStoredEventEntity,
 > {
   config: EventConfig;
   preprocess: Preprocessor<TPayload, TPreprocessed>;
-  transform: Transformer<TPreprocessed, TPayload, TEventEntity>;
-  store: Storer<TEventEntity, TDb>;
+  transform: Transformer<TPreprocessed, TPayload, TTransformed>;
+  store: Storer<TTransformed, TRepository, TStoredEventEntity>;
   filter?: Filter<TPreprocessed, TPayload>;
+  postProcess?: PostProcessor<TStoredEventEntity, TDb, TPayload>;
 }
 
 /**
  * Configuration for a complete indexing subsystem.
- * @template TEventEntity The type of the structured database entity.
+ * @template TStoredEventEntity The type of the structured database entity.
+ * @template TTransformed The type of the transformed event.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TRepository The type of the repository used for storage.
  */
-export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
+export interface IndexerConfig<
+  TDb,
+  TPayload,
+  TPreprocessed,
+  TRepository,
+  TStoredEventEntity,
+  TTransformed
+> {
   /** The ID of the blockchain to connect to. */
   chainId: number;
   /** The WebSocket RPC URL for the blockchain. */
@@ -69,7 +85,7 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
    * to persist the entity to the database.
    */
   events: Array<
-    IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
+    IndexerEventHandler<TDb, TPayload, TTransformed, TPreprocessed, TRepository, TStoredEventEntity>
   >;
   /** Optional WebSocket transport options */
   transportOptions?: WebSocketTransportConfig;
@@ -77,21 +93,23 @@ export interface IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed> {
 
 /**
  * Request object for starting an indexing subsystem.
- * @template TEventEntity The type of the structured database entity.
+ * @template TTransformed The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
  */
 export interface StartIndexingSubsystemRequest<
-  TEventEntity,
+  TTransformed,
   TDb,
   TPayload,
   TPreprocessed,
+  TStoredEventEntity,
+  TRepository,
 > {
   /** The database instance. */
   db: TDb;
   /** The configuration for the indexer subsystem. */
-  indexerConfig: IndexerConfig<TEventEntity, TDb, TPayload, TPreprocessed>;
+  indexerConfig: IndexerConfig<TTransformed, TDb, TPayload, TPreprocessed, TRepository, TStoredEventEntity>;
   /** An optional logger instance. */
   logger: Logger;
   /** An optional AbortSignal to gracefully shut down the indexer. */
@@ -111,12 +129,14 @@ export interface StartIndexingSubsystemRequest<
  *
  * @param request The request object containing the database instance, indexer configuration, and the logger.
  */
-export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
+export async function startIndexing<TTransformed, TDb, TPayload, TPreprocessed, TStoredEventEntity, TRepository>(
   request: StartIndexingSubsystemRequest<
-    TEventEntity,
+    TTransformed,
     TDb,
     TPayload,
-    TPreprocessed
+    TPreprocessed,
+    TStoredEventEntity,
+    TRepository,
   >,
 ) {
   const { db, indexerConfig, sigterm, logger, metrics } = request;
@@ -193,6 +213,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
           store: originalStore,
           filter,
           preprocess,
+          postProcess,
         } = eventItem;
 
         const store = withMetrics(originalStore, {
@@ -219,14 +240,27 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
             const startProcessing = Date.now();
 
             const eventSource = async () => Promise.resolve(payload);
-            processEvent<TEventEntity, TDb, TPayload, TPreprocessed>({
+            const repository = new dbUtils.BlockchainEventRepository(
+              db as DataSource,
+              logger,
+            );
+            processEvent<
+              TTransformed,
+              TStoredEventEntity,
+              TDb,
+              TRepository,
+              TPayload,
+              TPreprocessed
+            >({
               db,
+              repository: repository as TRepository,
               source: eventSource,
               preprocess,
               transform,
               store,
               filter,
               logger,
+              postProcess,
             }).then(() => {
               metrics?.addGaugeMetric(
                 "processEvent",

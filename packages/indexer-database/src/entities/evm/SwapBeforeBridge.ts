@@ -8,6 +8,8 @@ import {
   Unique,
 } from "typeorm";
 
+import { DataSourceType } from "../../model";
+
 @Entity({ schema: "evm" })
 @Unique("UK_swapBeforeBridge_blockNumber_chainId_logIndex", [
   "blockNumber",
@@ -17,6 +19,13 @@ import {
 @Index("IX_swapBeforeBridge_finalised", ["finalised"])
 @Index("IX_swapBeforeBridge_deletedAt", ["deletedAt"])
 export class SwapBeforeBridge {
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
+
   @PrimaryGeneratedColumn()
   id: number;
 

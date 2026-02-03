@@ -4,7 +4,9 @@ import {
   Transformer,
   Filter,
   Preprocessor,
+  PostProcessor,
 } from "../model/genericTypes";
+import { SaveQueryResult } from "@repo/indexer-database";
 import { Logger } from "winston";
 
 /**
@@ -20,18 +22,24 @@ import { Logger } from "winston";
 /**
  * Request object for the generic event processor.
  * @template TEntity The type of the structured database entity.
+ * @template TStoredEntity The type of the stored database entity.
  * @template TDb The type of the database client/connection.
+ * @template TRepository The type of the repository used for storage.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
  */
 export interface GenericEventProcessorRequest<
   TEntity,
+  TStoredEntity,
   TDb,
+  TRepository,
   TPayload,
-  TPreprocessed = TPayload,
+  TPreprocessed,
 > {
   /** The database instance. */
   db: TDb;
+  /** The repository instance. */
+  repository: TRepository;
   /** The function to source events. */
   source: EventSource<TPayload>;
   /** The function to preprocess the event payload. */
@@ -39,11 +47,13 @@ export interface GenericEventProcessorRequest<
   /** The function to transform the event payload into an entity. */
   transform: Transformer<TPreprocessed, TPayload, TEntity>;
   /** The function to store the entity in the database. */
-  store: Storer<TEntity, TDb>;
+  store: Storer<TEntity, TRepository, TStoredEntity>;
   /** The function to filter the entity. */
   filter?: Filter<TPreprocessed, TPayload>;
   /** An optional logger instance. */
   logger?: Logger;
+  /** The function to post-process the entity. */
+  postProcess?: PostProcessor<TStoredEntity, TDb, TPayload>;
 }
 
 /**
@@ -60,21 +70,41 @@ export interface GenericEventProcessorRequest<
  * This generic design allows the same worker logic to process any type of event,
  * simply by being initialized with different `source`, `transform`, and `store` functions.
  *
- * @template TEvent The type of the raw event.
  * @template TEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
+ * @template TRepository The type of the repository used for storage.
+ * @template TPayload The type of the raw event.
  * @template TPreprocessed The type of the preprocessed data.
- * @param request The request object containing db, source, transform, store, and logger.
+ * @param request The request object containing db, repository, source, transform, store, and logger.
  */
 export const processEvent = async <
   TEntity,
+  TStoredEntity,
   TDb,
+  TRepository,
   TPayload,
-  TPreprocessed = TPayload,
+  TPreprocessed,
 >(
-  request: GenericEventProcessorRequest<TEntity, TDb, TPayload, TPreprocessed>,
+  request: GenericEventProcessorRequest<
+    TEntity,
+    TStoredEntity,
+    TDb,
+    TRepository,
+    TPayload,
+    TPreprocessed
+  >,
 ): Promise<void> => {
-  const { db, source, preprocess, transform, store, filter, logger } = request;
+  const {
+    db,
+    repository,
+    source,
+    preprocess,
+    transform,
+    store,
+    filter,
+    logger,
+    postProcess,
+  } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
   // sourcing, transformation, or storage of an event. This prevents a single failing
   // event from crashing the entire listening process.
@@ -96,17 +126,17 @@ export const processEvent = async <
     const entity = await transform(preprocessed, payload);
 
     // Store (Asynchronous I/O operation)
-    const storedItems = await store(entity, db);
+    const storedItem = await store(entity, repository);
+
+    // Post-process
+    if (postProcess) {
+      await postProcess(db, storedItem, payload);
+    }
 
     logger?.debug({
       at: "genericEventProcessor#genericEventProcessor",
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
-      message: `Successfully stored event: ${storedItems
-        .map(
-          (entry) =>
-            `${(entry.data as any).constructor.name}#${(entry.data as any).id}`,
-        )
-        .join(", ")}`,
+      message: `Successfully stored event: ${(storedItem as any).constructor.name}#${(storedItem as any).id}`,
     });
   } catch (error) {
     logger?.error({

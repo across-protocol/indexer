@@ -32,7 +32,7 @@ export class SpokePoolProcessor {
     private readonly chainId: number,
     private readonly logger: winston.Logger,
     private readonly webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
-  ) {}
+  ) { }
 
   public async process(
     events: StoreEventsResult,
@@ -109,70 +109,12 @@ export class SpokePoolProcessor {
   private async assignDepositEventsToRelayHashInfo(
     events: entities.V3FundsDeposited[],
   ): Promise<void> {
-    const insertResults: InsertResult[] = [];
-    const updateResults: UpdateResult[] = [];
-    await Promise.all(
-      events.map(async (event) => {
-        // Format from event to relayHashInfo row
-        const item = {
-          relayHash: event.relayHash,
-          internalHash: event.internalHash,
-          depositId: event.depositId,
-          originChainId: event.originChainId,
-          destinationChainId: event.destinationChainId,
-          fillDeadline: event.fillDeadline,
-          depositEventId: event.id,
-          depositTxHash: event.transactionHash,
-          includedActions: !utils.isMessageEmpty(event.message),
-        };
-
-        // Start a transaction
-        await this.postgres.transaction(async (transactionalEntityManager) => {
-          const relayHashInfoRepository =
-            transactionalEntityManager.getRepository(entities.RelayHashInfo);
-
-          const lockKey = getDbLockKeyForDeposit(event);
-          // Acquire a lock to prevent concurrent modifications on the same relayHash.
-          // The lock is automatically released when the transaction commits or rolls back.
-          await transactionalEntityManager.query(
-            `SELECT pg_advisory_xact_lock($2, $1)`,
-            lockKey,
-          );
-
-          // Retrieve an existing entry that either:
-          // - Matches the relayHash and has no associated depositEventId.
-          // - Matches both relayHash and depositEventId.
-          const existingRow = await relayHashInfoRepository
-            .createQueryBuilder()
-            .where('"internalHash" = :itemInternalHash', {
-              itemInternalHash: item.internalHash,
-            })
-            .andWhere(
-              '"depositEventId" IS NULL OR "depositEventId" = :itemEventId',
-              { itemEventId: item.depositEventId },
-            )
-            .getOne();
-
-          // Insert a new record if no matching entry is found.
-          if (!existingRow) {
-            const insertedRow = await relayHashInfoRepository.insert(item);
-            insertResults.push(insertedRow);
-          } else {
-            // Update the existing row if a match is found.
-            const updatedRow = await relayHashInfoRepository.update(
-              { id: existingRow.id, internalHash: item.internalHash },
-              item,
-            );
-            updateResults.push(updatedRow);
-          }
-        });
-      }),
-    );
+    const results = await assignDepositEventsToRelayHashInfo(events, this.postgres);
 
     this.logRelayHashInfoAssignmentResult(
       SpokePoolEvents.V3FundsDeposited,
-      insertResults,
-      updateResults,
+      results.insertResults,
+      results.updateResults,
     );
   }
 
@@ -518,19 +460,7 @@ export class SpokePoolProcessor {
   private async assignSwapEventToRelayHashInfo(
     depositSwapPairs: DepositSwapPair[],
   ) {
-    const relayHashInfoRepository = this.postgres.getRepository(
-      entities.RelayHashInfo,
-    );
-    await Promise.all(
-      depositSwapPairs.map((depositSwapPair) =>
-        relayHashInfoRepository.update(
-          { depositEventId: depositSwapPair.deposit.id },
-          {
-            swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
-          },
-        ),
-      ),
-    );
+    await assignSwapEventToRelayHashInfo(depositSwapPairs, this.postgres);
   }
 
   /**
@@ -676,3 +606,92 @@ export class SpokePoolProcessor {
     });
   }
 }
+
+export const assignDepositEventsToRelayHashInfo = async (
+    events: entities.V3FundsDeposited[],
+    db: DataSource,
+  ): Promise<{insertResults: InsertResult[], updateResults: UpdateResult[]}> {
+    const insertResults: InsertResult[] = [];
+    const updateResults: UpdateResult[] = [];
+    await Promise.all(
+      events.map(async (event) => {
+        // Format from event to relayHashInfo row
+        const item = {
+          relayHash: event.relayHash,
+          internalHash: event.internalHash,
+          depositId: event.depositId,
+          originChainId: event.originChainId,
+          destinationChainId: event.destinationChainId,
+          fillDeadline: event.fillDeadline,
+          depositEventId: event.id,
+          depositTxHash: event.transactionHash,
+          includedActions: !utils.isMessageEmpty(event.message),
+        };
+
+        // Start a transaction
+        await db.transaction(async (transactionalEntityManager) => {
+          const relayHashInfoRepository =
+            transactionalEntityManager.getRepository(entities.RelayHashInfo);
+
+          const lockKey = getDbLockKeyForDeposit(event);
+          // Acquire a lock to prevent concurrent modifications on the same relayHash.
+          // The lock is automatically released when the transaction commits or rolls back.
+          await transactionalEntityManager.query(
+            `SELECT pg_advisory_xact_lock($2, $1)`,
+            lockKey,
+          );
+
+          // Retrieve an existing entry that either:
+          // - Matches the relayHash and has no associated depositEventId.
+          // - Matches both relayHash and depositEventId.
+          const existingRow = await relayHashInfoRepository
+            .createQueryBuilder()
+            .where('"internalHash" = :itemInternalHash', {
+              itemInternalHash: item.internalHash,
+            })
+            .andWhere(
+              '"depositEventId" IS NULL OR "depositEventId" = :itemEventId',
+              { itemEventId: item.depositEventId },
+            )
+            .getOne();
+
+          // Insert a new record if no matching entry is found.
+          if (!existingRow) {
+            const insertedRow = await relayHashInfoRepository.insert(item);
+            insertResults.push(insertedRow);
+          } else {
+            // Update the existing row if a match is found.
+            const updatedRow = await relayHashInfoRepository.update(
+              { id: existingRow.id, internalHash: item.internalHash },
+              item,
+            );
+            updateResults.push(updatedRow);
+          }
+        });
+      }),
+    );
+
+    return {
+      insertResults,
+      updateResults,
+    };
+  }
+
+export const assignSwapEventToRelayHashInfo = async (
+    depositSwapPair: DepositSwapPair[],
+    db: DataSource,
+  ): Promise<void> => {
+    const relayHashInfoRepository = db.getRepository(
+      entities.RelayHashInfo,
+    );
+    await Promise.all(
+      depositSwapPair.map((depositSwapPair) =>
+        relayHashInfoRepository.update(
+          { depositEventId: depositSwapPair.deposit.id },
+          {
+            swapBeforeBridgeEventId: depositSwapPair.swapBeforeBridge.id,
+          },
+        ),
+      ),
+    );
+  }
