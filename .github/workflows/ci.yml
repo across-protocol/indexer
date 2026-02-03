@@ -35,6 +35,7 @@ jobs:
           RPC_PROVIDER_URLS_34268394551451: ${{ secrets.RPC_PROVIDER_URLS_34268394551451 }}
           RPC_PROVIDER_URLS_1: ${{ secrets.RPC_PROVIDER_URLS_1 }}
           RPC_PROVIDER_URLS_10: ${{ secrets.RPC_PROVIDER_URLS_10 }}
+          RPC_PROVIDER_URLS_8453: ${{ secrets.RPC_PROVIDER_URLS_8453 }}
         run: |
           # Safely append the secret, prefixed with a newline.
           # This prevents file corruption.
@@ -45,6 +46,7 @@ jobs:
           printf '\n%s\n' "RPC_PROVIDER_URLS_34268394551451=$RPC_PROVIDER_URLS_34268394551451" >> .env.test
           printf '\n%s\n' "RPC_PROVIDER_URLS_1=$RPC_PROVIDER_URLS_1" >> .env.test
           printf '\n%s\n' "RPC_PROVIDER_URLS_10=$RPC_PROVIDER_URLS_10" >> .env.test
+          printf '\n%s\n' "RPC_PROVIDER_URLS_8453=$RPC_PROVIDER_URLS_8453" >> .env.test
       - name: Run tests using docker
         run: pnpm test:e2e:docker
   build:

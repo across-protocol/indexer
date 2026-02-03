@@ -138,6 +138,108 @@ export interface SponsoredOFTSendArgs {
   sig: `0x${string}`;
 }
 
+/* ==================================================================================
+ * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
+ * * Specific event types for the Spoke Pool Protocol.
+ * ================================================================================== */
+export interface RelayExecutionInfo {
+  updatedRecipient: `0x${string}`;
+  updatedMessageHash: `0x${string}`;
+  updatedOutputAmount: bigint;
+  fillType: number;
+}
+
+export interface FilledV3RelayArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  repaymentChainId: bigint;
+  originChainId: bigint;
+  depositId: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  exclusiveRelayer: `0x${string}`;
+  relayer: `0x${string}`;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  messageHash: `0x${string}`;
+  relayExecutionInfo: RelayExecutionInfo;
+}
+
+export interface V3FundsDepositedArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  destinationChainId: bigint;
+  depositId: number;
+  quoteTimestamp: number;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  exclusiveRelayer: `0x${string}`;
+  message: `0x${string}`;
+}
+
+export interface ExecutedRelayerRefundRootArgs {
+  amountToReturn: bigint;
+  chainId: bigint;
+  refundAmounts: bigint[];
+  rootBundleId: number;
+  leafId: number;
+  l2TokenAddress: `0x${string}`;
+  refundAddresses: `0x${string}`[];
+  deferredRefunds: boolean;
+  caller: `0x${string}`;
+}
+
+export interface RequestedSpeedUpV3DepositArgs {
+  updatedOutputAmount: bigint;
+  depositId: number;
+  depositor: `0x${string}`;
+  updatedRecipient: `0x${string}`;
+  updatedMessage: `0x${string}`;
+  depositorSignature: `0x${string}`;
+}
+
+export interface RelayedRootBundleArgs {
+  rootBundleId: number;
+  relayerRefundRoot: `0x${string}`;
+  slowRelayRoot: `0x${string}`;
+}
+
+export interface RequestedSlowFillArgs {
+  inputToken: `0x${string}`;
+  outputToken: `0x${string}`;
+  inputAmount: bigint;
+  outputAmount: bigint;
+  originChainId: bigint;
+  depositId: bigint;
+  fillDeadline: number;
+  exclusivityDeadline: number;
+  exclusiveRelayer: `0x${string}`;
+  depositor: `0x${string}`;
+  recipient: `0x${string}`;
+  messageHash: `0x${string}`;
+}
+
+export interface TokensBridgedArgs {
+  amountToReturn: bigint;
+  chainId: bigint;
+  leafId: number;
+  l2TokenAddress: `0x${string}`;
+  caller: `0x${string}`;
+}
+
+export interface ClaimedRelayerRefundArgs {
+  l2TokenAddress: `0x${string}`;
+  refundAddress: `0x${string}`;
+  amount: bigint;
+  caller: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -152,4 +254,12 @@ export type EventArgs =
   | ArbitraryActionsExecutedArgs
   | OFTSentArgs
   | OFTReceivedArgs
-  | SponsoredOFTSendArgs;
+  | FilledV3RelayArgs
+  | V3FundsDepositedArgs
+  | SponsoredOFTSendArgs
+  | ExecutedRelayerRefundRootArgs
+  | RequestedSpeedUpV3DepositArgs
+  | RelayedRootBundleArgs
+  | RequestedSlowFillArgs
+  | TokensBridgedArgs
+  | ClaimedRelayerRefundArgs;

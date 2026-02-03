@@ -29,6 +29,7 @@ import { IndexerQueuesService } from "../../messaging/service";
 // Repositories
 import { BundleRepository } from "../../database/BundleRepository";
 import { HubPoolRepository } from "../../database/HubPoolRepository";
+import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
@@ -48,6 +49,7 @@ export class AcrossIndexerManager {
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private callsFailedRepository: CallsFailedRepository,
     private swapMetadataRepository: SwapMetadataRepository,
+    private hyperliquidDepositHandlerRepository: HyperliquidDepositHandlerRepository,
     private bundleRepository: BundleRepository,
     private indexerQueuesService: IndexerQueuesService,
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
@@ -115,6 +117,7 @@ export class AcrossIndexerManager {
           this.swapBeforeBridgeRepository,
           this.callsFailedRepository,
           this.swapMetadataRepository,
+          this.hyperliquidDepositHandlerRepository,
           new SpokePoolProcessor(
             this.postgres,
             chainId,

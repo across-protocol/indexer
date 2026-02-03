@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ethers } from "ethers";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import { startChainIndexing } from "../service/indexing";
@@ -14,6 +15,7 @@ import {
   arbitrum,
   arbitrumSepolia,
   hyperEvm,
+  base,
   mainnet,
   optimism,
 } from "viem/chains";
@@ -21,10 +23,25 @@ import {
   CCTP_PROTOCOL,
   SPONSORED_CCTP_PROTOCOL,
   OFT_PROTOCOL,
+  SPOKE_POOL_PROTOCOL,
   SPONSORED_OFT_PROTOCOL,
 } from "../service/config";
+import {
+  waitForEventToBeStoredOrFail,
+  sanityCheckWithEventIndexer,
+  getSpokePoolIndexerDataHandler,
+  compareFundsDepositedEvents,
+  compareFilledRelayEvents,
+  compareExecutedRelayerRefundRootEvents,
+  compareRelayedRootBundleEvents,
+  compareRequestedSlowFillEvents,
+  compareTokensBridgedEvents,
+} from "./utils";
+
+const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
 
 // Setup generic client for fetching data
+
 const getTestPublicClient = (chainId: number): PublicClient => {
   let chain;
   let transportUrl;
@@ -44,6 +61,9 @@ const getTestPublicClient = (chainId: number): PublicClient => {
   } else if (chainId === CHAIN_IDs.OPTIMISM) {
     chain = optimism;
     transportUrl = process.env.RPC_PROVIDER_URLS_10?.split(",")[0];
+  } else if (chainId === CHAIN_IDs.BASE) {
+    chain = base;
+    transportUrl = process.env.RPC_PROVIDER_URLS_8453?.split(",")[0];
   } else {
     throw new Error(`Unsupported chainId for test client: ${chainId}`);
   }
@@ -189,30 +209,33 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with the real repository
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     // Wait for the indexer to subscribe
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -257,28 +280,31 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
     // Push the events to the WebSocket
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const messageSentRepo = dataSource.getRepository(entities.MessageSent);
-    const savedEvent = await messageSentRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: messageSentRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -321,17 +347,20 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -339,15 +368,15 @@ describe("Websocket Subscription", () => {
     const messageBody =
       "00000001C6FA7AF3BEDBAD3A3D65F36AABC97431B1BBE4C2D2F6E0E47CA60203452F5D61000000000000000000000000AEECE9A1F996226C026BB05E7561830872385A59000000000000000000000000000000000000000000000000000000037E11D600455B0EAACAC3285754B398CE32FA37EF6846ACBE1D7A09E0A8EF006FF7110412000000000000000000000000000000000000000000000000000000000016E361000000000000000000000000000000000000000000000000000000000016E36000000000000000000000000000000000000000000000000000000000016DBBAF";
 
-    // Wait for async processing
-    await new Promise((r) => setTimeout(r, 500));
-
     // Verify Persistence
     const messageReceivedRepo = dataSource.getRepository(
       entities.MessageReceived,
     );
-    const savedEvent = await messageReceivedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: messageReceivedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     // Basic Existence Check
@@ -391,31 +420,33 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
-        .length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
-
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Verify SwapFlowInitialized
     const initializedRepo = dataSource.getRepository(
       entities.SwapFlowInitialized,
     );
-    const savedInitialized = await initializedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedInitialized = await waitForEventToBeStoredOrFail({
+      repository: initializedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedInitialized).to.exist;
     expect(savedInitialized).to.deep.include({
@@ -452,28 +483,30 @@ describe("Websocket Subscription", () => {
       .returns("0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
-        .length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const finalizedRepo = dataSource.getRepository(entities.SwapFlowFinalized);
-    const savedFinalized = await finalizedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedFinalized = await waitForEventToBeStoredOrFail({
+      repository: finalizedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedFinalized).to.exist;
@@ -503,28 +536,31 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.MAINNET,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.MAINNET).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.MAINNET,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -565,28 +601,30 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
     await server.waitForSubscription(
-      SPONSORED_CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM)
-        .length,
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify DepositForBurn Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(txHash);
@@ -595,8 +633,11 @@ describe("Websocket Subscription", () => {
     const sponsoredRepo = dataSource.getRepository(
       entities.SponsoredDepositForBurn,
     );
-    const savedSponsoredEvent = await sponsoredRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedSponsoredEvent = await waitForEventToBeStoredOrFail({
+      repository: sponsoredRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedSponsoredEvent).to.exist;
     expect(savedSponsoredEvent!).to.deep.include({
@@ -629,28 +670,30 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
-
     receipt.logs.forEach((log) => server.pushEvent(log));
-
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Verify Persistence
     const repo = dataSource.getRepository(entities.MintAndWithdraw);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -681,28 +724,31 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.OPTIMISM,
       protocols: [CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      CCTP_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.OPTIMISM).length,
+      CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.OPTIMISM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const depositRepo = dataSource.getRepository(entities.DepositForBurn);
-    const savedEvent = await depositRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: depositRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -740,25 +786,30 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.SimpleTransferFlowCompleted);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -795,25 +846,30 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.ArbitraryActionsExecuted);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -830,6 +886,99 @@ describe("Websocket Subscription", () => {
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(20000);
+
+  it("should ingest the FilledRelay event from Arbitrum tx 0xc9f5...fedd", async () => {
+    // Tx: https://arbiscan.io/tx/0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd
+    const txHash =
+      "0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd";
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.FilledV3Relay);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash, logIndex: 4 },
+      blockNumber: Number(block.number),
+    });
+
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      timeout: 20000,
+    });
+    expect(savedEvent).to.exist;
+
+    // Compare WS event with Handler event
+    compareFilledRelayEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 4,
+      finalised: false,
+      depositId: 5287817,
+      originChainId: 8453,
+      destinationChainId: CHAIN_IDs.ARBITRUM,
+      inputToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+      outputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC on Arbitrum
+      inputAmount: "1009060",
+      outputAmount: "1000000",
+      fillDeadline: new Date(1767985475 * 1000),
+      exclusivityDeadline: new Date(1767978416 * 1000),
+      exclusiveRelayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      recipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      message:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      relayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+      repaymentChainId: 8453,
+      updatedRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      updatedMessage:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      updatedOutputAmount: "1000000",
+      fillType: 0,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
 
   it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {
     // Tx: https://hyperevmscan.io/tx/0xb940059314450f7f7cb92972182cdf3f5fb5f54aab27c28b7426a78e6fb32d02
@@ -849,27 +998,32 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
-
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const repo = dataSource.getRepository(
       entities.FallbackHyperEVMFlowCompleted,
     );
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -906,25 +1060,30 @@ describe("Websocket Subscription", () => {
       .returns("0x7B164050BBC8e7ef3253e7db0D74b713Ba3F1c95");
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_CCTP_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      SPONSORED_CCTP_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const repo = dataSource.getRepository(entities.SponsoredAccountActivation);
-    const savedEvent = await repo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -954,26 +1113,31 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with OFT protocol
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const oftSentRepo = dataSource.getRepository(entities.OFTSent);
-    const savedEvent = await oftSentRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: oftSentRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
     expect(savedEvent).to.exist;
     expect(savedEvent).to.deep.include({
@@ -1009,26 +1173,31 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with OFT protocol
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
-    await server.waitForSubscription(2);
+    await server.waitForSubscription(
+      OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    // Wait for insertion
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     // Verify Persistence
     const oftReceivedRepo = dataSource.getRepository(entities.OFTReceived);
-    const savedEvent = await oftReceivedRepo.findOne({
-      where: { transactionHash: txHash },
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: oftReceivedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     expect(savedEvent).to.exist;
@@ -1051,6 +1220,490 @@ describe("Websocket Subscription", () => {
     expect(savedEvent!.dataSource).to.equal(DataSourceType.WEB_SOCKET);
   }).timeout(20000);
 
+  it("should ingest the FundsDeposited event from Base tx 0x07eca...b0cc6", async () => {
+    // Tx: https://basescan.org/tx/0x07eca2b22d7ed61e0d7c5ea1833b020c1c421223019dfd3dd6381f184d1b0cc6#eventlog#839
+    const txHash =
+      "0x07eca2b22d7ed61e0d7c5ea1833b020c1c421223019dfd3dd6381f184d1b0cc6";
+    const baseClient = getTestPublicClient(CHAIN_IDs.BASE);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      baseClient,
+      txHash,
+    );
+
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool for SpokePool on Base
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0x09aea4b2242abc8bb4bb78d537a67a245a7bec64");
+
+    const repo = dataSource.getRepository(entities.V3FundsDeposited);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.BASE,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+    });
+
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.BASE,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.BASE,
+      }).length,
+    );
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+    expect(savedEvent).to.exist;
+    expect(savedEvent.blockNumber).to.equal(Number(block.number));
+
+    // Compare WS event with Handler event
+    compareFundsDepositedEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 268,
+      logIndex: 839,
+      finalised: false,
+      // --- Event Data ---
+      destinationChainId: 42161,
+      depositId: 5287817,
+      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      inputToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      outputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      inputAmount: "1009060",
+      outputAmount: "1000000",
+      quoteTimestamp: new Date(1767978275 * 1000),
+      fillDeadline: new Date(1767985475 * 1000),
+      exclusivityDeadline: new Date(1767978416 * 1000),
+      recipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      exclusiveRelayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+      message: "0x",
+      fromLiteChain: false,
+      toLiteChain: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
+
+  it("should ingest the ExecutedRelayerRefundRoot event from Arbitrum tx 0x51f7...b86a", async () => {
+    // https://arbiscan.io/tx/0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a#eventlog#15
+    const txHash =
+      "0x51f72251a5844ff99379f56f51ed35afd7ba5372495a1c4f969bbfc95794b86a";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.ExecutedRelayerRefundRoot);
+
+    // Sanity check SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+
+    // Compare WS event with Handler event
+    compareExecutedRelayerRefundRootEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 15,
+      finalised: false,
+      rootBundleId: 13609,
+      leafId: 32,
+      l2TokenAddress: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH on Arbitrum
+      amountToReturn: "0",
+      deferredRefunds: false,
+      caller: "0xf7bAc63fc7CEaCf0589F25454Ecf5C2ce904997c",
+      dataSource: DataSourceType.WEB_SOCKET,
+      refundAmounts: [
+        "1423517351881039498",
+        "1062966083653758153",
+        "627500000000000000",
+        "528933518447811005",
+        "66600000000000000",
+        "30183584218819591",
+        "14387937048495050",
+        "10172385990202550",
+        "1031950123591036",
+        "484263292722309",
+        "196833485894965",
+      ],
+      refundAddresses: [
+        "0xCad97616f91872C02BA3553dB315Db4015cBE850",
+        "0x699EE12a1d97437A4A1E87C71e5d882b3881e2e3",
+        "0x0000000000e3E50357ab6F3a7Efb5117351720B4",
+        "0x394311A6Aaa0D8E3411D8b62DE4578D41322d1bD",
+        "0x15652636f3898F550b257B89926d5566821c32E1",
+        "0x3d7dC36aA2B542ad239012730DFdB23F03D75bE9",
+        "0x4e1bAb12E5b9281dbE057F41B67E9a0f505fd37d",
+        "0xefF7337B37c8D217d01cb8223fe497ABD75190d5",
+        "0x18105A39dB36EB6f865704Be858bcC7954c66467",
+        "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
+        "0xEeAF25aD4f51fE2f57Be2F206C9d8A568A618b99",
+      ],
+    });
+  }).timeout(120000);
+
+  it("should ingest the RequestedSpeedUpV3Deposit event from Arbitrum tx 0x39a0...823", async () => {
+    // https://arbiscan.io/tx/0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823#eventlog#15
+    const txHash =
+      "0x39a0e8a61dcba04f58e741ad23c1d6fe33bf50ac07af026ef775dd6ac4c65823";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.RequestedSpeedUpV3Deposit);
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+
+    expect(savedEvent).to.deep.include({
+      originChainId: 42161,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 14,
+      updatedOutputAmount: "299247000000000",
+      depositId: 3042028,
+      depositor: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
+      updatedRecipient: "0xB87848B2cc0c9BAecf1BDB7930CA9d8Ff65b7809",
+      updatedMessage: "0x",
+      depositorSignature:
+        "0x4ab7f470cf11759ea9b4c1dc912bb5c2f43514db29ce81b2dbd0d7e3c08cab516463f3a4d41bb9b371f54fd1e169edc8685f632f3c2fa1f678bdcb828f3c117f1c",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
+
+  it("should ingest the RelayedRootBundle event from Arbitrum tx 0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408", async () => {
+    const txHash =
+      "0x98ad93dc85da43fc5bb26ed8009ba91a000c35a4934609c6741ce73d8fe9b408";
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.RelayedRootBundle);
+
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: 1, // Mainnet
+        }),
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+        dataSource: DataSourceType.WEB_SOCKET,
+      } as any,
+    });
+
+    expect(savedEvent).to.exist;
+    compareRelayedRootBundleEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      rootBundleId: 18040,
+      relayerRefundRoot:
+        "0x5158d0ad275be800cde2cd3a37d5f98a2ac9c66e1a9bc3505c3627add85b2dea",
+      slowRelayRoot:
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+      transactionHash: txHash,
+      transactionIndex: 2,
+      logIndex: 2,
+      blockNumber: Number(block.number),
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
+
+  it("should ingest the RequestedSlowFill event from Arbitrum tx 0xaa0...78e2", async () => {
+    const txHash =
+      "0xaa0b0bc339ffbe359fc6fe34735189620dec3d425b9ba765248b5a5f737c78e2";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const pollingRepo = dataSource.getRepository(entities.RequestedV3SlowFill);
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: pollingRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
+
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: pollingRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    compareRequestedSlowFillEvents(savedEvent, sanityCheckResult);
+  }).timeout(120000);
+
+  it("should ingest the TokensBridged event from Arbitrum tx 0x5683...202c", async () => {
+    const txHash =
+      "0x56830e8e938d993c1f7fe94d222c4bb7fe1cc311da488da6214b9a5ff471202c";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.TokensBridged);
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+      blockNumber: Number(block.number),
+    });
+    // Start the Indexer with SPOKE_POOL_PROTOCOL
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Verify Persistence
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+    compareTokensBridgedEvents(savedEvent, sanityCheckResult);
+
+    expect(savedEvent).to.deep.include({
+      chainId: 42161,
+      leafId: 40,
+      l2TokenAddress: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      amountToReturn: "757612815391",
+      caller: "0xf7bAc63fc7CEaCf0589F25454Ecf5C2ce904997c",
+      transactionHash: txHash,
+      transactionIndex: 1,
+      logIndex: 29,
+      blockNumber: Number(block.number),
+      finalised: false,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+  }).timeout(120000);
   it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {
     // Tx: https://arbiscan.io/tx/0x0400453f05403a252798c7615005c788c525cd80f3f79f4b3dbc352432caf1cb
     const txHash =
@@ -1071,18 +1724,20 @@ describe("Websocket Subscription", () => {
 
     // Start the Indexer with SPONSORED_OFT_PROTOCOL
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.ARBITRUM,
       protocols: [SPONSORED_OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      SPONSORED_OFT_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.ARBITRUM)
-        .length,
+      SPONSORED_OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -1141,18 +1796,20 @@ describe("Websocket Subscription", () => {
     );
 
     startChainIndexing({
-      repo: blockchainRepository,
+      database: dataSource,
       rpcUrl: rpcUrl,
       logger,
       sigterm: abortController.signal,
       chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPONSORED_OFT_PROTOCOL],
-      transportOptions: { reconnect: false, timeout: 30_000 },
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
 
     await server.waitForSubscription(
-      SPONSORED_OFT_PROTOCOL.getEventHandlers(logger, CHAIN_IDs.HYPEREVM)
-        .length,
+      SPONSORED_OFT_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.HYPEREVM,
+      }).length,
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));

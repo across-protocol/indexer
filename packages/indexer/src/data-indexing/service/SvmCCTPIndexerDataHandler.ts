@@ -83,6 +83,7 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = [
   "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t",
   "5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t",
+  "Edyca9eoBbceGU6UUHxC78o8W3cLEZyuYaA8wYnXxmgP",
 ];
 
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
