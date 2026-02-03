@@ -62,6 +62,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.WebhookClient,
       // Indexer
       entities.IndexerProgressInfo,
+      entities.GaslessDeposit,
       // Historic Price
       entities.HistoricPrice,
       // CCTP

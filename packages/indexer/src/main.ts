@@ -39,6 +39,7 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import { GaslessDepositPubSubConsumer } from "./pubsub/gaslessDepositConsumer";
 import { DataDogMetricsService } from "./services/MetricsService";
 
 async function initializeRedis(
@@ -165,6 +166,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
   );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
+  const gaslessDepositPubSubConsumer = new GaslessDepositPubSubConsumer(
+    config,
+    logger,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -243,9 +249,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       hotfixServicesManager.stop();
       cctpFinalizerServiceManager.stopGracefully();
       monitoringManager.stopGracefully();
+      gaslessDepositPubSubConsumer.close();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
+      gaslessDepositPubSubConsumer.close();
       metrics.close();
       logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
@@ -264,6 +272,9 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     message: "Running indexers",
   });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
+  // Start gasless deposit PubSub consumer (pull subscription; runs until close())
+  await gaslessDepositPubSubConsumer.start();
+
   const [
     bundleServicesManagerResults,
     acrossIndexerManagerResult,
@@ -311,6 +322,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     },
   });
   await integratorIdWorker.close();
+  await gaslessDepositPubSubConsumer.close();
   metrics.close();
   redis?.quit();
   postgres?.destroy();
