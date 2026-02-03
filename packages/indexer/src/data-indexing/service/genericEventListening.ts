@@ -151,6 +151,13 @@ export const subscribeToEvent = <TPayload>(
       );
     },
     onError: (error: Error) => {
+      logger.debug({
+        at: "genericEventListener#subscribeToEvent",
+        message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
+        error: error,
+        notificationPath: "across-indexer-error",
+      });
+
       // Notify the orchestrator that this listener has died
       onFatalError(error);
     },

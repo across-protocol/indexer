@@ -20,6 +20,7 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { safeJsonStringify } from "../../utils/map";
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -126,8 +127,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   let delay = 1000;
   const MAX_DELAY = 60 * 1000;
   const MAX_WEBSOCKET_RETRY_COUNT = 5;
-  let websocketRetryCount = 0;
-  let websocketErrors: Error[] = [];
+  let websocketErrors = new Map<
+    EventConfig,
+    { count: number; errors: Error[] }
+  >();
 
   // Track active resources for cleanup
   let viemClient: PublicClient<Transport, Chain>;
@@ -252,6 +255,11 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
               `chainId:${indexerConfig.chainId}`,
               `event:${config.eventName}`,
             ]);
+            // Collect errors for each event config
+            websocketErrors.set(config, {
+              count: (websocketErrors.get(config)?.count || 0) + 1,
+              errors: [...(websocketErrors.get(config)?.errors || []), err],
+            });
             triggerRestart(err);
           },
           logger,
@@ -263,8 +271,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
 
       // Reset Tracking on successful startup
       delay = 1000;
-      websocketRetryCount = 0;
-      websocketErrors = [];
+      websocketErrors = new Map<
+        EventConfig,
+        { count: number; errors: Error[] }
+      >();
 
       // --- The "Keep Alive" Wait ---
       // We wait for EITHER:
@@ -287,21 +297,44 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
         }),
       ]);
     } catch (e) {
-      // Handle Errors & Restart
-      websocketRetryCount++;
-      websocketErrors.push(e as Error);
-      if (websocketRetryCount <= MAX_WEBSOCKET_RETRY_COUNT) {
-        logger.debug({
-          at: "genericIndexing#startIndexingSubsystem",
-          message: `Indexer crashed for chain ${indexerConfig.chainId}. Trying to solve the issue by restarting in ${delay / 1000}s.`,
-          error: (e as Error).message,
+      // Check if any specific event has reached the maximum retry limit
+      const hasReachedMaxRetries = Array.from(websocketErrors.values()).some(
+        (entry) => entry.count >= MAX_WEBSOCKET_RETRY_COUNT,
+      );
+
+      if (hasReachedMaxRetries) {
+        // Log all collected errors as proper "error" level logs
+        websocketErrors.forEach((entry, config) => {
+          // 1. Log a Summary Header
+          logger.error({
+            at: "genericIndexing#startIndexingSubsystem",
+            message: `${config.eventName} reached max retries (${entry.count}) on chain ${indexerConfig.chainId}.`,
+            chainId: indexerConfig.chainId,
+            eventName: config.eventName,
+          });
+
+          //  Log each individual error separately for max readability
+          entry.errors.forEach((err, index) => {
+            logger.error({
+              at: "genericIndexing#startIndexingSubsystem",
+              message: `Detailed Error [${index + 1}/${entry.errors.length}] for ${config.eventName}`,
+              error: {
+                message: err.message,
+                stack: err.stack,
+                details: safeJsonStringify(err),
+              },
+              chainId: indexerConfig.chainId,
+              eventName: config.eventName,
+              isBatchDetail: true,
+            });
+          });
         });
       } else {
-        logger.error({
+        // Normal operational debug log
+        logger.debug({
           at: "genericIndexing#startIndexingSubsystem",
-          message: `Indexer crashed ${websocketRetryCount} times for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
-          allErrors: websocketErrors.map((err) => err.message),
-          notificationPath: "across-indexer-error",
+          message: `Indexer crashed for chain ${indexerConfig.chainId}. Error summary: ${websocketErrors} Restarting...`,
+          error: safeJsonStringify(e),
         });
       }
       metrics?.addCountMetric("startIndexingError", [
