@@ -17,15 +17,13 @@ import { HyperliquidRepository } from "../../database/HyperliquidRepository";
 const HYPERLIQUID_STARTING_BLOCK_NUMBER = 863585946;
 
 export class HyperliquidIndexerManager {
-  private indexer?: HyperliquidIndexer;
-
   constructor(
     private logger: Logger,
     private config: Config,
     private postgres: DataSource,
   ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableHyperliquidIndexer) {
         this.logger.debug({
@@ -87,7 +85,6 @@ export class HyperliquidIndexerManager {
         rpcUrl,
       );
 
-      this.indexer = indexer;
       this.logger.debug({
         at: "Indexer#HyperliquidIndexerManager#start",
         message: "Starting Hyperliquid indexer",
@@ -96,7 +93,7 @@ export class HyperliquidIndexerManager {
         startBlockNumber,
       });
 
-      return indexer.start();
+      return indexer.start(signal);
     } catch (error) {
       this.logger.error({
         at: "Indexer#HyperliquidIndexerManager#start",
@@ -106,9 +103,5 @@ export class HyperliquidIndexerManager {
       });
       throw error;
     }
-  }
-
-  public async stopGracefully() {
-    this.indexer?.stopGracefully();
   }
 }
