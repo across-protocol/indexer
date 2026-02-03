@@ -165,10 +165,9 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   // --- Supervisor Loop ---
   while (!sigterm?.aborted) {
     try {
-      logger.info({
+      logger.debug({
         at: "genericIndexing#startIndexingSubsystem",
         message: `Initializing indexing subsystem for chain ${indexerConfig.chainId}...`,
-        notificationPath: "across-indexer-info",
       });
 
       // Initialize Client
@@ -307,7 +306,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   }
 
   // Final cleanup on exit
-  logger.info({
+  logger.debug({
     at: "genericIndexing#startIndexingSubsystem",
     message: `Stopping indexing subsystem for chain ${indexerConfig.chainId}.`,
   });

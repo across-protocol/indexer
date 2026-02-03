@@ -222,7 +222,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const shutdown = (signal: string) => {
     if (!exitRequested) {
       exitRequested = true;
-      logger.info({
+      logger.debug({
         at: "Indexer#Main",
         message: `Received ${signal}. Starting graceful shutdown...`,
       });
@@ -247,10 +247,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close();
       swapWorker.close();
       metrics.close();
-      logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
+      logger.debug({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
       postgres?.destroy();
-      logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+      logger.debug({ at: "Indexer#Main", message: "Exiting indexer" });
       logger.close();
       across.utils.delay(5).finally(() => process.exit());
     }
@@ -285,7 +285,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     monitoringManager.start(),
     ...wsIndexerPromises,
   ]);
-  logger.info({
+  logger.debug({
     at: "Indexer#Main",
     message: "Indexer loop completed",
     results: {
@@ -314,5 +314,5 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   metrics.close();
   redis?.quit();
   postgres?.destroy();
-  logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+  logger.debug({ at: "Indexer#Main", message: "Exiting indexer" });
 }

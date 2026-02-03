@@ -74,7 +74,7 @@ export async function startChainIndexing<
     transportOptions,
   };
 
-  logger.info({
+  logger.debug({
     at: "indexing#startChainIndexing",
     message: `Starting indexing for chain ${chainId}`,
     protocolCount: protocols.length,
