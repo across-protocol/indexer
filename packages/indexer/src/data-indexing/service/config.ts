@@ -131,7 +131,7 @@ import {
   storeClaimedRelayerRefundEvent,
   storeSponsoredOFTSendEvent,
 } from "./storing";
-import { Entity } from "typeorm";
+import { Entity, ObjectLiteral } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
 import {
   SWAP_FLOW_FINALIZED_ABI,
@@ -167,13 +167,12 @@ import { BlockchainEventRepository } from "../../../../indexer-database/dist/src
  * Array of event handlers.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
- * @template TEventEntity The type of the structured database entity.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TTransformed The type of the transformed data.
+ * @template TStored The type of the stored data.
  */
-type EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed> = Array<
-  TPreprocessed extends any
-    ? IndexerEventHandler<TDb, TPayload, TEventEntity, TPreprocessed>
-    : never
+type EventHandlers<TDb, TPayload, TPreprocessed, TTransformed, TStored> = Array<
+  IndexerEventHandler<TDb, TPayload, TPreprocessed, TTransformed, TStored>
 >;
 
 /**
@@ -190,16 +189,18 @@ type GetEventHandlersRequest = {
 
 /**
  * Configuration for a complete indexing subsystem.
- * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TTransformed The type of the transformed data.
+ * @template TStored The type of the stored data.
  */
 export interface SupportedProtocols<
-  TEventEntity,
   TDb,
   TPayload,
   TPreprocessed,
+  TTransformed,
+  TStored,
 > {
   /**
    * Returns the list of event configurations for this protocol.
@@ -208,21 +209,21 @@ export interface SupportedProtocols<
    */
   getEventHandlers: (
     request: GetEventHandlersRequest,
-  ) => EventHandlers<TDb, TPayload, TEventEntity, TPreprocessed>;
+  ) => EventHandlers<TDb, TPayload, TPreprocessed, TTransformed, TStored>;
 }
 
 /**
  * Configuration for CCTP protocol.
- * @template Partial<typeof Entity> The type of the structured database entity.
  * @template BlockchainEventRepository The type of the database client/connection.
  * @template IndexerEventPayload The type of the event payload from the event listener.
  * @template EventArgs The type of the preprocessed data.
  */
 export const CCTP_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  Partial<typeof Entity>,
+  ObjectLiteral
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     const testNet = chainId in TEST_NETWORKS;
@@ -236,10 +237,14 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
         },
         preprocess: extractRawArgs<DepositForBurnArgs>,
-        filter: (args: DepositForBurnArgs, payload: IndexerEventPayload) =>
-          filterDepositForBurnEvents(args, payload),
-        transform: (args: DepositForBurnArgs, payload: IndexerEventPayload) =>
-          transformDepositForBurnEvent(args, payload, logger),
+        filter: (args: EventArgs, payload: IndexerEventPayload) =>
+          filterDepositForBurnEvents(args as DepositForBurnArgs, payload),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformDepositForBurnEvent(
+            args as DepositForBurnArgs,
+            payload,
+            logger,
+          ),
         store: storeDepositForBurnEvent,
       },
       {
@@ -251,10 +256,10 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           eventName: MESSAGE_SENT_EVENT_NAME,
         },
         preprocess: extractRawArgs<MessageSentArgs>,
-        filter: (_args: MessageSentArgs, payload: IndexerEventPayload) =>
+        filter: (_args: EventArgs, payload: IndexerEventPayload) =>
           createCctpBurnFilter(payload, logger),
-        transform: (args: MessageSentArgs, payload: IndexerEventPayload) =>
-          transformMessageSentEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformMessageSentEvent(args as MessageSentArgs, payload, logger),
         store: storeMessageSentEvent,
       },
       {
@@ -266,10 +271,14 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           eventName: MESSAGE_RECEIVED_EVENT_NAME,
         },
         preprocess: extractRawArgs<MessageReceivedArgs>,
-        filter: (args: MessageReceivedArgs, payload: IndexerEventPayload) =>
-          filterMessageReceived(args, payload, logger),
-        transform: (args: MessageReceivedArgs, payload: IndexerEventPayload) =>
-          transformMessageReceivedEvent(args, payload, logger),
+        filter: (args: EventArgs, payload: IndexerEventPayload) =>
+          filterMessageReceived(args as MessageReceivedArgs, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformMessageReceivedEvent(
+            args as MessageReceivedArgs,
+            payload,
+            logger,
+          ),
         store: storeMessageReceivedEvent,
       },
       {
@@ -281,10 +290,14 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           eventName: MINT_AND_WITHDRAW_EVENT_NAME,
         },
         preprocess: extractRawArgs<MintAndWithdrawArgs>,
-        filter: (_args: MintAndWithdrawArgs, payload: IndexerEventPayload) =>
+        filter: (_args: EventArgs, payload: IndexerEventPayload) =>
           createCctpMintFilter(payload, logger),
-        transform: (args: MintAndWithdrawArgs, payload: IndexerEventPayload) =>
-          transformMintAndWithdrawEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformMintAndWithdrawEvent(
+            args as MintAndWithdrawArgs,
+            payload,
+            logger,
+          ),
         store: storeMintAndWithdrawEvent,
       },
     ];
@@ -303,8 +316,9 @@ export const getSponsoredBridgingEventHandlers = (
 ): EventHandlers<
   BlockchainEventRepository,
   IndexerEventPayload,
+  EventArgs,
   Partial<typeof Entity>,
-  EventArgs
+  ObjectLiteral
 > => {
   return [
     {
@@ -315,8 +329,12 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<SwapFlowFinalizedArgs>,
       filter: async () => true,
-      transform: (args: SwapFlowFinalizedArgs, payload: IndexerEventPayload) =>
-        transformSwapFlowFinalizedEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformSwapFlowFinalizedEvent(
+          args as SwapFlowFinalizedArgs,
+          payload,
+          logger,
+        ),
       store: storeSwapFlowFinalizedEvent,
     },
     {
@@ -327,10 +345,12 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<SwapFlowInitializedArgs>,
       filter: async () => true,
-      transform: (
-        args: SwapFlowInitializedArgs,
-        payload: IndexerEventPayload,
-      ) => transformSwapFlowInitializedEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformSwapFlowInitializedEvent(
+          args as SwapFlowInitializedArgs,
+          payload,
+          logger,
+        ),
       store: storeSwapFlowInitializedEvent,
     },
     {
@@ -341,10 +361,12 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<SponsoredAccountActivationArgs>,
       filter: async () => true,
-      transform: (
-        args: SponsoredAccountActivationArgs,
-        payload: IndexerEventPayload,
-      ) => transformSponsoredAccountActivationEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformSponsoredAccountActivationEvent(
+          args as SponsoredAccountActivationArgs,
+          payload,
+          logger,
+        ),
       store: storeSponsoredAccountActivationEvent,
     },
     {
@@ -355,10 +377,12 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<SimpleTransferFlowCompletedArgs>,
       filter: async () => true,
-      transform: (
-        args: SimpleTransferFlowCompletedArgs,
-        payload: IndexerEventPayload,
-      ) => transformSimpleTransferFlowCompletedEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformSimpleTransferFlowCompletedEvent(
+          args as SimpleTransferFlowCompletedArgs,
+          payload,
+          logger,
+        ),
       store: storeSimpleTransferFlowCompletedEvent,
     },
     {
@@ -369,10 +393,12 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<FallbackHyperEVMFlowCompletedArgs>,
       filter: async () => true,
-      transform: (
-        args: FallbackHyperEVMFlowCompletedArgs,
-        payload: IndexerEventPayload,
-      ) => transformFallbackHyperEVMFlowCompletedEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformFallbackHyperEVMFlowCompletedEvent(
+          args as FallbackHyperEVMFlowCompletedArgs,
+          payload,
+          logger,
+        ),
       store: storeFallbackHyperEVMFlowCompletedEvent,
     },
     {
@@ -383,20 +409,23 @@ export const getSponsoredBridgingEventHandlers = (
       },
       preprocess: extractRawArgs<ArbitraryActionsExecutedArgs>,
       filter: async () => true,
-      transform: (
-        args: ArbitraryActionsExecutedArgs,
-        payload: IndexerEventPayload,
-      ) => transformArbitraryActionsExecutedEvent(args, payload, logger),
+      transform: (args: EventArgs, payload: IndexerEventPayload) =>
+        transformArbitraryActionsExecutedEvent(
+          args as ArbitraryActionsExecutedArgs,
+          payload,
+          logger,
+        ),
       store: storeArbitraryActionsExecutedEvent,
     },
   ];
 };
 
 export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  Partial<typeof Entity>,
+  ObjectLiteral
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // First let's get the regular CCTP handlers
@@ -417,10 +446,12 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
         preprocess: (payload: IndexerEventPayload) =>
           preprocessSponsoredDepositForBurn(payload, logger),
         filter: async () => true,
-        transform: (
-          args: SponsoredDepositForBurnArgs,
-          payload: IndexerEventPayload,
-        ) => transformSponsoredDepositForBurnEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformSponsoredDepositForBurnEvent(
+            args as SponsoredDepositForBurnArgs,
+            payload,
+            logger,
+          ),
         store: storeSponsoredDepositForBurnEvent,
       });
     }
@@ -449,10 +480,11 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
  * using the chainId parameter passed to getEventHandlers.
  */
 export const OFT_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  Partial<typeof Entity>,
+  ObjectLiteral
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get chain-specific OFT configuration
@@ -468,10 +500,15 @@ export const OFT_PROTOCOL: SupportedProtocols<
           eventName: OFT_SENT_EVENT_NAME,
         },
         preprocess: extractRawArgs<OFTSentArgs>,
-        filter: (args: OFTSentArgs, payload: IndexerEventPayload) =>
-          filterOFTSentEvents(args, payload),
-        transform: (args: OFTSentArgs, payload: IndexerEventPayload) =>
-          transformOFTSentEvent(args, payload, logger, tokenAddress),
+        filter: (args: EventArgs, payload: IndexerEventPayload) =>
+          filterOFTSentEvents(args as OFTSentArgs, payload),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformOFTSentEvent(
+            args as OFTSentArgs,
+            payload,
+            logger,
+            tokenAddress,
+          ),
         store: storeOFTSentEvent,
       },
       {
@@ -481,10 +518,15 @@ export const OFT_PROTOCOL: SupportedProtocols<
           eventName: OFT_RECEIVED_EVENT_NAME,
         },
         preprocess: extractRawArgs<OFTReceivedArgs>,
-        filter: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
-          filterOFTReceivedEvents(args, payload),
-        transform: (args: OFTReceivedArgs, payload: IndexerEventPayload) =>
-          transformOFTReceivedEvent(args, payload, logger, tokenAddress),
+        filter: (args: EventArgs, payload: IndexerEventPayload) =>
+          filterOFTReceivedEvents(args as OFTReceivedArgs, payload),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformOFTReceivedEvent(
+            args as OFTReceivedArgs,
+            payload,
+            logger,
+            tokenAddress,
+          ),
         store: storeOFTReceivedEvent,
       },
     ];
@@ -492,10 +534,11 @@ export const OFT_PROTOCOL: SupportedProtocols<
 };
 
 export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  Partial<typeof Entity>,
+  ObjectLiteral
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     return [
@@ -507,8 +550,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<FilledV3RelayArgs>,
         filter: async () => true,
-        transform: (args: FilledV3RelayArgs, payload: IndexerEventPayload) =>
-          transformFilledV3RelayEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformFilledV3RelayEvent(
+            args as FilledV3RelayArgs,
+            payload,
+            logger,
+          ),
         store: storeFilledV3RelayEvent,
       },
       {
@@ -519,8 +566,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<V3FundsDepositedArgs>,
         filter: async () => true,
-        transform: (args: V3FundsDepositedArgs, payload: IndexerEventPayload) =>
-          transformV3FundsDepositedEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformV3FundsDepositedEvent(
+            args as V3FundsDepositedArgs,
+            payload,
+            logger,
+          ),
         store: storeV3FundsDepositedEvent,
       },
       {
@@ -531,10 +582,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<ExecutedRelayerRefundRootArgs>,
         filter: async () => true,
-        transform: (
-          args: ExecutedRelayerRefundRootArgs,
-          payload: IndexerEventPayload,
-        ) => transformExecutedRelayerRefundRootEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformExecutedRelayerRefundRootEvent(
+            args as ExecutedRelayerRefundRootArgs,
+            payload,
+            logger,
+          ),
         store: storeExecutedRelayerRefundRootEvent,
       },
       {
@@ -545,10 +598,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<RequestedSpeedUpV3DepositArgs>,
         filter: async () => true,
-        transform: (
-          args: RequestedSpeedUpV3DepositArgs,
-          payload: IndexerEventPayload,
-        ) => transformRequestedSpeedUpV3DepositEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformRequestedSpeedUpV3DepositEvent(
+            args as RequestedSpeedUpV3DepositArgs,
+            payload,
+            logger,
+          ),
         store: storeRequestedSpeedUpV3DepositEvent,
       },
       {
@@ -559,10 +614,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<RelayedRootBundleArgs>,
         filter: async () => true,
-        transform: (
-          args: RelayedRootBundleArgs,
-          payload: IndexerEventPayload,
-        ) => transformRelayedRootBundleEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformRelayedRootBundleEvent(
+            args as RelayedRootBundleArgs,
+            payload,
+            logger,
+          ),
         store: storeRelayedRootBundleEvent,
       },
       {
@@ -573,10 +630,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<RequestedSlowFillArgs>,
         filter: async () => true,
-        transform: (
-          args: RequestedSlowFillArgs,
-          payload: IndexerEventPayload,
-        ) => transformRequestedSlowFillEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformRequestedSlowFillEvent(
+            args as RequestedSlowFillArgs,
+            payload,
+            logger,
+          ),
         store: storeRequestedSlowFillEvent,
       },
       {
@@ -587,8 +646,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<TokensBridgedArgs>,
         filter: async () => true,
-        transform: (args: TokensBridgedArgs, payload: IndexerEventPayload) =>
-          transformTokensBridgedEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformTokensBridgedEvent(
+            args as TokensBridgedArgs,
+            payload,
+            logger,
+          ),
         store: storeTokensBridgedEvent,
       },
       {
@@ -599,10 +662,12 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<ClaimedRelayerRefundArgs>,
         filter: async () => true,
-        transform: (
-          args: ClaimedRelayerRefundArgs,
-          payload: IndexerEventPayload,
-        ) => transformClaimedRelayerRefundEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformClaimedRelayerRefundEvent(
+            args as ClaimedRelayerRefundArgs,
+            payload,
+            logger,
+          ),
         store: storeClaimedRelayerRefundEvent,
       },
     ];
@@ -614,10 +679,11 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
  * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
  */
 export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
-  Partial<typeof Entity>,
   BlockchainEventRepository,
   IndexerEventPayload,
-  EventArgs
+  EventArgs,
+  Partial<typeof Entity>,
+  ObjectLiteral
 > = {
   getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
     // Get base OFT handlers (OFTSent, OFTReceived)
@@ -636,8 +702,12 @@ export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
         },
         preprocess: extractRawArgs<SponsoredOFTSendArgs>,
         filter: async () => true,
-        transform: (args: SponsoredOFTSendArgs, payload: IndexerEventPayload) =>
-          transformSponsoredOFTSendEvent(args, payload, logger),
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformSponsoredOFTSendEvent(
+            args as SponsoredOFTSendArgs,
+            payload,
+            logger,
+          ),
         store: storeSponsoredOFTSendEvent,
       });
     }
@@ -664,10 +734,11 @@ export const getChainProtocols: (
 ) => Record<
   number,
   SupportedProtocols<
-    Partial<typeof Entity>,
     BlockchainEventRepository,
     IndexerEventPayload,
-    EventArgs
+    EventArgs,
+    Partial<typeof Entity>,
+    ObjectLiteral
   >[]
 > = (config: Config) => {
   // Initialize with empty array for each chain.
@@ -679,10 +750,11 @@ export const getChainProtocols: (
     {} as Record<
       number,
       SupportedProtocols<
-        Partial<typeof Entity>,
         BlockchainEventRepository,
         IndexerEventPayload,
-        EventArgs
+        EventArgs,
+        Partial<typeof Entity>,
+        ObjectLiteral
       >[]
     >,
   );

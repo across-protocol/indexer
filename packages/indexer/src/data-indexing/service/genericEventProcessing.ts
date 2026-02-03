@@ -19,16 +19,18 @@ import { Logger } from "winston";
 
 /**
  * Request object for the generic event processor.
- * @template TEntity The type of the structured database entity.
+ * @template TTransformed The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TStored The type of the stored event.
  */
 export interface GenericEventProcessorRequest<
-  TEntity,
   TDb,
   TPayload,
-  TPreprocessed = TPayload,
+  TPreprocessed,
+  TTransformed,
+  TStored,
 > {
   /** The database instance. */
   db: TDb;
@@ -37,11 +39,11 @@ export interface GenericEventProcessorRequest<
   /** The function to preprocess the event payload. */
   preprocess: Preprocessor<TPayload, TPreprocessed>;
   /** The function to transform the event payload into an entity. */
-  transform: Transformer<TPreprocessed, TPayload, TEntity>;
+  transform: Transformer<TPayload, TPreprocessed, TTransformed>;
   /** The function to store the entity in the database. */
-  store: Storer<TEntity, TDb>;
+  store: Storer<TDb, TTransformed, TStored>;
   /** The function to filter the entity. */
-  filter?: Filter<TPreprocessed, TPayload>;
+  filter?: Filter<TPayload, TPreprocessed>;
   /** An optional logger instance. */
   logger?: Logger;
 }
@@ -61,18 +63,25 @@ export interface GenericEventProcessorRequest<
  * simply by being initialized with different `source`, `transform`, and `store` functions.
  *
  * @template TEvent The type of the raw event.
- * @template TEntity The type of the structured database entity.
+ * @template TTransformed The type of the transformed raw event.
  * @template TDb The type of the database client/connection.
  * @template TPreprocessed The type of the preprocessed data.
  * @param request The request object containing db, source, transform, store, and logger.
  */
 export const processEvent = async <
-  TEntity,
   TDb,
   TPayload,
-  TPreprocessed = TPayload,
+  TPreprocessed,
+  TTransformed,
+  TStored,
 >(
-  request: GenericEventProcessorRequest<TEntity, TDb, TPayload, TPreprocessed>,
+  request: GenericEventProcessorRequest<
+    TDb,
+    TPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >,
 ): Promise<void> => {
   const { db, source, preprocess, transform, store, filter, logger } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
@@ -96,17 +105,12 @@ export const processEvent = async <
     const entity = await transform(preprocessed, payload);
 
     // Store (Asynchronous I/O operation)
-    const storedItems = await store(entity, db);
+    const storedItem = await store(entity, db);
 
     logger?.debug({
       at: "genericEventProcessor#genericEventProcessor",
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
-      message: `Successfully stored event: ${storedItems
-        .map(
-          (entry) =>
-            `${(entry.data as any).constructor.name}#${(entry.data as any).id}`,
-        )
-        .join(", ")}`,
+      message: `Successfully stored event: ${(storedItem as any).constructor.name}#${(storedItem as any).id}`,
     });
   } catch (error) {
     logger?.error({
