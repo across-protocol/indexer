@@ -33,3 +33,11 @@ export interface SwapMetadataEvent extends providers.Log {
     data: string; // bytes data containing encoded swap metadata
   };
 }
+
+export interface UserAccountActivatedEvent extends providers.Log {
+  args: {
+    user: string;
+    token: string;
+    amountRequiredToActivate: BigNumber;
+  };
+}
