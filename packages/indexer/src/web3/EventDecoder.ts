@@ -5,11 +5,13 @@ import {
   CallsFailedEvent,
   TransferEvent,
   SwapMetadataEvent,
+  UserAccountActivatedEvent,
 } from "./model/events";
 import {
   BASE_SWAP_BEFORE_BRIDGE_ABI,
   SPOKE_POOL_PERIPHERY_SWAP_BEFORE_BRIDGE_ABI,
   METADATA_EMITTED_ABI,
+  USER_ACCOUNT_ACTIVATED_ABI,
 } from "./model/abis";
 import {
   MessageSentLog,
@@ -91,6 +93,21 @@ export class EventDecoder {
       metadataEmittedEventTopic,
       METADATA_EMITTED_ABI,
     );
+
+    return events;
+  }
+
+  static decodeUserAccountActivatedEvents(
+    receipt: ethers.providers.TransactionReceipt,
+  ) {
+    const eventTopic =
+      "0x45b9d2d602535b50313ef0fa849df42dd31d8610fc42876e005a5b6806d3e880";
+    const events: UserAccountActivatedEvent[] =
+      this.decodeTransactionReceiptLogs(
+        receipt,
+        eventTopic,
+        USER_ACCOUNT_ACTIVATED_ABI,
+      );
 
     return events;
   }
