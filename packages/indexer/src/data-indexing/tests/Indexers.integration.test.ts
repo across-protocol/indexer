@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { ethers } from "ethers";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
@@ -36,7 +36,9 @@ import {
   compareRelayedRootBundleEvents,
   compareRequestedSlowFillEvents,
   compareTokensBridgedEvents,
+  compareSwapBeforeBridgeEvents,
 } from "./utils";
+import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
 
@@ -1704,6 +1706,124 @@ describe("Websocket Subscription", () => {
       dataSource: DataSourceType.WEB_SOCKET,
     });
   }).timeout(120000);
+
+  it("should ingest the SwapBeforeBridge event from Arbitrum tx 0x9250...d8ad with post-processing", async () => {
+    // Tx: https://arbiscan.io/tx/0x92509e13738985c5e7fbc29cf9093ada22bff3740e763fcd219c54f3d878d8ad#eventlog#93
+    const txHash =
+      "0x92509e13738985c5e7fbc29cf9093ada22bff3740e763fcd219c54f3d878d8ad";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub the SpokePool address
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xc456398d5ee3b93828252e48bededbc39e03368e");
+
+    const swapRepo = dataSource.getRepository(entities.SwapBeforeBridge);
+    const relayHashInfoRepo = dataSource.getRepository(entities.RelayHashInfo);
+    let handlerRelayHashInfo: entities.RelayHashInfo | undefined = undefined;
+
+    // Sanity check with SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: swapRepo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        handlerRelayHashInfo = await relayHashInfoRepo.findOneByOrFail({
+          depositTxHash: txHash,
+        });
+        // Delete RelayHashInfo
+        await relayHashInfoRepo.delete({ depositTxHash: txHash });
+        // Delete SwapBeforeBridge
+        await repository.delete(findOptions);
+        // Also delete the V3FundsDeposited to ensure clean state for websocket indexer
+        await dataSource
+          .getRepository(entities.V3FundsDeposited)
+          .delete({ transactionHash: txHash });
+      },
+    });
+
+    assert((handlerRelayHashInfo as any) instanceof entities.RelayHashInfo);
+
+    // Start websocket indexer
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for SwapBeforeBridge event
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: swapRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    const wsRelayHashInfo = await waitForEventToBeStoredOrFail({
+      repository: relayHashInfoRepo,
+      findOptions: {
+        depositTxHash: txHash,
+      },
+    });
+
+    // Compare websocket event with handler event
+    compareSwapBeforeBridgeEvents(savedEvent, sanityCheckResult);
+    // Verify event data
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      blockHash: block.hash,
+      transactionHash: txHash,
+      logIndex: 93,
+      finalised: false,
+      exchange: "0x111111125421cA6dc452d289314280a0f8842A65",
+      swapToken: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+      acrossInputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      swapTokenAmount: 6456019,
+      acrossInputAmount: 6448617,
+      acrossOutputToken: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+      acrossOutputAmount: 6428823,
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+
+    // Compare RelayHashInfo from both indexers
+    // TODO: remove status exclusion after the updatng for status is implemented
+    const { id, createdAt, updatedAt, status, ...cleanExpected } =
+      handlerRelayHashInfo!;
+    // ID is not the same because it is auto-incremented
+    expect(wsRelayHashInfo).to.deep.include({
+      ...cleanExpected,
+      depositEventId: 2,
+      swapBeforeBridgeEventId: 2,
+    });
+  }).timeout(120000);
+
   it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {
     // Tx: https://arbiscan.io/tx/0x0400453f05403a252798c7615005c788c525cd80f3f79f4b3dbc352432caf1cb
     const txHash =

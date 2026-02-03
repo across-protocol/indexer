@@ -31,6 +31,14 @@ export async function getTestDataSource(): Promise<DataSource> {
     name: "current_database",
     implementation: () => "test",
   });
+  // Override the system 'now' function directly in pg_catalog
+  // This handles SQL like "WHERE date < NOW()"
+  db.getSchema("pg_catalog").registerFunction({
+    name: "now",
+    implementation: () => new Date(),
+    returns: DataType.timestamp, // Force return type to timestamp
+    impure: true,
+  });
 
   const realDataSource = createRealDataSource({
     host: "dummy",

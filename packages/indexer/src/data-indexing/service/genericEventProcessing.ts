@@ -4,7 +4,9 @@ import {
   Transformer,
   Filter,
   Preprocessor,
+  PostProcessor,
 } from "../model/genericTypes";
+import { SaveQueryResult } from "@repo/indexer-database";
 import { Logger } from "winston";
 
 /**
@@ -19,10 +21,10 @@ import { Logger } from "winston";
 
 /**
  * Request object for the generic event processor.
- * @template TTransformed The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TTransformed The type of the structured database entity.
  * @template TStored The type of the stored event.
  */
 export interface GenericEventProcessorRequest<
@@ -46,6 +48,8 @@ export interface GenericEventProcessorRequest<
   filter?: Filter<TPayload, TPreprocessed>;
   /** An optional logger instance. */
   logger?: Logger;
+  /** The function to post-process the entity. */
+  postProcess?: PostProcessor<TDb, TPayload, TStored>;
 }
 
 /**
@@ -65,8 +69,9 @@ export interface GenericEventProcessorRequest<
  * @template TEvent The type of the raw event.
  * @template TTransformed The type of the transformed raw event.
  * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the raw event.
  * @template TPreprocessed The type of the preprocessed data.
- * @param request The request object containing db, source, transform, store, and logger.
+ * @param request The request object containing db, repository, source, transform, store, and logger.
  */
 export const processEvent = async <
   TDb,
@@ -83,7 +88,16 @@ export const processEvent = async <
     TStored
   >,
 ): Promise<void> => {
-  const { db, source, preprocess, transform, store, filter, logger } = request;
+  const {
+    db,
+    source,
+    preprocess,
+    transform,
+    store,
+    filter,
+    postProcess,
+    logger,
+  } = request;
   // A try-catch block is used to gracefully handle any errors that occur during the
   // sourcing, transformation, or storage of an event. This prevents a single failing
   // event from crashing the entire listening process.
@@ -112,6 +126,10 @@ export const processEvent = async <
       // Map over the array to create a readable string like: "DepositForBurn#123, Transfer#456"
       message: `Successfully stored event: ${(storedItem as any).constructor.name}#${(storedItem as any).id}`,
     });
+
+    if (postProcess) {
+      await postProcess(db, payload, storedItem);
+    }
   } catch (error) {
     logger?.error({
       at: "genericEventProcessor#genericEventProcessor",

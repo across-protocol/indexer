@@ -6,18 +6,15 @@ import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
   MESSAGE_RECEIVED_EVENT_NAME,
 } from "./constants";
-import { Filter } from "../model/genericTypes";
-import { entities } from "@repo/indexer-database";
 import { IndexerEventPayload } from "./genericEventListening";
 import {
   CCTP_DEPOSIT_FOR_BURN_ABI,
   CCTP_MESSAGE_RECEIVED_ABI,
 } from "../model/abis";
-import { decodeEventFromReceipt } from "./preprocessing";
+import { decodeEventsFromReceipt } from "./preprocessing";
 import {
   DepositForBurnArgs,
   MessageReceivedArgs,
-  MintAndWithdrawArgs,
   OFTSentArgs,
   OFTReceivedArgs,
 } from "../model/eventTypes";
@@ -86,12 +83,12 @@ export const createCctpBurnFilter = async (
   }
 
   // Find DepositForBurn log
-  const decodedEvent = decodeEventFromReceipt<DepositForBurnArgs>(
+  const decodedEvents = decodeEventsFromReceipt<DepositForBurnArgs>(
     receipt,
     parseAbi(CCTP_DEPOSIT_FOR_BURN_ABI),
     DEPOSIT_FOR_BURN_EVENT_NAME,
   );
-
+  const decodedEvent = decodedEvents[0]?.event;
   if (decodedEvent) {
     const isMatch = await filterDepositForBurnEvents(decodedEvent, payload);
     return isMatch;
@@ -156,11 +153,12 @@ export const createCctpMintFilter = async (
   }
 
   // Find MessageReceived log
-  const decodedEvent = decodeEventFromReceipt<MessageReceivedArgs>(
+  const decodedEvents = decodeEventsFromReceipt<MessageReceivedArgs>(
     receipt,
     parseAbi(CCTP_MESSAGE_RECEIVED_ABI),
     MESSAGE_RECEIVED_EVENT_NAME,
   );
+  const decodedEvent = decodedEvents[0]?.event;
 
   if (decodedEvent) {
     const isMatch = filterMessageReceived(decodedEvent, payload, logger);

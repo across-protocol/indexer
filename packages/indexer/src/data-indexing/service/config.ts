@@ -24,6 +24,7 @@ import {
   REQUESTED_SLOW_FILL_ABI,
   TOKENS_BRIDGED_ABI,
   CLAIMED_RELAYER_REFUND_ABI,
+  SWAP_BEFORE_BRIDGE_ABI,
 } from "../model/abis";
 import {
   DEPOSIT_FOR_BURN_EVENT_NAME,
@@ -49,6 +50,7 @@ import {
   REQUESTED_SLOW_FILL_EVENT_NAME,
   TOKENS_BRIDGED_EVENT_NAME,
   CLAIMED_RELAYER_REFUND_EVENT_NAME,
+  SWAP_BEFORE_BRIDGE_EVENT_NAME,
 } from "./constants";
 import { IndexerEventPayload } from "./genericEventListening";
 import { IndexerEventHandler } from "./genericIndexing";
@@ -78,6 +80,7 @@ import {
   RequestedSlowFillArgs,
   TokensBridgedArgs,
   ClaimedRelayerRefundArgs,
+  SwapBeforeBridgeArgs,
 } from "../model/eventTypes";
 
 import {
@@ -106,6 +109,7 @@ import {
   transformRequestedSlowFillEvent,
   transformTokensBridgedEvent,
   transformClaimedRelayerRefundEvent,
+  transformSwapBeforeBridgeEvent,
 } from "./transforming";
 import {
   storeDepositForBurnEvent,
@@ -130,6 +134,7 @@ import {
   storeTokensBridgedEvent,
   storeClaimedRelayerRefundEvent,
   storeSponsoredOFTSendEvent,
+  storeSwapBeforeBridgeEvent,
 } from "./storing";
 import { Entity, ObjectLiteral } from "typeorm";
 import { TEST_NETWORKS } from "@across-protocol/constants";
@@ -161,7 +166,16 @@ import {
   getSupportOftChainIds,
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
+import { DataSource, entities } from "@repo/indexer-database";
+import {
+  postProcessDepositEvent,
+  postProcessSwapBeforeBridge,
+} from "./postprocessing";
 import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
+import {
+  SwapBeforeBridge,
+  V3FundsDeposited,
+} from "../../../../indexer-database/dist/src/entities";
 
 /**
  * Array of event handlers.
@@ -219,7 +233,7 @@ export interface SupportedProtocols<
  * @template EventArgs The type of the preprocessed data.
  */
 export const CCTP_PROTOCOL: SupportedProtocols<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -245,7 +259,8 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeDepositForBurnEvent,
+        store: (event, dataSource) =>
+          storeDepositForBurnEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -260,7 +275,8 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           createCctpBurnFilter(payload, logger),
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformMessageSentEvent(args as MessageSentArgs, payload, logger),
-        store: storeMessageSentEvent,
+        store: (event, dataSource) =>
+          storeMessageSentEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -279,7 +295,8 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeMessageReceivedEvent,
+        store: (event, dataSource) =>
+          storeMessageReceivedEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -298,7 +315,8 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeMintAndWithdrawEvent,
+        store: (event, dataSource) =>
+          storeMintAndWithdrawEvent(event, dataSource, logger),
       },
     ];
   },
@@ -314,7 +332,7 @@ export const getSponsoredBridgingEventHandlers = (
   sponsorshipContractAddress: string,
   logger: Logger,
 ): EventHandlers<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -335,7 +353,8 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeSwapFlowFinalizedEvent,
+      store: (event, dataSource) =>
+        storeSwapFlowFinalizedEvent(event, dataSource, logger),
     },
     {
       config: {
@@ -351,7 +370,8 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeSwapFlowInitializedEvent,
+      store: (event, dataSource) =>
+        storeSwapFlowInitializedEvent(event, dataSource, logger),
     },
     {
       config: {
@@ -367,7 +387,8 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeSponsoredAccountActivationEvent,
+      store: (event, dataSource) =>
+        storeSponsoredAccountActivationEvent(event, dataSource, logger),
     },
     {
       config: {
@@ -383,7 +404,8 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeSimpleTransferFlowCompletedEvent,
+      store: (event, dataSource) =>
+        storeSimpleTransferFlowCompletedEvent(event, dataSource, logger),
     },
     {
       config: {
@@ -399,7 +421,8 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeFallbackHyperEVMFlowCompletedEvent,
+      store: (event, dataSource) =>
+        storeFallbackHyperEVMFlowCompletedEvent(event, dataSource, logger),
     },
     {
       config: {
@@ -415,13 +438,14 @@ export const getSponsoredBridgingEventHandlers = (
           payload,
           logger,
         ),
-      store: storeArbitraryActionsExecutedEvent,
+      store: (event, dataSource) =>
+        storeArbitraryActionsExecutedEvent(event, dataSource, logger),
     },
   ];
 };
 
 export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -452,7 +476,8 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeSponsoredDepositForBurnEvent,
+        store: (event, dataSource) =>
+          storeSponsoredDepositForBurnEvent(event, dataSource, logger),
       });
     }
 
@@ -480,7 +505,7 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
  * using the chainId parameter passed to getEventHandlers.
  */
 export const OFT_PROTOCOL: SupportedProtocols<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -509,7 +534,8 @@ export const OFT_PROTOCOL: SupportedProtocols<
             logger,
             tokenAddress,
           ),
-        store: storeOFTSentEvent,
+        store: (event, dataSource) =>
+          storeOFTSentEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -527,14 +553,15 @@ export const OFT_PROTOCOL: SupportedProtocols<
             logger,
             tokenAddress,
           ),
-        store: storeOFTReceivedEvent,
+        store: (event, dataSource) =>
+          storeOFTReceivedEvent(event, dataSource, logger),
       },
     ];
   },
 };
 
 export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -556,7 +583,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeFilledV3RelayEvent,
+        store: (event, dataSource) =>
+          storeFilledV3RelayEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -572,7 +600,11 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeV3FundsDepositedEvent,
+        store: (event, dataSource) =>
+          storeV3FundsDepositedEvent(event, dataSource, logger),
+        postProcess: async (db, _, storedItem) => {
+          await postProcessDepositEvent(db, storedItem as V3FundsDeposited);
+        },
       },
       {
         config: {
@@ -588,7 +620,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeExecutedRelayerRefundRootEvent,
+        store: (event, dataSource) =>
+          storeExecutedRelayerRefundRootEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -604,7 +637,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeRequestedSpeedUpV3DepositEvent,
+        store: (event, dataSource) =>
+          storeRequestedSpeedUpV3DepositEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -620,7 +654,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeRelayedRootBundleEvent,
+        store: (event, dataSource) =>
+          storeRelayedRootBundleEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -636,7 +671,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeRequestedSlowFillEvent,
+        store: (event, dataSource) =>
+          storeRequestedSlowFillEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -652,7 +688,8 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeTokensBridgedEvent,
+        store: (event, dataSource) =>
+          storeTokensBridgedEvent(event, dataSource, logger),
       },
       {
         config: {
@@ -668,7 +705,33 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeClaimedRelayerRefundEvent,
+        store: (event, dataSource) =>
+          storeClaimedRelayerRefundEvent(event, dataSource, logger),
+      },
+      {
+        config: {
+          abi: SWAP_BEFORE_BRIDGE_ABI,
+          eventName: SWAP_BEFORE_BRIDGE_EVENT_NAME,
+          address: getAddress("SpokePool", chainId) as `0x${string}`, // TODO: Check if address is correct for SwapBeforeBridge? It's periphery?
+        },
+        preprocess: extractRawArgs<SwapBeforeBridgeArgs>,
+        filter: async () => true,
+        transform: (args: EventArgs, payload: IndexerEventPayload) =>
+          transformSwapBeforeBridgeEvent(
+            args as SwapBeforeBridgeArgs,
+            payload,
+            logger,
+          ),
+        store: (event, dataSource) =>
+          storeSwapBeforeBridgeEvent(event, dataSource, logger),
+        postProcess: async (db, payload, storedItem) => {
+          await postProcessSwapBeforeBridge({
+            db,
+            payload: payload as IndexerEventPayload,
+            storedItem: storedItem as SwapBeforeBridge,
+            logger,
+          });
+        },
       },
     ];
   },
@@ -679,7 +742,7 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
  * Extends OFT_PROTOCOL with SponsoredOFTSend and destination handler events.
  */
 export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
-  BlockchainEventRepository,
+  DataSource,
   IndexerEventPayload,
   EventArgs,
   Partial<typeof Entity>,
@@ -708,7 +771,8 @@ export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: storeSponsoredOFTSendEvent,
+        store: (event, dataSource) =>
+          storeSponsoredOFTSendEvent(event, dataSource, logger),
       });
     }
 
@@ -734,7 +798,7 @@ export const getChainProtocols: (
 ) => Record<
   number,
   SupportedProtocols<
-    BlockchainEventRepository,
+    DataSource,
     IndexerEventPayload,
     EventArgs,
     Partial<typeof Entity>,
@@ -750,7 +814,7 @@ export const getChainProtocols: (
     {} as Record<
       number,
       SupportedProtocols<
-        BlockchainEventRepository,
+        DataSource,
         IndexerEventPayload,
         EventArgs,
         Partial<typeof Entity>,

@@ -99,3 +99,7 @@ export const TOKENS_BRIDGED_ABI = [
 export const CLAIMED_RELAYER_REFUND_ABI = [
   "event ClaimedRelayerRefund(bytes32 indexed l2TokenAddress, bytes32 indexed refundAddress, uint256 amount, address indexed caller)",
 ];
+
+export const SWAP_BEFORE_BRIDGE_ABI = [
+  "event SwapBeforeBridge(address exchange, address indexed swapToken, address indexed acrossInputToken, uint256 swapTokenAmount, uint256 acrossInputAmount, address indexed acrossOutputToken, uint256 acrossOutputAmount)",
+];

@@ -1,5 +1,3 @@
-import { SaveQueryResult } from "@repo/indexer-database";
-
 /**
  * A function that provides the next event to be processed.
  * This is designed to be a "blocking" function. It should return a Promise that
@@ -62,3 +60,19 @@ export type Filter<TPayload, TPreprocessed> = (
 export type Preprocessor<TPayload, TPreprocessed> = (
   payload: TPayload,
 ) => Promise<TPreprocessed> | TPreprocessed;
+
+/**
+ * A function that performs post-processing on the stored entity.
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the raw payload.
+ * @template TStored The type of the stored entity.
+ * @param db The database client/connection instance.
+ * @param entity The entity returned by the `Transformer` and stored by `Storer`.
+ * @param payload The raw payload.
+ * @returns A Promise that resolves when data post-processing is complete.
+ */
+export type PostProcessor<TDb, TPayload, TStored> = (
+  db: TDb,
+  payload: TPayload,
+  entity: TStored,
+) => Promise<void>;

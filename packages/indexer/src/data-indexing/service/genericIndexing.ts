@@ -6,6 +6,7 @@ import {
   Transformer,
   Filter,
   Preprocessor,
+  PostProcessor,
 } from "../model/genericTypes";
 import { Logger } from "winston";
 import {
@@ -20,6 +21,8 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { utils as dbUtils, DataSource } from "@repo/indexer-database";
+type BlockchainEventRepository = dbUtils.BlockchainEventRepository;
 
 /**
  * @file This file contains the master orchestrator for a single indexing subsystem.
@@ -51,6 +54,7 @@ export interface IndexerEventHandler<
   transform: Transformer<TPayload, TPreprocessed, TTransformed>;
   store: Storer<TDb, TTransformed, TStored>;
   filter?: Filter<TPayload, TPreprocessed>;
+  postProcess?: PostProcessor<TDb, TPayload, TStored>;
 }
 
 /**
@@ -218,6 +222,7 @@ export async function startIndexing<
           store: originalStore,
           filter,
           preprocess,
+          postProcess,
         } = eventItem;
 
         const store = withMetrics(originalStore, {
@@ -251,6 +256,7 @@ export async function startIndexing<
               transform,
               store,
               filter,
+              postProcess,
               logger,
             }).then(() => {
               metrics?.addGaugeMetric(

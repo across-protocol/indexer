@@ -13,19 +13,24 @@ import { Logger } from "winston";
  * extracts and decodes a specific event from a transaction receipt's logs.
  * @param receipt The transaction receipt.
  * @param abi The Abi containing the event definition.
- * @returns The decoded event arguments, or undefined if not found.
+ * @returns Array of objects containing the decoded event, log index, and transaction hash.
  */
-export const decodeEventFromReceipt = <T>(
+export const decodeEventsFromReceipt = <T>(
   receipt: TransactionReceipt,
   abi: Abi,
   eventName: string,
-): T | undefined => {
+): { event: T; logIndex: number; transactionHash: string }[] => {
   const logs = parseEventLogs({
     abi,
     logs: receipt.logs,
   });
-  const log = logs.find((log) => log.eventName === eventName);
-  return (log?.args as T) ?? undefined;
+  return logs
+    .filter((log) => log.eventName === eventName)
+    .map((log) => ({
+      event: log.args as T,
+      logIndex: log.logIndex,
+      transactionHash: log.transactionHash,
+    }));
 };
 
 export const extractRawArgs = <TEvent>(
@@ -56,11 +61,13 @@ export const preprocessSponsoredDepositForBurn = async (
   const args = extractRawArgs<SponsoredDepositForBurnArgs>(payload);
 
   if (payload.transactionReceipt) {
-    const depositArgs = decodeEventFromReceipt<DepositForBurnArgs>(
+    const depositEvents = decodeEventsFromReceipt<DepositForBurnArgs>(
       await payload.transactionReceipt,
       parseAbi(CCTP_DEPOSIT_FOR_BURN_ABI),
       DEPOSIT_FOR_BURN_EVENT_NAME,
     );
+    const depositArgs = depositEvents[0]?.event;
+
     if (depositArgs) {
       args.destinationChainId = getCctpDestinationChainFromDomain(
         depositArgs.destinationDomain,

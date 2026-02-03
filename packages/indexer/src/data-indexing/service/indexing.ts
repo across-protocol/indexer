@@ -1,6 +1,7 @@
 import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
+  IndexerEventHandler,
 } from "./genericIndexing";
 import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
@@ -100,7 +101,7 @@ export async function startChainIndexing<
 
   // Start the generic indexer subsystem
   await startGenericIndexing({
-    db: new dbUtils.BlockchainEventRepository(database, logger) as TDb,
+    db: database as TDb,
     indexerConfig,
     logger,
     sigterm,

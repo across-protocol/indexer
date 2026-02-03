@@ -1,6 +1,11 @@
 import { entities, SaveQueryResult } from "@repo/indexer-database";
-import { utils as dbUtils, DataSourceType } from "@repo/indexer-database";
+import {
+  utils as dbUtils,
+  DataSourceType,
+  DataSource,
+} from "@repo/indexer-database";
 import { Storer } from "../model/genericTypes";
+import { Logger } from "winston";
 
 const PK_CHAIN_BLOCK_TX_LOG = [
   "chainId",
@@ -59,17 +64,16 @@ function ensureSingleStoredItem<T>(
  * Stores a DepositForBurn event in the database.
  *
  * @param event The SponsoredDepositForBurn entity to store.
- * @param repository The BlockchainEventRepository instance.
+ * @param dataSource The TypeORM DataSource instance.
+ * @param logger The logger instance.
  * @returns A promise that resolves to the result of the save operation.
  */
-export const storeSponsoredDepositForBurnEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SponsoredDepositForBurn>,
-  entities.SponsoredDepositForBurn
-> = async (
+export const storeSponsoredDepositForBurnEvent = async (
   event: Partial<entities.SponsoredDepositForBurn>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SponsoredDepositForBurn> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
       entities.SponsoredDepositForBurn,
@@ -82,20 +86,16 @@ export const storeSponsoredDepositForBurnEvent: Storer<
 };
 
 /**
- * Stores a DepositForBurn event in the database.
- *
- * @param event The DepositForBurn entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a DepositForBurn event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeDepositForBurnEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.DepositForBurn>,
-  entities.DepositForBurn
-> = async (
+export const storeDepositForBurnEvent = async (
   event: Partial<entities.DepositForBurn>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.DepositForBurn> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
       entities.DepositForBurn,
@@ -107,14 +107,17 @@ export const storeDepositForBurnEvent: Storer<
   return ensureSingleStoredItem(result, "DepositForBurn").data;
 };
 
-export const storeMessageSentEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.MessageSent>,
-  entities.MessageSent
-> = async (
+/**
+ * Stores a MessageSent event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeMessageSentEvent = async (
   event: Partial<entities.MessageSent>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.MessageSent> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.MessageSent>(
       entities.MessageSent,
@@ -126,14 +129,17 @@ export const storeMessageSentEvent: Storer<
   return ensureSingleStoredItem(result, "MessageSent").data;
 };
 
-export const storeMessageReceivedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.MessageReceived>,
-  entities.MessageReceived
-> = async (
+/**
+ * Stores a MessageReceived event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeMessageReceivedEvent = async (
   event: Partial<entities.MessageReceived>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.MessageReceived> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.MessageReceived>(
       entities.MessageReceived,
@@ -145,14 +151,17 @@ export const storeMessageReceivedEvent: Storer<
   return ensureSingleStoredItem(result, "MessageReceived").data;
 };
 
-export const storeMintAndWithdrawEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.MintAndWithdraw>,
-  entities.MintAndWithdraw
-> = async (
+/**
+ * Stores a MintAndWithdraw event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeMintAndWithdrawEvent = async (
   event: Partial<entities.MintAndWithdraw>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.MintAndWithdraw> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.MintAndWithdraw>(
       entities.MintAndWithdraw,
@@ -168,17 +177,15 @@ export const storeMintAndWithdrawEvent: Storer<
  * Stores a SwapFlowInitialized event in the database.
  *
  * @param event The SwapFlowInitialized entity to store.
- * @param repository The BlockchainEventRepository instance.
+ * @param dataSource The TypeORM DataSource instance.
  * @returns A promise that resolves to the result of the save operation.
  */
-export const storeSwapFlowInitializedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SwapFlowInitialized>,
-  entities.SwapFlowInitialized
-> = async (
+export const storeSwapFlowInitializedEvent = async (
   event: Partial<entities.SwapFlowInitialized>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SwapFlowInitialized> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SwapFlowInitialized>(
       entities.SwapFlowInitialized,
@@ -191,20 +198,16 @@ export const storeSwapFlowInitializedEvent: Storer<
 };
 
 /**
- * Stores a SwapFlowFinalized event in the database.
- *
- * @param event The SwapFlowFinalized entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a SwapFlowFinalized event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeSwapFlowFinalizedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SwapFlowFinalized>,
-  entities.SwapFlowFinalized
-> = async (
+export const storeSwapFlowFinalizedEvent = async (
   event: Partial<entities.SwapFlowFinalized>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SwapFlowFinalized> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SwapFlowFinalized>(
       entities.SwapFlowFinalized,
@@ -217,20 +220,16 @@ export const storeSwapFlowFinalizedEvent: Storer<
 };
 
 /**
- * Stores a SponsoredAccountActivation event in the database.
- *
- * @param event The SponsoredAccountActivation entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a SponsoredAccountActivation event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeSponsoredAccountActivationEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SponsoredAccountActivation>,
-  entities.SponsoredAccountActivation
-> = async (
+export const storeSponsoredAccountActivationEvent = async (
   event: Partial<entities.SponsoredAccountActivation>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SponsoredAccountActivation> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SponsoredAccountActivation>(
       entities.SponsoredAccountActivation,
@@ -243,20 +242,16 @@ export const storeSponsoredAccountActivationEvent: Storer<
 };
 
 /**
- * Stores a SimpleTransferFlowCompleted event in the database.
- *
- * @param event The SimpleTransferFlowCompleted entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a SimpleTransferFlowCompleted event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeSimpleTransferFlowCompletedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SimpleTransferFlowCompleted>,
-  entities.SimpleTransferFlowCompleted
-> = async (
+export const storeSimpleTransferFlowCompletedEvent = async (
   event: Partial<entities.SimpleTransferFlowCompleted>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SimpleTransferFlowCompleted> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SimpleTransferFlowCompleted>(
       entities.SimpleTransferFlowCompleted,
@@ -269,20 +264,16 @@ export const storeSimpleTransferFlowCompletedEvent: Storer<
 };
 
 /**
- * Stores a FallbackHyperEVMFlowCompleted event in the database.
- *
- * @param event The FallbackHyperEVMFlowCompleted entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a FallbackHyperEVMFlowCompleted event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeFallbackHyperEVMFlowCompletedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.FallbackHyperEVMFlowCompleted>,
-  entities.FallbackHyperEVMFlowCompleted
-> = async (
+export const storeFallbackHyperEVMFlowCompletedEvent = async (
   event: Partial<entities.FallbackHyperEVMFlowCompleted>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.FallbackHyperEVMFlowCompleted> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.FallbackHyperEVMFlowCompleted>(
       entities.FallbackHyperEVMFlowCompleted,
@@ -295,20 +286,16 @@ export const storeFallbackHyperEVMFlowCompletedEvent: Storer<
 };
 
 /**
- * Stores an ArbitraryActionsExecuted event in the database.
- *
- * @param event The ArbitraryActionsExecuted entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores an ArbitraryActionsExecuted event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeArbitraryActionsExecutedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.ArbitraryActionsExecuted>,
-  entities.ArbitraryActionsExecuted
-> = async (
+export const storeArbitraryActionsExecutedEvent = async (
   event: Partial<entities.ArbitraryActionsExecuted>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.ArbitraryActionsExecuted> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
       entities.ArbitraryActionsExecuted,
@@ -325,20 +312,16 @@ export const storeArbitraryActionsExecutedEvent: Storer<
  * ================================================================================== */
 
 /**
- * Stores an OFTSent event in the database.
- *
- * @param event The OFTSent entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores an OFTSent event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeOFTSentEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.OFTSent>,
-  entities.OFTSent
-> = async (
+export const storeOFTSentEvent = async (
   event: Partial<entities.OFTSent>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.OFTSent> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
       entities.OFTSent,
@@ -351,20 +334,16 @@ export const storeOFTSentEvent: Storer<
 };
 
 /**
- * Stores an OFTReceived event in the database.
- *
- * @param event The OFTReceived entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a OFTReceived event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeOFTReceivedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.OFTReceived>,
-  entities.OFTReceived
-> = async (
+export const storeOFTReceivedEvent = async (
   event: Partial<entities.OFTReceived>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.OFTReceived> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.OFTReceived>(
       entities.OFTReceived,
@@ -377,20 +356,16 @@ export const storeOFTReceivedEvent: Storer<
 };
 
 /**
- * Stores a SponsoredOFTSend event in the database.
- *
- * @param event The SponsoredOFTSend entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a SponsoredOFTSend event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeSponsoredOFTSendEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.SponsoredOFTSend>,
-  entities.SponsoredOFTSend
-> = async (
+export const storeSponsoredOFTSendEvent = async (
   event: Partial<entities.SponsoredOFTSend>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.SponsoredOFTSend> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
       entities.SponsoredOFTSend,
@@ -406,14 +381,17 @@ export const storeSponsoredOFTSendEvent: Storer<
  * SPOKE POOL STORING LOGIC
  * ================================================================================== */
 
-export const storeFilledV3RelayEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.FilledV3Relay>,
-  entities.FilledV3Relay
-> = async (
+/**
+ * Stores a FilledV3Relay event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeFilledV3RelayEvent = async (
   event: Partial<entities.FilledV3Relay>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.FilledV3Relay> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
       entities.FilledV3Relay,
@@ -425,14 +403,17 @@ export const storeFilledV3RelayEvent: Storer<
   return ensureSingleStoredItem(result, "FilledV3Relay").data;
 };
 
-export const storeV3FundsDepositedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.V3FundsDeposited>,
-  entities.V3FundsDeposited
-> = async (
+/**
+ * Stores a V3FundsDeposited event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeV3FundsDepositedEvent = async (
   event: Partial<entities.V3FundsDeposited>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.V3FundsDeposited> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
       entities.V3FundsDeposited,
@@ -445,20 +426,16 @@ export const storeV3FundsDepositedEvent: Storer<
 };
 
 /**
- * Stores an ExecutedRelayerRefundRoot event in the database.
- *
- * @param event The ExecutedRelayerRefundRoot entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores an ExecutedRelayerRefundRoot event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeExecutedRelayerRefundRootEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.ExecutedRelayerRefundRoot>,
-  entities.ExecutedRelayerRefundRoot
-> = async (
+export const storeExecutedRelayerRefundRootEvent = async (
   event: Partial<entities.ExecutedRelayerRefundRoot>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.ExecutedRelayerRefundRoot> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
       entities.ExecutedRelayerRefundRoot,
@@ -470,14 +447,17 @@ export const storeExecutedRelayerRefundRootEvent: Storer<
   return ensureSingleStoredItem(result, "ExecutedRelayerRefundRoot").data;
 };
 
-export const storeRequestedSpeedUpV3DepositEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.RequestedSpeedUpV3Deposit>,
-  entities.RequestedSpeedUpV3Deposit
-> = async (
+/**
+ * Stores a RequestedSpeedUpV3Deposit event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeRequestedSpeedUpV3DepositEvent = async (
   event: Partial<entities.RequestedSpeedUpV3Deposit>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.RequestedSpeedUpV3Deposit> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
       entities.RequestedSpeedUpV3Deposit,
@@ -490,20 +470,16 @@ export const storeRequestedSpeedUpV3DepositEvent: Storer<
 };
 
 /**
- * Stores a RelayedRootBundle event in the database.
- *
- * @param event The RelayedRootBundle entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a RelayedRootBundle event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeRelayedRootBundleEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.RelayedRootBundle>,
-  entities.RelayedRootBundle
-> = async (
+export const storeRelayedRootBundleEvent = async (
   event: Partial<entities.RelayedRootBundle>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.RelayedRootBundle> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
       entities.RelayedRootBundle,
@@ -516,20 +492,16 @@ export const storeRelayedRootBundleEvent: Storer<
 };
 
 /**
- * Stores a RequestedSlowFill event in the database.
- *
- * @param event The RequestedV3SlowFill entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a RequestedV3SlowFill event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeRequestedSlowFillEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.RequestedV3SlowFill>,
-  entities.RequestedV3SlowFill
-> = async (
+export const storeRequestedSlowFillEvent = async (
   event: Partial<entities.RequestedV3SlowFill>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.RequestedV3SlowFill> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
       entities.RequestedV3SlowFill,
@@ -542,20 +514,16 @@ export const storeRequestedSlowFillEvent: Storer<
 };
 
 /**
- * Stores a TokensBridged event in the database.
- *
- * @param event The TokensBridged entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a TokensBridged event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeTokensBridgedEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.TokensBridged>,
-  entities.TokensBridged
-> = async (
+export const storeTokensBridgedEvent = async (
   event: Partial<entities.TokensBridged>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.TokensBridged> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.TokensBridged>(
       entities.TokensBridged,
@@ -568,20 +536,16 @@ export const storeTokensBridgedEvent: Storer<
 };
 
 /**
- * Stores a ClaimedRelayerRefund event in the database.
- *
- * @param event The ClaimedRelayerRefunds entity to store.
- * @param repository The BlockchainEventRepository instance.
- * @returns A promise that resolves to the result of the save operation.
+ * Stores a ClaimedRelayerRefund event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
  */
-export const storeClaimedRelayerRefundEvent: Storer<
-  dbUtils.BlockchainEventRepository,
-  Partial<entities.ClaimedRelayerRefunds>,
-  entities.ClaimedRelayerRefunds
-> = async (
+export const storeClaimedRelayerRefundEvent = async (
   event: Partial<entities.ClaimedRelayerRefunds>,
-  repository: dbUtils.BlockchainEventRepository,
+  db: DataSource,
+  logger: Logger,
 ): Promise<entities.ClaimedRelayerRefunds> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
   const result =
     await repository.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
       entities.ClaimedRelayerRefunds,
@@ -591,4 +555,26 @@ export const storeClaimedRelayerRefundEvent: Storer<
     );
 
   return ensureSingleStoredItem(result, "ClaimedRelayerRefund").data;
+};
+
+/**
+ * Stores a SwapBeforeBridge event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ */
+export const storeSwapBeforeBridgeEvent = async (
+  event: Partial<entities.SwapBeforeBridge>,
+  db: DataSource,
+  logger: Logger,
+): Promise<entities.SwapBeforeBridge> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
+  const result =
+    await repository.saveAndHandleFinalisationBatch<entities.SwapBeforeBridge>(
+      entities.SwapBeforeBridge,
+      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapBeforeBridge)[],
+      [],
+    );
+
+  return ensureSingleStoredItem(result, "SwapBeforeBridge").data;
 };
