@@ -125,6 +125,9 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   // The maximum amount of time we wait for is 1 minute between retries
   let delay = 1000;
   const MAX_DELAY = 60 * 1000;
+  const MAX_WEBSOCKET_RETRY_COUNT = 5;
+  let websocketRetryCount = 0;
+  let websocketErrors: Error[] = [];
 
   // Track active resources for cleanup
   let viemClient: PublicClient<Transport, Chain>;
@@ -258,8 +261,10 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
         if (unwatch) unwatchFunctions.push(unwatch);
       }
 
-      // Reset Delay on successful startup
+      // Reset Tracking on successful startup
       delay = 1000;
+      websocketRetryCount = 0;
+      websocketErrors = [];
 
       // --- The "Keep Alive" Wait ---
       // We wait for EITHER:
@@ -283,11 +288,22 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
       ]);
     } catch (e) {
       // Handle Errors & Restart
-      logger.error({
-        at: "genericIndexing#startIndexingSubsystem",
-        message: `Indexer crashed for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
-        error: (e as Error).message,
-      });
+      websocketRetryCount++;
+      websocketErrors.push(e as Error);
+      if (websocketRetryCount <= MAX_WEBSOCKET_RETRY_COUNT) {
+        logger.debug({
+          at: "genericIndexing#startIndexingSubsystem",
+          message: `Indexer crashed for chain ${indexerConfig.chainId}. Trying to solve the issue by restarting in ${delay / 1000}s.`,
+          error: (e as Error).message,
+        });
+      } else {
+        logger.error({
+          at: "genericIndexing#startIndexingSubsystem",
+          message: `Indexer crashed ${websocketRetryCount} times for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
+          allErrors: websocketErrors.map((err) => err.message),
+          notificationPath: "across-indexer-error",
+        });
+      }
       metrics?.addCountMetric("startIndexingError", [
         "websocketIndexer",
         "startIndexing",
