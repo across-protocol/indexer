@@ -228,7 +228,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       if (now - shutdownTimestamp < 2000) {
         return;
       }
-      logger.info({
+      logger.debug({
         at: "Indexer#Main",
         message: `Received second signal ${signal}, forcing exit.`,
       });
@@ -236,7 +236,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     }
     isShuttingDown = true;
     shutdownTimestamp = now;
-    logger.info({
+    logger.debug({
       at: "Indexer#Main",
       message: `Received ${signal}. Starting graceful shutdown...`,
     });
@@ -251,7 +251,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     ]);
     // Stop all other managers
 
-    logger.info({
+    logger.debug({
       at: "Indexer#Main",
       message:
         "Graceful shutdown trigger complete. Indexer loop should finish shortly.",
@@ -343,7 +343,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   await redis?.quit();
   await postgres?.destroy();
-  logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+  logger.debug({ at: "Indexer#Main", message: "Exiting indexer" });
   await new Promise<void>((resolve) => {
     logger.on("finish", resolve);
     logger.end();

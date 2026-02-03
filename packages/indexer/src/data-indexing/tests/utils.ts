@@ -18,13 +18,13 @@ import { SpokePoolRepository } from "../../database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
+import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueuesService } from "../../messaging/service";
 import { entities } from "@repo/indexer-database";
 import { createTestRetryProviderFactory } from "../../tests/testProvider";
 import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 import { IndexerDataHandler } from "../service/IndexerDataHandler";
-import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 
 export const stubContractUtils = (
   contractName: string,
@@ -187,11 +187,11 @@ export const getSpokePoolIndexerDataHandler = (
   );
   const callsFailedRepo = new CallsFailedRepository(dataSource, logger);
   const swapMetadataRepo = new SwapMetadataRepository(dataSource, logger);
-
   const hyperliquidDepositHandlerRepo = new HyperliquidDepositHandlerRepository(
     dataSource,
     logger,
   );
+
   // Create Services
   // Stub SpokePoolProcessor to avoid pg_advisory_xact_lock issues with pg-mem
   const spokePoolProcessor = {

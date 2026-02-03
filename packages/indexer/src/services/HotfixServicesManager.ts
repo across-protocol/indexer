@@ -27,7 +27,7 @@ export class HotfixServicesManager {
 
   private startUnmatchedFillEventsService(signal: AbortSignal) {
     if (!this.config.enableHotfixServices) {
-      this.logger.warn({
+      this.logger.debug({
         at: "HotfixServicesManager#startUnmatchedFillEventsService",
         message: "UnmatchedFillEventsService is disabled",
       });
@@ -44,7 +44,7 @@ export class HotfixServicesManager {
 
   private startUnmatchedDepositEventsService(signal: AbortSignal) {
     if (!this.config.enableHotfixServices) {
-      this.logger.warn({
+      this.logger.debug({
         at: "HotfixServicesManager#startUnmatchedDepositEventsService",
         message: "UnmatchedDepositEventsService is disabled",
       });

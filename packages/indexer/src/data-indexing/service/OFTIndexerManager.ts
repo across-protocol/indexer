@@ -29,7 +29,7 @@ export class OFTIndexerManager {
   public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableOftIndexer) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#OFTIndexerManager#start",
           message: "OFT indexer is disabled",
         });
@@ -80,7 +80,7 @@ export class OFTIndexerManager {
     });
 
     if (indexers.length === 0) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#OFTIndexerManager#startEvmIndexer",
         message: "No EVM OFT indexers to start",
       });

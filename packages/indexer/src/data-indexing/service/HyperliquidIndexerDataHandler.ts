@@ -317,7 +317,7 @@ export class HyperliquidIndexerDataHandler implements IndexerDataHandler {
         { conflictPaths: ["id"] },
       );
 
-      this.logger.info({
+      this.logger.debug({
         at: "HyperliquidIndexerDataHandler#skipBlockRangeAndUpdateProgress",
         message: "Skipped failed block range and updated progress",
         skippedBlockRange: blockRange,

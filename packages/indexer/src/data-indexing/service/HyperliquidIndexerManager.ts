@@ -26,7 +26,7 @@ export class HyperliquidIndexerManager {
   public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableHyperliquidIndexer) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#HyperliquidIndexerManager#start",
           message: "Hyperliquid indexer is disabled",
         });
@@ -85,7 +85,7 @@ export class HyperliquidIndexerManager {
         rpcUrl,
       );
 
-      this.logger.info({
+      this.logger.debug({
         at: "Indexer#HyperliquidIndexerManager#start",
         message: "Starting Hyperliquid indexer",
         chainId,
