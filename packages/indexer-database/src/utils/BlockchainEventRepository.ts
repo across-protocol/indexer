@@ -53,7 +53,7 @@ export class BlockchainEventRepository {
    * The unique keys to check for. It is recommended these keys to be indexed columns, so that the query is faster.
    * @param comparisonKeys - The keys to compare for changes.
    */
-  protected async saveAndHandleFinalisation<Entity extends ObjectLiteral>(
+  public async saveAndHandleFinalisation<Entity extends ObjectLiteral>(
     entity: EntityTarget<Entity>,
     data: Partial<Entity>,
     uniqueKeys: (keyof Entity)[],

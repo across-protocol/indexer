@@ -1,4 +1,4 @@
-import { entities, SaveQueryResult } from "@repo/indexer-database";
+import { entities } from "@repo/indexer-database";
 import { utils as dbUtils, DataSourceType } from "@repo/indexer-database";
 import { Storer } from "../model/genericTypes";
 
@@ -32,30 +32,6 @@ const UK_TOKENS_BRIDGED = [
 ];
 
 /**
- * Helper function to ensure exactly one item is stored and return it.
- * Throws an error if the result array doesn't contain exactly one item.
- * @param results The array of SaveQueryResult items
- * @param eventType The name of the event type for error messaging
- * @returns The single SaveQueryResult item
- */
-function ensureSingleStoredItem<T>(
-  results: SaveQueryResult<T>[],
-  eventType: string,
-): SaveQueryResult<T> {
-  if (results.length === 0) {
-    throw new Error(
-      `Expected exactly one ${eventType} to be stored, but none were stored.`,
-    );
-  }
-  if (results.length > 1) {
-    throw new Error(
-      `Expected exactly one ${eventType} to be stored, but ${results.length} were stored.`,
-    );
-  }
-  return results[0]!;
-}
-
-/**
  * Stores a DepositForBurn event in the database.
  *
  * @param event The SponsoredDepositForBurn entity to store.
@@ -70,15 +46,14 @@ export const storeSponsoredDepositForBurnEvent: Storer<
   event: Partial<entities.SponsoredDepositForBurn>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SponsoredDepositForBurn> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredDepositForBurn>(
       entities.SponsoredDepositForBurn,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredDepositForBurn)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SponsoredDepositForBurn").data;
+    )
+  ).data;
 };
 
 /**
@@ -96,15 +71,14 @@ export const storeDepositForBurnEvent: Storer<
   event: Partial<entities.DepositForBurn>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.DepositForBurn> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.DepositForBurn>(
       entities.DepositForBurn,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.DepositForBurn)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "DepositForBurn").data;
+    )
+  ).data;
 };
 
 export const storeMessageSentEvent: Storer<
@@ -115,15 +89,14 @@ export const storeMessageSentEvent: Storer<
   event: Partial<entities.MessageSent>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.MessageSent> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.MessageSent>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.MessageSent>(
       entities.MessageSent,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "MessageSent").data;
+    )
+  ).data;
 };
 
 export const storeMessageReceivedEvent: Storer<
@@ -134,15 +107,14 @@ export const storeMessageReceivedEvent: Storer<
   event: Partial<entities.MessageReceived>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.MessageReceived> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.MessageReceived>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.MessageReceived>(
       entities.MessageReceived,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageReceived)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "MessageReceived").data;
+    )
+  ).data;
 };
 
 export const storeMintAndWithdrawEvent: Storer<
@@ -153,15 +125,14 @@ export const storeMintAndWithdrawEvent: Storer<
   event: Partial<entities.MintAndWithdraw>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.MintAndWithdraw> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.MintAndWithdraw>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.MintAndWithdraw>(
       entities.MintAndWithdraw,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MintAndWithdraw)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "MintAndWithdraw").data;
+    )
+  ).data;
 };
 
 /**
@@ -179,15 +150,14 @@ export const storeSwapFlowInitializedEvent: Storer<
   event: Partial<entities.SwapFlowInitialized>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SwapFlowInitialized> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SwapFlowInitialized>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SwapFlowInitialized>(
       entities.SwapFlowInitialized,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowInitialized)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SwapFlowInitialized").data;
+    )
+  ).data;
 };
 
 /**
@@ -205,15 +175,14 @@ export const storeSwapFlowFinalizedEvent: Storer<
   event: Partial<entities.SwapFlowFinalized>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SwapFlowFinalized> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SwapFlowFinalized>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SwapFlowFinalized>(
       entities.SwapFlowFinalized,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowFinalized)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SwapFlowFinalized").data;
+    )
+  ).data;
 };
 
 /**
@@ -231,15 +200,14 @@ export const storeSponsoredAccountActivationEvent: Storer<
   event: Partial<entities.SponsoredAccountActivation>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SponsoredAccountActivation> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SponsoredAccountActivation>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredAccountActivation>(
       entities.SponsoredAccountActivation,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredAccountActivation)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SponsoredAccountActivation").data;
+    )
+  ).data;
 };
 
 /**
@@ -257,15 +225,14 @@ export const storeSimpleTransferFlowCompletedEvent: Storer<
   event: Partial<entities.SimpleTransferFlowCompleted>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SimpleTransferFlowCompleted> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SimpleTransferFlowCompleted>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SimpleTransferFlowCompleted>(
       entities.SimpleTransferFlowCompleted,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SimpleTransferFlowCompleted)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SimpleTransferFlowCompleted").data;
+    )
+  ).data;
 };
 
 /**
@@ -283,15 +250,14 @@ export const storeFallbackHyperEVMFlowCompletedEvent: Storer<
   event: Partial<entities.FallbackHyperEVMFlowCompleted>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.FallbackHyperEVMFlowCompleted> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.FallbackHyperEVMFlowCompleted>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.FallbackHyperEVMFlowCompleted>(
       entities.FallbackHyperEVMFlowCompleted,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.FallbackHyperEVMFlowCompleted)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "FallbackHyperEVMFlowCompleted").data;
+    )
+  ).data;
 };
 
 /**
@@ -309,15 +275,14 @@ export const storeArbitraryActionsExecutedEvent: Storer<
   event: Partial<entities.ArbitraryActionsExecuted>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.ArbitraryActionsExecuted> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.ArbitraryActionsExecuted>(
       entities.ArbitraryActionsExecuted,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "ArbitraryActionsExecuted").data;
+    )
+  ).data;
 };
 
 /* ==================================================================================
@@ -339,15 +304,14 @@ export const storeOFTSentEvent: Storer<
   event: Partial<entities.OFTSent>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.OFTSent> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.OFTSent>(
       entities.OFTSent,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTSent)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "OFTSent").data;
+    )
+  ).data;
 };
 
 /**
@@ -365,15 +329,14 @@ export const storeOFTReceivedEvent: Storer<
   event: Partial<entities.OFTReceived>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.OFTReceived> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.OFTReceived>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.OFTReceived>(
       entities.OFTReceived,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTReceived)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "OFTReceived").data;
+    )
+  ).data;
 };
 
 /**
@@ -391,15 +354,14 @@ export const storeSponsoredOFTSendEvent: Storer<
   event: Partial<entities.SponsoredOFTSend>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.SponsoredOFTSend> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredOFTSend>(
       entities.SponsoredOFTSend,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredOFTSend)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "SponsoredOFTSend").data;
+    )
+  ).data;
 };
 
 /* ==================================================================================
@@ -414,15 +376,14 @@ export const storeFilledV3RelayEvent: Storer<
   event: Partial<entities.FilledV3Relay>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.FilledV3Relay> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.FilledV3Relay>(
       entities.FilledV3Relay,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_INTERNAL_HASH as (keyof entities.FilledV3Relay)[],
       UPDATE_TRANSACTION_HASH as (keyof entities.FilledV3Relay)[],
-    );
-
-  return ensureSingleStoredItem(result, "FilledV3Relay").data;
+    )
+  ).data;
 };
 
 export const storeV3FundsDepositedEvent: Storer<
@@ -433,15 +394,14 @@ export const storeV3FundsDepositedEvent: Storer<
   event: Partial<entities.V3FundsDeposited>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.V3FundsDeposited> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.V3FundsDeposited>(
       entities.V3FundsDeposited,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "V3FundsDeposited").data;
+    )
+  ).data;
 };
 
 /**
@@ -459,15 +419,14 @@ export const storeExecutedRelayerRefundRootEvent: Storer<
   event: Partial<entities.ExecutedRelayerRefundRoot>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.ExecutedRelayerRefundRoot> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.ExecutedRelayerRefundRoot>(
       entities.ExecutedRelayerRefundRoot,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_REFUND_ROOT_CHAIN_BUNDLE_LEAF_TXN as (keyof entities.ExecutedRelayerRefundRoot)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "ExecutedRelayerRefundRoot").data;
+    )
+  ).data;
 };
 
 export const storeRequestedSpeedUpV3DepositEvent: Storer<
@@ -478,15 +437,14 @@ export const storeRequestedSpeedUpV3DepositEvent: Storer<
   event: Partial<entities.RequestedSpeedUpV3Deposit>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.RequestedSpeedUpV3Deposit> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.RequestedSpeedUpV3Deposit>(
       entities.RequestedSpeedUpV3Deposit,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "RequestedSpeedUpV3Deposit").data;
+    )
+  ).data;
 };
 
 /**
@@ -504,15 +462,14 @@ export const storeRelayedRootBundleEvent: Storer<
   event: Partial<entities.RelayedRootBundle>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.RelayedRootBundle> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.RelayedRootBundle>(
       entities.RelayedRootBundle,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_RELAYED_ROOT_BUNDLE as (keyof entities.RelayedRootBundle)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "RelayedRootBundle").data;
+    )
+  ).data;
 };
 
 /**
@@ -530,15 +487,14 @@ export const storeRequestedSlowFillEvent: Storer<
   event: Partial<entities.RequestedV3SlowFill>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.RequestedV3SlowFill> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.RequestedV3SlowFill>(
       entities.RequestedV3SlowFill,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_INTERNAL_HASH as (keyof entities.RequestedV3SlowFill)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "RequestedV3SlowFill").data;
+    )
+  ).data;
 };
 
 /**
@@ -556,15 +512,14 @@ export const storeTokensBridgedEvent: Storer<
   event: Partial<entities.TokensBridged>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.TokensBridged> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.TokensBridged>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.TokensBridged>(
       entities.TokensBridged,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       UK_TOKENS_BRIDGED as (keyof entities.TokensBridged)[],
       UPDATE_TRANSACTION_HASH as (keyof entities.TokensBridged)[],
-    );
-
-  return ensureSingleStoredItem(result, "TokensBridged").data;
+    )
+  ).data;
 };
 
 /**
@@ -582,13 +537,12 @@ export const storeClaimedRelayerRefundEvent: Storer<
   event: Partial<entities.ClaimedRelayerRefunds>,
   repository: dbUtils.BlockchainEventRepository,
 ): Promise<entities.ClaimedRelayerRefunds> => {
-  const result =
-    await repository.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
+  return (
+    await repository.saveAndHandleFinalisation<entities.ClaimedRelayerRefunds>(
       entities.ClaimedRelayerRefunds,
-      [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
       PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ClaimedRelayerRefunds)[],
       [],
-    );
-
-  return ensureSingleStoredItem(result, "ClaimedRelayerRefund").data;
+    )
+  ).data;
 };
