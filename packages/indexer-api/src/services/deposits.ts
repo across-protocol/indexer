@@ -955,7 +955,7 @@ export class DepositsService {
 
   /**
    * If gasless row exists for this depositId + originChainId,
-   * return deposit-pending; else null.
+   * return pending or failed (when deletedAt is set); else null.
    */
   private async getGaslessDepositStatus(
     params: DepositStatusParams,
@@ -970,8 +970,10 @@ export class DepositsService {
       });
     if (!gasless) return null;
 
+    const deletedAt = gasless.deletedAt;
+    const status = deletedAt != null ? "failed" : "pending";
     return {
-      status: "deposit-pending",
+      status,
       originChainId: parseInt(gasless.originChainId),
       depositId: gasless.depositId,
       destinationChainId: parseInt(gasless.destinationChainId),

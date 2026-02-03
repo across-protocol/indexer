@@ -175,6 +175,26 @@ describe("/deposit/status", () => {
     });
   });
 
+  it("should return failed when gasless_deposit exists with deletedAt set", async () => {
+    const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
+    await gaslessRepo.insert({
+      originChainId: "1",
+      destinationChainId: "10",
+      depositId: "777",
+      deletedAt: new Date(),
+    });
+    const response = await request(app)
+      .get("/deposit/status")
+      .query({ depositId: "777", originChainId: 1, index: 0 });
+    expect(response.status).to.equal(200);
+    expect(response.body.status).to.equal("failed");
+    expect(response.body.originChainId).to.equal(1);
+    expect(response.body.depositId).to.equal("777");
+    expect(response.body.destinationChainId).to.equal(10);
+    expect(response.body.depositTxHash).to.be.null;
+    expect(response.body.fillTx).to.be.null;
+  });
+
   it("should return filled from RHI when both gasless_deposit and filled RHI exist (RHI takes precedence)", async () => {
     const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
     await gaslessRepo.insert({
