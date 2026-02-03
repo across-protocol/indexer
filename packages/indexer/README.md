@@ -241,3 +241,32 @@ Tests for the websocket indexer are part of the integration test suite.
 ```bash
 pnpm test:integration
 ```
+
+## Graceful Shutdown and the AbortController Pattern
+
+The indexer uses the standard [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController) and [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) pattern to handle graceful shutdowns. This ensures that long-running tasks, such as indexing loops and background workers, stop immediately and cleanly when the application receives a termination signal (`SIGINT` or `SIGTERM`).
+
+
+### How to use it
+Contributors should follow these rules when implementing new services or background tasks:
+
+1.  **Accept an `AbortSignal`**: Any class or function that starts a long-running process should accept an `AbortSignal` in its `start()` or constructor method.
+2.  **Check the Signal in Loops**: In any `while` or `for` loop that runs indefinitely or for a long time, check `signal.aborted`.
+    ```typescript
+    while (!signal.aborted) {
+      // do work
+    }
+    ```
+3.  **Pass the Signal Down**: If your function calls other async functions that support `AbortSignal`, pass the signal along.
+4.  **Use `delayWithAbort`**: Never use a plain `await new Promise(r => setTimeout(r, ms))`. Instead, use the helper `delayWithAbort` from `src/utils/asyncUtils.ts`. This ensures the wait is cancelled immediately if the system shuts down.
+
+### When is it mandatory?
+- **Infinite Loops**: Any service that "polls" or loops forever.
+- **Retry Logic**: If you are implementing a retry loop that waits between attempts.
+- **Long-running Tasks**: Any task that takes more than a few seconds to complete.
+
+### When is it optional?
+- **Quick Operations**: Single database queries or short CPU-bound tasks that are guaranteed to finish in milliseconds.
+- **Stateless Pure Functions**: Functions that don't perform I/O or have side effects.
+
+The root `AbortController` is managed in `packages/indexer/src/main.ts`, which signals the abort when a shutdown is triggered.
