@@ -28,19 +28,14 @@ export class BundleServicesManager {
     private retryProvidersFactory: RetryProvidersFactory,
     private bundleRepository: BundleRepository,
   ) {}
-  public start() {
+  public start(signal: AbortSignal) {
     return Promise.all([
-      this.startBundleBuilderService(),
-      this.startBundleIncludedEventsService(),
+      this.startBundleBuilderService(signal),
+      this.startBundleIncludedEventsService(signal),
     ]);
   }
 
-  public stop() {
-    this.bundleBuilderService?.stop();
-    this.bundleIncludedEventsService?.stop();
-  }
-
-  private startBundleIncludedEventsService() {
+  private startBundleIncludedEventsService(signal: AbortSignal) {
     if (!this.config.enableBundleIncludedEventsService) {
       this.logger.debug({
         at: "Indexer#BundleServicesManager#startBundleIncludedEventsService",
@@ -66,10 +61,11 @@ export class BundleServicesManager {
     });
     return this.bundleIncludedEventsService.start(
       this.config.bundleEventsServiceDelaySeconds!,
+      signal,
     );
   }
 
-  private startBundleBuilderService() {
+  private startBundleBuilderService(signal: AbortSignal) {
     if (!this.config.enableBundleBuilder) {
       this.logger.debug({
         at: "Indexer#BundleServicesManager#startBundleBuilderService",
@@ -88,6 +84,6 @@ export class BundleServicesManager {
       configStoreClientFactory: this.configStoreClientFactory,
       hubChainId: this.config.hubChainId,
     });
-    return this.bundleBuilderService.start(10);
+    return this.bundleBuilderService.start(10, signal);
   }
 }

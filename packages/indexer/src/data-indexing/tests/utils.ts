@@ -114,10 +114,10 @@ export async function sanityCheckWithEventIndexer<
   const { handlerFactory, repository, findOptions, blockNumber } = params;
   const handler = handlerFactory();
 
-  await handler.processBlockRange(
-    { from: blockNumber, to: blockNumber },
-    blockNumber - 1,
-  );
+  await handler.processBlockRange({
+    blockRange: { from: blockNumber, to: blockNumber },
+    lastFinalisedBlock: blockNumber - 1,
+  });
 
   const event = await repository.findOne({ where: findOptions });
   if (!event) {
