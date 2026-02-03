@@ -11,12 +11,7 @@ interface GaslessDepositPayload {
     chainId?: number;
     data?: {
       depositId?: string;
-      witness?: Array<{
-        data?: {
-          baseDepositData?: { destinationChainId?: number };
-          depositData?: { destinationChainId?: number };
-        };
-      }>;
+      witness?: unknown;
     };
   };
 }
@@ -24,15 +19,24 @@ interface GaslessDepositPayload {
 function getDestinationChainIdFromWitness(
   witness: unknown,
 ): number | undefined {
-  if (!Array.isArray(witness) || witness.length === 0) return undefined;
-  const first = witness[0] as
-    | {
-        data?: {
-          baseDepositData?: { destinationChainId?: number };
-          depositData?: { destinationChainId?: number };
-        };
-      }
-    | undefined;
+  if (witness == null) return undefined;
+
+  type WitnessEntry = {
+    data?: {
+      baseDepositData?: { destinationChainId?: number };
+      depositData?: { destinationChainId?: number };
+    };
+  };
+  const record = witness as Record<string, WitnessEntry>;
+
+  if (!Array.isArray(witness)) {
+    return (
+      record["BridgeWitness"]?.data?.baseDepositData?.destinationChainId ??
+      record["BridgeAndSwapWitness"]?.data?.depositData?.destinationChainId
+    );
+  }
+
+  const first = record[0];
   return (
     first?.data?.baseDepositData?.destinationChainId ??
     first?.data?.depositData?.destinationChainId
