@@ -116,7 +116,7 @@ export class Indexer {
    * @dev Note: this does not stop the indexer immediately, but sets a flag that the indexer should stop at the next opportunity.
    */
   public stopGracefully() {
-    this.logger.info({
+    this.logger.debug({
       at: "Indexer#stopGracefully",
       message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
     });

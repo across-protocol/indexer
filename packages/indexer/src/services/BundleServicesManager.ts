@@ -42,7 +42,7 @@ export class BundleServicesManager {
 
   private startBundleIncludedEventsService() {
     if (!this.config.enableBundleIncludedEventsService) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#BundleServicesManager#startBundleIncludedEventsService",
         message: "Bundle included events service is disabled",
       });
@@ -71,7 +71,7 @@ export class BundleServicesManager {
 
   private startBundleBuilderService() {
     if (!this.config.enableBundleBuilder) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#BundleServicesManager#startBundleBuilderService",
         message: "Bundle builder service is disabled",
       });

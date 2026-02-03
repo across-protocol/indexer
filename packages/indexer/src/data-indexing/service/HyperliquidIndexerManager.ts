@@ -28,7 +28,7 @@ export class HyperliquidIndexerManager {
   public async start() {
     try {
       if (!this.config.enableHyperliquidIndexer) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#HyperliquidIndexerManager#start",
           message: "Hyperliquid indexer is disabled",
         });
@@ -88,7 +88,7 @@ export class HyperliquidIndexerManager {
       );
 
       this.indexer = indexer;
-      this.logger.info({
+      this.logger.debug({
         at: "Indexer#HyperliquidIndexerManager#start",
         message: "Starting Hyperliquid indexer",
         chainId,
