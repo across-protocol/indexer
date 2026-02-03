@@ -17,6 +17,7 @@ export * from "./evm/CallsFailed";
 export * from "./evm/BridgedToHubPool";
 export * from "./evm/ClaimedRelayerRefunds";
 export * from "./evm/SwapMetadata";
+export * from "./evm/UserAccountActivated";
 
 // Others
 export * from "./Bundle";
