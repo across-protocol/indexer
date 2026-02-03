@@ -216,6 +216,7 @@ export class GaslessDepositPubSubConsumer {
         err && typeof err === "object" && "code" in err
           ? (err as { code: string }).code
           : undefined;
+      // 23505 = PostgreSQL unique violation (duplicate originChainId + depositId)
       if (code === "23505") {
         this.logger.debug({
           at: "GaslessDepositPubSubConsumer#handleMessage",

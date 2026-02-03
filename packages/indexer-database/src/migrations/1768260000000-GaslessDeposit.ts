@@ -11,7 +11,7 @@ export class GaslessDeposit1768260000000 implements MigrationInterface {
         "destinationChainId" character varying NOT NULL,
         "depositId" character varying NOT NULL,
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-        CONSTRAINT "UK_gaslessDeposit_originChainId_destinationChainId_depositId" UNIQUE ("originChainId", "destinationChainId", "depositId"),
+        CONSTRAINT "UK_gaslessDeposit_originChainId_depositId" UNIQUE ("originChainId", "depositId"),
         CONSTRAINT "PK_gasless_deposit" PRIMARY KEY ("id"))
     `);
 
