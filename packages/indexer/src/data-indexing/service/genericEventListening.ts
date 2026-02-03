@@ -16,6 +16,7 @@ import {
   DataDogMetricsService,
   withMetrics,
 } from "../../services/MetricsService";
+import { safeJsonStringify } from "../../utils";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
@@ -165,11 +166,11 @@ export const subscribeToEvent = <TPayload>(
         });
     },
     onError: (error: Error) => {
-      logger.error({
+      logger.debug({
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
         error: error,
-        notificationPath: "across-indexer-error",
+        errorJson: safeJsonStringify(error),
       });
 
       // Notify the orchestrator that this listener has died

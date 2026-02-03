@@ -39,7 +39,7 @@ export class MonitoringManager {
         MonitoringServices.IncorrectDepositStatus,
       )
     ) {
-      this.logger.warn({
+      this.logger.debug({
         at: "MonitoringServicesManager#startIncorrectDepositStatusMonitor",
         message: "Incorrect deposit status monitor is disabled",
       });

@@ -35,7 +35,7 @@ export class CctpFinalizerServiceManager {
   public async start() {
     try {
       if (!this.config.enableCctpFinalizer) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#CctpFinalizerServiceManager#start",
           message: "CCTP finalizer is disabled",
         });
