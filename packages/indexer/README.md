@@ -246,6 +246,10 @@ pnpm test:integration
 
 The indexer uses the standard [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController) and [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) pattern to handle graceful shutdowns. This ensures that long-running tasks, such as indexing loops and background workers, stop immediately and cleanly when the application receives a termination signal (`SIGINT` or `SIGTERM`).
 
+### What problem it solves
+- **Prevents Hanging Processes**: Asynchronous operations (like `setTimeout` or infinite loops) can keep the Node.js process alive even after a shutdown signal.
+- **Immediate Termination**: Allows the system to interrupt waiting periods (e.g., between indexing cycles) without waiting for a timer to expire.
+- **Clean Cleanup**: Ensures database connections and external resources are closed only after active loops have terminated.
 
 ### How to use it
 Contributors should follow these rules when implementing new services or background tasks:
