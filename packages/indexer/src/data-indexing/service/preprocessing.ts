@@ -9,17 +9,19 @@ import {
 import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
 import { Logger } from "winston";
 
+import { Log } from "viem";
+
 /**
  * extracts and decodes a specific event from a transaction receipt's logs.
  * @param receipt The transaction receipt.
  * @param abi The Abi containing the event definition.
- * @returns Array of objects containing the decoded event, log index, and transaction hash.
+ * @returns Array of objects containing the decoded event, log index, transaction hash, and full log.
  */
 export const decodeEventsFromReceipt = <T>(
   receipt: TransactionReceipt,
   abi: Abi,
   eventName: string,
-): { event: T; logIndex: number; transactionHash: string }[] => {
+): { event: T; logIndex: number; transactionHash: string; log: Log }[] => {
   const logs = parseEventLogs({
     abi,
     logs: receipt.logs,
@@ -30,6 +32,7 @@ export const decodeEventsFromReceipt = <T>(
       event: log.args as T,
       logIndex: log.logIndex,
       transactionHash: log.transactionHash,
+      log: log as unknown as Log,
     }));
 };
 

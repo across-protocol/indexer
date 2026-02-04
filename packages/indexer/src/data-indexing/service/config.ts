@@ -167,15 +167,7 @@ import {
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
 import { DataSource, entities } from "@repo/indexer-database";
-import {
-  postProcessDepositEvent,
-  postProcessSwapBeforeBridge,
-} from "./postprocessing";
-import { BlockchainEventRepository } from "../../../../indexer-database/dist/src/utils/BlockchainEventRepository";
-import {
-  SwapBeforeBridge,
-  V3FundsDeposited,
-} from "../../../../indexer-database/dist/src/entities";
+import { postProcessDepositEvent } from "./postprocessing";
 
 /**
  * Array of event handlers.
@@ -603,6 +595,7 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             storedItem: storedItem as entities.V3FundsDeposited,
             payload,
             metrics,
+            logger,
           });
         },
       },
@@ -701,35 +694,6 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           ),
         store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeClaimedRelayerRefundEvent(event, dataSource, logger),
-      },
-      {
-        config: {
-          abi: SWAP_BEFORE_BRIDGE_ABI,
-          eventName: SWAP_BEFORE_BRIDGE_EVENT_NAME,
-          address: getAddress("SpokePool", chainId) as `0x${string}`, // TODO: Check if address is correct for SwapBeforeBridge? It's periphery?
-        },
-        preprocess: extractRawArgs<SwapBeforeBridgeArgs>,
-        transform: (args: EventArgs, payload: IndexerEventPayload) =>
-          transformSwapBeforeBridgeEvent(
-            args as SwapBeforeBridgeArgs,
-            payload,
-            logger,
-          ),
-        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
-          storeSwapBeforeBridgeEvent(event, dataSource, logger),
-        postProcess: async (
-          db: DataSource,
-          payload: IndexerEventPayload,
-          storedItem: ObjectLiteral,
-        ) => {
-          await postProcessSwapBeforeBridge({
-            db,
-            payload,
-            storedItem: storedItem as entities.SwapBeforeBridge,
-            logger,
-            metrics,
-          });
-        },
       },
     ];
   },
