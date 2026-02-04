@@ -151,4 +151,54 @@ describe("/deposit/status", () => {
     expect(response.body.depositTxHash).to.equal(deposit.depositTxHash);
     expect(response.body.pagination.maxIndex).to.equal(2);
   });
+
+  it("should return pending when gasless_deposit exists and no filled RHI", async () => {
+    const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
+    await gaslessRepo.insert({
+      originChainId: "1",
+      destinationChainId: "10",
+      depositId: "999",
+    });
+    const response = await request(app)
+      .get("/deposit/status")
+      .query({ depositId: "999", originChainId: 1, index: 0 });
+    expect(response.status).to.equal(200);
+    expect(response.body.status).to.equal("pending");
+    expect(response.body.originChainId).to.equal(1);
+    expect(response.body.depositId).to.equal("999");
+    expect(response.body.destinationChainId).to.equal(10);
+    expect(response.body.depositTxHash).to.be.null;
+    expect(response.body.fillTx).to.be.null;
+    expect(response.body.pagination).to.deep.equal({
+      currentIndex: 0,
+      maxIndex: 0,
+    });
+  });
+
+  it("should return filled from RHI when both gasless_deposit and filled RHI exist (RHI takes precedence)", async () => {
+    const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
+    await gaslessRepo.insert({
+      originChainId: "1",
+      destinationChainId: "10",
+      depositId: "888",
+    });
+    await relayHashInfoFixture.insertRelayHashInfos([
+      {
+        depositId: "888",
+        originChainId: "1",
+        destinationChainId: "10",
+        status: entities.RelayStatus.Filled,
+      },
+    ]);
+    const response = await request(app)
+      .get("/deposit/status")
+      .query({ depositId: "888", originChainId: 1, index: 0 });
+    expect(response.status).to.equal(200);
+    expect(response.body.status).to.equal("filled");
+    expect(response.body.originChainId).to.equal(1);
+    expect(String(response.body.depositId)).to.equal("888");
+    expect(response.body.destinationChainId).to.equal(10);
+    expect(response.body.depositTxHash).to.be.a("string");
+    expect(response.body.fillTx).to.be.a("string");
+  });
 });
