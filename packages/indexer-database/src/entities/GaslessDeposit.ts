@@ -12,10 +12,6 @@ import {
   "originChainId",
   "depositId",
 ])
-@Index("IX_gaslessDeposit_originChainId_depositId", [
-  "originChainId",
-  "depositId",
-])
 @Index("IX_gaslessDeposit_destinationChainId", ["destinationChainId"])
 @Index("IX_gaslessDeposit_createdAt", ["createdAt"])
 @Index("IX_gaslessDeposit_deletedAt", ["deletedAt"])
