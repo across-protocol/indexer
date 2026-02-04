@@ -11,7 +11,10 @@ import {
 } from "../../services/spokePoolProcessor";
 import { IndexerEventPayload } from "./genericEventListening";
 import { FUNDS_DEPOSITED_V3_ABI } from "../model/abis";
-import { FUNDS_DEPOSITED_V3_EVENT_NAME } from "./constants";
+import {
+  FUNDS_DEPOSITED_V3_EVENT_NAME,
+  SWAP_BEFORE_BRIDGE_EVENT_NAME,
+} from "./constants";
 import { transformV3FundsDepositedEvent } from "./transforming";
 import { storeV3FundsDepositedEvent } from "./storing";
 import { decodeEventsFromReceipt } from "./preprocessing";
@@ -23,17 +26,43 @@ import { V3FundsDepositedArgs } from "../model/eventTypes";
 import { parseAbi } from "viem";
 import { Logger } from "winston";
 import { getBlockTime } from "../../web3/constants";
+import { DataDogMetricsService } from "../../services/MetricsService";
+
+/**
+ * Request object for postProcessDepositEvent function.
+ */
+type PostProcessDepositEventRequest = {
+  /** The TypeORM database connection */
+  db: DataSource;
+  /** The stored V3FundsDeposited entity to post-process */
+  storedItem: entities.V3FundsDeposited;
+  /** The indexer event payload containing transaction and receipt data */
+  payload: IndexerEventPayload;
+  /** Metrics service instance */
+  metrics?: DataDogMetricsService;
+};
 
 /**
  * Post-processes a stored V3FundsDeposited entity by assigning it to relay hash info.
- * @param db - The TypeORM database connection.
- * @param storedItem - The V3FundsDeposited entity that was just stored.
+ * @param request - The request object containing database connection, stored item, payload, and metrics.
  */
 export const postProcessDepositEvent = async (
-  db: DataSource,
-  storedItem: entities.V3FundsDeposited,
+  request: PostProcessDepositEventRequest,
 ) => {
+  const { db, storedItem, payload, metrics } = request;
+  const startTime = Date.now();
   await assignDepositEventsToRelayHashInfo([storedItem], db);
+
+  metrics?.addGaugeMetric(
+    "postProcessDepositEvent.duration",
+    Date.now() - startTime,
+    [
+      "websocketIndexer",
+      "store",
+      `chainId:${payload.chainId}`,
+      `event:${FUNDS_DEPOSITED_V3_EVENT_NAME}`,
+    ],
+  );
 };
 
 /**
@@ -122,6 +151,8 @@ type WaitForOrInsertEventRequest<
     TTransformed,
     TStored
   >;
+  /** Metrics service instance */
+  metrics?: DataDogMetricsService;
 };
 
 /**
@@ -150,6 +181,7 @@ const waitForOrInsertEvent = async <
     retryIntervalMs,
     entityTarget,
     eventProcessingPipeline,
+    metrics,
   } = request;
   const findOptions = {
     chainId: payload.chainId,
@@ -157,6 +189,15 @@ const waitForOrInsertEvent = async <
     transactionHash: event.transactionHash,
     logIndex: event.logIndex,
   } as FindOptionsWhere<TStored>;
+
+  const startTime = Date.now();
+  const tags = [
+    "websocketIndexer",
+    "postProcess",
+    `chainId:${payload.chainId}`,
+    `entity:${(entityTarget as any).name}`,
+  ];
+
   // Try to find it by waiting
   const existingEvent = await waitForEntity({
     db,
@@ -167,6 +208,12 @@ const waitForOrInsertEvent = async <
   });
 
   if (existingEvent) {
+    metrics?.addCountMetric("waitForOrInsertEvent.wait_found", tags);
+    metrics?.addGaugeMetric(
+      "waitForOrInsertEvent.duration",
+      Date.now() - startTime,
+      [...tags, "path:wait"],
+    );
     return existingEvent;
   }
 
@@ -188,6 +235,13 @@ const waitForOrInsertEvent = async <
     logger,
   });
 
+  metrics?.addCountMetric("waitForOrInsertEvent.manual_insert", tags);
+  metrics?.addGaugeMetric(
+    "waitForOrInsertEvent.duration",
+    Date.now() - startTime,
+    [...tags, "path:insert"],
+  );
+
   // Fetch again to return the entity
   return db.getRepository(entityTarget).findOne(findOptions);
 };
@@ -204,6 +258,8 @@ type PostProcessSwapBeforeBridgeRequest = {
   logger: Logger;
   /** The stored SwapBeforeBridge entity to post-process */
   storedItem: entities.SwapBeforeBridge;
+  /** Metrics service instance */
+  metrics?: DataDogMetricsService;
 };
 
 /**
@@ -219,7 +275,8 @@ type PostProcessSwapBeforeBridgeRequest = {
 export const postProcessSwapBeforeBridge = async (
   request: PostProcessSwapBeforeBridgeRequest,
 ) => {
-  const { db, payload, logger, storedItem } = request;
+  const { db, payload, logger, storedItem, metrics } = request;
+  const startTime = Date.now();
   const viemReceipt = await payload.transactionReceipt;
   const transaction = payload.transaction;
 
@@ -274,6 +331,7 @@ export const postProcessSwapBeforeBridge = async (
     waitTimeoutMs: getBlockTime(payload.chainId) * 1000 * 10,
     retryIntervalMs: (getBlockTime(payload.chainId) * 1000) / 2,
     entityTarget: entities.V3FundsDeposited,
+    metrics,
     eventProcessingPipeline: {
       source: async () => ({ ...payload, log: eventLog }),
       preprocess: async (_: IndexerEventPayload) =>
@@ -284,10 +342,10 @@ export const postProcessSwapBeforeBridge = async (
         storeV3FundsDepositedEvent(event, ds, logger),
       postProcess: async (
         db: DataSource,
-        _: IndexerEventPayload,
+        payload: IndexerEventPayload,
         storedItem: entities.V3FundsDeposited,
       ) => {
-        await postProcessDepositEvent(db, storedItem);
+        await postProcessDepositEvent({ db, storedItem, payload, metrics });
       },
     },
   });
@@ -336,5 +394,16 @@ export const postProcessSwapBeforeBridge = async (
       },
     ],
     db,
+  );
+
+  metrics?.addGaugeMetric(
+    "postProcessSwapBeforeBridge.total_duration",
+    Date.now() - startTime,
+    [
+      "websocketIndexer",
+      "postProcess",
+      `chainId:${payload.chainId}`,
+      `event:${SWAP_BEFORE_BRIDGE_EVENT_NAME}`,
+    ],
   );
 };

@@ -560,7 +560,7 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
   Partial<typeof Entity>,
   ObjectLiteral
 > = {
-  getEventHandlers: ({ logger, chainId }: GetEventHandlersRequest) => {
+  getEventHandlers: ({ logger, chainId, metrics }: GetEventHandlersRequest) => {
     return [
       {
         config: {
@@ -595,13 +595,15 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           storeV3FundsDepositedEvent(event, dataSource, logger),
         postProcess: async (
           db: DataSource,
-          _: IndexerEventPayload,
+          payload: IndexerEventPayload,
           storedItem: ObjectLiteral,
         ) => {
-          await postProcessDepositEvent(
+          await postProcessDepositEvent({
             db,
-            storedItem as entities.V3FundsDeposited,
-          );
+            storedItem: storedItem as entities.V3FundsDeposited,
+            payload,
+            metrics,
+          });
         },
       },
       {
@@ -725,6 +727,7 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
             payload,
             storedItem: storedItem as entities.SwapBeforeBridge,
             logger,
+            metrics,
           });
         },
       },
