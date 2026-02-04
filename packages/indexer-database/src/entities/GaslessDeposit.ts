@@ -18,6 +18,7 @@ import {
 ])
 @Index("IX_gaslessDeposit_destinationChainId", ["destinationChainId"])
 @Index("IX_gaslessDeposit_createdAt", ["createdAt"])
+@Index("IX_gaslessDeposit_deletedAt", ["deletedAt"])
 export class GaslessDeposit {
   @PrimaryGeneratedColumn()
   id: number;
@@ -33,4 +34,8 @@ export class GaslessDeposit {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  /** Set when the deposit is marked failed (e.g. via DLQ). */
+  @Column({ type: "timestamp", nullable: true })
+  deletedAt: Date | null;
 }
