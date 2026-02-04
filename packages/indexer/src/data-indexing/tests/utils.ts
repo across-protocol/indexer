@@ -24,6 +24,7 @@ import { entities } from "@repo/indexer-database";
 import { createTestRetryProviderFactory } from "../../tests/testProvider";
 import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 import { IndexerDataHandler } from "../service/IndexerDataHandler";
+import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 
 export const stubContractUtils = (
   contractName: string,
@@ -198,6 +199,9 @@ export const getSpokePoolIndexerDataHandler = (
     publishMessagesBulk: sinon.stub().resolves(),
   } as unknown as IndexerQueuesService;
 
+  const hyperliquidDepositHandlerRepository =
+    new HyperliquidDepositHandlerRepository(dataSource, logger);
+
   const handler = new SpokePoolIndexerDataHandler(
     logger,
     chainId,
@@ -210,6 +214,7 @@ export const getSpokePoolIndexerDataHandler = (
     swapBeforeBridgeRepo,
     callsFailedRepo,
     swapMetadataRepo,
+    hyperliquidDepositHandlerRepository,
     spokePoolProcessor,
     indexerQueuesService,
   );
