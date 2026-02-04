@@ -25,7 +25,7 @@
   "license": "ISC",
   "dependencies": {
     "@across-protocol/constants": "^3.1.97",
-    "@across-protocol/contracts": "^4.1.21",
+    "@across-protocol/contracts": "^4.1.23",
     "@across-protocol/sdk": "^4.3.117-alpha.1",
     "@datadog/datadog-api-client": "^1.49.0",
     "@google-cloud/pubsub": "^5.2.0",
