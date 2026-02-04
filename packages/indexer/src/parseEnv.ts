@@ -29,6 +29,10 @@ export type Config = {
   enableGaslessDepositPubSubConsumer: boolean;
   /** GCP PubSub subscription name for gasless-deposit-created messages (pull). */
   pubSubGaslessDepositSubscription: string;
+  /** Enable the PubSub consumer for gasless deposit DLQ (marks deposits as failed). */
+  enableGaslessDepositDlqConsumer: boolean;
+  /** GCP PubSub subscription name for gasless-deposit DLQ messages (pull). */
+  pubSubGaslessDepositDlqSubscription: string;
   enableOftIndexer: boolean;
   enableHyperliquidIndexer: boolean;
   datadogConfig: DatadogConfig;
@@ -305,6 +309,10 @@ export function envToConfig(env: Env): Config {
     env.ENABLE_GASLESS_DEPOSIT_PUBSUB_CONSUMER === "true";
   const pubSubGaslessDepositSubscription =
     env.PUBSUB_GASLESS_DEPOSIT_SUBSCRIPTION ?? "";
+  const enableGaslessDepositDlqConsumer =
+    env.ENABLE_GASLESS_DEPOSIT_DLQ_CONSUMER === "true";
+  const pubSubGaslessDepositDlqSubscription =
+    env.PUBSUB_GASLESS_DEPOSIT_DLQ_SUBSCRIPTION ?? "";
   const datadogConfig = parseDatadogConfig(env);
   const enableBundleIncludedEventsService =
     env.ENABLE_BUNDLE_INCLUDED_EVENTS_SERVICE
@@ -380,6 +388,8 @@ export function envToConfig(env: Env): Config {
     pubSubGcpProjectId,
     enableGaslessDepositPubSubConsumer,
     pubSubGaslessDepositSubscription,
+    enableGaslessDepositDlqConsumer,
+    pubSubGaslessDepositDlqSubscription,
     datadogConfig,
     webhookConfig,
     maxBlockRangeSize,

@@ -39,7 +39,10 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
-import { GaslessDepositPubSubConsumer } from "./pubsub/gaslessDepositConsumer";
+import {
+  GaslessDepositDlqConsumer,
+  GaslessDepositPubSubConsumer,
+} from "./pubsub/gaslessDepositConsumer";
 import { DataDogMetricsService } from "./services/MetricsService";
 
 async function initializeRedis(
@@ -171,6 +174,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     logger,
     postgres,
   );
+  const gaslessDepositDlqConsumer = new GaslessDepositDlqConsumer(
+    config,
+    logger,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -249,10 +257,12 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       cctpFinalizerServiceManager.stopGracefully();
       monitoringManager.stopGracefully();
       gaslessDepositPubSubConsumer.close();
+      gaslessDepositDlqConsumer.close();
     } else {
       integratorIdWorker.close();
       swapWorker.close();
       gaslessDepositPubSubConsumer.close();
+      gaslessDepositDlqConsumer.close();
       metrics.close();
       logger.debug({ at: "Indexer#Main", message: "Forcing exit..." });
       redis?.quit();
@@ -273,6 +283,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   // Start gasless deposit PubSub consumer (pull subscription; runs until close())
   await gaslessDepositPubSubConsumer.start();
+  await gaslessDepositDlqConsumer.start();
 
   const [
     bundleServicesManagerResults,
@@ -322,6 +333,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   });
   await integratorIdWorker.close();
   await gaslessDepositPubSubConsumer.close();
+  await gaslessDepositDlqConsumer.close();
   metrics.close();
   redis?.quit();
   postgres?.destroy();
