@@ -568,9 +568,10 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         }
 
         // Fetch and decode the MessageSent account using the V2 client
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messageSentAccount =
           await MessageTransmitterV2Client.fetchMessageSent(
-            this.provider,
+            this.provider as any,
             address(messageSentAccountAddress.toString()),
           );
         if (!messageSentAccount?.data?.message) {

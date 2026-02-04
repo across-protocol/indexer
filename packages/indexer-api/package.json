@@ -23,7 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "@across-protocol/constants": "^3.1.97",
-    "@across-protocol/sdk": "^4.3.112",
+    "@across-protocol/sdk": "^4.3.117-alpha.1",
     "@repo/error-handling": "workspace:*",
     "@repo/indexer": "workspace:*",
     "@repo/indexer-database": "workspace:*",
