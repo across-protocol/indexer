@@ -156,7 +156,7 @@ export const subscribeToEvent = <TPayload>(
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
         error: error,
-        notificationPath: safeJsonStringify(error),
+        errorJson: safeJsonStringify(error),
       });
 
       // Notify the orchestrator that this listener has died
