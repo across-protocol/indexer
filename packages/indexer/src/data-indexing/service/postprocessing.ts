@@ -105,13 +105,13 @@ type WaitForOrInsertEventRequest<
   /** Logger instance for logging */
   logger: Logger;
   /** The event data with transaction hash and log index */
-  event: TPreprocessed & { logIndex: number; transactionHash: string };
+  event: { event: TPreprocessed; logIndex: number; transactionHash: string };
   /** The indexer event payload containing transaction and receipt data */
   payload: IndexerEventPayload;
   /** Maximum time in milliseconds to wait for the event to appear */
   waitTimeoutMs: number;
   /** Time in milliseconds between retry attempts when waiting */
-  retryIntervalMs?: number;
+  retryIntervalMs: number;
   /** The entity class to query and store */
   entityTarget: EntityTarget<TStored>;
   /** The processing functions for the event */
@@ -147,21 +147,21 @@ const waitForOrInsertEvent = async <
     event,
     payload,
     waitTimeoutMs,
+    retryIntervalMs,
     entityTarget,
     eventProcessingPipeline,
   } = request;
-  // Default retry to half of block time (converted to ms)
-  const retryIntervalMs =
-    request.retryIntervalMs ?? (getBlockTime(payload.chainId) * 1000) / 2;
-
+  const findOptions = {
+    chainId: payload.chainId,
+    blockNumber: payload.transaction?.blockNumber,
+    transactionHash: event.transactionHash,
+    logIndex: event.logIndex,
+  } as FindOptionsWhere<TStored>;
   // Try to find it by waiting
   const existingEvent = await waitForEntity({
     db,
     entityTarget,
-    findOptions: {
-      transactionHash: event.transactionHash,
-      logIndex: event.logIndex,
-    } as unknown as FindOptionsWhere<TStored>,
+    findOptions,
     waitTimeoutMs,
     retryIntervalMs,
   });
@@ -172,8 +172,7 @@ const waitForOrInsertEvent = async <
 
   logger.debug({
     message: "Event not found after waiting, attempting manual insertion",
-    payload,
-    depositEvent: event,
+    request,
   });
 
   // If not found, attempt insertion
@@ -190,12 +189,7 @@ const waitForOrInsertEvent = async <
   });
 
   // Fetch again to return the entity
-  return db.getRepository(entityTarget).findOne({
-    where: {
-      transactionHash: event.transactionHash,
-      logIndex: event.logIndex,
-    } as unknown as FindOptionsWhere<TStored>,
-  });
+  return db.getRepository(entityTarget).findOne(findOptions);
 };
 
 /**
@@ -275,13 +269,10 @@ export const postProcessSwapBeforeBridge = async (
   const depositEntity = await waitForOrInsertEvent({
     db,
     logger,
-    event: {
-      ...depositEvent.event,
-      logIndex: depositEvent.logIndex,
-      transactionHash: transaction.hash,
-    },
+    event: depositEvent,
     payload,
     waitTimeoutMs: getBlockTime(payload.chainId) * 1000 * 10,
+    retryIntervalMs: (getBlockTime(payload.chainId) * 1000) / 2,
     entityTarget: entities.V3FundsDeposited,
     eventProcessingPipeline: {
       source: async () => ({ ...payload, log: eventLog }),
