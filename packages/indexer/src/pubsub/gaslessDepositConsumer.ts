@@ -335,13 +335,13 @@ export class GaslessDepositDlqConsumer {
     });
 
     this.subscription.on("close", () => {
-      this.logger.info({
+      this.logger.debug({
         at: "GaslessDepositDlqConsumer",
         message: "Gasless deposit DLQ subscription closed",
       });
     });
 
-    this.logger.info({
+    this.logger.debug({
       at: "GaslessDepositDlqConsumer#start",
       message: "Gasless deposit DLQ consumer started",
       subscription: subName,
