@@ -88,7 +88,7 @@ describe("CCTPIndexerDataHandler", () => {
     expect(events.sponsoredBurnEvents[0]!.transactionHash).to.equal(
       transactionHash,
     );
-  }).timeout(10000); // Increase timeout for network requests
+  }).timeout(60000); // Increase timeout for network requests
 
   /**
    * This test ensures that the CCTPIndexerDataHandler can correctly process and store
@@ -130,7 +130,7 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch and store SimpleTransferFlowCompleted event in the database", async () => {
     const transactionHash =
@@ -167,7 +167,7 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent).to.exist;
     expect(savedEvent!.transactionHash).to.equal(transactionHash);
     expect(savedEvent!.blockNumber).to.equal(blockNumber);
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch and store ArbitraryActionsExecuted event in the database", async () => {
     const transactionHash =
@@ -215,7 +215,7 @@ describe("CCTPIndexerDataHandler", () => {
       "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
     );
     expect(savedEvent!.finalAmount.toString()).to.equal("99990");
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch and store FallbackHyperEVMFlowCompleted event in the database", async () => {
     const transactionHash =
@@ -266,7 +266,7 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedEvent!.evmAmountIn.toString()).to.equal("999900");
     expect(savedEvent!.bridgingFeesIncurred.toString()).to.equal("100");
     expect(savedEvent!.evmAmountSponsored.toString()).to.equal("0");
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch hypercore withdraw data and be able to decode the hookData", async () => {
     const transactionHash =
@@ -317,7 +317,7 @@ describe("CCTPIndexerDataHandler", () => {
       ),
     ).to.contain("cctp-forward");
     expect(decodedHookData.versionId).to.equal(0);
-  }).timeout(10000);
+  }).timeout(60000);
 
   /**
    * This test verifies that the CCTPIndexerDataHandler can correctly store
@@ -396,7 +396,7 @@ describe("CCTPIndexerDataHandler", () => {
         ethers.utils.arrayify(savedWithdrawal.magicBytes),
       ),
     ).to.contain("cctp-forward");
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch and store SwapFlowFinalized event in the database", async () => {
     // Taken from https://hyperevmscan.io/tx/0x15d5b49cece7e1c90ca03074c809e02ffefa40112f9051aa681d18d856f6fbd3
@@ -439,7 +439,7 @@ describe("CCTPIndexerDataHandler", () => {
       totalSent: 1100000000,
       evmAmountSponsored: 11539,
     });
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch and store SwapFlowInitialized event in the database", async () => {
     // Taken from https://hyperevmscan.io/tx/0xfd60b3c77fa72557a747ca537adbfd8578f26c045bc8dfc6b248eb3300834779#eventlog#6
@@ -498,7 +498,7 @@ describe("CCTPIndexerDataHandler", () => {
     // Date Assertion
     // We check that it is a valid date object, rather than a specific ms timestamp
     expect(savedEvent!.blockTimestamp).to.be.instanceOf(Date);
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch burn and sponsored burn events to Lighter", async () => {
     // https://arbiscan.io/tx/0x2f866714d04523775153be07f0680ae6c3f28f08af8fa574317e2d16e826aa54
@@ -544,7 +544,7 @@ describe("CCTPIndexerDataHandler", () => {
     expect(savedSponsoredEvent).to.exist;
     expect(savedSponsoredEvent!.transactionHash).to.equal(transactionHash);
     expect(savedSponsoredEvent!.blockNumber).to.equal(blockNumber);
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should fetch mint events on Lighter", async () => {
     const transactionHash =
@@ -581,5 +581,5 @@ describe("CCTPIndexerDataHandler", () => {
       transactionHash,
     );
     expect(savedMessageReceivedEvent!.blockNumber).to.equal(blockNumber);
-  }).timeout(10000);
+  }).timeout(60000);
 });
