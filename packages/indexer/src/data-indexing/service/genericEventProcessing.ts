@@ -6,18 +6,51 @@ import {
   Preprocessor,
   PostProcessor,
 } from "../model/genericTypes";
-import { SaveQueryResult } from "@repo/indexer-database";
 import { Logger } from "winston";
 
 /**
- * @file Implements the "Event Processor" service.
- * This file defines a generic, functional-style event processing pipeline. It is designed
- * to be completely agnostic of the event type, data source, and storage mechanism.
- *
- * The core component is `genericEventProcessor`, which orchestrates a single
- * fetch-transform-store operation. It is intended to be called within a continuous loop
- * by a listener service.
+ * Set of functions required to process an event (excluding sourcing).
+ * @template TDb The type of the database client/connection.
+ * @template TPayload The type of the event payload from the event listener.
+ * @template TPreprocessed The type of the preprocessed data.
+ * @template TTransformed The type of the structured database entity.
+ * @template TStored The type of the stored event.
  */
+export interface ProcessEventFns<
+  TDb,
+  TPayload,
+  TPreprocessed,
+  TTransformed,
+  TStored,
+> {
+  /** The function to preprocess the event payload. */
+  preprocess: Preprocessor<TPayload, TPreprocessed>;
+  /** The function to filter the event payload. */
+  filter?: Filter<TPayload, TPreprocessed>;
+  /** The function to transform the event payload into an entity. */
+  transform: Transformer<TPayload, TPreprocessed, TTransformed>;
+  /** The function to store the entity in the database. */
+  store: Storer<TDb, TTransformed, TStored>;
+  /** The function to post-process the entity. */
+  postProcess?: PostProcessor<TDb, TPayload, TStored>;
+}
+
+/**
+ * The complete processing pipeline combining sourcing and processing.
+ */
+export type ProcessingEventPipeline<
+  TDb,
+  TPayload,
+  TPreprocessed,
+  TTransformed,
+  TStored,
+> = { source: EventSource<TPayload> } & ProcessEventFns<
+  TDb,
+  TPayload,
+  TPreprocessed,
+  TTransformed,
+  TStored
+>;
 
 /**
  * Request object for the generic event processor.
@@ -36,20 +69,16 @@ export interface GenericEventProcessorRequest<
 > {
   /** The database instance. */
   db: TDb;
-  /** The function to source events. */
-  source: EventSource<TPayload>;
-  /** The function to preprocess the event payload. */
-  preprocess: Preprocessor<TPayload, TPreprocessed>;
-  /** The function to transform the event payload into an entity. */
-  transform: Transformer<TPayload, TPreprocessed, TTransformed>;
-  /** The function to store the entity in the database. */
-  store: Storer<TDb, TTransformed, TStored>;
-  /** The function to filter the entity. */
-  filter?: Filter<TPayload, TPreprocessed>;
+  /** The set of functions for sourcng and processing the event. */
+  eventProcessingPipeline: ProcessingEventPipeline<
+    TDb,
+    TPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >;
   /** An optional logger instance. */
   logger?: Logger;
-  /** The function to post-process the entity. */
-  postProcess?: PostProcessor<TDb, TPayload, TStored>;
 }
 
 /**
@@ -88,16 +117,9 @@ export const processEvent = async <
     TStored
   >,
 ): Promise<void> => {
-  const {
-    db,
-    source,
-    preprocess,
-    transform,
-    store,
-    filter,
-    postProcess,
-    logger,
-  } = request;
+  const { db, eventProcessingPipeline, logger } = request;
+  const { source, preprocess, filter, transform, store, postProcess } =
+    eventProcessingPipeline;
   // A try-catch block is used to gracefully handle any errors that occur during the
   // sourcing, transformation, or storage of an event. This prevents a single failing
   // event from crashing the entire listening process.

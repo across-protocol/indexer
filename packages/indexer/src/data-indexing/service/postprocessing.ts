@@ -15,12 +15,14 @@ import { FUNDS_DEPOSITED_V3_EVENT_NAME } from "./constants";
 import { transformV3FundsDepositedEvent } from "./transforming";
 import { storeV3FundsDepositedEvent } from "./storing";
 import { decodeEventsFromReceipt } from "./preprocessing";
-import { processEvent } from "./genericEventProcessing";
+import {
+  processEvent,
+  ProcessingEventPipeline,
+} from "./genericEventProcessing";
 import { V3FundsDepositedArgs } from "../model/eventTypes";
 import { parseAbi } from "viem";
 import { Logger } from "winston";
 import { getBlockTime } from "../../web3/constants";
-import { PostProcessor, Transformer, Storer } from "../model/genericTypes";
 
 /**
  * Post-processes a stored V3FundsDeposited entity by assigning it to relay hash info.
@@ -88,76 +90,6 @@ const waitForEntity = async <T extends ObjectLiteral>(
 };
 
 /**
- * Request object for insertEvent function.
- * @template TPreprocessed - The decoded event arguments type.
- * @template TTransformed - The transformed event data type.
- * @template TStored - The stored database entity type.
- */
-type InsertEventRequest<
-  TPreprocessed,
-  TTransformed,
-  TStored extends ObjectLiteral,
-> = {
-  /** The TypeORM database connection */
-  db: DataSource;
-  /** Logger instance for logging */
-  logger: Logger;
-  /** The event data with transaction hash and log index */
-  event: TPreprocessed & { logIndex: number; transactionHash: string };
-  /** The indexer event payload containing transaction and receipt data */
-  payload: IndexerEventPayload;
-  /** Function to transform event arguments into storable format */
-  transform: Transformer<IndexerEventPayload, TPreprocessed, TTransformed>;
-  /** Function to store the transformed data */
-  store: Storer<DataSource, TTransformed, TStored>;
-  /** Optional post-processing function to run after storage */
-  postProcess?: PostProcessor<DataSource, IndexerEventPayload, TStored>;
-};
-
-/**
- * Inserts an event into the database using the processEvent pipeline.
- * Retrieves the event log from the transaction receipt and processes it through transformation and storage.
- * @template TPreprocessed - The preprocessed event type.
- * @template TTransformed - The transformed event data type.
- * @template TStored - The stored database entity type.
- * @param request - The request object containing all necessary data and functions for insertion.
- * @throws Error if the event log is not found in the transaction receipt.
- */
-const insertEvent = async <
-  TPreprocessed,
-  TTransformed,
-  TStored extends ObjectLiteral,
->(
-  request: InsertEventRequest<TPreprocessed, TTransformed, TStored>,
-): Promise<void> => {
-  const { db, logger, payload, event, transform, store, postProcess } = request;
-
-  const eventLog = (await payload.transactionReceipt)?.logs?.find(
-    (l: any) => l.logIndex === event.logIndex,
-  );
-  if (!eventLog) {
-    const message = `Event log not found for event ${event.transactionHash} at log index ${event.logIndex}`;
-    logger.error({
-      message,
-      payload,
-      event,
-    });
-    throw new Error(message);
-  }
-
-  await processEvent({
-    db,
-    source: async () => ({ ...payload, log: eventLog }),
-    preprocess: async (_) => Promise.resolve(event as TPreprocessed),
-    filter: async () => true,
-    transform,
-    store,
-    postProcess,
-    logger,
-  });
-};
-
-/**
  * Request object for waitForOrInsertEvent function.
  * @template TPreprocessed - The preprocessed event type.
  * @template TTransformed - The transformed event data type.
@@ -182,12 +114,14 @@ type WaitForOrInsertEventRequest<
   retryIntervalMs?: number;
   /** The entity class to query and store */
   entityTarget: EntityTarget<TStored>;
-  /** Function to transform event arguments into storable format */
-  transform: Transformer<IndexerEventPayload, TPreprocessed, TTransformed>;
-  /** Function to store the transformed data */
-  store: Storer<DataSource, TTransformed, TStored>;
-  /** Optional post-processing function to run after storage */
-  postProcess?: PostProcessor<DataSource, IndexerEventPayload, TStored>;
+  /** The processing functions for the event */
+  eventProcessingPipeline: ProcessingEventPipeline<
+    DataSource,
+    IndexerEventPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >;
 };
 
 /**
@@ -214,9 +148,7 @@ const waitForOrInsertEvent = async <
     payload,
     waitTimeoutMs,
     entityTarget,
-    transform,
-    store,
-    postProcess,
+    eventProcessingPipeline,
   } = request;
   // Default retry to half of block time (converted to ms)
   const retryIntervalMs =
@@ -245,14 +177,16 @@ const waitForOrInsertEvent = async <
   });
 
   // If not found, attempt insertion
-  await insertEvent({
+  await processEvent<
+    DataSource,
+    IndexerEventPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >({
     db,
+    eventProcessingPipeline,
     logger,
-    payload,
-    event,
-    transform,
-    store,
-    postProcess,
   });
 
   // Fetch again to return the entity
@@ -325,6 +259,19 @@ export const postProcessSwapBeforeBridge = async (
     throw new Error(message);
   }
 
+  const eventLog = (await payload.transactionReceipt)?.logs?.find(
+    (l: any) => l.logIndex === depositEvent.logIndex,
+  );
+  if (!eventLog) {
+    const message = `Event log not found for event ${depositEvent.transactionHash} at log index ${depositEvent.logIndex}`;
+    logger.error({
+      message,
+      payload,
+      event: depositEvent.event,
+    });
+    throw new Error(message);
+  }
+
   const depositEntity = await waitForOrInsertEvent({
     db,
     logger,
@@ -336,16 +283,21 @@ export const postProcessSwapBeforeBridge = async (
     payload,
     waitTimeoutMs: getBlockTime(payload.chainId) * 1000 * 10,
     entityTarget: entities.V3FundsDeposited,
-    transform: (args: V3FundsDepositedArgs, p: IndexerEventPayload) =>
-      transformV3FundsDepositedEvent(args, p, logger),
-    store: (event: Partial<entities.V3FundsDeposited>, ds: DataSource) =>
-      storeV3FundsDepositedEvent(event, ds, logger),
-    postProcess: async (
-      db: DataSource,
-      _: IndexerEventPayload,
-      storedItem: entities.V3FundsDeposited,
-    ) => {
-      await postProcessDepositEvent(db, storedItem);
+    eventProcessingPipeline: {
+      source: async () => ({ ...payload, log: eventLog }),
+      preprocess: async (_: IndexerEventPayload) =>
+        Promise.resolve(depositEvent.event),
+      transform: (args: V3FundsDepositedArgs, p: IndexerEventPayload) =>
+        transformV3FundsDepositedEvent(args, p, logger),
+      store: (event: Partial<entities.V3FundsDeposited>, ds: DataSource) =>
+        storeV3FundsDepositedEvent(event, ds, logger),
+      postProcess: async (
+        db: DataSource,
+        _: IndexerEventPayload,
+        storedItem: entities.V3FundsDeposited,
+      ) => {
+        await postProcessDepositEvent(db, storedItem);
+      },
     },
   });
 

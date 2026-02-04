@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
-
 import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })

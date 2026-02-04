@@ -259,7 +259,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event, dataSource: DataSource) =>
           storeDepositForBurnEvent(event, dataSource, logger),
       },
       {
@@ -275,7 +275,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
           createCctpBurnFilter(payload, logger),
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformMessageSentEvent(args as MessageSentArgs, payload, logger),
-        store: (event, dataSource) =>
+        store: (event, dataSource: DataSource) =>
           storeMessageSentEvent(event, dataSource, logger),
       },
       {
@@ -295,7 +295,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event, dataSource: DataSource) =>
           storeMessageReceivedEvent(event, dataSource, logger),
       },
       {
@@ -315,7 +315,7 @@ export const CCTP_PROTOCOL: SupportedProtocols<
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event, dataSource: DataSource) =>
           storeMintAndWithdrawEvent(event, dataSource, logger),
       },
     ];
@@ -346,14 +346,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: SWAP_FLOW_FINALIZED_EVENT_NAME,
       },
       preprocess: extractRawArgs<SwapFlowFinalizedArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformSwapFlowFinalizedEvent(
           args as SwapFlowFinalizedArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeSwapFlowFinalizedEvent(event, dataSource, logger),
     },
     {
@@ -363,14 +362,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: SWAP_FLOW_INITIALIZED_EVENT_NAME,
       },
       preprocess: extractRawArgs<SwapFlowInitializedArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformSwapFlowInitializedEvent(
           args as SwapFlowInitializedArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeSwapFlowInitializedEvent(event, dataSource, logger),
     },
     {
@@ -380,14 +378,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: SPONSORED_ACCOUNT_ACTIVATION_EVENT_NAME,
       },
       preprocess: extractRawArgs<SponsoredAccountActivationArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformSponsoredAccountActivationEvent(
           args as SponsoredAccountActivationArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeSponsoredAccountActivationEvent(event, dataSource, logger),
     },
     {
@@ -397,14 +394,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: SIMPLE_TRANSFER_FLOW_COMPLETED_EVENT_NAME,
       },
       preprocess: extractRawArgs<SimpleTransferFlowCompletedArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformSimpleTransferFlowCompletedEvent(
           args as SimpleTransferFlowCompletedArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeSimpleTransferFlowCompletedEvent(event, dataSource, logger),
     },
     {
@@ -414,14 +410,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: FALLBACK_HYPER_EVM_FLOW_COMPLETED_EVENT_NAME,
       },
       preprocess: extractRawArgs<FallbackHyperEVMFlowCompletedArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformFallbackHyperEVMFlowCompletedEvent(
           args as FallbackHyperEVMFlowCompletedArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeFallbackHyperEVMFlowCompletedEvent(event, dataSource, logger),
     },
     {
@@ -431,14 +426,13 @@ export const getSponsoredBridgingEventHandlers = (
         eventName: ARBITRARY_ACTIONS_EXECUTED_EVENT_NAME,
       },
       preprocess: extractRawArgs<ArbitraryActionsExecutedArgs>,
-      filter: async () => true,
       transform: (args: EventArgs, payload: IndexerEventPayload) =>
         transformArbitraryActionsExecutedEvent(
           args as ArbitraryActionsExecutedArgs,
           payload,
           logger,
         ),
-      store: (event, dataSource) =>
+      store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
         storeArbitraryActionsExecutedEvent(event, dataSource, logger),
     },
   ];
@@ -469,14 +463,13 @@ export const SPONSORED_CCTP_PROTOCOL: SupportedProtocols<
         },
         preprocess: (payload: IndexerEventPayload) =>
           preprocessSponsoredDepositForBurn(payload, logger),
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformSponsoredDepositForBurnEvent(
             args as SponsoredDepositForBurnArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeSponsoredDepositForBurnEvent(event, dataSource, logger),
       });
     }
@@ -534,7 +527,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
             logger,
             tokenAddress,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeOFTSentEvent(event, dataSource, logger),
       },
       {
@@ -553,7 +546,7 @@ export const OFT_PROTOCOL: SupportedProtocols<
             logger,
             tokenAddress,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeOFTReceivedEvent(event, dataSource, logger),
       },
     ];
@@ -576,14 +569,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<FilledV3RelayArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformFilledV3RelayEvent(
             args as FilledV3RelayArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeFilledV3RelayEvent(event, dataSource, logger),
       },
       {
@@ -593,17 +585,23 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<V3FundsDepositedArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformV3FundsDepositedEvent(
             args as V3FundsDepositedArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeV3FundsDepositedEvent(event, dataSource, logger),
-        postProcess: async (db, _, storedItem) => {
-          await postProcessDepositEvent(db, storedItem as V3FundsDeposited);
+        postProcess: async (
+          db: DataSource,
+          _: IndexerEventPayload,
+          storedItem: ObjectLiteral,
+        ) => {
+          await postProcessDepositEvent(
+            db,
+            storedItem as entities.V3FundsDeposited,
+          );
         },
       },
       {
@@ -613,14 +611,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<ExecutedRelayerRefundRootArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformExecutedRelayerRefundRootEvent(
             args as ExecutedRelayerRefundRootArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeExecutedRelayerRefundRootEvent(event, dataSource, logger),
       },
       {
@@ -630,14 +627,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<RequestedSpeedUpV3DepositArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformRequestedSpeedUpV3DepositEvent(
             args as RequestedSpeedUpV3DepositArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeRequestedSpeedUpV3DepositEvent(event, dataSource, logger),
       },
       {
@@ -647,14 +643,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<RelayedRootBundleArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformRelayedRootBundleEvent(
             args as RelayedRootBundleArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeRelayedRootBundleEvent(event, dataSource, logger),
       },
       {
@@ -664,14 +659,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<RequestedSlowFillArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformRequestedSlowFillEvent(
             args as RequestedSlowFillArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeRequestedSlowFillEvent(event, dataSource, logger),
       },
       {
@@ -681,14 +675,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<TokensBridgedArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformTokensBridgedEvent(
             args as TokensBridgedArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeTokensBridgedEvent(event, dataSource, logger),
       },
       {
@@ -698,14 +691,13 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`,
         },
         preprocess: extractRawArgs<ClaimedRelayerRefundArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformClaimedRelayerRefundEvent(
             args as ClaimedRelayerRefundArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeClaimedRelayerRefundEvent(event, dataSource, logger),
       },
       {
@@ -715,20 +707,23 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           address: getAddress("SpokePool", chainId) as `0x${string}`, // TODO: Check if address is correct for SwapBeforeBridge? It's periphery?
         },
         preprocess: extractRawArgs<SwapBeforeBridgeArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformSwapBeforeBridgeEvent(
             args as SwapBeforeBridgeArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeSwapBeforeBridgeEvent(event, dataSource, logger),
-        postProcess: async (db, payload, storedItem) => {
+        postProcess: async (
+          db: DataSource,
+          payload: IndexerEventPayload,
+          storedItem: ObjectLiteral,
+        ) => {
           await postProcessSwapBeforeBridge({
             db,
-            payload: payload as IndexerEventPayload,
-            storedItem: storedItem as SwapBeforeBridge,
+            payload,
+            storedItem: storedItem as entities.SwapBeforeBridge,
             logger,
           });
         },
@@ -764,14 +759,13 @@ export const SPONSORED_OFT_PROTOCOL: SupportedProtocols<
           eventName: SPONSORED_OFT_SEND_EVENT_NAME,
         },
         preprocess: extractRawArgs<SponsoredOFTSendArgs>,
-        filter: async () => true,
         transform: (args: EventArgs, payload: IndexerEventPayload) =>
           transformSponsoredOFTSendEvent(
             args as SponsoredOFTSendArgs,
             payload,
             logger,
           ),
-        store: (event, dataSource) =>
+        store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeSponsoredOFTSendEvent(event, dataSource, logger),
       });
     }

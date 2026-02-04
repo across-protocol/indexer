@@ -1,13 +1,7 @@
 import { subscribeToEvent, EventConfig } from "./genericEventListening";
 import { closeViemClient, createWebSocketClient } from "../adapter/websocket";
-import { processEvent } from "./genericEventProcessing";
-import {
-  Storer,
-  Transformer,
-  Filter,
-  Preprocessor,
-  PostProcessor,
-} from "../model/genericTypes";
+import { processEvent, ProcessEventFns } from "./genericEventProcessing";
+import { Filter } from "../model/genericTypes";
 import { Logger } from "winston";
 import {
   type PublicClient,
@@ -21,7 +15,7 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
-import { utils as dbUtils, DataSource } from "@repo/indexer-database";
+import { utils as dbUtils } from "@repo/indexer-database";
 type BlockchainEventRepository = dbUtils.BlockchainEventRepository;
 
 /**
@@ -48,13 +42,8 @@ export interface IndexerEventHandler<
   TPreprocessed,
   TTransformed,
   TStored,
-> {
+> extends ProcessEventFns<TDb, TPayload, TPreprocessed, TTransformed, TStored> {
   config: EventConfig;
-  preprocess: Preprocessor<TPayload, TPreprocessed>;
-  transform: Transformer<TPayload, TPreprocessed, TTransformed>;
-  store: Storer<TDb, TTransformed, TStored>;
-  filter?: Filter<TPayload, TPreprocessed>;
-  postProcess?: PostProcessor<TDb, TPayload, TStored>;
 }
 
 /**
@@ -216,14 +205,8 @@ export async function startIndexing<
 
       // Setup Subscriptions
       for (const eventItem of indexerConfig.events) {
-        const {
-          config,
-          transform,
-          store: originalStore,
-          filter,
-          preprocess,
-          postProcess,
-        } = eventItem;
+        const { config, ...eventProcessingPipeline } = eventItem;
+        const { store: originalStore } = eventProcessingPipeline;
 
         const store = withMetrics(originalStore, {
           service: metrics,
@@ -237,6 +220,7 @@ export async function startIndexing<
           type: COUNT,
           logger,
         });
+        eventProcessingPipeline.store = store;
 
         const unwatch = subscribeToEvent<TPayload>({
           client: viemClient,
@@ -248,15 +232,12 @@ export async function startIndexing<
           onEvent: (payload) => {
             const startProcessing = Date.now();
 
-            const eventSource = async () => Promise.resolve(payload);
             processEvent<TDb, TPayload, TPreprocessed, TTransformed, TStored>({
               db,
-              source: eventSource,
-              preprocess,
-              transform,
-              store,
-              filter,
-              postProcess,
+              eventProcessingPipeline: {
+                ...eventProcessingPipeline,
+                source: async () => payload,
+              },
               logger,
             }).then(() => {
               metrics?.addGaugeMetric(
