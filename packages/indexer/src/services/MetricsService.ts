@@ -223,7 +223,7 @@ export const withMetrics = <TArgs extends any[], TReturn>(
       service.addCountMetric(metricName, tags, value ?? 1);
     }
     if (type === GAUGE) {
-      if (value === undefined) {
+      if (!value) {
         logger.warn({
           message: "Value is required for gauge metrics",
           metricName,
