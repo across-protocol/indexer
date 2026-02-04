@@ -92,17 +92,6 @@ export const postProcessDepositEvent = async (
     FUNDS_DEPOSITED_V3_EVENT_NAME,
   );
 
-  // 3. Find the matching swap: logIndex < storedItem.logIndex AND no other deposit event in between
-  const sortedSwaps = swapEvents.sort((a, b) => b.logIndex - a.logIndex);
-
-  console.log("Debug: Finding matching swap", {
-    totalSwaps: swapEvents.length,
-    totalDeposits: depositEvents.length,
-    storedItemLogIndex: storedItem.logIndex,
-    swaps: swapEvents.map((s) => s.logIndex),
-    deposits: depositEvents.map((d) => d.logIndex),
-  });
-
   // Find the matching swap: logIndex < storedItem.logIndex AND no other deposit event in between
   const matchingSwap = swapEvents
     .filter((s) => s.logIndex < storedItem.logIndex)
@@ -113,11 +102,6 @@ export const postProcessDepositEvent = async (
       );
     })
     .sort((a, b) => b.logIndex - a.logIndex)[0];
-
-  console.log("Debug: Matching swap result", {
-    found: !!matchingSwap,
-    matchLogIndex: matchingSwap?.logIndex,
-  });
 
   if (matchingSwap) {
     // Transform and store the swap
