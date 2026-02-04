@@ -39,6 +39,7 @@ import {
   compareSwapBeforeBridgeEvents,
 } from "./utils";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
+import { RelayStatus } from "../../../../indexer-database/dist/src/entities";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
 
@@ -919,6 +920,13 @@ describe("Websocket Subscription", () => {
       repository: repo,
       findOptions: { transactionHash: txHash, logIndex: 4 },
       blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        // Delete RelayHashInfo
+        await dataSource
+          .getRepository(entities.RelayHashInfo)
+          .delete({ fillTxHash: txHash });
+        await repository.delete(findOptions);
+      },
     });
 
     startChainIndexing({
@@ -1253,6 +1261,16 @@ describe("Websocket Subscription", () => {
       repository: repo,
       findOptions: { transactionHash: txHash },
       blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        // Delete RelayHashInfo
+        await dataSource
+          .getRepository(entities.RelayHashInfo)
+          .delete({ depositTxHash: txHash });
+        await dataSource
+          .getRepository(entities.V3FundsDeposited)
+          .delete({ transactionHash: txHash });
+        await repository.delete(findOptions);
+      },
     });
 
     startChainIndexing({
@@ -1598,6 +1616,13 @@ describe("Websocket Subscription", () => {
         transactionHash: txHash,
       },
       blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        // Delete RelayHashInfo
+        await dataSource
+          .getRepository(entities.RelayHashInfo)
+          .delete({ status: RelayStatus.SlowFillRequested });
+        await repository.delete(findOptions);
+      },
     });
 
     // Start the Indexer with SPOKE_POOL_PROTOCOL
