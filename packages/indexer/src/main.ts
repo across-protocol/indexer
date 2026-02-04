@@ -262,6 +262,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       priceWorker?.close(),
       swapWorker.close(),
       metrics.close(),
+      gaslessDepositPubSubConsumer.close(),
+      gaslessDepositDlqConsumer.close(),
     ]);
     // Stop all other managers
 
@@ -274,6 +276,10 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+  // Start gasless deposit PubSub and DLQ consumers (pull subscriptions; run until close())
+  await gaslessDepositPubSubConsumer.start();
+  await gaslessDepositDlqConsumer.start();
 
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
   const indexerPromises = [
@@ -355,6 +361,8 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     }
   });
 
+  await gaslessDepositPubSubConsumer.close();
+  await gaslessDepositDlqConsumer.close();
   await redis?.quit();
   await postgres?.destroy();
   logger.debug({ at: "Indexer#Main", message: "Exiting indexer" });
