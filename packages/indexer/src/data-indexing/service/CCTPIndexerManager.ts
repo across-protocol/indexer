@@ -9,7 +9,7 @@ import {
   getFinalisedBlockBufferDistance,
   getPollingIndexerDelaySeconds,
 } from "./constants";
-import { Indexer, EvmIndexer, SvmIndexer } from "./Indexer";
+import { EvmIndexer, SvmIndexer } from "./Indexer";
 import { RetryProvidersFactory } from "../../web3/RetryProvidersFactory";
 import { CCTPIndexerDataHandler } from "./CCTPIndexerDataHandler";
 import { SvmCCTPIndexerDataHandler } from "./SvmCCTPIndexerDataHandler";
@@ -17,9 +17,6 @@ import { CCTPRepository } from "../../database/CctpRepository";
 import { getMaxBlockLookBack } from "../../web3/constants";
 
 export class CCTPIndexerManager {
-  private evmIndexers?: Indexer[];
-  private svmIndexer?: Indexer;
-
   constructor(
     private logger: Logger,
     private config: Config,
@@ -28,17 +25,20 @@ export class CCTPIndexerManager {
     private cctpRepository: CCTPRepository,
   ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     try {
       if (this.config.cctpIndexerChainIds.length === 0) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#CCTPIndexerManager#start",
           message: "CCTP indexer is disabled",
         });
         return;
       }
 
-      return Promise.all([this.startEvmIndexer(), this.startSvmIndexer()]);
+      return Promise.all([
+        this.startEvmIndexer(signal),
+        this.startSvmIndexer(signal),
+      ]);
     } catch (error) {
       this.logger.error({
         at: "Indexer#CCTPIndexerManager#start",
@@ -50,12 +50,7 @@ export class CCTPIndexerManager {
     }
   }
 
-  public async stopGracefully() {
-    this.evmIndexers?.map((indexer) => indexer.stopGracefully());
-    this.svmIndexer?.stopGracefully();
-  }
-
-  private async startEvmIndexer() {
+  private async startEvmIndexer(signal: AbortSignal) {
     const evmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsEvm(chainId),
     );
@@ -103,13 +98,10 @@ export class CCTPIndexerManager {
       message: "Starting EVM CCTP indexers",
       chainIds: evmChains,
     });
-    this.evmIndexers = indexers;
-    await Promise.all(indexers.map((indexer) => indexer.start()));
-
-    return Promise.resolve();
+    await Promise.all(indexers.map((indexer) => indexer.start(signal)));
   }
 
-  private async startSvmIndexer() {
+  private async startSvmIndexer(signal: AbortSignal) {
     const svmChains = this.config.cctpIndexerChainIds.filter((chainId) =>
       across.utils.chainIsSvm(chainId),
     );
@@ -155,6 +147,6 @@ export class CCTPIndexerManager {
       message: "Starting SVM CCTP indexers",
       chainIds: svmChains,
     });
-    return Promise.all(indexers.map((indexer) => indexer.start()));
+    await Promise.all(indexers.map((indexer) => indexer.start(signal)));
   }
 }

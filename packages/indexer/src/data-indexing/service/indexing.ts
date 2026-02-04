@@ -91,7 +91,7 @@ export async function startChainIndexing<
     transportOptions,
   };
 
-  logger.info({
+  logger.debug({
     at: "indexing#startChainIndexing",
     message: `Starting indexing for chain ${chainId}`,
     protocolCount: protocols.length,
@@ -128,9 +128,9 @@ export interface StartIndexersRequest {
  */
 export function startWebSocketIndexing(
   request: StartIndexersRequest,
-): Promise<void>[] {
+): { chainId: number; promise: Promise<void> }[] {
   const { providers, logger, config, metrics } = request;
-  const handlers: Promise<void>[] = [];
+  const handlers: { chainId: number; promise: Promise<void> }[] = [];
   const chainProtocols = getChainProtocols(request.config);
   const chainIds = config.wsIndexerChainIds;
 
@@ -157,8 +157,9 @@ export function startWebSocketIndexing(
     }
 
     // Start Chain Indexing
-    handlers.push(
-      startChainIndexing({
+    handlers.push({
+      chainId,
+      promise: startChainIndexing({
         database: request.database,
         rpcUrl,
         logger: request.logger,
@@ -177,7 +178,7 @@ export function startWebSocketIndexing(
           timeout: 30_000,
         },
       }),
-    );
+    });
   }
 
   return handlers;

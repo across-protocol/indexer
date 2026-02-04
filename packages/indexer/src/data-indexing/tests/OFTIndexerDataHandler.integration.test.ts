@@ -68,7 +68,10 @@ describe("OFTIndexerDataHandler", () => {
     setupTestForChainId(CHAIN_IDs.ARBITRUM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
-    await handler.processBlockRange(blockRange, blockNumber - 1);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber - 1,
+    });
 
     const sponsoredOFTSendRepo = dataSource.getRepository(
       entities.SponsoredOFTSend,
@@ -100,7 +103,10 @@ describe("OFTIndexerDataHandler", () => {
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
-    await handler.processBlockRange(blockRange, blockNumber - 1);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber - 1,
+    });
 
     const simpleTransferFlowCompletedRepo = dataSource.getRepository(
       entities.SimpleTransferFlowCompleted,
@@ -144,7 +150,10 @@ describe("OFTIndexerDataHandler", () => {
     setupTestForChainId(CHAIN_IDs.HYPEREVM);
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
-    await handler.processBlockRange(blockRange, blockNumber - 1);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber - 1,
+    });
 
     const fallbackHyperEVMFlowCompletedRepo = dataSource.getRepository(
       entities.FallbackHyperEVMFlowCompleted,
@@ -191,7 +200,10 @@ describe("OFTIndexerDataHandler", () => {
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const sponsoredAccountActivationRepository = dataSource.getRepository(
       entities.SponsoredAccountActivation,
@@ -236,7 +248,10 @@ describe("OFTIndexerDataHandler", () => {
     };
 
     // Process the block
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const swapFlowFinalizedRepository = dataSource.getRepository(
       entities.SwapFlowFinalized,
@@ -291,7 +306,10 @@ describe("OFTIndexerDataHandler", () => {
     // We need to stub the filterTransactionsFromSwapApi method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterTransactionsFromSwapApi").resolvesArg(1);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const swapFlowInitializedRepository = dataSource.getRepository(
       entities.SwapFlowInitialized,
