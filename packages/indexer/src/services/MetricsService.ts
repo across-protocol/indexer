@@ -8,10 +8,6 @@ import {
 import { Logger } from "winston";
 import { DatadogConfig } from "../parseEnv";
 
-const MAX_RETRY_TIMEOUT = 60000;
-const RETRY_ATTEMPTS = 10;
-const RETRY_BACKOFF_EXPONENT = 2;
-
 /**
  * Configuration for DataDogMetricsService.
  * @interface
@@ -48,6 +44,7 @@ export class DataDogMetricsService {
   private configuration: DatadogConfig;
   private logger?: Logger;
   private instanceTags: string[] = [];
+  private abortController: AbortController;
 
   /**
    * Constructor for DataDogMetricsService.
@@ -57,15 +54,15 @@ export class DataDogMetricsService {
     this.logger = config.logger;
     this.configuration = config.configuration;
     this.instanceTags = config.tags || [];
-
+    this.abortController = new AbortController();
     const configuration = client.createConfiguration({
       authMethods: {
         apiKeyAuth: this.configuration.dd_api_key,
         appKeyAuth: this.configuration.dd_app_key,
       },
-      maxRetries: RETRY_ATTEMPTS,
-      backoffBase: RETRY_BACKOFF_EXPONENT,
-      backoffMultiplier: RETRY_BACKOFF_EXPONENT,
+      httpConfig: {
+        signal: this.abortController.signal as any,
+      },
     });
 
     this.apiInstance = new v2.MetricsApi(configuration);
@@ -139,6 +136,7 @@ export class DataDogMetricsService {
 
   /**
    * Flushes the buffer of metrics to Datadog.
+   * Uses serialized execution to ensure only one flush is active at a time.
    */
   private async flush() {
     if (this.buffer.length === 0) return;
@@ -149,35 +147,47 @@ export class DataDogMetricsService {
       },
     };
 
-    // Clear buffer immediately to avoid double sending if flush takes time
+    // Clear buffer immediately to avoid double sending
     this.buffer = [];
 
     try {
-      await pRetry(
-        () => {
-          return this.apiInstance.submitMetrics(body);
-        },
-        {
-          retries: RETRY_ATTEMPTS,
-          factor: RETRY_BACKOFF_EXPONENT,
-          maxTimeout: MAX_RETRY_TIMEOUT,
-        },
-      );
-    } catch (error) {
-      this.logger?.error({
-        message: "Failed to submit metrics to Datadog after multiple retries:",
-        error,
+      // Uses p-retry with default settings:
+      // 10 retries, factor 2, 1000ms minTimeout, Infinity maxTimeout
+      await pRetry(() => {
+        // Signal allows us to kill the specific HTTPS request on shutdown
+        return this.apiInstance.submitMetrics(body);
       });
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        this.logger?.debug({
+          at: "MetricsService.flush",
+          message: "Datadog flush aborted during shutdown.",
+        });
+      } else {
+        this.logger?.error({
+          at: "MetricsService.flush",
+          message:
+            "Failed to submit metrics to Datadog after multiple retries:",
+          error,
+        });
+      }
     }
   }
 
   /**
    * Closes the metrics service.
+   * Immediately terminates in-flight network requests to allow natural process exit.
    */
   public async close() {
+    this.logger?.debug({
+      at: "MetricsService.close",
+      message:
+        "Datadog Metrics Service: Closing and killing in-flight requests.",
+    });
+
+    // Stop the recurring flush timer
     clearInterval(this.flushInterval as NodeJS.Timeout);
-    // Attempt one last flush
-    await this.flush();
+    this.abortController.abort();
   }
 }
 
@@ -213,7 +223,7 @@ export const withMetrics = <TArgs extends any[], TReturn>(
       service.addCountMetric(metricName, tags, value ?? 1);
     }
     if (type === GAUGE) {
-      if (!value) {
+      if (value === undefined) {
         logger.warn({
           message: "Value is required for gauge metrics",
           metricName,
