@@ -744,7 +744,13 @@ export class DepositsService {
       .orderBy("rhi.depositEventId", "ASC")
       .getMany();
     const numberMatchingRelays = matchingRelays.length;
-    if (numberMatchingRelays === 0) throw new DepositNotFoundException();
+    if (numberMatchingRelays === 0) {
+      if (params.depositId != null && params.originChainId != null) {
+        const gaslessResult = await this.getGaslessDepositStatus(params);
+        if (gaslessResult) return gaslessResult;
+      }
+      throw new DepositNotFoundException();
+    }
     const relay = matchingRelays[params.index];
     if (!relay) {
       throw new IndexParamOutOfRangeException(
@@ -945,6 +951,36 @@ export class DepositsService {
     };
 
     return result;
+  }
+
+  /**
+   * If gasless row exists for this depositId + originChainId,
+   * return deposit-pending; else null.
+   */
+  private async getGaslessDepositStatus(
+    params: DepositStatusParams,
+  ): Promise<DepositStatusResponse | null> {
+    const gasless = await this.db
+      .getRepository(entities.GaslessDeposit)
+      .findOne({
+        where: {
+          originChainId: String(params.originChainId),
+          depositId: params.depositId!,
+        },
+      });
+    if (!gasless) return null;
+
+    return {
+      status: "deposit-pending",
+      originChainId: parseInt(gasless.originChainId),
+      depositId: gasless.depositId,
+      destinationChainId: parseInt(gasless.destinationChainId),
+      depositTxHash: null,
+      fillTx: null,
+      depositRefundTxHash: null,
+      actionsSucceeded: null,
+      pagination: { currentIndex: 0, maxIndex: 0 },
+    };
   }
 
   private async getDepositStatusForCctpDeposit(
