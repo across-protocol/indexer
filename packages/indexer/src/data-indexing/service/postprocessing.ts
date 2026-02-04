@@ -1,9 +1,4 @@
-import {
-  DataSource,
-  EntityTarget,
-  FindOptionsWhere,
-  ObjectLiteral,
-} from "typeorm";
+import { DataSource } from "typeorm";
 import { entities } from "@repo/indexer-database";
 import {
   assignDepositEventsToRelayHashInfo,
@@ -15,25 +10,16 @@ import {
   FUNDS_DEPOSITED_V3_EVENT_NAME,
   SWAP_BEFORE_BRIDGE_EVENT_NAME,
 } from "./constants";
-import {
-  transformSwapBeforeBridgeEvent,
-  transformV3FundsDepositedEvent,
-} from "./transforming";
-import {
-  storeSwapBeforeBridgeEvent,
-  storeV3FundsDepositedEvent,
-} from "./storing";
+import { transformSwapBeforeBridgeEvent } from "./transforming";
+import { storeSwapBeforeBridgeEvent } from "./storing";
 import { decodeEventsFromReceipt } from "./preprocessing";
-import {
-  processEvent,
-  ProcessingEventPipeline,
-} from "./genericEventProcessing";
+import { processEvent } from "./genericEventProcessing";
 import {
   SwapBeforeBridgeArgs,
   V3FundsDepositedArgs,
 } from "../model/eventTypes";
 import { parseAbi } from "viem";
-import { config, Logger } from "winston";
+import { Logger } from "winston";
 import {
   DataDogMetricsService,
   withMetrics,
@@ -64,12 +50,13 @@ type PostProcessDepositEventRequest = {
 export const postProcessDepositEvent = async (
   request: PostProcessDepositEventRequest,
 ) => {
-  const { db, storedItem, payload, metrics, logger } = request;
+  const { db, storedItem: storedDeposit, payload, metrics, logger } = request;
   const startTime = Date.now();
+  await assignDepositEventsToRelayHashInfo([storedDeposit], db);
 
   const viemReceipt = await payload.transactionReceipt;
   if (!viemReceipt) {
-    const message = `No transaction receipt found for deposit event ${storedItem.id}`;
+    const message = `No transaction receipt found for deposit event ${storedDeposit.id}`;
     logger.error({
       at: "postProcessDepositEvent",
       message,
@@ -77,7 +64,6 @@ export const postProcessDepositEvent = async (
     });
     throw new Error(message);
   }
-
   // Decode all SwapBeforeBridge events
   const swapEvents = decodeEventsFromReceipt<SwapBeforeBridgeArgs>(
     viemReceipt,
@@ -94,11 +80,11 @@ export const postProcessDepositEvent = async (
 
   // Find the matching swap: logIndex < storedItem.logIndex AND no other deposit event in between
   const matchingSwap = swapEvents
-    .filter((s) => s.logIndex < storedItem.logIndex)
+    .filter((s) => s.logIndex < storedDeposit.logIndex)
     .filter((s) => {
       // No other deposit event should be between this swap and our target deposit
       return !depositEvents.some(
-        (d) => d.logIndex > s.logIndex && d.logIndex < storedItem.logIndex,
+        (d) => d.logIndex > s.logIndex && d.logIndex < storedDeposit.logIndex,
       );
     })
     .sort((a, b) => b.logIndex - a.logIndex)[0];
@@ -111,7 +97,7 @@ export const postProcessDepositEvent = async (
       log: matchingSwap.log,
     };
 
-    // 4. Use processEvent to handle the swap event
+    // Use processEvent to handle the swap event
     await processEvent<
       DataSource,
       IndexerEventPayload,
@@ -139,11 +125,20 @@ export const postProcessDepositEvent = async (
             type: COUNT,
             logger,
           })(event, db, logger),
+        postProcess: async (_db, _payload, storedSwap) => {
+          await assignSwapEventToRelayHashInfo(
+            [
+              {
+                deposit: storedDeposit,
+                swapBeforeBridge: storedSwap,
+              },
+            ],
+            db,
+          );
+        },
       },
     });
   }
-
-  await assignDepositEventsToRelayHashInfo([storedItem], db);
 
   metrics?.addGaugeMetric(
     "postProcessDepositEvent.duration",

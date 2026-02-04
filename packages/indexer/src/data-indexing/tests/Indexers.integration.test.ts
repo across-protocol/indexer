@@ -1747,7 +1747,7 @@ describe("Websocket Subscription", () => {
     // Stub the SpokePool address
     sinon
       .stub(contractUtils, "getAddress")
-      .returns("0xc456398d5ee3b93828252e48bededbc39e03368e");
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
 
     const swapRepo = dataSource.getRepository(entities.SwapBeforeBridge);
     const relayHashInfoRepo = dataSource.getRepository(entities.RelayHashInfo);
@@ -1801,6 +1801,11 @@ describe("Websocket Subscription", () => {
     );
 
     receipt.logs.forEach((log) => server.pushEvent(log));
+
+    await waitForEventToBeStoredOrFail({
+      repository: dataSource.getRepository(entities.V3FundsDeposited),
+      findOptions: { transactionHash: txHash },
+    });
 
     // Wait for SwapBeforeBridge event
     const savedEvent = await waitForEventToBeStoredOrFail({
