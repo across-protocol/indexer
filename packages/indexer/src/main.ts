@@ -39,7 +39,10 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
-import { GaslessDepositPubSubConsumer } from "./pubsub/gaslessDepositConsumer";
+import {
+  GaslessDepositDlqConsumer,
+  GaslessDepositPubSubConsumer,
+} from "./pubsub/gaslessDepositConsumer";
 import { DataDogMetricsService } from "./services/MetricsService";
 
 async function initializeRedis(
@@ -167,6 +170,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
   const gaslessDepositPubSubConsumer = new GaslessDepositPubSubConsumer(
+    config,
+    logger,
+    postgres,
+  );
+  const gaslessDepositDlqConsumer = new GaslessDepositDlqConsumer(
     config,
     logger,
     postgres,
