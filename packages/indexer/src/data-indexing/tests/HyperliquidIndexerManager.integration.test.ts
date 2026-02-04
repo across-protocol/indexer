@@ -12,8 +12,10 @@ describe("HyperliquidIndexerManager", () => {
   let logger: Logger;
   let manager: HyperliquidIndexerManager;
   let config: Config;
+  let abortController: AbortController;
 
   beforeEach(async () => {
+    abortController = new AbortController();
     dataSource = await getTestDataSource();
 
     logger = {
@@ -34,12 +36,10 @@ describe("HyperliquidIndexerManager", () => {
 
   afterEach(async () => {
     sinon.restore();
-    if (manager) {
-      await manager.stopGracefully();
-    }
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
+    abortController.abort();
   });
 
   it("should use CHAIN_IDs.HYPERCORE for chainId", async () => {
@@ -51,9 +51,8 @@ describe("HyperliquidIndexerManager", () => {
     // Set up environment variable for RPC URL
     const testRpcUrl = "https://test-rpc-url.com/hypercore";
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
-
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
+    await manager.start(abortController.signal);
 
     // Verify that the indexer was created
     expect(indexerStartStub.called).to.be.true;
@@ -71,7 +70,7 @@ describe("HyperliquidIndexerManager", () => {
     process.env.RPC_PROVIDER_URLS_1337 = testRpcUrl;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
+    await manager.start(abortController.signal);
 
     // Verify that the indexer was created
     expect(indexerStartStub.called).to.be.true;
@@ -88,7 +87,7 @@ describe("HyperliquidIndexerManager", () => {
       .resolves();
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
+    await manager.start(abortController.signal);
 
     // Indexer should not be started
     expect(indexerStartStub.called).to.be.false;
@@ -101,7 +100,7 @@ describe("HyperliquidIndexerManager", () => {
     delete process.env.RPC_PROVIDER_URLS_1337;
 
     manager = new HyperliquidIndexerManager(logger, config, dataSource);
-    await manager.start();
+    await manager.start(abortController.signal);
 
     // Should log an error
     expect((logger.error as sinon.SinonSpy).called).to.be.true;

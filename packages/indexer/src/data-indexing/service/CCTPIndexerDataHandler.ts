@@ -18,7 +18,10 @@ import {
   SPONSORED_ACCOUNT_ACTIVATION_ABI,
   SWAP_FLOW_FINALIZED_ABI,
 } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { EventDecoder } from "../../web3/EventDecoder";
 import {
   MESSAGE_TRANSMITTER_V2_ABI,
@@ -141,11 +144,8 @@ export class CCTPIndexerDataHandler implements IndexerDataHandler {
     return getIndexingStartBlockNumber(this.chainId);
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#CCTPIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,

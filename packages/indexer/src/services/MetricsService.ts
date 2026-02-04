@@ -174,12 +174,10 @@ export class DataDogMetricsService {
   /**
    * Closes the metrics service.
    */
-  public close() {
+  public async close() {
     clearInterval(this.flushInterval as NodeJS.Timeout);
     // Attempt one last flush
-    this.flush().catch((err) =>
-      console.error("Error during final metrics flush:", err),
-    );
+    await this.flush();
   }
 }
 
