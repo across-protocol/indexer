@@ -333,7 +333,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
         // Normal operational debug log
         logger.debug({
           at: "genericIndexing#startIndexingSubsystem",
-          message: `Indexer crashed for chain ${indexerConfig.chainId}. Error summary: ${websocketErrors} Restarting...`,
+          message: `Indexer crashed for chain ${indexerConfig.chainId}. Error summary: ${safeJsonStringify(websocketErrors)} Restarting...`,
           error: safeJsonStringify(e),
         });
       }

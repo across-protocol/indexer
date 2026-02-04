@@ -17,6 +17,7 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { safeJsonStringify } from "../../utils/map";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -155,7 +156,7 @@ export const subscribeToEvent = <TPayload>(
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
         error: error,
-        notificationPath: "across-indexer-error",
+        notificationPath: safeJsonStringify(error),
       });
 
       // Notify the orchestrator that this listener has died
