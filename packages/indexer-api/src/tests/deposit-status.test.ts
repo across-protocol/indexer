@@ -152,7 +152,7 @@ describe("/deposit/status", () => {
     expect(response.body.pagination.maxIndex).to.equal(2);
   });
 
-  it("should return pending when gasless_deposit exists and no filled RHI", async () => {
+  it("should return deposit-pending when gasless_deposit exists and no filled RHI", async () => {
     const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
     await gaslessRepo.insert({
       originChainId: "1",
@@ -163,7 +163,7 @@ describe("/deposit/status", () => {
       .get("/deposit/status")
       .query({ depositId: "999", originChainId: 1, index: 0 });
     expect(response.status).to.equal(200);
-    expect(response.body.status).to.equal("pending");
+    expect(response.body.status).to.equal("deposit-pending");
     expect(response.body.originChainId).to.equal(1);
     expect(response.body.depositId).to.equal("999");
     expect(response.body.destinationChainId).to.equal(10);
@@ -175,7 +175,7 @@ describe("/deposit/status", () => {
     });
   });
 
-  it("should return failed when gasless_deposit exists with deletedAt set", async () => {
+  it("should return deposit-failed when gasless_deposit exists with deletedAt set", async () => {
     const gaslessRepo = dataSource.getRepository(entities.GaslessDeposit);
     await gaslessRepo.insert({
       originChainId: "1",
@@ -187,7 +187,7 @@ describe("/deposit/status", () => {
       .get("/deposit/status")
       .query({ depositId: "777", originChainId: 1, index: 0 });
     expect(response.status).to.equal(200);
-    expect(response.body.status).to.equal("failed");
+    expect(response.body.status).to.equal("deposit-failed");
     expect(response.body.originChainId).to.equal(1);
     expect(response.body.depositId).to.equal("777");
     expect(response.body.destinationChainId).to.equal(10);
