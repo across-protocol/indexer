@@ -44,7 +44,7 @@ export abstract class RepeatableTask {
 
     do {
       await this.taskLogic();
-      await delayWithAbort(delay, signal);
+      await delayWithAbort(delay * 1000, signal);
     } while (!signal.aborted);
 
     this.logger.debug({
