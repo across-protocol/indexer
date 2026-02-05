@@ -21,7 +21,6 @@ import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
 import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueuesService } from "../../messaging/service";
-import { entities } from "@repo/indexer-database";
 import { createTestRetryProviderFactory } from "../../tests/testProvider";
 import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 import { IndexerDataHandler } from "../service/IndexerDataHandler";
@@ -235,191 +234,15 @@ export const getSpokePoolIndexerDataHandler = (
   return handler;
 };
 
-// Event Fields Constants
-const V3_FUNDS_DEPOSITED_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "destinationChainId",
-  "depositId",
-  "depositor",
-  "inputToken",
-  "outputToken",
-  "inputAmount",
-  "outputAmount",
-  "quoteTimestamp",
-  "fillDeadline",
-  "exclusivityDeadline",
-  "recipient",
-  "exclusiveRelayer",
-  "message",
-];
-
-const FILLED_V3_RELAY_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "depositId",
-  "originChainId",
-  "destinationChainId",
-  "inputToken",
-  "outputToken",
-  "inputAmount",
-  "outputAmount",
-  "fillDeadline",
-  "exclusivityDeadline",
-  "exclusiveRelayer",
-  "depositor",
-  "recipient",
-  "message",
-  "relayer",
-  "repaymentChainId",
-  "updatedRecipient",
-  "updatedMessage",
-  "updatedOutputAmount",
-  "fillType",
-];
-
-const EXECUTED_RELAYER_REFUND_ROOT_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "rootBundleId",
-  "leafId",
-  "l2TokenAddress",
-  "amountToReturn",
-  "refundAmounts",
-  "refundAddresses",
-  "deferredRefunds",
-  "caller",
-];
-
-const REQUESTED_SLOW_FILL_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "depositId",
-  "originChainId",
-  "destinationChainId",
-  "inputToken",
-  "outputToken",
-  "inputAmount",
-  "outputAmount",
-  "fillDeadline",
-  "exclusivityDeadline",
-  "exclusiveRelayer",
-  "depositor",
-  "recipient",
-  "message",
-];
-
-const RELAYED_ROOT_BUNDLE_FIELDS = [
-  "chainId",
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "rootBundleId",
-  "relayerRefundRoot",
-  "slowRelayRoot",
-];
-
-const TOKENS_BRIDGED_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "chainId",
-  "leafId",
-  "l2TokenAddress",
-  "amountToReturn",
-  "caller",
-];
-
-const SWAP_BEFORE_BRIDGE_FIELDS = [
-  "blockNumber",
-  "transactionHash",
-  "transactionIndex",
-  "logIndex",
-  "finalised",
-  "exchange",
-  "swapToken",
-  "acrossInputToken",
-  "swapTokenAmount",
-  "acrossInputAmount",
-  "acrossOutputToken",
-  "acrossOutputAmount",
-];
-
-const compareSubset = <T>(
-  saved: Partial<T>,
-  expected: Partial<T>,
-  fields: string[],
-) => {
-  const savedSubset: Record<string, any> = {};
-  const expectedSubset: Record<string, any> = {};
-  fields.forEach((f) => {
-    savedSubset[f] = (saved as any)[f];
-    expectedSubset[f] = (expected as any)[f];
-  });
-  expect(savedSubset).to.deep.equal(expectedSubset);
-};
-
-export const compareFundsDepositedEvents = (
-  saved: Partial<entities.V3FundsDeposited>,
-  expected: Partial<entities.V3FundsDeposited>,
-) => {
-  compareSubset(saved, expected, V3_FUNDS_DEPOSITED_FIELDS);
-};
-
-export const compareFilledRelayEvents = (
-  saved: Partial<entities.FilledV3Relay>,
-  expected: Partial<entities.FilledV3Relay>,
-) => {
-  compareSubset(saved, expected, FILLED_V3_RELAY_FIELDS);
-};
-
-export const compareExecutedRelayerRefundRootEvents = (
-  saved: Partial<entities.ExecutedRelayerRefundRoot>,
-  expected: Partial<entities.ExecutedRelayerRefundRoot>,
-) => {
-  compareSubset(saved, expected, EXECUTED_RELAYER_REFUND_ROOT_FIELDS);
-};
-
-export const compareRelayedRootBundleEvents = (
-  saved: Partial<entities.RelayedRootBundle>,
-  expected: Partial<entities.RelayedRootBundle>,
-) => {
-  compareSubset(saved, expected, RELAYED_ROOT_BUNDLE_FIELDS);
-};
-
-export const compareRequestedSlowFillEvents = (
-  saved: Partial<entities.RequestedV3SlowFill>,
-  expected: Partial<entities.RequestedV3SlowFill>,
-) => {
-  compareSubset(saved, expected, REQUESTED_SLOW_FILL_FIELDS);
-};
-
-export const compareTokensBridgedEvents = (
-  saved: Partial<entities.TokensBridged>,
-  expected: Partial<entities.TokensBridged>,
-) => {
-  compareSubset(saved, expected, TOKENS_BRIDGED_FIELDS);
-};
-
-export const compareSwapBeforeBridgeEvents = (
-  saved: Partial<entities.SwapBeforeBridge>,
-  expected: Partial<entities.SwapBeforeBridge>,
-) => {
-  compareSubset(saved, expected, SWAP_BEFORE_BRIDGE_FIELDS);
+export const compareExcludingMetadata = (saved: any, expected: any) => {
+  const {
+    id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    dataSource,
+    blockTimestamp,
+    ...expectedClean
+  } = expected;
+  expect(saved).to.deep.include(expectedClean);
 };

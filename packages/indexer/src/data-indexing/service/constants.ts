@@ -204,3 +204,5 @@ export const REQUESTED_SLOW_FILL_EVENT_NAME = "RequestedSlowFill";
 export const TOKENS_BRIDGED_EVENT_NAME = "TokensBridged";
 export const CLAIMED_RELAYER_REFUND_EVENT_NAME = "ClaimedRelayerRefund";
 export const SWAP_BEFORE_BRIDGE_EVENT_NAME = "SwapBeforeBridge";
+export const CALLS_FAILED_EVENT_NAME = "CallsFailed";
+export const SWAP_METADATA_EVENT_NAME = "MetadataEmitted";

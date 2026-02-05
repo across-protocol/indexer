@@ -167,7 +167,10 @@ import {
 } from "../adapter/oft/service";
 import { Config } from "../../parseEnv";
 import { DataSource, entities } from "@repo/indexer-database";
-import { postProcessDepositEvent } from "./postprocessing";
+import {
+  postProcessDepositEvent,
+  postProcessFillEvent,
+} from "./postprocessing";
 
 /**
  * Array of event handlers.
@@ -569,6 +572,19 @@ export const SPOKE_POOL_PROTOCOL: SupportedProtocols<
           ),
         store: (event: Partial<typeof Entity>, dataSource: DataSource) =>
           storeFilledV3RelayEvent(event, dataSource, logger),
+        postProcess: async (
+          db: DataSource,
+          payload: IndexerEventPayload,
+          storedItem: ObjectLiteral,
+        ) => {
+          await postProcessFillEvent({
+            db,
+            storedItem: storedItem as entities.FilledV3Relay,
+            payload,
+            metrics,
+            logger,
+          });
+        },
       },
       {
         config: {

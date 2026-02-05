@@ -10,6 +10,7 @@ import {
   Unique,
 } from "typeorm";
 import { RelayHashInfo } from "../RelayHashInfo";
+import { DataSourceType } from "../../model";
 
 export enum SwapSide {
   ORIGIN_SWAP = 0,
@@ -99,6 +100,13 @@ export class SwapMetadata {
 
   @Column()
   finalised: boolean;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @CreateDateColumn()
   createdAt: Date;

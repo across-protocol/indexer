@@ -250,6 +250,19 @@ export interface SwapBeforeBridgeArgs {
   acrossOutputAmount: bigint;
 }
 
+export interface CallsFailedArgs {
+  calls: readonly {
+    target: `0x${string}`;
+    callData: `0x${string}`;
+    value: bigint;
+  }[];
+  fallbackRecipient: `0x${string}`;
+}
+
+export interface SwapMetadataArgs {
+  data: `0x${string}`;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -273,4 +286,7 @@ export type EventArgs =
   | RequestedSlowFillArgs
   | TokensBridgedArgs
   | ClaimedRelayerRefundArgs
-  | SwapBeforeBridgeArgs;
+  | ClaimedRelayerRefundArgs
+  | SwapBeforeBridgeArgs
+  | CallsFailedArgs
+  | SwapMetadataArgs;

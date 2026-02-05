@@ -4,6 +4,7 @@ import { utils as ethersUtils } from "ethers";
 import { Signature } from "@solana/kit";
 import { entities } from "@repo/indexer-database";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
+import { TransactionReceipt } from "viem";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
@@ -165,4 +166,30 @@ export function relayHashToInt32(relayHash: string): number {
 
   // Return the final computed 32-bit integer hash
   return hash;
+}
+
+/**
+ * Calculates total gas fees for a collection of Viem transaction receipts.
+ * * Formula: gasUsed * effectiveGasPrice
+ * Both values are native bigints in Viem.
+ * * @param txReceipts - A record of transaction hashes mapping to Viem TransactionReceipts.
+ * @returns A record of transaction hashes mapping to their total gas fee as a bigint.
+ */
+export async function getGasFeeFromTransactionReceipt(
+  txReceipts: Record<string, TransactionReceipt>,
+): Promise<Record<string, bigint | undefined>> {
+  return Object.keys(txReceipts).reduce(
+    (acc, txHash) => {
+      const receipt = txReceipts[txHash];
+
+      // Safety check for undefined receipts
+      if (!receipt) return acc;
+
+      // Viem receipts use native bigint for these properties
+      acc[txHash] = receipt.gasUsed * receipt.effectiveGasPrice;
+
+      return acc;
+    },
+    {} as Record<string, bigint | undefined>,
+  );
 }

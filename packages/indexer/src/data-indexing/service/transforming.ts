@@ -11,6 +11,7 @@ import {
   getInternalHash,
 } from "../../utils";
 import { getFinalisedBlockBufferDistance } from "./constants";
+import { SWAP_METADATA_DECODING_TYPES } from "../model/abis";
 import {
   DepositForBurnArgs,
   MessageReceivedArgs,
@@ -35,9 +36,11 @@ import {
   ClaimedRelayerRefundArgs,
   SponsoredOFTSendArgs,
   SwapBeforeBridgeArgs,
+  CallsFailedArgs,
+  SwapMetadataArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
-import { BigNumber } from "ethers";
+import { ethers, BigNumber } from "ethers";
 import { arrayify } from "ethers/lib/utils";
 
 /**
@@ -717,6 +720,7 @@ export const transformV3FundsDepositedEvent = (
       destinationChainId,
     ),
     message: preprocessed.message,
+    messageHash,
     fromLiteChain: false,
     toLiteChain: false,
   };
@@ -973,4 +977,73 @@ export const transformSwapBeforeBridgeEvent = (
     ),
     acrossOutputAmount: preprocessed.acrossOutputAmount.toString(),
   };
+};
+
+export const transformCallsFailedEvent = (
+  preprocessed: CallsFailedArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.CallsFailed> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    chainId,
+    calls: preprocessed.calls.map((call) => ({
+      target: transformAddress(call.target, chainId),
+      calldata: call.callData,
+      value: call.value.toString(),
+    })),
+    fallbackRecipient: transformAddress(
+      preprocessed.fallbackRecipient,
+      chainId,
+    ),
+  };
+};
+
+export const transformSwapMetadataEvent = (
+  preprocessed: SwapMetadataArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SwapMetadata> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  try {
+    const abiCoder = ethers.utils.defaultAbiCoder;
+    const decoded = abiCoder.decode(
+      SWAP_METADATA_DECODING_TYPES,
+      preprocessed.data,
+    );
+
+    return {
+      ...base,
+      chainId,
+      version: decoded[0].toString(),
+      type: decoded[1],
+      side: decoded[2],
+      address: transformAddress(decoded[3], chainId),
+      maximumAmountIn: decoded[4].toString(),
+      minAmountOut: decoded[5].toString(),
+      expectedAmountOut: decoded[6].toString(),
+      expectedAmountIn: decoded[7].toString(),
+      swapProvider: decoded[8],
+      slippage: decoded[9].toString(),
+      autoSlippage: decoded[10],
+      recipient: transformAddress(decoded[11], chainId),
+      appFeeRecipient:
+        decoded[12] === ethers.constants.AddressZero
+          ? undefined
+          : transformAddress(decoded[12], chainId),
+    };
+  } catch (error) {
+    logger.error({
+      at: "transforming#transformSwapMetadataEvent",
+      message: "Failed to decode swap metadata",
+      error: error instanceof Error ? error.message : String(error),
+      data: preprocessed.data,
+    });
+    throw error;
+  }
 };
