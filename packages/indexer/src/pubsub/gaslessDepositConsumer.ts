@@ -366,32 +366,18 @@ export class GaslessDepositDlqConsumer {
     const repo = this.postgres.getRepository(GaslessDeposit);
     const now = new Date();
 
-    const updateResult = await repo
+    await repo
       .createQueryBuilder()
-      .update(GaslessDeposit)
-      .set({ deletedAt: now } as Partial<GaslessDeposit>)
-      .where("originChainId = :originChainId", {
+      .insert()
+      .into(GaslessDeposit)
+      .values({
         originChainId: fields.originChainId,
+        destinationChainId: fields.destinationChainId,
+        depositId: fields.depositId,
+        deletedAt: now,
       })
-      .andWhere("depositId = :depositId", { depositId: fields.depositId })
-      .andWhere("deletedAt IS NULL")
+      .orUpdate(["deletedAt"], ["originChainId", "depositId"])
       .execute();
-
-    if (updateResult.affected === 0) {
-      await repo
-        .createQueryBuilder()
-        .insert()
-        .into(GaslessDeposit)
-        .values({
-          originChainId: fields.originChainId,
-          destinationChainId: fields.destinationChainId,
-          depositId: fields.depositId,
-          createdAt: now,
-          deletedAt: now,
-        })
-        .orIgnore()
-        .execute();
-    }
 
     this.logger.debug({
       at: "GaslessDepositDlqConsumer#handleMessage",
