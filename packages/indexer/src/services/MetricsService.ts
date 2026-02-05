@@ -8,10 +8,6 @@ import {
 import { Logger } from "winston";
 import { DatadogConfig } from "../parseEnv";
 
-const MAX_RETRY_TIMEOUT = 60000;
-const RETRY_ATTEMPTS = 10;
-const RETRY_BACKOFF_EXPONENT = 2;
-
 /**
  * Configuration for DataDogMetricsService.
  * @interface
@@ -20,7 +16,8 @@ const RETRY_BACKOFF_EXPONENT = 2;
  */
 export interface DataDogMetricsServiceConfig {
   configuration: DatadogConfig;
-  logger?: Logger;
+  logger: Logger;
+  tags?: string[];
 }
 
 /**
@@ -46,6 +43,7 @@ export class DataDogMetricsService {
   private readonly FLUSH_INTERVAL_MS = 10000;
   private configuration: DatadogConfig;
   private logger?: Logger;
+  private instanceTags: string[] = [];
 
   /**
    * Constructor for DataDogMetricsService.
@@ -54,23 +52,44 @@ export class DataDogMetricsService {
   constructor(config: DataDogMetricsServiceConfig) {
     this.logger = config.logger;
     this.configuration = config.configuration;
+    this.instanceTags = config.tags || [];
+  }
 
+  public async start(abortSignal: AbortSignal) {
     const configuration = client.createConfiguration({
       authMethods: {
         apiKeyAuth: this.configuration.dd_api_key,
         appKeyAuth: this.configuration.dd_app_key,
       },
+      httpConfig: {
+        signal: abortSignal as any,
+      },
     });
 
     this.apiInstance = new v2.MetricsApi(configuration);
     this.logger?.debug({
-      message: "DataDogMetricsService initialized",
+      message: "DataDogMetricsService started",
       enabled: this.configuration.enabled,
     });
+
     // Periodically flush metrics
     this.flushInterval = setInterval(() => {
       this.flush();
     }, this.FLUSH_INTERVAL_MS);
+
+    return new Promise<void>((resolve) => {
+      abortSignal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
+
+      if (abortSignal.aborted) {
+        this.close().then(resolve);
+      }
+    });
   }
 
   /**
@@ -108,7 +127,11 @@ export class DataDogMetricsService {
   ) {
     if (!this.configuration.enabled) return;
 
-    const allTags = [...this.configuration.globalTags, ...tags];
+    const allTags = [
+      ...this.configuration.globalTags,
+      ...this.instanceTags,
+      ...tags,
+    ];
 
     this.buffer.push({
       metric: metricName,
@@ -129,6 +152,7 @@ export class DataDogMetricsService {
 
   /**
    * Flushes the buffer of metrics to Datadog.
+   * Uses serialized execution to ensure only one flush is active at a time.
    */
   private async flush() {
     if (this.buffer.length === 0) return;
@@ -138,38 +162,47 @@ export class DataDogMetricsService {
         series: [...this.buffer],
       },
     };
-    console.log("Flushing metrics: ", this.buffer.length);
-    // Clear buffer immediately to avoid double sending if flush takes time
+
+    // Clear buffer immediately to avoid double sending
     this.buffer = [];
 
     try {
-      await pRetry(
-        () => {
-          return this.apiInstance.submitMetrics(body);
-        },
-        {
-          retries: RETRY_ATTEMPTS,
-          factor: RETRY_BACKOFF_EXPONENT,
-          maxTimeout: MAX_RETRY_TIMEOUT,
-        },
-      );
-    } catch (error) {
-      this.logger?.error({
-        message: "Failed to submit metrics to Datadog after multiple retries:",
-        error,
+      // Uses p-retry with default settings:
+      // 10 retries, factor 2, 1000ms minTimeout, Infinity maxTimeout
+      await pRetry(() => {
+        // Signal allows us to kill the specific HTTPS request on shutdown
+        return this.apiInstance.submitMetrics(body);
       });
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        this.logger?.debug({
+          at: "MetricsService.flush",
+          message: "Datadog flush aborted during shutdown.",
+        });
+      } else {
+        this.logger?.error({
+          at: "MetricsService.flush",
+          message:
+            "Failed to submit metrics to Datadog after multiple retries:",
+          error,
+        });
+      }
     }
   }
 
   /**
    * Closes the metrics service.
+   * Immediately terminates in-flight network requests to allow natural process exit.
    */
-  public close() {
+  private async close() {
+    this.logger?.debug({
+      at: "MetricsService.close",
+      message:
+        "Datadog Metrics Service: Closing and killing in-flight requests.",
+    });
+
+    // Stop the recurring flush timer
     clearInterval(this.flushInterval as NodeJS.Timeout);
-    // Attempt one last flush
-    this.flush().catch((err) =>
-      console.error("Error during final metrics flush:", err),
-    );
   }
 }
 

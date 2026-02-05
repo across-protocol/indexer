@@ -36,9 +36,6 @@ import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
 
 export class AcrossIndexerManager {
-  private hubPoolIndexer?: Indexer;
-  private evmSpokePoolIndexers: Indexer[] = [];
-  private svmSpokePoolIndexers: Indexer[] = [];
   constructor(
     private logger: Logger,
     private config: Config,
@@ -58,21 +55,15 @@ export class AcrossIndexerManager {
     private webhookWriteFn?: eventProcessorManager.WebhookWriteFn,
   ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     return Promise.all([
-      this.startHubPoolIndexer(),
-      this.startEvmSpokePoolIndexers(),
-      this.startSvmSpokePoolIndexers(),
+      this.startHubPoolIndexer(signal),
+      this.startEvmSpokePoolIndexers(signal),
+      this.startSvmSpokePoolIndexers(signal),
     ]);
   }
 
-  public async stopGracefully() {
-    this.hubPoolIndexer?.stopGracefully();
-    this.evmSpokePoolIndexers.map((indexer) => indexer.stopGracefully());
-    this.svmSpokePoolIndexers.map((indexer) => indexer.stopGracefully());
-  }
-
-  private startHubPoolIndexer() {
+  private startHubPoolIndexer(signal: AbortSignal) {
     if (!this.config.enableHubPoolIndexer) {
       this.logger.debug({
         at: "Indexer#AcrossIndexerManager#startHubPoolIndexer",
@@ -88,7 +79,7 @@ export class AcrossIndexerManager {
       this.hubPoolRepository,
       new BundleEventsProcessor(this.logger, this.bundleRepository),
     );
-    this.hubPoolIndexer = new EvmIndexer(
+    const hubPoolIndexer = new EvmIndexer(
       {
         indexingDelaySeconds: getIndexingDelaySeconds(
           this.config.hubChainId,
@@ -106,10 +97,10 @@ export class AcrossIndexerManager {
       ) as across.providers.RetryProvider,
     );
 
-    return this.hubPoolIndexer.start();
+    return hubPoolIndexer.start(signal);
   }
 
-  private async startEvmSpokePoolIndexers() {
+  private async startEvmSpokePoolIndexers(signal: AbortSignal) {
     const evmSpokePoolIndexers = this.config.evmSpokePoolChainsEnabled.map(
       (chainId) => {
         const spokePoolIndexerDataHandler = new SpokePoolIndexerDataHandler(
@@ -152,9 +143,8 @@ export class AcrossIndexerManager {
         return spokePoolIndexer;
       },
     );
-    this.evmSpokePoolIndexers = evmSpokePoolIndexers;
 
-    if (this.evmSpokePoolIndexers.length === 0) {
+    if (evmSpokePoolIndexers.length === 0) {
       this.logger.warn({
         at: "Indexer#AcrossIndexerManager#startEvmSpokePoolIndexers",
         message: "No EVM spoke pool indexers to start",
@@ -162,11 +152,11 @@ export class AcrossIndexerManager {
       return;
     }
     return Promise.all(
-      this.evmSpokePoolIndexers.map((indexer) => indexer.start()),
+      evmSpokePoolIndexers.map((indexer) => indexer.start(signal)),
     );
   }
 
-  private startSvmSpokePoolIndexers() {
+  private startSvmSpokePoolIndexers(signal: AbortSignal) {
     const svmSpokePoolIndexers = this.config.svmSpokePoolChainsEnabled.map(
       (chainId) => {
         const svmSpokePoolIndexerDataHandler =
@@ -206,9 +196,8 @@ export class AcrossIndexerManager {
         return svmIndexer;
       },
     );
-    this.svmSpokePoolIndexers = svmSpokePoolIndexers;
 
-    if (this.svmSpokePoolIndexers.length === 0) {
+    if (svmSpokePoolIndexers.length === 0) {
       this.logger.debug({
         at: "Indexer#AcrossIndexerManager#startSvmSpokePoolIndexers",
         message: "No SVM spoke pool indexers to start",
@@ -217,7 +206,7 @@ export class AcrossIndexerManager {
     }
 
     return Promise.all(
-      this.svmSpokePoolIndexers.map((indexer) => indexer.start()),
+      svmSpokePoolIndexers.map((indexer) => indexer.start(signal)),
     );
   }
 }

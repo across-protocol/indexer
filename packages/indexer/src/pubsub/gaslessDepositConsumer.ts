@@ -61,8 +61,9 @@ export class GaslessDepositPubSubConsumer {
   /**
    * Start pulling messages from the gasless deposit subscription.
    * No-op if consumer is disabled or subscription name is missing.
+   * Returns a promise that resolves when the consumer is closed.
    */
-  async start(): Promise<void> {
+  async start(signal: AbortSignal): Promise<void> {
     if (!this.config.enableGaslessDepositPubSubConsumer) {
       this.logger.info({
         at: "GaslessDepositPubSubConsumer#start",
@@ -128,6 +129,23 @@ export class GaslessDepositPubSubConsumer {
       message: "Gasless deposit PubSub consumer started",
       subscription: subName,
     });
+
+    const promise = new Promise<void>((resolve) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
+    });
+
+    if (signal.aborted) {
+      this.close();
+      return Promise.resolve();
+    }
+
+    return promise;
   }
 
   /**
@@ -241,7 +259,7 @@ export class GaslessDepositPubSubConsumer {
   /**
    * Stop the consumer and release the subscription. Idempotent.
    */
-  async close(): Promise<void> {
+  private async close(): Promise<void> {
     if (!this.subscription) {
       return;
     }
@@ -280,7 +298,7 @@ export class GaslessDepositDlqConsumer {
     private readonly postgres: DataSource,
   ) {}
 
-  async start(): Promise<void> {
+  async start(signal: AbortSignal): Promise<void> {
     if (!this.config.enableGaslessDepositDlqConsumer) {
       this.logger.info({
         at: "GaslessDepositDlqConsumer#start",
@@ -346,6 +364,23 @@ export class GaslessDepositDlqConsumer {
       message: "Gasless deposit DLQ consumer started",
       subscription: subName,
     });
+
+    const promise = new Promise<void>((resolve) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
+    });
+
+    if (signal.aborted) {
+      this.close();
+      return Promise.resolve();
+    }
+
+    return promise;
   }
 
   private async handleMessage(message: Message): Promise<void> {
@@ -401,7 +436,7 @@ export class GaslessDepositDlqConsumer {
     message.ack();
   }
 
-  async close(): Promise<void> {
+  private async close(): Promise<void> {
     if (!this.subscription) {
       return;
     }

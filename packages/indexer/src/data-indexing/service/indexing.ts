@@ -2,51 +2,13 @@ import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
 } from "./genericIndexing";
-import { CHAIN_IDs, TEST_NETWORKS } from "@across-protocol/constants";
-import { IndexerEventPayload } from "./genericEventListening";
-import { Entity } from "typeorm";
-import {
-  TOKEN_MESSENGER_ADDRESS_MAINNET,
-  DEPOSIT_FOR_BURN_EVENT_NAME,
-  MESSAGE_SENT_EVENT_NAME,
-  MESSAGE_TRANSMITTER_ADDRESS_MAINNET,
-  TOKEN_MESSENGER_ADDRESS_TESTNET,
-  MESSAGE_TRANSMITTER_ADDRESS_TESTNET,
-  MESSAGE_RECEIVED_EVENT_NAME,
-} from "./constants";
-import {
-  CCTP_DEPOSIT_FOR_BURN_ABI,
-  CCTP_MESSAGE_SENT_ABI,
-  CCTP_MESSAGE_RECEIVED_ABI,
-} from "../model/abis";
-import {
-  transformDepositForBurnEvent,
-  transformMessageSentEvent,
-  transformMessageReceivedEvent,
-} from "./transforming";
-import { extractRawArgs } from "./preprocessing";
-import {
-  storeDepositForBurnEvent,
-  storeMessageSentEvent,
-  storeMessageReceivedEvent,
-} from "./storing";
-import { utils as dbUtils } from "@repo/indexer-database";
+import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
-import {
-  filterDepositForBurnEvents,
-  createCctpBurnFilter,
-  filterMessageReceived,
-} from "./filtering";
-import {
-  EventArgs,
-  DepositForBurnArgs,
-  MessageSentArgs,
-  MessageReceivedArgs,
-} from "../model/eventTypes";
 import { getChainProtocols, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { WebSocketTransportConfig } from "viem";
 import { Config } from "../../parseEnv";
+import { RedisCache } from "../../redis/redisCache";
 
 /**
  * Definition of the request object for starting an indexer.
@@ -62,7 +24,7 @@ export interface StartIndexerRequest<
   TPayload,
   TPreprocessed,
 > {
-  repo: TDb;
+  database: DataSource;
   rpcUrl: string;
   logger: Logger;
   /** Optional signal to gracefully shut down the indexer */
@@ -82,7 +44,7 @@ export async function startChainIndexing<
   TPreprocessed,
 >(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
   const {
-    repo,
+    database,
     rpcUrl,
     logger,
     sigterm,
@@ -96,7 +58,7 @@ export async function startChainIndexing<
   // We pass the logger and chainId to each protocol so they can configure
   // their specific transforms, filters, and contract addresses.
   const events = protocols.flatMap((protocol) =>
-    protocol.getEventHandlers(logger, chainId),
+    protocol.getEventHandlers({ logger, chainId, metrics }),
   );
 
   // Build the concrete configuration
@@ -121,7 +83,7 @@ export async function startChainIndexing<
 
   // Start the generic indexer subsystem
   await startGenericIndexing({
-    db: repo,
+    db: new dbUtils.BlockchainEventRepository(database, logger) as TDb,
     indexerConfig,
     logger,
     sigterm,
@@ -133,7 +95,7 @@ export async function startChainIndexing<
  * Request object for the generic startIndexing entry point.
  */
 export interface StartIndexersRequest {
-  repo: dbUtils.BlockchainEventRepository;
+  database: DataSource;
   logger: Logger;
   /** Map of ChainID to list of RPC URLs */
   providers: Map<number, string[]>;
@@ -149,9 +111,9 @@ export interface StartIndexersRequest {
  */
 export function startWebSocketIndexing(
   request: StartIndexersRequest,
-): Promise<void>[] {
+): { chainId: number; promise: Promise<void> }[] {
   const { providers, logger, config, metrics } = request;
-  const handlers: Promise<void>[] = [];
+  const handlers: { chainId: number; promise: Promise<void> }[] = [];
   const chainProtocols = getChainProtocols(request.config);
   const chainIds = config.wsIndexerChainIds;
 
@@ -178,9 +140,10 @@ export function startWebSocketIndexing(
     }
 
     // Start Chain Indexing
-    handlers.push(
-      startChainIndexing({
-        repo: request.repo,
+    handlers.push({
+      chainId,
+      promise: startChainIndexing({
+        database: request.database,
         rpcUrl,
         logger: request.logger,
         sigterm: request.sigterm,
@@ -198,7 +161,7 @@ export function startWebSocketIndexing(
           timeout: 30_000,
         },
       }),
-    );
+    });
   }
 
   return handlers;

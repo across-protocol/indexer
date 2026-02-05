@@ -12,7 +12,10 @@ import {
   SaveQueryResultType,
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
 import {
@@ -110,11 +113,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     return getDeployedBlockNumber("SpokePool", this.chainId);
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,

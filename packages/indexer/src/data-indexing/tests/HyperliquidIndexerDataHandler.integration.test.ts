@@ -94,7 +94,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     const hyperliquidDepositRepo = dataSource.getRepository(
       entities.HyperliquidDeposit,
@@ -133,7 +136,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     const hyperliquidDepositRepo = dataSource.getRepository(
       entities.HyperliquidDeposit,
@@ -200,7 +206,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves(mockBlocks);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber + 2);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber + 2,
+    });
 
     const hyperliquidDepositRepo = dataSource.getRepository(
       entities.HyperliquidDeposit,
@@ -273,7 +282,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     const hyperliquidDepositRepo = dataSource.getRepository(
       entities.HyperliquidDeposit,
@@ -319,7 +331,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     // Error should be caught and logged as warning, not thrown
     expect((logger.warn as sinon.SinonSpy).called).to.be.true;
@@ -363,7 +378,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     const hyperliquidDepositRepo = dataSource.getRepository(
       entities.HyperliquidDeposit,
@@ -406,7 +424,10 @@ describe("HyperliquidIndexerDataHandler", () => {
 
     rpcClientStub.resolves([mockBlock]);
 
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     // Error should be caught and logged as warning, not thrown
     expect((logger.warn as sinon.SinonSpy).called).to.be.true;
@@ -439,7 +460,10 @@ describe("HyperliquidIndexerDataHandler", () => {
     getLatestBlockNumberStub.resolves(latestBlockNumber);
 
     // Process should complete without throwing
-    await handler.processBlockRange(blockRange, mockBlockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: mockBlockNumber,
+    });
 
     // Verify that the database progress was updated
     const progressRepo = dataSource.getRepository(entities.IndexerProgressInfo);

@@ -32,7 +32,7 @@ export class CctpFinalizerServiceManager {
     private postgres: DataSource,
   ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableCctpFinalizer) {
         this.logger.debug({
@@ -55,8 +55,11 @@ export class CctpFinalizerServiceManager {
       );
 
       await Promise.all([
-        this.finalizerService.start(CCTP_FINALIZER_DELAY_SECONDS),
-        this.monitorService.start(CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS),
+        this.finalizerService.start(CCTP_FINALIZER_DELAY_SECONDS, signal),
+        this.monitorService.start(
+          CCTP_UNFINALIZED_MONITOR_DELAY_SECONDS,
+          signal,
+        ),
       ]);
     } catch (error) {
       this.logger.error({
@@ -67,11 +70,6 @@ export class CctpFinalizerServiceManager {
       });
       throw error;
     }
-  }
-
-  public async stopGracefully() {
-    this.finalizerService?.stop();
-    this.monitorService?.stop();
   }
 }
 
