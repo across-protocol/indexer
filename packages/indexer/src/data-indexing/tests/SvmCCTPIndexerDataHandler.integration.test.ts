@@ -11,6 +11,7 @@ import { CCTPRepository } from "../../database/CctpRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
 import { formatFromAddressToChainFormat } from "../../utils";
+import { RetryProvider } from "@across-protocol/sdk/dist/cjs/src/providers/retryProvider";
 import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
 
 describe("SvmCCTPIndexerDataHandler Integration", () => {
