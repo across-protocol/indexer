@@ -6,6 +6,7 @@ import { DataSource, entities } from "@repo/indexer-database";
 import { IndexerQueues } from "./service";
 import { getIntegratorId } from "../utils";
 import { RetryProvidersFactory } from "../web3/RetryProvidersFactory";
+import { EthersAdapter } from "../utils/web3Utils";
 
 export type IntegratorIdMessage = {
   relayHash: string;
@@ -71,7 +72,7 @@ export class IntegratorIdWorker {
       parseInt(deposit.originChainId),
     );
     const integratorId = await getIntegratorId(
-      provider as providers.RetryProvider,
+      new EthersAdapter(provider as providers.RetryProvider),
       deposit.quoteTimestamp,
       deposit.transactionHash,
     );

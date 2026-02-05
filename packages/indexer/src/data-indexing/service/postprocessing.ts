@@ -8,6 +8,8 @@ import {
   assignSwapMetadataEventToRelayHashInfo,
   assignTargetChainActionEventToRelayHashInfo,
 } from "../../services/spokePoolProcessor";
+import { ViemAdapter } from "../../utils/web3Utils";
+import { updateNewDepositsWithIntegratorId } from "./SpokePoolIndexerDataHandler";
 import { findSucceedingEventInReceipt } from "../../utils/eventMatching";
 import {
   CALLS_FAILED_ABI,
@@ -80,6 +82,10 @@ export const postProcessDepositEvent = async (
   const { db, storedItem: storedDeposit, payload, metrics, logger } = request;
   const startTime = Date.now();
   await assignDepositEventsToRelayHashInfo([storedDeposit], db);
+
+  // Update integrator ID using the viem client from payload
+  const viemAdapter = new ViemAdapter(payload.client);
+  await updateNewDepositsWithIntegratorId([storedDeposit], db, viemAdapter);
 
   const viemReceipt = await payload.transactionReceipt;
   if (!viemReceipt) {

@@ -68,6 +68,8 @@ export interface IndexerEventPayload {
   transaction?: Transaction;
   /** The receipt of the transaction that generated the event. */
   transactionReceipt?: Promise<TransactionReceipt>;
+  /** The Viem public client instance. */
+  client: PublicClient<Transport, Chain>;
 }
 
 /**
@@ -325,6 +327,7 @@ async function processLogBatch<TPayload>(
           currentBlockHeight: logItem.blockNumber,
           transaction,
           transactionReceipt: transactionReceiptPromise,
+          client,
         } as TPayload;
 
         // Trigger the side effect (Forward it to an event processor or message queue)

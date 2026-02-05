@@ -4,7 +4,8 @@ import { utils as ethersUtils } from "ethers";
 import { Signature } from "@solana/kit";
 import { entities } from "@repo/indexer-database";
 import { SvmProvider } from "../web3/RetryProvidersFactory";
-import { TransactionReceipt } from "viem";
+import { PublicClient, type Hex, type TransactionReceipt } from "viem";
+import { GenericBlockchainProvider } from "./web3Utils";
 
 export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
   integratorId?: string | undefined;
@@ -15,13 +16,40 @@ export type V3FundsDepositedWithIntegradorId = interfaces.DepositWithBlock & {
  * associated with the provided transaction hash, if present.
  * The integrator ID is expected to be found after the delimiter "1dc0de" in the transaction data.
  * @async
- * @param provider The provider to fetch transaction details from.
+ * @param provider The provider to fetch transaction data from.
  * @param depositDate
  * @param txHash The transaction hash to retrieve the input data of.
  * @returns The 4-character integrator ID if found, otherwise undefined.
  */
 export async function getIntegratorId(
-  provider: providers.RetryProvider,
+  provider: GenericBlockchainProvider,
+  depositDate: Date,
+  txHash: string,
+) {
+  const hexData = await provider.getTransactionData(txHash);
+  return parseIntegratorIdFromData(depositDate, hexData);
+}
+
+function parseIntegratorIdFromData(
+  depositDate: Date,
+  hexData: string,
+): string | undefined {
+  const INTEGRATOR_ID_IMPLEMENTATION_DATE = new Date(1718274000 * 1000);
+  const INTEGRATOR_DELIMITER = "1dc0de";
+  const INTEGRATOR_ID_LENGTH = 4;
+  if (depositDate < INTEGRATOR_ID_IMPLEMENTATION_DATE) return undefined;
+
+  if (hexData.includes(INTEGRATOR_DELIMITER)) {
+    return hexData
+      .split(INTEGRATOR_DELIMITER)
+      .pop()
+      ?.substring(0, INTEGRATOR_ID_LENGTH);
+  }
+  return undefined;
+}
+
+export async function getIntegratorIdFromPublicClient(
+  provider: PublicClient,
   depositDate: Date,
   txHash: string,
 ) {
@@ -33,8 +61,8 @@ export async function getIntegratorId(
   const INTEGRATOR_DELIMITER = "1dc0de";
   const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
   let integratorId = undefined;
-  const txn = await provider.getTransaction(txHash);
-  const txnData = txn.data;
+  const txn = await provider.getTransaction({ hash: txHash as Hex });
+  const txnData = txn.input;
   if (txnData.includes(INTEGRATOR_DELIMITER)) {
     integratorId = txnData
       .split(INTEGRATOR_DELIMITER)

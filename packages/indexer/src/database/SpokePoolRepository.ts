@@ -26,9 +26,7 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
   }
 
   public updateDepositEventWithIntegratorId(id: number, integratorId: string) {
-    return this.postgres
-      .getRepository(entities.V3FundsDeposited)
-      .update({ id }, { integratorId });
+    return updateDepositEventWithIntegratorId(this.postgres, id, integratorId);
   }
 
   public formatRelayData(
@@ -474,4 +472,14 @@ export class SpokePoolRepository extends dbUtils.BlockchainEventRepository {
     );
     return deletedDeposits;
   }
+}
+
+export function updateDepositEventWithIntegratorId(
+  db: DataSource,
+  id: number,
+  integratorId: string,
+) {
+  return db
+    .getRepository(entities.V3FundsDeposited)
+    .update({ id }, { integratorId });
 }
