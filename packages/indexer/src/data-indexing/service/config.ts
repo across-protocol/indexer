@@ -696,12 +696,13 @@ export const getChainProtocols: (
     }
   }
 
-  // Add SpokePool protocol events configuration
-  for (const chainId of config.evmSpokePoolChainsEnabled) {
-    if (chainProtocols[chainId]) {
-      chainProtocols[chainId].push(SPOKE_POOL_PROTOCOL);
-    }
-  }
+  // // Add SpokePool protocol events configuration
+  // TODO: Enable once the SpokePoolIndexer is complete
+  // for (const chainId of config.evmSpokePoolChainsEnabled) {
+  //   if (chainProtocols[chainId]) {
+  //     chainProtocols[chainId].push(SPOKE_POOL_PROTOCOL);
+  //   }
+  // }
 
   // Add CCTP protocol events configuration
   for (const chainId of config.cctpIndexerChainIds) {
