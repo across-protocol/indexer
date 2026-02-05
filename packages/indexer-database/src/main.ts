@@ -62,6 +62,7 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.WebhookClient,
       // Indexer
       entities.IndexerProgressInfo,
+      entities.GaslessDeposit,
       // Historic Price
       entities.HistoricPrice,
       // CCTP
@@ -78,12 +79,13 @@ export const createDataSource = (config: DatabaseConfig): DataSource => {
       entities.OFTReceived,
       entities.SponsoredOFTSend,
       // HyperEVM
-      entities.SimpleTransferFlowCompleted,
       entities.ArbitraryActionsExecuted,
       entities.FallbackHyperEVMFlowCompleted,
+      entities.SimpleTransferFlowCompleted,
       entities.SponsoredAccountActivation,
-      entities.SwapFlowInitialized,
       entities.SwapFlowFinalized,
+      entities.SwapFlowInitialized,
+      entities.UserAccountActivated,
     ],
     migrationsTableName: "_migrations",
     migrations: ["migrations/*.ts"],

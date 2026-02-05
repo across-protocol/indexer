@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { interfaces } from "@across-protocol/sdk";
 import { RelayHashInfo } from "../RelayHashInfo";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_filledV3Relay_internalHash", ["internalHash"])
@@ -87,6 +88,13 @@ export class FilledV3Relay {
 
   @Column({ type: "enum", enum: interfaces.FillType })
   fillType: interfaces.FillType;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @Column()
   relayer: string;

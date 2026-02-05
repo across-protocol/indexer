@@ -46,7 +46,8 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerDebugSpy.lastCall.args[0];
-      expect(logCall.deposits).to.be.an("array").that.is.empty;
+      expect(logCall.oldExpiredDeposits).to.be.an("array").that.is.empty;
+      expect(logCall.recentUnfilledDeposits).to.be.an("array").that.is.empty;
     });
 
     it("should log debug when all deposits have correct status (filled/refunded)", async () => {
@@ -72,11 +73,65 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerDebugSpy.lastCall.args[0];
-      expect(logCall.deposits).to.be.an("array").that.is.empty;
+      expect(logCall.oldExpiredDeposits).to.be.an("array").that.is.empty;
+      expect(logCall.recentUnfilledDeposits).to.be.an("array").that.is.empty;
+    });
+
+    it("should NOT detect expired deposits with inputAmount = 0", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+          fillDeadline: new Date(Date.now() - 120 * 60 * 1000), // 2 hours ago
+          inputAmount: "0",
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Expired,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.oldExpiredDeposits).to.be.an("array").that.is.empty;
+    });
+
+    it("should NOT detect unfilled deposits with inputAmount = 0", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          inputAmount: "0",
+          message: "0x", // no message
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Unfilled,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.recentUnfilledDeposits).to.be.an("array").that.is.empty;
     });
   });
 
-  describe("Status Detection Cases", () => {
+  describe("Old Expired Deposits (90+ min past fillDeadline)", () => {
     it("should detect expired deposits past 90-minute deadline", async () => {
       const [deposit] = await depositsFixture.insertDeposits([
         {
@@ -98,15 +153,43 @@ describe("IncorrectDepositStatusMonitor", () => {
 
       await monitor.taskLogic();
       const logCall = loggerWarnSpy.lastCall.args[0];
-      expect(logCall.deposits).to.have.lengthOf(1);
-      expect(logCall.deposits[0].deposit.status).to.equal("expired");
+      expect(logCall.oldExpiredDeposits).to.have.lengthOf(1);
+      expect(logCall.oldExpiredDeposits[0].deposit.status).to.equal("expired");
     });
 
-    it("should detect unfilled deposits past 90-minute deadline", async () => {
+    it("should NOT detect expired deposits within 90-minute threshold", async () => {
       const [deposit] = await depositsFixture.insertDeposits([
         {
           blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 95 * 60 * 1000), // 95 minutes ago
+          fillDeadline: new Date(Date.now() - 80 * 60 * 1000), // 80 minutes ago (< 90)
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Expired,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.oldExpiredDeposits).to.be.an("array").that.is.empty;
+    });
+  });
+
+  describe("Recent Unfilled Deposits (created 5+ min ago, no message)", () => {
+    it("should detect unfilled deposits created 5+ minutes ago with no message", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now (irrelevant)
+          message: "0x", // no message
         },
       ]);
 
@@ -124,15 +207,18 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerWarnSpy.lastCall.args[0];
-      expect(logCall.deposits).to.have.lengthOf(1);
-      expect(logCall.deposits[0].deposit.status).to.equal("unfilled");
+      expect(logCall.recentUnfilledDeposits).to.have.lengthOf(1);
+      expect(logCall.recentUnfilledDeposits[0].deposit.status).to.equal(
+        "unfilled",
+      );
     });
 
-    it("should detect slowFillRequested deposits past 90-minute deadline", async () => {
+    it("should detect slowFillRequested deposits created 5+ minutes ago with no message", async () => {
       const [deposit] = await depositsFixture.insertDeposits([
         {
-          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 100 * 60 * 1000), // 100 minutes ago
+          blockTimestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x", // no message
         },
       ]);
 
@@ -150,23 +236,84 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerWarnSpy.lastCall.args[0];
-      expect(logCall.deposits).to.have.lengthOf(1);
-      expect(logCall.deposits[0].deposit.status).to.equal("slowFillRequested");
+      expect(logCall.recentUnfilledDeposits).to.have.lengthOf(1);
+      expect(logCall.recentUnfilledDeposits[0].deposit.status).to.equal(
+        "slowFillRequested",
+      );
     });
 
-    it("should detect multiple deposits with mixed statuses", async () => {
+    it("should NOT detect unfilled deposits within 5-minute threshold", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 3 * 60 * 1000), // 3 min ago (< 5)
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x", // no message
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Unfilled,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.recentUnfilledDeposits).to.be.an("array").that.is.empty;
+    });
+
+    it("should NOT detect unfilled deposits that have a message", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x1234567890", // has a message (complex bridge)
+        },
+      ]);
+
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Unfilled,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerDebugSpy.lastCall.args[0];
+      expect(logCall.recentUnfilledDeposits).to.be.an("array").that.is.empty;
+    });
+  });
+
+  describe("Mixed Status Detection", () => {
+    it("should detect and categorize deposits with mixed statuses", async () => {
       const deposits = await depositsFixture.insertDeposits([
         {
+          // Old expired deposit
           blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 120 * 60 * 1000),
+          fillDeadline: new Date(Date.now() - 120 * 60 * 1000), // 2 hours ago
         },
         {
-          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 110 * 60 * 1000),
+          // Recent unfilled deposit (no message)
+          blockTimestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x",
         },
         {
-          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 100 * 60 * 1000),
+          // Recent slowFillRequested deposit (no message)
+          blockTimestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x",
         },
       ]);
 
@@ -200,39 +347,13 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerWarnSpy.lastCall.args[0];
-      expect(logCall.deposits).to.have.lengthOf(3);
-    });
-  });
-
-  describe("Time Window Filtering", () => {
-    it("should NOT detect deposits within 90-minute threshold", async () => {
-      const [deposit] = await depositsFixture.insertDeposits([
-        {
-          blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          fillDeadline: new Date(Date.now() - 80 * 60 * 1000), // 80 minutes ago (< 90)
-        },
-      ]);
-
-      await relayHashInfoFixture.insertRelayHashInfos([
-        {
-          depositEventId: deposit!.id,
-          depositId: deposit!.depositId,
-          originChainId: deposit!.originChainId,
-          destinationChainId: deposit!.destinationChainId,
-          fillDeadline: deposit!.fillDeadline,
-          status: entities.RelayStatus.Unfilled,
-        },
-      ]);
-
-      await monitor.taskLogic();
-
-      const logCall = loggerDebugSpy.lastCall.args[0];
-      expect(logCall.deposits).to.be.an("array").that.is.empty;
+      expect(logCall.oldExpiredDeposits).to.have.lengthOf(1);
+      expect(logCall.recentUnfilledDeposits).to.have.lengthOf(2);
     });
   });
 
   describe("Data Integrity", () => {
-    it("should correctly join with V3FundsDeposited and populate all required fields", async () => {
+    it("should correctly populate all required fields for expired deposits", async () => {
       const [deposit] = await depositsFixture.insertDeposits([
         {
           blockTimestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
@@ -254,9 +375,9 @@ describe("IncorrectDepositStatusMonitor", () => {
       await monitor.taskLogic();
 
       const logCall = loggerWarnSpy.lastCall.args[0];
-      expect(logCall.deposits).to.have.lengthOf(1);
+      expect(logCall.oldExpiredDeposits).to.have.lengthOf(1);
 
-      const loggedDeposit = logCall.deposits[0];
+      const loggedDeposit = logCall.oldExpiredDeposits[0];
       // Verify all fields from the join
       expect(loggedDeposit.deposit.depositId).to.equal(
         deposit!.depositId.toString(),
@@ -280,8 +401,49 @@ describe("IncorrectDepositStatusMonitor", () => {
         deposit!.fillDeadline.toISOString(),
       );
 
-      // Verify minutesPastDeadline is calculated
-      expect(loggedDeposit.minutesPastDeadline).to.be.greaterThan(90);
+      // Verify minutesElapsed (minutes past fillDeadline for expired)
+      expect(loggedDeposit.minutesElapsed).to.be.greaterThan(90);
+
+      // Verify task duration
+      expect(logCall.task.duration).to.be.a("number");
+    });
+
+    it("should correctly populate all required fields for unfilled deposits", async () => {
+      const [deposit] = await depositsFixture.insertDeposits([
+        {
+          blockTimestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 min ago
+          fillDeadline: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+          message: "0x",
+        },
+      ]);
+      await relayHashInfoFixture.insertRelayHashInfos([
+        {
+          depositEventId: deposit!.id,
+          depositId: deposit!.depositId,
+          originChainId: deposit!.originChainId,
+          destinationChainId: deposit!.destinationChainId,
+          fillDeadline: deposit!.fillDeadline,
+          status: entities.RelayStatus.Unfilled,
+          internalHash: deposit!.internalHash,
+        },
+      ]);
+
+      await monitor.taskLogic();
+
+      const logCall = loggerWarnSpy.lastCall.args[0];
+      expect(logCall.recentUnfilledDeposits).to.have.lengthOf(1);
+
+      const loggedDeposit = logCall.recentUnfilledDeposits[0];
+      // Verify all fields
+      expect(loggedDeposit.deposit.depositId).to.equal(
+        deposit!.depositId.toString(),
+      );
+      expect(loggedDeposit.deposit.status).to.equal(
+        entities.RelayStatus.Unfilled,
+      );
+
+      // Verify minutesElapsed (minutes since deposit created for unfilled)
+      expect(loggedDeposit.minutesElapsed).to.be.greaterThanOrEqual(10);
 
       // Verify task duration
       expect(logCall.task.duration).to.be.a("number");

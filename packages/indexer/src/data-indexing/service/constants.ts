@@ -149,10 +149,11 @@ export const HYPERLIQUID_CORE_DEPOSIT_WALLET =
 export const WHITELISTED_FINALIZERS = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x72adB07A487f38321b6665c02D289C413610B081",
-  "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd",
+  "0x49066b9c4a68e0942f77989e78d9e27f78a67ce7b165cafd101a477a148058fd", // Hex form of 5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t
   "0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f", // CCTPHyperEVMSponsoredCCTPDstPeriphery
   "0x5616194d65638086a3191B1fEF436f503ff329eC",
   "0x708704d33ace3daFbED28f150A56CE9D124B1eF8",
+  "0xcaa0da1eec44e89949baa43ecd3fde9fa3b551c53f9dba7492caa875cfa5c474", // Hex form of Edyca9eoBbceGU6UUHxC78o8W3cLEZyuYaA8wYnXxmgP
 ];
 
 export const DEPOSIT_FOR_BURN_EVENT_NAME = "DepositForBurn";
@@ -179,3 +180,19 @@ export const SPONSORED_DEPOSIT_FOR_BURN_EVENT_NAME = "SponsoredDepositForBurn";
 export const OFT_SENT_EVENT_NAME = "OFTSent";
 export const OFT_RECEIVED_EVENT_NAME = "OFTReceived";
 export const SPONSORED_OFT_SEND_EVENT_NAME = "SponsoredOFTSend";
+
+/* ==================================================================================
+ * SPOKE POOL DOMAIN LOGIC & CONFIGURATION
+ * * Specific implementations for the Spoke Pool Protocol.
+ * ================================================================================== */
+
+export const FILLED_RELAY_V3_EVENT_NAME = "FilledRelay";
+export const FUNDS_DEPOSITED_V3_EVENT_NAME = "FundsDeposited";
+export const EXECUTED_RELAYER_REFUND_ROOT_EVENT_NAME =
+  "ExecutedRelayerRefundRoot";
+export const REQUESTED_SPEED_UP_V3_DEPOSIT_EVENT_NAME =
+  "RequestedSpeedUpV3Deposit";
+export const RELAYED_ROOT_BUNDLE_EVENT_NAME = "RelayedRootBundle";
+export const REQUESTED_SLOW_FILL_EVENT_NAME = "RequestedSlowFill";
+export const TOKENS_BRIDGED_EVENT_NAME = "TokensBridged";
+export const CLAIMED_RELAYER_REFUND_EVENT_NAME = "ClaimedRelayerRefund";

@@ -26,17 +26,17 @@ export class OFTIndexerManager {
     private oftRepository: OftRepository,
   ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     try {
       if (!this.config.enableOftIndexer) {
-        this.logger.warn({
+        this.logger.debug({
           at: "Indexer#OFTIndexerManager#start",
           message: "OFT indexer is disabled",
         });
         return;
       }
 
-      return this.startEvmIndexer();
+      return this.startEvmIndexer(signal);
     } catch (error) {
       this.logger.error({
         at: "Indexer#OFTIndexerManager#start",
@@ -48,11 +48,7 @@ export class OFTIndexerManager {
     }
   }
 
-  public async stopGracefully() {
-    this.indexers.map((indexer) => indexer.stopGracefully());
-  }
-
-  private async startEvmIndexer() {
+  private async startEvmIndexer(signal: AbortSignal) {
     const indexers = getSupportOftChainIds().map((chainId) => {
       const provider = this.retryProvidersFactory.getCustomEvmProvider({
         chainId: Number(chainId),
@@ -84,7 +80,7 @@ export class OFTIndexerManager {
     });
 
     if (indexers.length === 0) {
-      this.logger.warn({
+      this.logger.debug({
         at: "Indexer#OFTIndexerManager#startEvmIndexer",
         message: "No EVM OFT indexers to start",
       });
@@ -95,8 +91,8 @@ export class OFTIndexerManager {
       at: "Indexer#OFTIndexerManager#startEvmIndexer",
       message: "Starting EVM OFT indexers",
     });
-    await Promise.all(indexers.map((indexer) => indexer.start()));
     this.indexers = indexers;
+    await Promise.all(indexers.map((indexer) => indexer.start(signal)));
 
     return Promise.resolve();
   }

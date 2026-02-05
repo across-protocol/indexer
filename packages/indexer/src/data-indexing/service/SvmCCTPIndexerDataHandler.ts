@@ -9,7 +9,10 @@ import {
 } from "@across-protocol/contracts";
 import { address, signature } from "@solana/kit";
 import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
 import {
   CCTPRepository,
@@ -80,6 +83,7 @@ const SWAP_API_CALLDATA_MARKER = "73c0de";
 const WHITELISTED_FINALIZERS = [
   "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t",
   "5v4SXbcAKKo3YbPBXU9K7zNBMgJ2RQFsvQmg2RAFZT6t",
+  "Edyca9eoBbceGU6UUHxC78o8W3cLEZyuYaA8wYnXxmgP",
 ];
 
 export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
@@ -149,11 +153,8 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
     return getIndexingStartBlockNumber(this.chainId);
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#SvmCCTPIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,

@@ -115,7 +115,10 @@ describe("CCTPIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const sponsoredDepositForBurnRepository = dataSource.getRepository(
       entities.SponsoredDepositForBurn,
@@ -149,7 +152,10 @@ describe("CCTPIndexerDataHandler", () => {
     // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const simpleTransferFlowCompletedRepository = dataSource.getRepository(
       entities.SimpleTransferFlowCompleted,
@@ -183,7 +189,10 @@ describe("CCTPIndexerDataHandler", () => {
     // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const arbitraryActionsExecutedRepository = dataSource.getRepository(
       entities.ArbitraryActionsExecuted,
@@ -230,7 +239,10 @@ describe("CCTPIndexerDataHandler", () => {
     // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const fallbackHyperEVMFlowCompletedRepository = dataSource.getRepository(
       entities.FallbackHyperEVMFlowCompleted,
@@ -267,7 +279,10 @@ describe("CCTPIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const messageReceivedRepositroy = dataSource.getRepository(
       entities.MessageReceived,
@@ -321,7 +336,10 @@ describe("CCTPIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     // Verify the MessageReceived event was stored
     const messageReceivedRepository = dataSource.getRepository(
@@ -393,7 +411,10 @@ describe("CCTPIndexerDataHandler", () => {
       to: blockNumber,
     };
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const swapFlowFinalizedRepository = dataSource.getRepository(
       entities.SwapFlowFinalized,
@@ -442,7 +463,10 @@ describe("CCTPIndexerDataHandler", () => {
     // We need to stub the filterMintTransactions method to avoid filtering out our test transaction
     sinon.stub(handler as any, "filterMintTransactions").returnsArg(0);
 
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const swapFlowInitializedRepository = dataSource.getRepository(
       entities.SwapFlowInitialized,
@@ -493,7 +517,10 @@ describe("CCTPIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const sponsoredDepositForBurnRepository = dataSource.getRepository(
       entities.SponsoredDepositForBurn,
@@ -527,7 +554,10 @@ describe("CCTPIndexerDataHandler", () => {
       from: blockNumber,
       to: blockNumber,
     };
-    await handler.processBlockRange(blockRange, blockNumber);
+    await handler.processBlockRange({
+      blockRange,
+      lastFinalisedBlock: blockNumber,
+    });
 
     const messageReceivedRepository = dataSource.getRepository(
       entities.MessageReceived,

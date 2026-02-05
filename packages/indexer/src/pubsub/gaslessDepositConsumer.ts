@@ -1,0 +1,448 @@
+import { PubSub } from "@google-cloud/pubsub";
+import type { Message } from "@google-cloud/pubsub";
+import type { DataSource } from "typeorm";
+import type { Logger } from "winston";
+
+import { GaslessDeposit } from "@repo/indexer-database";
+import type { Config } from "../parseEnv";
+
+interface GaslessDepositPayload {
+  swapTx?: {
+    chainId?: number;
+    data?: {
+      depositId?: string;
+      witness?: unknown;
+    };
+  };
+}
+
+function getDestinationChainIdFromWitness(
+  witness: unknown,
+): number | undefined {
+  if (witness == null) return undefined;
+
+  type WitnessEntry = {
+    data?: {
+      baseDepositData?: { destinationChainId?: number };
+      depositData?: { destinationChainId?: number };
+    };
+  };
+  const record = witness as Record<string, WitnessEntry>;
+
+  if (!Array.isArray(witness)) {
+    return (
+      record["BridgeWitness"]?.data?.baseDepositData?.destinationChainId ??
+      record["BridgeAndSwapWitness"]?.data?.depositData?.destinationChainId
+    );
+  }
+
+  const first = record[0];
+  return (
+    first?.data?.baseDepositData?.destinationChainId ??
+    first?.data?.depositData?.destinationChainId
+  );
+}
+
+/**
+ * Pull consumer for the gasless-deposit-created PubSub topic.
+ * Subscribes to the configured subscription and processes each message.
+ * Persists originChainId, destinationChainId, and depositId to the gasless_deposit table.
+ */
+export class GaslessDepositPubSubConsumer {
+  private subscription: ReturnType<PubSub["subscription"]> | null = null;
+  private pubSub: PubSub | null = null;
+
+  constructor(
+    private readonly config: Config,
+    private readonly logger: Logger,
+    private readonly postgres: DataSource,
+  ) {}
+
+  /**
+   * Start pulling messages from the gasless deposit subscription.
+   * No-op if consumer is disabled or subscription name is missing.
+   * Returns a promise that resolves when the consumer is closed.
+   */
+  async start(signal: AbortSignal): Promise<void> {
+    if (!this.config.enableGaslessDepositPubSubConsumer) {
+      this.logger.info({
+        at: "GaslessDepositPubSubConsumer#start",
+        message: "Gasless deposit PubSub consumer is disabled",
+      });
+      return;
+    }
+
+    const subName = this.config.pubSubGaslessDepositSubscription?.trim();
+    if (!subName) {
+      this.logger.warn({
+        at: "GaslessDepositPubSubConsumer#start",
+        message:
+          "Gasless deposit PubSub consumer enabled but PUBSUB_GASLESS_DEPOSIT_SUBSCRIPTION is not set",
+      });
+      return;
+    }
+
+    if (!this.config.pubSubGcpProjectId) {
+      this.logger.warn({
+        at: "GaslessDepositPubSubConsumer#start",
+        message:
+          "Gasless deposit PubSub consumer enabled but PUBSUB_GCP_PROJECT_ID is not set",
+      });
+      return;
+    }
+
+    this.pubSub = new PubSub({
+      projectId: this.config.pubSubGcpProjectId,
+    });
+
+    this.subscription = this.pubSub.subscription(subName);
+
+    this.subscription.on("message", (message: Message) => {
+      this.handleMessage(message).catch((err) => {
+        this.logger.error({
+          at: "GaslessDepositPubSubConsumer#handleMessage",
+          message: "Error processing gasless deposit message",
+          messageId: message.id,
+          error: err,
+        });
+        message.nack();
+      });
+    });
+
+    this.subscription.on("error", (err: Error) => {
+      this.logger.error({
+        at: "GaslessDepositPubSubConsumer",
+        message: "Subscription error",
+        error: err,
+      });
+    });
+
+    this.subscription.on("close", () => {
+      this.logger.info({
+        at: "GaslessDepositPubSubConsumer",
+        message: "Gasless deposit subscription closed",
+      });
+    });
+
+    this.logger.info({
+      at: "GaslessDepositPubSubConsumer#start",
+      message: "Gasless deposit PubSub consumer started",
+      subscription: subName,
+    });
+
+    const promise = new Promise<void>((resolve) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
+    });
+
+    if (signal.aborted) {
+      this.close();
+      return Promise.resolve();
+    }
+
+    return promise;
+  }
+
+  /**
+   * Extract originChainId, destinationChainId, and depositId from the GCP message payload.
+   * Returns null if any required field is missing.
+   */
+  public static extractGaslessDepositFields(payload: unknown): {
+    originChainId: string;
+    destinationChainId: string;
+    depositId: string;
+  } | null {
+    const p = payload as GaslessDepositPayload;
+    const swapTx = p?.swapTx;
+    const data = swapTx?.data;
+    const originChainId = swapTx?.chainId;
+    const depositId = data?.depositId;
+    const destinationChainId = getDestinationChainIdFromWitness(data?.witness);
+    if (
+      originChainId == null ||
+      depositId == null ||
+      destinationChainId == null
+    ) {
+      return null;
+    }
+    return {
+      originChainId: String(originChainId),
+      destinationChainId: String(destinationChainId),
+      depositId: String(depositId),
+    };
+  }
+
+  /**
+   * Process a single message: parse payload, persist to gasless_deposit table, then ack.
+   */
+  private async handleMessage(message: Message): Promise<void> {
+    const raw = message.data?.toString("utf8") ?? "";
+    let payload: unknown = null;
+    try {
+      payload = raw ? JSON.parse(raw) : null;
+    } catch {
+      this.logger.warn({
+        at: "GaslessDepositPubSubConsumer#handleMessage",
+        message: "Invalid JSON in gasless deposit message",
+        messageId: message.id,
+        rawLength: raw.length,
+      });
+      message.ack();
+      return;
+    }
+
+    const fields =
+      GaslessDepositPubSubConsumer.extractGaslessDepositFields(payload);
+    if (!fields) {
+      this.logger.warn({
+        at: "GaslessDepositPubSubConsumer#handleMessage",
+        message:
+          "Gasless deposit message missing required fields (originChainId, destinationChainId, depositId)",
+        messageId: message.id,
+      });
+      message.ack();
+      return;
+    }
+
+    this.logger.debug({
+      at: "GaslessDepositPubSubConsumer#handleMessage",
+      message: "Pulled gasless deposit message from Pub/Sub",
+      messageId: message.id,
+      ...fields,
+    });
+
+    const repo = this.postgres.getRepository(GaslessDeposit);
+    const result = await repo
+      .createQueryBuilder()
+      .insert()
+      .into(GaslessDeposit)
+      .values({
+        originChainId: fields.originChainId,
+        destinationChainId: fields.destinationChainId,
+        depositId: fields.depositId,
+      })
+      .orIgnore()
+      .execute();
+
+    const inserted = result.identifiers.length > 0;
+    this.logger.debug({
+      at: "GaslessDepositPubSubConsumer#handleMessage",
+      message: inserted
+        ? "Stored gasless deposit"
+        : "Gasless deposit already stored (duplicate), skipping",
+      messageId: message.id,
+      ...fields,
+    });
+    message.ack();
+  }
+
+  /**
+   * Stop the consumer and release the subscription. Idempotent.
+   */
+  private async close(): Promise<void> {
+    if (!this.subscription) {
+      return;
+    }
+
+    try {
+      await this.subscription.close();
+      this.logger.info({
+        at: "GaslessDepositPubSubConsumer#close",
+        message: "Gasless deposit PubSub consumer closed",
+      });
+    } catch (err) {
+      this.logger.error({
+        at: "GaslessDepositPubSubConsumer#close",
+        message: "Error closing gasless deposit subscription",
+        error: err,
+      });
+    } finally {
+      this.subscription = null;
+      this.pubSub = null;
+    }
+  }
+}
+
+/**
+ * Pull consumer for the gasless-deposit DLQ PubSub topic.
+ * Upserts into gasless_deposit: if a row exists, sets deletedAt (soft-delete);
+ * if no row exists (e.g. message reached DLQ before main consumer wrote), inserts
+ * a row with deletedAt set so the deposit status API returns "failed".
+ */
+export class GaslessDepositDlqConsumer {
+  private subscription: ReturnType<PubSub["subscription"]> | null = null;
+  private pubSub: PubSub | null = null;
+
+  constructor(
+    private readonly config: Config,
+    private readonly logger: Logger,
+    private readonly postgres: DataSource,
+  ) {}
+
+  async start(signal: AbortSignal): Promise<void> {
+    if (!this.config.enableGaslessDepositDlqConsumer) {
+      this.logger.info({
+        at: "GaslessDepositDlqConsumer#start",
+        message: "Gasless deposit DLQ consumer is disabled",
+      });
+      return;
+    }
+
+    const subName = this.config.pubSubGaslessDepositDlqSubscription?.trim();
+    if (!subName) {
+      this.logger.warn({
+        at: "GaslessDepositDlqConsumer#start",
+        message:
+          "Gasless deposit DLQ consumer enabled but PUBSUB_GASLESS_DEPOSIT_DLQ_SUBSCRIPTION is not set",
+      });
+      return;
+    }
+
+    if (!this.config.pubSubGcpProjectId) {
+      this.logger.warn({
+        at: "GaslessDepositDlqConsumer#start",
+        message:
+          "Gasless deposit DLQ consumer enabled but PUBSUB_GCP_PROJECT_ID is not set",
+      });
+      return;
+    }
+
+    this.pubSub = new PubSub({
+      projectId: this.config.pubSubGcpProjectId,
+    });
+
+    this.subscription = this.pubSub.subscription(subName);
+
+    this.subscription.on("message", (message: Message) => {
+      this.handleMessage(message).catch((err) => {
+        this.logger.error({
+          at: "GaslessDepositDlqConsumer#handleMessage",
+          message: "Error processing gasless deposit DLQ message",
+          messageId: message.id,
+          error: err,
+        });
+        message.nack();
+      });
+    });
+
+    this.subscription.on("error", (err: Error) => {
+      this.logger.error({
+        at: "GaslessDepositDlqConsumer",
+        message: "DLQ subscription error",
+        error: err,
+      });
+    });
+
+    this.subscription.on("close", () => {
+      this.logger.debug({
+        at: "GaslessDepositDlqConsumer",
+        message: "Gasless deposit DLQ subscription closed",
+      });
+    });
+
+    this.logger.debug({
+      at: "GaslessDepositDlqConsumer#start",
+      message: "Gasless deposit DLQ consumer started",
+      subscription: subName,
+    });
+
+    const promise = new Promise<void>((resolve) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
+    });
+
+    if (signal.aborted) {
+      this.close();
+      return Promise.resolve();
+    }
+
+    return promise;
+  }
+
+  private async handleMessage(message: Message): Promise<void> {
+    const raw = message.data?.toString("utf8") ?? "";
+    let payload: unknown = null;
+    try {
+      payload = raw ? JSON.parse(raw) : null;
+    } catch {
+      this.logger.warn({
+        at: "GaslessDepositDlqConsumer#handleMessage",
+        message: "Invalid JSON in gasless deposit DLQ message",
+        messageId: message.id,
+        rawLength: raw.length,
+      });
+      message.ack();
+      return;
+    }
+
+    const fields =
+      GaslessDepositPubSubConsumer.extractGaslessDepositFields(payload);
+    if (!fields) {
+      this.logger.warn({
+        at: "GaslessDepositDlqConsumer#handleMessage",
+        message:
+          "Gasless deposit DLQ message missing required fields (originChainId, destinationChainId, depositId)",
+        messageId: message.id,
+      });
+      message.ack();
+      return;
+    }
+
+    const repo = this.postgres.getRepository(GaslessDeposit);
+    const now = new Date();
+
+    await repo
+      .createQueryBuilder()
+      .insert()
+      .into(GaslessDeposit)
+      .values({
+        originChainId: fields.originChainId,
+        destinationChainId: fields.destinationChainId,
+        depositId: fields.depositId,
+        deletedAt: now,
+      })
+      .orUpdate(["deletedAt"], ["originChainId", "depositId"])
+      .execute();
+
+    this.logger.debug({
+      at: "GaslessDepositDlqConsumer#handleMessage",
+      message: "Upserted gasless deposit as failed (deletedAt set)",
+      messageId: message.id,
+      ...fields,
+    });
+    message.ack();
+  }
+
+  private async close(): Promise<void> {
+    if (!this.subscription) {
+      return;
+    }
+
+    try {
+      await this.subscription.close();
+      this.logger.info({
+        at: "GaslessDepositDlqConsumer#close",
+        message: "Gasless deposit DLQ consumer closed",
+      });
+    } catch (err) {
+      this.logger.error({
+        at: "GaslessDepositDlqConsumer#close",
+        message: "Error closing gasless deposit DLQ subscription",
+        error: err,
+      });
+    } finally {
+      this.subscription = null;
+      this.pubSub = null;
+    }
+  }
+}

@@ -4,6 +4,7 @@ import {
   getDeployedAddress,
   getDeployedBlockNumber,
 } from "@across-protocol/contracts";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { ethers, providers } from "ethers";
 import {
   entities,
@@ -11,15 +12,19 @@ import {
   SaveQueryResultType,
 } from "@repo/indexer-database";
 import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 
 import * as utils from "../../utils";
 import {
   SpokePoolRepository,
   StoreEventsResult,
 } from "../../database/SpokePoolRepository";
-import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
+import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
+import { SwapBeforeBridgeRepository } from "../../database/SwapBeforeBridgeRepository";
 import { SwapMetadataRepository } from "../../database/SwapMetadataRepository";
 import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueues, IndexerQueuesService } from "../../messaging/service";
@@ -82,6 +87,7 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     private swapBeforeBridgeRepository: SwapBeforeBridgeRepository,
     private callsFailedRepository: CallsFailedRepository,
     private swapMetadataRepository: SwapMetadataRepository,
+    private hyperliquidDepositHandlerRepository: HyperliquidDepositHandlerRepository,
     private spokePoolProcessor: SpokePoolProcessor,
     private indexerQueuesService: IndexerQueuesService,
   ) {
@@ -107,11 +113,8 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     return getDeployedBlockNumber("SpokePool", this.chainId);
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#SpokePoolIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,
@@ -155,35 +158,47 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       blockRange,
     });
     const storedEvents = await this.storeEvents(events, lastFinalisedBlock);
-    // Fetch transaction receipts associated to deposits for getting the swap before bridge events, and to fills for getting the gas fee
+    const storedDeposits = storedEvents.deposits.map((d) => d.data);
+    const storedFills = storedEvents.fills.map((f) => f.data);
+
+    // Fetch transaction receipts to extract gas consumption data and associated events:
+    // - Deposits: SwapBeforeBridge
+    // - Fills: CallsFailed, SwapMetadata, UserAccountActivated
     const transactionReceipts = await this.getTransactionReceiptsForEvents([
-      ...storedEvents.deposits.map((d) => d.data),
-      ...storedEvents.fills.map((f) => f.data),
+      ...storedDeposits,
+      ...storedFills,
     ]);
 
     const depositSwapPairs = await this.matchDepositEventsWithSwapEvents(
-      storedEvents.deposits.map((d) => d.data),
+      storedDeposits,
       transactionReceipts,
       lastFinalisedBlock,
     );
 
     const fillCallsFailedPairs =
       await this.matchFillEventsWithCallsFailedEvents(
-        storedEvents.fills.map((f) => f.data),
+        storedFills,
         transactionReceipts,
         lastFinalisedBlock,
       );
 
     const fillSwapMetadataPairs =
       await this.matchFillEventsWithSwapMetadataEvents(
-        storedEvents.fills.map((f) => f.data),
+        storedFills,
         transactionReceipts,
         lastFinalisedBlock,
       );
 
+    await this.extractAndSaveUserAccountActivatedEvents(
+      storedFills,
+      transactionReceipts,
+      lastFinalisedBlock,
+      events.blockTimes,
+    );
+
     // Match fill events with target chain action events
     const fillTargetChainActionPairs = matchFillEventsWithTargetChainActions(
-      storedEvents.fills.map((f) => f.data),
+      storedFills,
       transactionReceipts,
     );
 
@@ -207,12 +222,16 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     const timeToStoreEvents = performance.now();
 
     // Delete unfinalised events
-    const [deletedDeposits, _] = await Promise.all([
+    const [deletedDeposits, _, __] = await Promise.all([
       this.spokePoolClientRepository.deleteUnfinalisedDepositEvents(
         this.chainId,
         lastFinalisedBlock,
       ),
       this.swapBeforeBridgeRepository.deleteUnfinalisedSwapEvents(
+        this.chainId,
+        lastFinalisedBlock,
+      ),
+      this.hyperliquidDepositHandlerRepository.deleteUnfinalisedUserAccountActivatedEvents(
         this.chainId,
         lastFinalisedBlock,
       ),
@@ -532,6 +551,33 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
       })
       .flat();
     return fillSwapMetadataMap;
+  }
+
+  private async extractAndSaveUserAccountActivatedEvents(
+    fills: entities.FilledV3Relay[],
+    transactionReceipts: Record<string, providers.TransactionReceipt>,
+    lastFinalisedBlock: number,
+    blockTimes: Record<number, number>,
+  ) {
+    // Only process UserAccountActivated events on HyperEVM chain
+    if (this.chainId !== CHAIN_IDs.HYPEREVM) {
+      return;
+    }
+
+    const fillTxnReceipts = fills
+      .map((fill) => transactionReceipts[fill.transactionHash.toLowerCase()])
+      .filter((receipt) => receipt !== undefined);
+
+    const userAccountActivatedEvents = fillTxnReceipts
+      .map((receipt) => EventDecoder.decodeUserAccountActivatedEvents(receipt))
+      .flat();
+
+    await this.hyperliquidDepositHandlerRepository.formatAndSaveUserAccountActivatedEvents(
+      userAccountActivatedEvents,
+      this.chainId,
+      lastFinalisedBlock,
+      blockTimes,
+    );
   }
 
   /**

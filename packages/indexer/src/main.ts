@@ -16,29 +16,34 @@ import {
 // Managers
 import { AcrossIndexerManager } from "./data-indexing/service/AcrossIndexerManager";
 import { BundleServicesManager } from "./services/BundleServicesManager";
+import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
+import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
 import { HotfixServicesManager } from "./services/HotfixServicesManager";
+import { HyperliquidIndexerManager } from "./data-indexing/service/HyperliquidIndexerManager";
+import { MonitoringManager } from "./monitoring/MonitoringManager";
+import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
 // Repositories
 import { BundleRepository } from "./database/BundleRepository";
+import { CallsFailedRepository } from "./database/CallsFailedRepository";
+import { CCTPRepository } from "./database/CctpRepository";
 import { HubPoolRepository } from "./database/HubPoolRepository";
+import { HyperliquidDepositHandlerRepository } from "./database/HyperliquidDepositHandlerRepository";
+import { OftRepository } from "./database/OftRepository";
 import { SpokePoolRepository } from "./database/SpokePoolRepository";
 import { SwapBeforeBridgeRepository } from "./database/SwapBeforeBridgeRepository";
+import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
 import { utils as dbUtils } from "@repo/indexer-database";
 // Queues Workers
 import { IndexerQueuesService } from "./messaging/service";
 import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
-import { CallsFailedRepository } from "./database/CallsFailedRepository";
-import { SwapMetadataRepository } from "./database/SwapMetadataRepository";
-import { CCTPRepository } from "./database/CctpRepository";
-import { OftRepository } from "./database/OftRepository";
-import { CCTPIndexerManager } from "./data-indexing/service/CCTPIndexerManager";
-import { OFTIndexerManager } from "./data-indexing/service/OFTIndexerManager";
-import { HyperliquidIndexerManager } from "./data-indexing/service/HyperliquidIndexerManager";
-import { CctpFinalizerServiceManager } from "./data-indexing/service/CctpFinalizerService";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import {
+  GaslessDepositDlqConsumer,
+  GaslessDepositPubSubConsumer,
+} from "./pubsub/gaslessDepositConsumer";
 import { DataDogMetricsService } from "./services/MetricsService";
-import { MonitoringManager } from "./monitoring/MonitoringManager";
 
 async function initializeRedis(
   config: parseEnv.RedisConfig,
@@ -73,6 +78,7 @@ async function initializeRedis(
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const { redisConfig, postgresConfig } = config;
   const redis = await initializeRedis(redisConfig, logger);
+  const abortController = new AbortController();
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
   // Call write to kick off webhook calls
@@ -116,6 +122,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     new SwapBeforeBridgeRepository(postgres, logger),
     new CallsFailedRepository(postgres, logger),
     new SwapMetadataRepository(postgres, logger),
+    new HyperliquidDepositHandlerRepository(postgres, logger),
     new BundleRepository(postgres, logger, true),
     indexerQueuesService,
     write,
@@ -163,6 +170,16 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
   );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
+  const gaslessDepositPubSubConsumer = new GaslessDepositPubSubConsumer(
+    config,
+    logger,
+    postgres,
+  );
+  const gaslessDepositDlqConsumer = new GaslessDepositDlqConsumer(
+    config,
+    logger,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -190,11 +207,11 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const metrics = new DataDogMetricsService({
     configuration: config.datadogConfig,
     logger,
+    tags: ["websocket"],
   });
 
   // WebSocket Indexer setup
-  const wsIndexerPromises: Promise<void>[] = [];
-  const abortController = new AbortController();
+  const wsIndexerPromises: { chainId: number; promise: Promise<void> }[] = [];
 
   if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
     // Merge providers, allowing WS providers to override RPC providers if defined for a chain
@@ -205,7 +222,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
     // Start all configured WS indexers
     const handlers = startWebSocketIndexing({
-      repo: new dbUtils.BlockchainEventRepository(postgres, logger),
+      database: postgres,
       logger,
       providers: allProviders,
       sigterm: abortController.signal,
@@ -215,101 +232,143 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     wsIndexerPromises.push(...handlers);
   }
 
-  let exitRequested = false;
-  const shutdown = (signal: string) => {
-    if (!exitRequested) {
-      exitRequested = true;
-      logger.info({
+  let isShuttingDown = false;
+  let shutdownTimestamp = 0; // Track when the first shutdown started
+  const shutdown = async (signal: string) => {
+    const now = Date.now();
+    if (isShuttingDown) {
+      // If the second signal arrives within 2 seconds of the first, ignore it
+      // This filters out the "echo" signal from process managers
+      if (now - shutdownTimestamp < 2000) {
+        return;
+      }
+      logger.debug({
         at: "Indexer#Main",
-        message: `Received ${signal}. Starting graceful shutdown...`,
+        message: `Received second signal ${signal}, forcing exit.`,
       });
-
-      // Signal the WebSocket indexers to stop and close sockets immediately
-      abortController.abort();
-
-      // Stop all other managers
-      integratorIdWorker.close();
-      priceWorker?.close();
-      swapWorker.close();
-      metrics.close();
-      acrossIndexerManager.stopGracefully();
-      cctpIndexerManager.stopGracefully();
-      oftIndexerManager.stopGracefully();
-      hyperliquidIndexerManager.stopGracefully();
-      bundleServicesManager.stop();
-      hotfixServicesManager.stop();
-      cctpFinalizerServiceManager.stopGracefully();
-      monitoringManager.stopGracefully();
-    } else {
-      integratorIdWorker.close();
-      swapWorker.close();
-      metrics.close();
-      logger.info({ at: "Indexer#Main", message: "Forcing exit..." });
-      redis?.quit();
-      postgres?.destroy();
-      logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
-      logger.close();
-      across.utils.delay(5).finally(() => process.exit());
+      process.exit(1);
     }
+    isShuttingDown = true;
+    shutdownTimestamp = now;
+    logger.debug({
+      at: "Indexer#Main",
+      message: `Received ${signal}. Starting graceful shutdown...`,
+    });
+
+    // Signal the WebSocket indexers to stop and close sockets immediately
+    abortController.abort();
+    await Promise.allSettled([
+      integratorIdWorker.close(),
+      priceWorker?.close(),
+      swapWorker.close(),
+    ]);
+    logger.debug({
+      at: "Indexer#Main",
+      message:
+        "Graceful shutdown trigger complete. Indexer loop should finish shortly.",
+    });
   };
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  logger.debug({
-    at: "Indexer#Main",
-    message: "Running indexers",
-  });
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const [
-    bundleServicesManagerResults,
-    acrossIndexerManagerResult,
-    cctpIndexerManagerResult,
-    oftIndexerManagerResult,
-    hyperliquidIndexerManagerResult,
-    hotfixServicesManagerResults,
-    cctpFinalizerServiceManagerResults,
-    monitoringManagerResults,
-    ...wsIndexerResults
-  ] = await Promise.allSettled([
-    bundleServicesManager.start(),
-    acrossIndexerManager.start(),
-    cctpIndexerManager.start(),
-    oftIndexerManager.start(),
-    hyperliquidIndexerManager.start(),
-    hotfixServicesManager.start(),
-    cctpFinalizerServiceManager.start(),
-    monitoringManager.start(),
-    ...wsIndexerPromises,
-  ]);
-  logger.info({
-    at: "Indexer#Main",
-    message: "Indexer loop completed",
-    results: {
-      bundleServicesManagerRunSuccess:
-        bundleServicesManagerResults.status === "fulfilled",
-      hotfixServicesManagerRunSuccess:
-        hotfixServicesManagerResults.status === "fulfilled",
-      acrossIndexerManagerRunSuccess:
-        acrossIndexerManagerResult.status === "fulfilled",
-      cctpIndexerManagerRunSuccess:
-        cctpIndexerManagerResult.status === "fulfilled",
-      oftIndexerManagerRunSuccess:
-        oftIndexerManagerResult.status === "fulfilled",
-      hyperliquidIndexerManagerRunSuccess:
-        hyperliquidIndexerManagerResult.status === "fulfilled",
-      cctpFinalizerServiceManagerRunSuccess:
-        cctpFinalizerServiceManagerResults.status === "fulfilled",
-      monitoringManagerRunSuccess:
-        monitoringManagerResults.status === "fulfilled",
-      wsIndexerRunSuccess: wsIndexerResults.every(
-        (r) => r.status === "fulfilled",
-      ),
+  const promises = [
+    {
+      name: "bundleServicesManager",
+      promise: bundleServicesManager.start(abortController.signal),
     },
+    {
+      name: "acrossIndexerManager",
+      promise: acrossIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "cctpIndexerManager",
+      promise: cctpIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "oftIndexerManager",
+      promise: oftIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "hyperliquidIndexerManager",
+      promise: hyperliquidIndexerManager.start(abortController.signal),
+    },
+    {
+      name: "hotfixServicesManager",
+      promise: hotfixServicesManager.start(abortController.signal),
+    },
+    {
+      name: "cctpFinalizerServiceManager",
+      promise: cctpFinalizerServiceManager.start(abortController.signal),
+    },
+    {
+      name: "monitoringManager",
+      promise: monitoringManager.start(abortController.signal),
+    },
+    {
+      name: "gaslessDepositPubSubConsumer",
+      promise: gaslessDepositPubSubConsumer.start(abortController.signal),
+    },
+    {
+      name: "gaslessDepositDlqConsumer",
+      promise: gaslessDepositDlqConsumer.start(abortController.signal),
+    },
+    {
+      name: "metrics",
+      promise: metrics.start(abortController.signal),
+    },
+    ...wsIndexerPromises.map((p) => ({
+      name: `wsIndexer-${p.chainId}`,
+      promise: p.promise,
+    })),
+  ];
+
+  // Track pending services for debugging shutdown hangs
+  const pendingServices = new Set<string>();
+  const wrappedPromises = promises.map((item) => {
+    pendingServices.add(item.name);
+    return item.promise.finally(() => {
+      pendingServices.delete(item.name);
+      logger.debug({
+        at: "Indexer#Main",
+        message: `Service ${item.name} stopped successfully`,
+      });
+    });
   });
-  await integratorIdWorker.close();
-  metrics.close();
-  redis?.quit();
-  postgres?.destroy();
-  logger.info({ at: "Indexer#Main", message: "Exiting indexer" });
+  // Log pending services every 20 seconds if we are stuck waiting
+  const monitorInterval = setInterval(() => {
+    if (pendingServices.size > 0) {
+      logger.debug({
+        at: "Indexer#Main",
+        message: "Services currently running",
+        pending: Array.from(pendingServices),
+      });
+    }
+  }, 20000);
+
+  const results = await Promise.allSettled(wrappedPromises);
+  clearInterval(monitorInterval);
+
+  results.forEach((result, index) => {
+    const item = promises[index];
+    if (!item) return;
+    const { name } = item as { name: string };
+    if (result.status === "rejected") {
+      logger.error({
+        at: "Indexer#Main",
+        message: `${name} failed to run`,
+        error: result.reason,
+      });
+    }
+  });
+
+  await redis?.quit();
+  await postgres?.destroy();
+  logger.debug({ at: "Indexer#Main", message: "Exiting indexer" });
+  await new Promise<void>((resolve) => {
+    logger.on("finish", resolve);
+    logger.end();
+  });
+  process.exit(0);
 }

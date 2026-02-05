@@ -1,12 +1,10 @@
 import winston from "winston";
-import * as across from "@across-protocol/sdk";
+import { delayWithAbort } from "../utils";
 
 /**
  * Base class to be implemented by tasks that need to be run repeatedly.
  */
 export abstract class RepeatableTask {
-  protected stopRequested: boolean;
-
   constructor(
     protected readonly logger: winston.Logger,
     private readonly name: string,
@@ -23,8 +21,9 @@ export abstract class RepeatableTask {
    * @dev This method calls the `initialize` method before starting the loop to allow for any setup that needs to be done before the task starts.
    * @dev You can stop the task by calling the `stop` method. This will set a flag that the task should stop at the next opportunity.
    * @param delay The delay in seconds between each iteration of the task
+   * @param signal An optional AbortSignal to allow for graceful shutdown of the task.
    */
-  public async start(delay: number): Promise<void> {
+  public async start(delay: number, signal: AbortSignal): Promise<void> {
     this.logger.debug({
       at: "RepeatableTask#start",
       message: `Starting task ${this.name}`,
@@ -43,28 +42,15 @@ export abstract class RepeatableTask {
       return;
     }
 
-    this.stopRequested = false;
     do {
       await this.taskLogic();
-      await across.utils.delay(delay);
-    } while (!this.stopRequested);
+      await delayWithAbort(delay, signal);
+    } while (!signal.aborted);
 
     this.logger.debug({
       at: "RepeatableTask#start",
       message: `Ended halted ${this.name}`,
     });
-  }
-
-  /**
-   * Issues a stop request to the task.
-   * @dev Note: this does not stop the task immediately, but sets a flag that the task should stop at the next opportunity.
-   */
-  public stop(): void {
-    this.logger.info({
-      at: "RepeatableTask#stop",
-      message: `Requesting task ${this.name} to be stopped`,
-    });
-    this.stopRequested = true;
   }
 
   /**

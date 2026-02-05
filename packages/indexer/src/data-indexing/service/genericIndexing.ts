@@ -19,6 +19,7 @@ import {
   DataDogMetricsService,
   withMetrics,
 } from "../../services/MetricsService";
+import { safeJsonStringify } from "../../utils";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
 /**
@@ -165,10 +166,9 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   // --- Supervisor Loop ---
   while (!sigterm?.aborted) {
     try {
-      logger.info({
+      logger.debug({
         at: "genericIndexing#startIndexingSubsystem",
         message: `Initializing indexing subsystem for chain ${indexerConfig.chainId}...`,
-        notificationPath: "across-indexer-info",
       });
 
       // Initialize Client
@@ -284,10 +284,11 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
       ]);
     } catch (e) {
       // Handle Errors & Restart
-      logger.error({
+      logger.debug({
         at: "genericIndexing#startIndexingSubsystem",
         message: `Indexer crashed for chain ${indexerConfig.chainId}. Restarting in ${delay / 1000}s.`,
-        error: (e as Error).message,
+        error: e,
+        errorJson: safeJsonStringify(e),
       });
       metrics?.addCountMetric("startIndexingError", [
         "websocketIndexer",
@@ -307,7 +308,7 @@ export async function startIndexing<TEventEntity, TDb, TPayload, TPreprocessed>(
   }
 
   // Final cleanup on exit
-  logger.info({
+  logger.debug({
     at: "genericIndexing#startIndexingSubsystem",
     message: `Stopping indexing subsystem for chain ${indexerConfig.chainId}.`,
   });

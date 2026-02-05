@@ -8,6 +8,7 @@ import {
 } from "viem";
 import * as chains from "viem/chains";
 import { Logger } from "winston";
+import { safeJsonStringify } from "../../utils";
 
 /**
  * Creates and configures a Viem Public Client with a WebSocket transport.
@@ -88,8 +89,8 @@ export async function closeViemClient(client: PublicClient, logger: Logger) {
   } catch (error) {
     // This is expected if the socket is already closed/closing
     logger.debug({
-      message: "WebSocket client cleanup completed with error (expected)",
-      error: (error as Error).message,
+      message: `WebSocket client cleanup completed with error (expected)}`,
+      error: safeJsonStringify(error),
     });
   }
 }

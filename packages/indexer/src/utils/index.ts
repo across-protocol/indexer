@@ -5,4 +5,5 @@ export * from "./bundleBuilderUtils";
 export * from "./spokePoolUtils";
 export * from "./currencyUtils";
 export * from "./map";
+export * from "./asyncUtils";
 export * from "./hyperliquidUtils";

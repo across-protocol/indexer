@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_requestedV3SlowFill_internalHash", ["internalHash"])
@@ -71,6 +72,13 @@ export class RequestedV3SlowFill {
 
   @Column()
   finalised: boolean;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @CreateDateColumn()
   createdAt: Date;

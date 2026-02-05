@@ -13,7 +13,10 @@ import {
 
 import * as utils from "../../utils";
 import { BlockRange } from "../model";
-import { IndexerDataHandler } from "./IndexerDataHandler";
+import {
+  IndexerDataHandler,
+  ProcessBlockRangeRequest,
+} from "./IndexerDataHandler";
 import { getMaxBlockLookBack } from "../../web3/constants";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
 import {
@@ -76,11 +79,8 @@ export class SvmSpokePoolIndexerDataHandler implements IndexerDataHandler {
     return getDeployedBlockNumber("SvmSpoke", this.chainId);
   }
 
-  public async processBlockRange(
-    blockRange: BlockRange,
-    lastFinalisedBlock: number,
-    isBackfilling: boolean = false,
-  ) {
+  public async processBlockRange(request: ProcessBlockRangeRequest) {
+    const { blockRange, lastFinalisedBlock, isBackfilling = false } = request;
     this.logger.debug({
       at: "Indexer#SvmSpokePoolIndexerDataHandler#processBlockRange",
       message: `Processing block range ${this.getDataIdentifier()}`,

@@ -63,3 +63,39 @@ export const OFT_RECEIVED_ABI = [
 export const SPONSORED_OFT_SEND_ABI = [
   "event SponsoredOFTSend(bytes32 indexed quoteNonce, address indexed originSender, bytes32 indexed finalRecipient, bytes32 destinationHandler, uint256 quoteDeadline, uint256 maxBpsToSponsor, uint256 maxUserSlippageBps, bytes32 finalToken, bytes sig)",
 ];
+
+/* ==================================================================================
+ * FILLED V3 RELAY DOMAIN LOGIC & CONFIGURATION
+ * * Specific ABIs for the FILLED V3 RELAY Protocol.
+ * ================================================================================== */
+export const FILLED_RELAY_V3_ABI = [
+  "event FilledRelay(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 repaymentChainId, uint256 indexed originChainId, uint256 indexed depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 exclusiveRelayer, bytes32 indexed relayer, bytes32 depositor, bytes32 recipient, bytes32 messageHash, (bytes32 updatedRecipient, bytes32 updatedMessageHash, uint256 updatedOutputAmount, uint8 fillType) relayExecutionInfo)",
+];
+
+export const FUNDS_DEPOSITED_V3_ABI = [
+  "event FundsDeposited(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed destinationChainId, uint256 indexed depositId, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 indexed depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes message)",
+];
+
+export const EXECUTED_RELAYER_REFUND_ROOT_ABI = [
+  "event ExecutedRelayerRefundRoot(uint256 amountToReturn, uint256 indexed chainId, uint256[] refundAmounts, uint32 indexed rootBundleId, uint32 indexed leafId, address l2TokenAddress, address[] refundAddresses, bool deferredRefunds, address caller)",
+];
+
+export const REQUESTED_SPEED_UP_V3_DEPOSIT_ABI = [
+  "event RequestedSpeedUpV3Deposit(uint256 updatedOutputAmount, uint32 indexed depositId, address indexed depositor, address updatedRecipient, bytes updatedMessage, bytes depositorSignature)",
+];
+
+export const RELAYED_ROOT_BUNDLE_ABI = [
+  "event RelayedRootBundle(uint32 indexed rootBundleId, bytes32 indexed relayerRefundRoot, bytes32 indexed slowRelayRoot)",
+];
+
+export const REQUESTED_SLOW_FILL_ABI = [
+  "event RequestedSlowFill(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed originChainId, uint256 indexed depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 exclusiveRelayer, bytes32 depositor, bytes32 recipient, bytes32 messageHash)",
+];
+
+export const TOKENS_BRIDGED_ABI = [
+  "event TokensBridged(uint256 amountToReturn, uint256 indexed chainId, uint32 indexed leafId, bytes32 indexed l2TokenAddress, address caller)",
+];
+
+export const CLAIMED_RELAYER_REFUND_ABI = [
+  "event ClaimedRelayerRefund(bytes32 indexed l2TokenAddress, bytes32 indexed refundAddress, uint256 amount, address indexed caller)",
+];

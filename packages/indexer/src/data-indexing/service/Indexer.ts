@@ -7,6 +7,7 @@ import { entities, DataSource } from "@repo/indexer-database";
 import { IndexerDataHandler } from "./IndexerDataHandler";
 import { BlockRange } from "../model";
 import { SvmProvider } from "../../web3/RetryProvidersFactory";
+import { delayWithAbort } from "../../utils/asyncUtils";
 import {
   HyperliquidRpcClient,
   HyperliquidStreamType,
@@ -41,22 +42,18 @@ type BlockRangeResult = {
  * Block ranges are resumed from the last finalised block stored in a persistent cache/db.
  */
 export class Indexer {
-  private stopRequested: boolean;
-
   constructor(
     private config: ConstructorConfig,
     private dataHandler: IndexerDataHandler,
     protected logger: Logger,
     private dataSource: DataSource,
-  ) {
-    this.stopRequested = false;
-  }
+  ) {}
 
-  public async start() {
+  public async start(signal: AbortSignal) {
     let blockRangeResult: BlockRangeResult | undefined = undefined;
     let blockRangeProcessedSuccessfully = true;
 
-    while (!this.stopRequested) {
+    while (!signal.aborted) {
       try {
         // if the previous block range was processed successfully or if this is the first loop iteration,
         // get the next block range to process
@@ -72,11 +69,11 @@ export class Indexer {
             dataIdentifier: this.dataHandler.getDataIdentifier(),
           });
         } else {
-          await this.dataHandler.processBlockRange(
-            blockRangeResult.blockRange,
-            blockRangeResult.lastFinalisedBlock,
-            blockRangeResult.isBackfilling,
-          );
+          await this.dataHandler.processBlockRange({
+            blockRange: blockRangeResult.blockRange,
+            lastFinalisedBlock: blockRangeResult.lastFinalisedBlock,
+            isBackfilling: blockRangeResult.isBackfilling,
+          });
           // When the block range is processed successfully and the indexer is ready to start
           // processing the next block range, save the progress in the database. The most important
           // information to save is the last finalised block, as this is the block that will be used
@@ -95,11 +92,13 @@ export class Indexer {
           errorJson: JSON.stringify(error),
         });
         blockRangeProcessedSuccessfully = false;
-        // Introduce an additional delay if errors are encountered
-        await across.utils.delay(this.config.indexingDelaySecondsOnError ?? 30);
+        await delayWithAbort(
+          this.config.indexingDelaySecondsOnError ?? 30,
+          signal,
+        );
       } finally {
         if (!blockRangeResult?.isBackfilling) {
-          await across.utils.delay(this.config.indexingDelaySeconds);
+          await delayWithAbort(this.config.indexingDelaySeconds, signal);
         } else {
           this.logger.debug({
             at: "Indexer#start",
@@ -109,18 +108,6 @@ export class Indexer {
         }
       }
     }
-  }
-
-  /**
-   * Issues a stop request to the indexer.
-   * @dev Note: this does not stop the indexer immediately, but sets a flag that the indexer should stop at the next opportunity.
-   */
-  public stopGracefully() {
-    this.logger.info({
-      at: "Indexer#stopGracefully",
-      message: `Requesting indexer ${this.dataHandler.getDataIdentifier()} to be stopped`,
-    });
-    this.stopRequested = true;
   }
 
   private async saveProgressInDatabase(blockRangeResult: BlockRangeResult) {

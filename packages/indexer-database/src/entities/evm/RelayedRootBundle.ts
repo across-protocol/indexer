@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
+import { DataSourceType } from "../../model";
 
 @Entity({ schema: "evm" })
 @Unique("UK_rrb_chainId_rootBundleId_txn", [
@@ -42,6 +43,13 @@ export class RelayedRootBundle {
 
   @Column()
   finalised: boolean;
+
+  @Column({
+    type: "enum",
+    enum: DataSourceType,
+    default: DataSourceType.POLLING,
+  })
+  dataSource: DataSourceType;
 
   @CreateDateColumn()
   createdAt: Date;

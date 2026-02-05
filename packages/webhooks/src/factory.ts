@@ -48,7 +48,7 @@ export async function WebhookFactory(config: Config, deps: Dependencies) {
       return clientRepository.upsertClient(client);
     }),
   );
-  logger.info({
+  logger.debug({
     message: "Registered webhook api clients",
     at: "Webhooks package factory",
     clientRegistrations,
