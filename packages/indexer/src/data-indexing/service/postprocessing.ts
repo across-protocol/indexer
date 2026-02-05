@@ -25,7 +25,7 @@ import {
   SwapMetadataArgs,
   FilledV3RelayArgs,
 } from "../model/eventTypes";
-import { matchFillEventsWithTargetChainActions } from "../../utils/targetChainActionsUtils";
+import { matchFillEventWithTargetChainActions } from "../../utils/targetChainActionsUtils";
 import { IndexerEventPayload } from "./genericEventListening";
 import { FUNDS_DEPOSITED_V3_ABI, SWAP_BEFORE_BRIDGE_ABI } from "../model/abis";
 import {
@@ -329,6 +329,24 @@ export const postProcessFillEvent = async (
         },
       },
     });
+  }
+
+  // Match fill event with target chain actions
+  const fillTargetChainActionPair = matchFillEventWithTargetChainActions(
+    storedFill,
+    viemReceipt,
+    logger,
+  );
+  if (fillTargetChainActionPair) {
+    logger.debug({
+      at: "websocketIndexer#postProcessFillEvent",
+      message: "Found fill transactions with target chain action destinations",
+      pair: fillTargetChainActionPair,
+    });
+    await assignTargetChainActionEventToRelayHashInfo(
+      [fillTargetChainActionPair],
+      db,
+    );
   }
 
   metrics?.addGaugeMetric(

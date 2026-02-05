@@ -125,3 +125,7 @@ export const SWAP_METADATA_DECODING_TYPES = [
   "address", // recipient
   "address", // appFeeRecipient
 ];
+
+export const TRANSFER_ABI = [
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+];

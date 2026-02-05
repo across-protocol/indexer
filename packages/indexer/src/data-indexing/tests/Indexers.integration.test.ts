@@ -882,23 +882,25 @@ describe("Websocket Subscription", () => {
     });
   }).timeout(20000);
 
-  it("should ingest the FilledRelay event from Arbitrum tx 0xc9f5...fedd", async () => {
-    // Tx: https://arbiscan.io/tx/0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd
+  it("should ingest the FilledRelay event from HyperEVM tx 0x1efe...bf51", async () => {
+    // Tx: https://hyperevmscan.io/tx/0x1efe9949bc3287e5aaed8a41b0804dfadcd4d22df07a35cf3a4ec579af50bf51
     const txHash =
-      "0xc9f5e1df9cfc9796093bfb550c7c5bde3e435578bc24aebc7ed30703b0befedd";
-    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+      "0x1efe9949bc3287e5aaed8a41b0804dfadcd4d22df07a35cf3a4ec579af50bf51";
+    const hyperClient = getTestPublicClient(CHAIN_IDs.HYPEREVM);
 
     const { block, receipt } = await fetchAndMockTransaction(
       server,
-      arbitrumClient,
+      hyperClient,
       txHash,
     );
     // We need to stub the SpokePool address to avoid the test from breaking on a redeployment of the SpokePool
     sinon
       .stub(contractUtils, "getAddress")
-      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+      .returns("0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04");
 
     const repo = dataSource.getRepository(entities.FilledV3Relay);
+    const relayHashInfoRepo = dataSource.getRepository(entities.RelayHashInfo);
+    let handlerRelayHashInfo: entities.RelayHashInfo | undefined = undefined;
 
     // Sanity check SpokePoolIndexerDataHandler
     const sanityCheckResult = await sanityCheckWithEventIndexer({
@@ -906,27 +908,30 @@ describe("Websocket Subscription", () => {
         getSpokePoolIndexerDataHandler({
           dataSource,
           logger,
-          chainId: CHAIN_IDs.ARBITRUM,
+          chainId: CHAIN_IDs.HYPEREVM,
           hubPoolChainId: CHAIN_IDs.MAINNET,
         }),
       repository: repo,
-      findOptions: { transactionHash: txHash, logIndex: 4 },
+      findOptions: { transactionHash: txHash, logIndex: 13 },
       blockNumber: Number(block.number),
       customDeleteFunction: async (repository, findOptions) => {
+        handlerRelayHashInfo = await relayHashInfoRepo.findOneByOrFail({
+          fillTxHash: txHash,
+        });
         // Delete RelayHashInfo
-        await dataSource
-          .getRepository(entities.RelayHashInfo)
-          .delete({ fillTxHash: txHash });
+        await relayHashInfoRepo.delete({ fillTxHash: txHash });
         await repository.delete(findOptions);
       },
     });
+
+    assert((handlerRelayHashInfo as any) instanceof entities.RelayHashInfo);
 
     startChainIndexing({
       database: dataSource,
       rpcUrl,
       logger,
       sigterm: abortController.signal,
-      chainId: CHAIN_IDs.ARBITRUM,
+      chainId: CHAIN_IDs.HYPEREVM,
       protocols: [SPOKE_POOL_PROTOCOL],
       transportOptions: DEFAULT_TRANSPORT_OPTIONS,
     });
@@ -934,7 +939,7 @@ describe("Websocket Subscription", () => {
     await server.waitForSubscription(
       SPOKE_POOL_PROTOCOL.getEventHandlers({
         logger,
-        chainId: CHAIN_IDs.ARBITRUM,
+        chainId: CHAIN_IDs.HYPEREVM,
       }).length,
     );
     receipt.logs.forEach((log) => server.pushEvent(log));
@@ -948,38 +953,24 @@ describe("Websocket Subscription", () => {
     });
     expect(savedEvent).to.exist;
 
+    const wsRelayHashInfo = await waitForEventToBeStoredOrFail({
+      repository: relayHashInfoRepo,
+      findOptions: {
+        fillTxHash: txHash,
+      },
+    });
+
     // Compare WS event with Handler event
     compareExcludingMetadata(savedEvent, sanityCheckResult);
 
-    expect(savedEvent).to.deep.include({
-      blockNumber: Number(block.number),
-      transactionHash: txHash,
-      transactionIndex: 2,
-      logIndex: 4,
-      finalised: false,
-      depositId: 5287817,
-      originChainId: 8453,
-      destinationChainId: CHAIN_IDs.ARBITRUM,
-      inputToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
-      outputToken: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC on Arbitrum
-      inputAmount: "1009060",
-      outputAmount: "1000000",
-      fillDeadline: new Date(1767985475 * 1000),
-      exclusivityDeadline: new Date(1767978416 * 1000),
-      exclusiveRelayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
-      depositor: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
-      recipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
-      message:
-        "0x0000000000000000000000000000000000000000000000000000000000000000",
-      relayer: "0xeF1eC136931Ab5728B0783FD87D109c9D15D31F1",
-      repaymentChainId: 8453,
-      updatedRecipient: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
-      updatedMessage:
-        "0x0000000000000000000000000000000000000000000000000000000000000000",
-      updatedOutputAmount: "1000000",
-      fillType: 0,
-      dataSource: DataSourceType.WEB_SOCKET,
-    });
+    // Compare RelayHashInfo from both indexers
+    const expectedRelayHashInfo = {
+      ...handlerRelayHashInfo!,
+      fillEventId: savedEvent.id,
+    };
+    compareExcludingMetadata(wsRelayHashInfo, expectedRelayHashInfo);
+    expect(wsRelayHashInfo!.actionsTargetChainId).to.equal(1337);
+    expect(savedEvent.dataSource).to.equal(DataSourceType.WEB_SOCKET);
   }).timeout(120000);
 
   it("should ingest the FallbackHyperEVMFlowCompleted event from HyperEVM tx 0xb940...2d02", async () => {

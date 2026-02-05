@@ -263,6 +263,12 @@ export interface SwapMetadataArgs {
   data: `0x${string}`;
 }
 
+export interface TransferArgs {
+  from: `0x${string}`;
+  to: `0x${string}`;
+  value: bigint;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -289,4 +295,5 @@ export type EventArgs =
   | ClaimedRelayerRefundArgs
   | SwapBeforeBridgeArgs
   | CallsFailedArgs
-  | SwapMetadataArgs;
+  | SwapMetadataArgs
+  | TransferArgs;

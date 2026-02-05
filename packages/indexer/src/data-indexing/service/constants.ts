@@ -206,3 +206,4 @@ export const CLAIMED_RELAYER_REFUND_EVENT_NAME = "ClaimedRelayerRefund";
 export const SWAP_BEFORE_BRIDGE_EVENT_NAME = "SwapBeforeBridge";
 export const CALLS_FAILED_EVENT_NAME = "CallsFailed";
 export const SWAP_METADATA_EVENT_NAME = "MetadataEmitted";
+export const TRANSFER_EVENT_NAME = "Transfer";
