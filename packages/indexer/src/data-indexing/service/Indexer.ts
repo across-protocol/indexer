@@ -93,12 +93,12 @@ export class Indexer {
         });
         blockRangeProcessedSuccessfully = false;
         await delayWithAbort(
-          this.config.indexingDelaySecondsOnError ?? 30,
+          (this.config.indexingDelaySecondsOnError ?? 30) * 1000,
           signal,
         );
       } finally {
         if (!blockRangeResult?.isBackfilling) {
-          await delayWithAbort(this.config.indexingDelaySeconds, signal);
+          await delayWithAbort(this.config.indexingDelaySeconds * 1000, signal);
         } else {
           this.logger.debug({
             at: "Indexer#start",
