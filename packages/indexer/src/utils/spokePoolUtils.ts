@@ -27,13 +27,7 @@ export async function getIntegratorId(
   txHash: string,
 ) {
   const hexData = await provider.getTransactionData(txHash);
-  return parseIntegratorIdFromData(depositDate, hexData);
-}
 
-function parseIntegratorIdFromData(
-  depositDate: Date,
-  hexData: string,
-): string | undefined {
   const INTEGRATOR_ID_IMPLEMENTATION_DATE = new Date(1718274000 * 1000);
   const INTEGRATOR_DELIMITER = "1dc0de";
   const INTEGRATOR_ID_LENGTH = 4;
@@ -46,30 +40,6 @@ function parseIntegratorIdFromData(
       ?.substring(0, INTEGRATOR_ID_LENGTH);
   }
   return undefined;
-}
-
-export async function getIntegratorIdFromPublicClient(
-  provider: PublicClient,
-  depositDate: Date,
-  txHash: string,
-) {
-  // If deposit was made before integratorId implementation, skip request
-  const INTEGRATOR_ID_IMPLEMENTATION_DATE = new Date(1718274000 * 1000);
-  if (depositDate < INTEGRATOR_ID_IMPLEMENTATION_DATE) {
-    return;
-  }
-  const INTEGRATOR_DELIMITER = "1dc0de";
-  const INTEGRATOR_ID_LENGTH = 4; // Integrator ids are 4 characters long
-  let integratorId = undefined;
-  const txn = await provider.getTransaction({ hash: txHash as Hex });
-  const txnData = txn.input;
-  if (txnData.includes(INTEGRATOR_DELIMITER)) {
-    integratorId = txnData
-      .split(INTEGRATOR_DELIMITER)
-      .pop()
-      ?.substring(0, INTEGRATOR_ID_LENGTH);
-  }
-  return integratorId;
 }
 
 export async function getSvmIntegratorId(
