@@ -3,9 +3,10 @@ import { TransactionReceipt, parseAbi } from "viem";
 import { EventDecoder } from "../web3/EventDecoder";
 import { entities } from "@repo/indexer-database";
 import { decodeEventsFromReceipt } from "./eventMatching";
-import { TRANSFER_ABI, TRANSFER_EVENT_NAME } from "../data-indexing/model/abis";
+import { TRANSFER_ABI } from "../data-indexing/model/abis";
 import { TransferArgs } from "../data-indexing/model/eventTypes";
 import { Logger } from "winston";
+import { TRANSFER_EVENT_NAME } from "../data-indexing/service";
 
 export const TARGET_CHAIN_ACTION_ADDRESSES: Record<string, string> = {
   "0x200000000000000000000000000000000000010C": "1337", // HyperCore USDT0 System Address
