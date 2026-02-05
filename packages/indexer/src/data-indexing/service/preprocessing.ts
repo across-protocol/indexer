@@ -8,8 +8,7 @@ import {
 } from "../model/eventTypes";
 import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
 import { Logger } from "winston";
-
-import { Log } from "viem";
+import { decodeEventsFromReceipt } from "../../utils/eventMatching";
 
 /**
  * extracts and decodes a specific event from a transaction receipt's logs.
@@ -17,24 +16,6 @@ import { Log } from "viem";
  * @param abi The Abi containing the event definition.
  * @returns Array of objects containing the decoded event, log index, transaction hash, and full log.
  */
-export const decodeEventsFromReceipt = <T>(
-  receipt: TransactionReceipt,
-  abi: Abi,
-  eventName: string,
-): { event: T; logIndex: number; transactionHash: string; log: Log }[] => {
-  const logs = parseEventLogs({
-    abi,
-    logs: receipt.logs,
-  });
-  return logs
-    .filter((log) => log.eventName === eventName)
-    .map((log) => ({
-      event: log.args as T,
-      logIndex: log.logIndex,
-      transactionHash: log.transactionHash,
-      log: log as unknown as Log,
-    }));
-};
 
 export const extractRawArgs = <TEvent>(
   payload: IndexerEventPayload,
@@ -64,11 +45,11 @@ export const preprocessSponsoredDepositForBurn = async (
   const args = extractRawArgs<SponsoredDepositForBurnArgs>(payload);
 
   if (payload.transactionReceipt) {
-    const depositEvents = decodeEventsFromReceipt<DepositForBurnArgs>(
-      await payload.transactionReceipt,
-      parseAbi(CCTP_DEPOSIT_FOR_BURN_ABI),
-      DEPOSIT_FOR_BURN_EVENT_NAME,
-    );
+    const depositEvents = decodeEventsFromReceipt<DepositForBurnArgs>({
+      receipt: await payload.transactionReceipt,
+      abi: parseAbi(CCTP_DEPOSIT_FOR_BURN_ABI),
+      eventName: DEPOSIT_FOR_BURN_EVENT_NAME,
+    });
     const depositArgs = depositEvents[0]?.event;
 
     if (depositArgs) {

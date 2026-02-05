@@ -1,5 +1,4 @@
 import { assert, expect } from "chai";
-import { ethers } from "ethers";
 import { DataSource } from "typeorm";
 import { getTestDataSource } from "../../tests/setup";
 import { startChainIndexing } from "../service/indexing";
@@ -30,15 +29,8 @@ import {
   waitForEventToBeStoredOrFail,
   sanityCheckWithEventIndexer,
   getSpokePoolIndexerDataHandler,
-  compareFundsDepositedEvents,
-  compareFilledRelayEvents,
-  compareExecutedRelayerRefundRootEvents,
-  compareRelayedRootBundleEvents,
-  compareRequestedSlowFillEvents,
-  compareTokensBridgedEvents,
-  compareSwapBeforeBridgeEvents,
+  compareExcludingMetadata,
 } from "./utils";
-import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { RelayStatus } from "../../../../indexer-database/dist/src/entities";
 
 const DEFAULT_TRANSPORT_OPTIONS = { reconnect: false, timeout: 30_000 };
@@ -957,7 +949,7 @@ describe("Websocket Subscription", () => {
     expect(savedEvent).to.exist;
 
     // Compare WS event with Handler event
-    compareFilledRelayEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
 
     expect(savedEvent).to.deep.include({
       blockNumber: Number(block.number),
@@ -1301,7 +1293,7 @@ describe("Websocket Subscription", () => {
     expect(savedEvent.blockNumber).to.equal(Number(block.number));
 
     // Compare WS event with Handler event
-    compareFundsDepositedEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
 
     expect(savedEvent).to.deep.include({
       blockNumber: Number(block.number),
@@ -1394,7 +1386,7 @@ describe("Websocket Subscription", () => {
     expect(savedEvent).to.exist;
 
     // Compare WS event with Handler event
-    compareExecutedRelayerRefundRootEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
 
     expect(savedEvent).to.deep.include({
       chainId: 42161,
@@ -1569,7 +1561,7 @@ describe("Websocket Subscription", () => {
     });
 
     expect(savedEvent).to.exist;
-    compareRelayedRootBundleEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
 
     expect(savedEvent).to.deep.include({
       chainId: 42161,
@@ -1654,7 +1646,7 @@ describe("Websocket Subscription", () => {
     });
 
     expect(savedEvent).to.exist;
-    compareRequestedSlowFillEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
   }).timeout(120000);
 
   it("should ingest the TokensBridged event from Arbitrum tx 0x5683...202c", async () => {
@@ -1715,7 +1707,7 @@ describe("Websocket Subscription", () => {
         transactionHash: txHash,
       },
     });
-    compareTokensBridgedEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
 
     expect(savedEvent).to.deep.include({
       chainId: 42161,
@@ -1802,9 +1794,11 @@ describe("Websocket Subscription", () => {
 
     receipt.logs.forEach((log) => server.pushEvent(log));
 
-    await waitForEventToBeStoredOrFail({
+    const depositEvent = await waitForEventToBeStoredOrFail({
       repository: dataSource.getRepository(entities.V3FundsDeposited),
-      findOptions: { transactionHash: txHash },
+      findOptions: {
+        transactionHash: txHash,
+      },
     });
 
     // Wait for SwapBeforeBridge event
@@ -1823,7 +1817,7 @@ describe("Websocket Subscription", () => {
     });
 
     // Compare websocket event with handler event
-    compareSwapBeforeBridgeEvents(savedEvent, sanityCheckResult);
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
     // Verify event data
     expect(savedEvent).to.deep.include({
       chainId: CHAIN_IDs.ARBITRUM,
@@ -1843,15 +1837,265 @@ describe("Websocket Subscription", () => {
     });
 
     // Compare RelayHashInfo from both indexers
-    // TODO: remove status exclusion after the updatng for status is implemented
-    const { id, createdAt, updatedAt, status, ...cleanExpected } =
-      handlerRelayHashInfo!;
-    // ID is not the same because it is auto-incremented
-    expect(wsRelayHashInfo).to.deep.include({
-      ...cleanExpected,
-      depositEventId: 2,
-      swapBeforeBridgeEventId: 2,
+    const { status, ...expectedRelayHashInfo } = {
+      ...handlerRelayHashInfo!,
+      depositEventId: depositEvent.id,
+      swapBeforeBridgeEventId: savedEvent.id,
+    };
+    compareExcludingMetadata(wsRelayHashInfo, expectedRelayHashInfo);
+  }).timeout(120000);
+
+  it("should ingest the CallsFailed event from Arbitrum tx 0xc03e...0b0c with post-processing", async () => {
+    // Tx: https://arbiscan.io/tx/0xc03e03916729e28e803d72eb3b5395e932199dd88d70023223f4e63470e95b0c#eventlog#44
+    const txHash =
+      "0xc03e03916729e28e803d72eb3b5395e932199dd88d70023223f4e63470e95b0c";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub the SpokePool address
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A");
+
+    const callsFailedRepo = dataSource.getRepository(entities.CallsFailed);
+    const relayHashInfoRepo = dataSource.getRepository(entities.RelayHashInfo);
+    let handlerRelayHashInfo: entities.RelayHashInfo | undefined = undefined;
+
+    // Sanity check with SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: callsFailedRepo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        handlerRelayHashInfo = await relayHashInfoRepo.findOneByOrFail({
+          fillTxHash: txHash,
+        });
+        // Delete RelayHashInfo
+        await relayHashInfoRepo.delete({ fillTxHash: txHash });
+        // Delete CallsFailed
+        await repository.delete(findOptions);
+        // Delete Calls Failed
+        await dataSource
+          .getRepository(entities.CallsFailed)
+          .delete({ transactionHash: txHash });
+        // Delete FilledV3Relay
+        await dataSource
+          .getRepository(entities.FilledV3Relay)
+          .delete({ transactionHash: txHash });
+      },
     });
+
+    assert((handlerRelayHashInfo as any) instanceof entities.RelayHashInfo);
+    // Start websocket indexer
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for the fill to be stored first (since CallsFailed depends on it in post-processing)
+    await waitForEventToBeStoredOrFail({
+      repository: dataSource.getRepository(entities.FilledV3Relay),
+      findOptions: { transactionHash: txHash },
+    });
+
+    // Wait for CallsFailed event
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: callsFailedRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    const wsRelayHashInfo = await waitForEventToBeStoredOrFail({
+      repository: relayHashInfoRepo,
+      findOptions: {
+        fillTxHash: txHash,
+      },
+    });
+
+    const fillEvent = await waitForEventToBeStoredOrFail({
+      repository: dataSource.getRepository(entities.FilledV3Relay),
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    // Compare websocket event with handler event
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
+    // Verify event data
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      fallbackRecipient: "0x4bEEd227Ed4F7d14441C2641329A166064704381",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+
+    // Verify calls
+    expect(savedEvent.calls).to.have.length(2);
+    expect(savedEvent.calls[0]).to.deep.include({
+      target: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+      value: "0",
+    });
+
+    // Compare RelayHashInfo from both indexers
+    // TODO: Remove status exclusion once we update the status too
+    const { status, ...expectedRelayHashInfo } = {
+      ...handlerRelayHashInfo!,
+      fillEventId: fillEvent.id,
+      callsFailedEventId: savedEvent.id,
+    };
+    compareExcludingMetadata(wsRelayHashInfo, expectedRelayHashInfo);
+  }).timeout(120000);
+
+  it("should ingest the SwapMetadata event from Arbitrum tx 0xd227...4786 with post-processing", async () => {
+    // Tx: https://arbiscan.io/tx/0xd2277a4d8d19e82db82886084fe41a9eb15d84e796848d443e42683d243e4786#eventlog#51
+    const txHash =
+      "0xd2277a4d8d19e82db82886084fe41a9eb15d84e796848d443e42683d243e4786";
+
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub the SpokePool address
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const swapMetadataRepo = dataSource.getRepository(entities.SwapMetadata);
+    const relayHashInfoRepo = dataSource.getRepository(entities.RelayHashInfo);
+    let handlerRelayHashInfo: entities.RelayHashInfo | undefined = undefined;
+
+    // Sanity check with SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: swapMetadataRepo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        const info = await relayHashInfoRepo.findOneByOrFail({
+          fillTxHash: txHash,
+        });
+        handlerRelayHashInfo = info;
+        // Delete SwapMetadata first because it has a foreign key to RelayHashInfo
+        await repository.delete(findOptions);
+        // Delete RelayHashInfo
+        await relayHashInfoRepo.delete(info.id);
+        // Delete FilledV3Relay
+        await dataSource
+          .getRepository(entities.FilledV3Relay)
+          .delete({ transactionHash: txHash });
+      },
+    });
+
+    assert((handlerRelayHashInfo as any) instanceof entities.RelayHashInfo);
+
+    // Start websocket indexer
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    // Wait for the fill to be stored first
+    const fillEvent = await waitForEventToBeStoredOrFail({
+      repository: dataSource.getRepository(entities.FilledV3Relay),
+      findOptions: { transactionHash: txHash },
+    });
+
+    // Wait for SwapMetadata event
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: swapMetadataRepo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    const wsRelayHashInfo = await waitForEventToBeStoredOrFail({
+      repository: relayHashInfoRepo,
+      findOptions: {
+        fillTxHash: txHash,
+      },
+    });
+
+    // Compare websocket event with handler event
+    // TODO: Remove relayHashInfoId exclusion once we update the relayHashInfoId too
+    const { relayHashInfoId, ...expectedSwapMetadata } =
+      sanityCheckResult as any;
+    const { blockTimestamp: _bt, ...expectedSwapMetadataClean } =
+      expectedSwapMetadata;
+    compareExcludingMetadata(savedEvent, expectedSwapMetadataClean);
+    // Verify event data
+    expect(savedEvent).to.deep.include({
+      chainId: CHAIN_IDs.ARBITRUM,
+      blockNumber: Number(block.number),
+      transactionHash: txHash,
+      version: "1",
+      type: 0,
+      side: 1,
+      address: "0x5829D6FE7528bc8E92c4e81CC8F20a528820B51a",
+      swapProvider: "0x",
+      recipient: "0x7d7EB376bD7BA7a356cFce5e5a94BCa56F6810c4",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
+
+    // Verify linkage on SwapMetadata
+    expect(savedEvent.relayHashInfoId).to.equal(wsRelayHashInfo.id);
+
+    // Compare RelayHashInfo from both indexers
+    const { status, ...expectedRelayHashInfo } = {
+      ...handlerRelayHashInfo!,
+      fillEventId: fillEvent.id,
+    };
+    compareExcludingMetadata(wsRelayHashInfo, expectedRelayHashInfo);
   }).timeout(120000);
 
   it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {

@@ -530,3 +530,47 @@ export const storeSwapBeforeBridgeEvent = async (
     )
   ).data;
 };
+
+/**
+ * Stores a CallsFailed event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ * @param logger The logger instance
+ */
+export const storeCallsFailedEvent = async (
+  event: Partial<entities.CallsFailed>,
+  db: DataSource,
+  logger: Logger,
+): Promise<entities.CallsFailed> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
+  return (
+    await (repository as any).saveAndHandleFinalisation(
+      entities.CallsFailed,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET } as any,
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.CallsFailed)[],
+      [],
+    )
+  ).data;
+};
+
+/**
+ * Stores a SwapMetadata event.
+ * @param event The event data
+ * @param dataSource The TypeORM DataSource instance
+ * @param logger The logger instance
+ */
+export const storeSwapMetadataEvent = async (
+  event: Partial<entities.SwapMetadata>,
+  db: DataSource,
+  logger: Logger,
+): Promise<entities.SwapMetadata> => {
+  const repository = new dbUtils.BlockchainEventRepository(db, logger);
+  return (
+    await (repository as any).saveAndHandleFinalisation(
+      entities.SwapMetadata,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET } as any,
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapMetadata)[],
+      [],
+    )
+  ).data;
+};

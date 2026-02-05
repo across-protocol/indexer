@@ -103,3 +103,25 @@ export const CLAIMED_RELAYER_REFUND_ABI = [
 export const SWAP_BEFORE_BRIDGE_ABI = [
   "event SwapBeforeBridge(address exchange, address indexed swapToken, address indexed acrossInputToken, uint256 swapTokenAmount, uint256 acrossInputAmount, address indexed acrossOutputToken, uint256 acrossOutputAmount)",
 ];
+
+export const CALLS_FAILED_ABI = [
+  "event CallsFailed((address target, bytes callData, uint256 value)[] calls, address indexed fallbackRecipient)",
+];
+
+export const SWAP_METADATA_ABI = ["event MetadataEmitted(bytes data)"];
+
+export const SWAP_METADATA_DECODING_TYPES = [
+  "uint8", // version
+  "uint8", // type
+  "uint8", // side
+  "address", // address
+  "uint256", // maximumAmountIn
+  "uint256", // minAmountOut
+  "uint256", // expectedAmountOut
+  "uint256", // expectedAmountIn
+  "string", // swapProvider
+  "uint256", // slippage (in basis points)
+  "bool", // autoSlippage
+  "address", // recipient
+  "address", // appFeeRecipient
+];
