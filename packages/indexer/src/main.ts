@@ -39,6 +39,10 @@ import { IntegratorIdWorker } from "./messaging/IntegratorIdWorker";
 import { PriceWorker } from "./messaging/priceWorker";
 import { SwapWorker } from "./messaging/swapWorker";
 import { startWebSocketIndexing } from "./data-indexing/service/indexing";
+import {
+  GaslessDepositDlqConsumer,
+  GaslessDepositPubSubConsumer,
+} from "./pubsub/gaslessDepositConsumer";
 import { DataDogMetricsService } from "./services/MetricsService";
 
 async function initializeRedis(
@@ -74,6 +78,7 @@ async function initializeRedis(
 export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   const { redisConfig, postgresConfig } = config;
   const redis = await initializeRedis(redisConfig, logger);
+  const abortController = new AbortController();
   const redisCache = new RedisCache(redis);
   const postgres = await connectToDatabase(postgresConfig, logger);
   // Call write to kick off webhook calls
@@ -165,6 +170,16 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
     postgres,
   );
   const monitoringManager = new MonitoringManager(logger, config, postgres);
+  const gaslessDepositPubSubConsumer = new GaslessDepositPubSubConsumer(
+    config,
+    logger,
+    postgres,
+  );
+  const gaslessDepositDlqConsumer = new GaslessDepositDlqConsumer(
+    config,
+    logger,
+    postgres,
+  );
 
   // Set up message workers
   const integratorIdWorker = new IntegratorIdWorker(
@@ -197,7 +212,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   // WebSocket Indexer setup
   const wsIndexerPromises: { chainId: number; promise: Promise<void> }[] = [];
-  const abortController = new AbortController();
 
   if (process.env.ENABLE_WEBSOCKET_INDEXER === "true") {
     // Merge providers, allowing WS providers to override RPC providers if defined for a chain
@@ -247,10 +261,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       integratorIdWorker.close(),
       priceWorker?.close(),
       swapWorker.close(),
-      metrics.close(),
     ]);
-    // Stop all other managers
-
     logger.debug({
       at: "Indexer#Main",
       message:
@@ -262,7 +273,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   // start all indexers in parallel, will wait for them to complete, but they all loop independently
-  const indexerPromises = [
+  const promises = [
     {
       name: "bundleServicesManager",
       promise: bundleServicesManager.start(abortController.signal),
@@ -295,6 +306,18 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       name: "monitoringManager",
       promise: monitoringManager.start(abortController.signal),
     },
+    {
+      name: "gaslessDepositPubSubConsumer",
+      promise: gaslessDepositPubSubConsumer.start(abortController.signal),
+    },
+    {
+      name: "gaslessDepositDlqConsumer",
+      promise: gaslessDepositDlqConsumer.start(abortController.signal),
+    },
+    {
+      name: "metrics",
+      promise: metrics.start(abortController.signal),
+    },
     ...wsIndexerPromises.map((p) => ({
       name: `wsIndexer-${p.chainId}`,
       promise: p.promise,
@@ -303,7 +326,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
 
   // Track pending services for debugging shutdown hangs
   const pendingServices = new Set<string>();
-  const wrappedPromises = indexerPromises.map((item) => {
+  const wrappedPromises = promises.map((item) => {
     pendingServices.add(item.name);
     return item.promise.finally(() => {
       pendingServices.delete(item.name);
@@ -313,7 +336,6 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
       });
     });
   });
-
   // Log pending services every 20 seconds if we are stuck waiting
   const monitorInterval = setInterval(() => {
     if (pendingServices.size > 0) {
@@ -329,7 +351,7 @@ export async function Main(config: parseEnv.Config, logger: winston.Logger) {
   clearInterval(monitorInterval);
 
   results.forEach((result, index) => {
-    const item = indexerPromises[index];
+    const item = promises[index];
     if (!item) return;
     const { name } = item as { name: string };
     if (result.status === "rejected") {

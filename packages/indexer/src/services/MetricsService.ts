@@ -44,7 +44,6 @@ export class DataDogMetricsService {
   private configuration: DatadogConfig;
   private logger?: Logger;
   private instanceTags: string[] = [];
-  private abortController: AbortController;
 
   /**
    * Constructor for DataDogMetricsService.
@@ -54,26 +53,39 @@ export class DataDogMetricsService {
     this.logger = config.logger;
     this.configuration = config.configuration;
     this.instanceTags = config.tags || [];
-    this.abortController = new AbortController();
+  }
+
+  public async start(abortSignal: AbortSignal) {
     const configuration = client.createConfiguration({
       authMethods: {
         apiKeyAuth: this.configuration.dd_api_key,
         appKeyAuth: this.configuration.dd_app_key,
       },
       httpConfig: {
-        signal: this.abortController.signal as any,
+        signal: abortSignal as any,
       },
     });
 
     this.apiInstance = new v2.MetricsApi(configuration);
     this.logger?.debug({
-      message: "DataDogMetricsService initialized",
+      message: "DataDogMetricsService started",
       enabled: this.configuration.enabled,
     });
+
     // Periodically flush metrics
     this.flushInterval = setInterval(() => {
       this.flush();
     }, this.FLUSH_INTERVAL_MS);
+
+    return new Promise<void>((resolve) => {
+      abortSignal.addEventListener("abort", () => {
+        this.close().then(resolve);
+      }, { once: true });
+
+      if (abortSignal.aborted) {
+        this.close().then(resolve);
+      }
+    });
   }
 
   /**
@@ -178,7 +190,7 @@ export class DataDogMetricsService {
    * Closes the metrics service.
    * Immediately terminates in-flight network requests to allow natural process exit.
    */
-  public async close() {
+  private async close() {
     this.logger?.debug({
       at: "MetricsService.close",
       message:
@@ -187,7 +199,6 @@ export class DataDogMetricsService {
 
     // Stop the recurring flush timer
     clearInterval(this.flushInterval as NodeJS.Timeout);
-    this.abortController.abort();
   }
 }
 
