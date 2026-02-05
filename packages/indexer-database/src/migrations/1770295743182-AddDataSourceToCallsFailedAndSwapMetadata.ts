@@ -7,10 +7,10 @@ export class AddDataSourceToCallsFailedAndSwapMetadata1770295743182
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "evm"."calls_failed" ADD "dataSource" "evm"."filled_v3_relay_datasource_enum" NOT NULL DEFAULT 'polling'`,
+      `ALTER TABLE "evm"."calls_failed" ADD "dataSource" "evm"."datasource_type_enum" NOT NULL DEFAULT 'polling'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "evm"."swap_metadata" ADD "dataSource" "evm"."filled_v3_relay_datasource_enum" NOT NULL DEFAULT 'polling'`,
+      `ALTER TABLE "evm"."swap_metadata" ADD "dataSource" "evm"."datasource_type_enum" NOT NULL DEFAULT 'polling'`,
     );
   }
 
