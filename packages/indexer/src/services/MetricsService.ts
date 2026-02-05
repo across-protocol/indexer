@@ -78,9 +78,13 @@ export class DataDogMetricsService {
     }, this.FLUSH_INTERVAL_MS);
 
     return new Promise<void>((resolve) => {
-      abortSignal.addEventListener("abort", () => {
-        this.close().then(resolve);
-      }, { once: true });
+      abortSignal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
 
       if (abortSignal.aborted) {
         this.close().then(resolve);

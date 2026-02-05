@@ -56,7 +56,7 @@ export class GaslessDepositPubSubConsumer {
     private readonly config: Config,
     private readonly logger: Logger,
     private readonly postgres: DataSource,
-  ) { }
+  ) {}
 
   /**
    * Start pulling messages from the gasless deposit subscription.
@@ -131,9 +131,13 @@ export class GaslessDepositPubSubConsumer {
     });
 
     const promise = new Promise<void>((resolve) => {
-      signal.addEventListener("abort", () => {
-        this.close().then(resolve);
-      }, { once: true });
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
     });
 
     if (signal.aborted) {
@@ -292,7 +296,7 @@ export class GaslessDepositDlqConsumer {
     private readonly config: Config,
     private readonly logger: Logger,
     private readonly postgres: DataSource,
-  ) { }
+  ) {}
 
   async start(signal: AbortSignal): Promise<void> {
     if (!this.config.enableGaslessDepositDlqConsumer) {
@@ -362,9 +366,13 @@ export class GaslessDepositDlqConsumer {
     });
 
     const promise = new Promise<void>((resolve) => {
-      signal.addEventListener("abort", () => {
-        this.close().then(resolve);
-      }, { once: true });
+      signal.addEventListener(
+        "abort",
+        () => {
+          this.close().then(resolve);
+        },
+        { once: true },
+      );
     });
 
     if (signal.aborted) {
