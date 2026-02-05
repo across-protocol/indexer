@@ -198,40 +198,25 @@ export class GaslessDepositPubSubConsumer {
       ...fields,
     });
 
-    try {
-      const repo = this.postgres.getRepository(GaslessDeposit);
-      await repo
-        .createQueryBuilder()
-        .insert()
-        .into(GaslessDeposit)
-        .values({
-          originChainId: fields.originChainId,
-          destinationChainId: fields.destinationChainId,
-          depositId: fields.depositId,
-        })
-        .orIgnore()
-        .execute();
-    } catch (err: unknown) {
-      const code =
-        err && typeof err === "object" && "code" in err
-          ? (err as { code: string }).code
-          : undefined;
-      // 23505 = PostgreSQL unique violation (duplicate originChainId + depositId)
-      if (code === "23505") {
-        this.logger.debug({
-          at: "GaslessDepositPubSubConsumer#handleMessage",
-          message: "Gasless deposit already stored (duplicate), skipping",
-          messageId: message.id,
-          ...fields,
-        });
-      } else {
-        throw err;
-      }
-    }
+    const repo = this.postgres.getRepository(GaslessDeposit);
+    const result = await repo
+      .createQueryBuilder()
+      .insert()
+      .into(GaslessDeposit)
+      .values({
+        originChainId: fields.originChainId,
+        destinationChainId: fields.destinationChainId,
+        depositId: fields.depositId,
+      })
+      .orIgnore()
+      .execute();
 
+    const inserted = result.identifiers.length > 0;
     this.logger.debug({
       at: "GaslessDepositPubSubConsumer#handleMessage",
-      message: "Stored gasless deposit",
+      message: inserted
+        ? "Stored gasless deposit"
+        : "Gasless deposit already stored (duplicate), skipping",
       messageId: message.id,
       ...fields,
     });
@@ -267,8 +252,9 @@ export class GaslessDepositPubSubConsumer {
 
 /**
  * Pull consumer for the gasless-deposit DLQ PubSub topic.
- * For each message, finds the matching gasless_deposit row by (originChainId, depositId)
- * and sets deletedAt (soft-delete) so the deposit status API returns "failed".
+ * Upserts into gasless_deposit: if a row exists, sets deletedAt (soft-delete);
+ * if no row exists (e.g. message reached DLQ before main consumer wrote), inserts
+ * a row with deletedAt set so the deposit status API returns "failed".
  */
 export class GaslessDepositDlqConsumer {
   private subscription: ReturnType<PubSub["subscription"]> | null = null;
@@ -378,23 +364,24 @@ export class GaslessDepositDlqConsumer {
     }
 
     const repo = this.postgres.getRepository(GaslessDeposit);
-    const result = await repo
+    const now = new Date();
+
+    await repo
       .createQueryBuilder()
-      .update(GaslessDeposit)
-      .set({ deletedAt: new Date() } as Partial<GaslessDeposit>)
-      .where("originChainId = :originChainId", {
+      .insert()
+      .into(GaslessDeposit)
+      .values({
         originChainId: fields.originChainId,
+        destinationChainId: fields.destinationChainId,
+        depositId: fields.depositId,
+        deletedAt: now,
       })
-      .andWhere("depositId = :depositId", { depositId: fields.depositId })
-      .andWhere("deletedAt IS NULL")
+      .orUpdate(["deletedAt"], ["originChainId", "depositId"])
       .execute();
 
-    const updated = result.affected === 1;
     this.logger.debug({
       at: "GaslessDepositDlqConsumer#handleMessage",
-      message: updated
-        ? "Marked gasless deposit as failed (deletedAt set)"
-        : "No gasless_deposit row found or already marked failed",
+      message: "Upserted gasless deposit as failed (deletedAt set)",
       messageId: message.id,
       ...fields,
     });
