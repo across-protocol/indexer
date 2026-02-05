@@ -7,6 +7,7 @@ import {
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { ethers, providers } from "ethers";
 import {
+  DataSource,
   entities,
   utils as indexerDatabaseUtils,
   SaveQueryResultType,
@@ -21,6 +22,7 @@ import * as utils from "../../utils";
 import {
   SpokePoolRepository,
   StoreEventsResult,
+  updateDepositEventWithIntegratorId,
 } from "../../database/SpokePoolRepository";
 import { CallsFailedRepository } from "../../database/CallsFailedRepository";
 import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
@@ -33,6 +35,10 @@ import { getMaxBlockLookBack } from "../../web3/constants";
 import { PriceMessage } from "../../messaging/priceWorker";
 import { EventDecoder } from "../../web3/EventDecoder";
 import { matchFillEventsWithTargetChainActions } from "../../utils/targetChainActionsUtils";
+import {
+  EthersAdapter,
+  GenericBlockchainProvider,
+} from "../../utils/web3Utils";
 
 export type FetchEventsResult = {
   v3FundsDepositedEvents: utils.V3FundsDepositedWithIntegradorId[];
@@ -869,19 +875,11 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
   private async updateNewDepositsWithIntegratorId(
     deposits: entities.V3FundsDeposited[],
   ) {
-    await across.utils.forEachAsync(deposits, async (deposit) => {
-      const integratorId = await utils.getIntegratorId(
-        this.provider,
-        deposit.quoteTimestamp,
-        deposit.transactionHash,
-      );
-      if (integratorId) {
-        await this.spokePoolClientRepository.updateDepositEventWithIntegratorId(
-          deposit.id,
-          integratorId,
-        );
-      }
-    });
+    await updateNewDepositsWithIntegratorId(
+      deposits,
+      this.spokePoolClientRepository.getDataSource(),
+      new EthersAdapter(this.provider),
+    );
   }
 
   private async publishNewRelays(storedEvents: StoreEventsResult) {
@@ -939,3 +937,20 @@ export class SpokePoolIndexerDataHandler implements IndexerDataHandler {
     );
   }
 }
+
+export const updateNewDepositsWithIntegratorId = async (
+  deposits: entities.V3FundsDeposited[],
+  db: DataSource,
+  provider: GenericBlockchainProvider,
+) => {
+  await across.utils.forEachAsync(deposits, async (deposit) => {
+    const integratorId = await utils.getIntegratorId(
+      provider,
+      deposit.quoteTimestamp,
+      deposit.transactionHash,
+    );
+    if (integratorId) {
+      await updateDepositEventWithIntegratorId(db, deposit.id, integratorId);
+    }
+  });
+};

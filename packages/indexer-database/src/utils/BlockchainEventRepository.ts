@@ -172,4 +172,8 @@ export class BlockchainEventRepository {
     const deletedRows = await qb.execute();
     return deletedRows.raw;
   }
+
+  public getDataSource() {
+    return this.postgres;
+  }
 }

@@ -78,6 +78,7 @@ const fetchAndMockTransaction = async (
   txHash: `0x${string}`,
 ) => {
   const receipt = await client.getTransactionReceipt({ hash: txHash });
+  const transaction = await client.getTransaction({ hash: txHash });
   const block = await client.getBlock({
     blockNumber: receipt.blockNumber,
     includeTransactions: true,
@@ -133,11 +134,15 @@ const fetchAndMockTransaction = async (
   // Ensure we define transactions as generic array if needed, but toRpcFormat handles recursing
   server.mockBlockResponse(serializedBlock);
 
+  const serializedTransaction = toRpcFormat(transaction);
+  server.mockTransactionResponse(txHash, serializedTransaction);
+
   const serializedReceipt = toRpcFormat(receipt);
   server.mockTransactionReceiptResponse(txHash, serializedReceipt);
   return {
     block,
     receipt,
+    transaction,
   };
 };
 
@@ -2087,6 +2092,85 @@ describe("Websocket Subscription", () => {
       fillEventId: fillEvent.id,
     };
     compareExcludingMetadata(wsRelayHashInfo, expectedRelayHashInfo);
+  }).timeout(120000);
+
+  it("should ingest the FundsDeposited event from Arbitrum tx 0x1ca6...7d6 with integratorId", async () => {
+    // Tx: https://arbiscan.io/tx/0x1ca60eee33c7b877df0fdc1123e91a90860accf13dc93b3fe1d4fb54d16a87d6#eventlog#4
+    const txHash =
+      "0x1ca60eee33c7b877df0fdc1123e91a90860accf13dc93b3fe1d4fb54d16a87d6";
+    const arbitrumClient = getTestPublicClient(CHAIN_IDs.ARBITRUM);
+
+    const { block, receipt } = await fetchAndMockTransaction(
+      server,
+      arbitrumClient,
+      txHash,
+    );
+
+    // Stub the SpokePool address
+    sinon
+      .stub(contractUtils, "getAddress")
+      .returns("0xe35e9842fceaca96570b734083f4a58e8f7c5f2a");
+
+    const repo = dataSource.getRepository(entities.V3FundsDeposited);
+
+    // Sanity check with SpokePoolIndexerDataHandler
+    const sanityCheckResult = await sanityCheckWithEventIndexer({
+      handlerFactory: () =>
+        getSpokePoolIndexerDataHandler({
+          dataSource,
+          logger,
+          chainId: CHAIN_IDs.ARBITRUM,
+          hubPoolChainId: CHAIN_IDs.MAINNET,
+        }),
+      repository: repo,
+      findOptions: { transactionHash: txHash },
+      blockNumber: Number(block.number),
+      customDeleteFunction: async (repository, findOptions) => {
+        // Delete RelayHashInfo
+        await dataSource
+          .getRepository(entities.RelayHashInfo)
+          .delete({ depositTxHash: txHash });
+        await repository.delete(findOptions);
+      },
+    });
+
+    // Start websocket indexer
+    startChainIndexing({
+      database: dataSource,
+      rpcUrl,
+      logger,
+      sigterm: abortController.signal,
+      chainId: CHAIN_IDs.ARBITRUM,
+      protocols: [SPOKE_POOL_PROTOCOL],
+      transportOptions: DEFAULT_TRANSPORT_OPTIONS,
+    });
+
+    await server.waitForSubscription(
+      SPOKE_POOL_PROTOCOL.getEventHandlers({
+        logger,
+        chainId: CHAIN_IDs.ARBITRUM,
+      }).length,
+    );
+
+    receipt.logs.forEach((log) => server.pushEvent(log));
+
+    const savedEvent = await waitForEventToBeStoredOrFail({
+      repository: repo,
+      findOptions: {
+        transactionHash: txHash,
+      },
+    });
+
+    expect(savedEvent).to.exist;
+    // Compare WS event with Handler event
+    compareExcludingMetadata(savedEvent, sanityCheckResult);
+
+    // Verify Integrator ID and data source
+    expect(savedEvent).to.deep.include({
+      transactionHash: txHash,
+      integratorId: "007f",
+      dataSource: DataSourceType.WEB_SOCKET,
+    });
   }).timeout(120000);
 
   it("should ingest sponsored OFT events from Arbitrum tx 0x0400...f1cb", async () => {
