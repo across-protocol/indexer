@@ -569,6 +569,7 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         }
 
         // Fetch and decode the MessageSent account using the V2 client
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messageSentAccount =
           await MessageTransmitterV2Client.fetchMessageSent(
             this.provider,
@@ -585,7 +586,14 @@ export class SvmCCTPIndexerDataHandler implements IndexerDataHandler {
         }
 
         // Extract the message bytes from the decoded account
-        const messageBytes = Buffer.from(messageSentAccount.data.message);
+        // Convert ReadonlyUint8Array to Buffer by accessing its underlying buffer
+        const message = messageSentAccount.data
+          .message as unknown as Uint8Array;
+        const messageBytes = Buffer.from(
+          message.buffer,
+          message.byteOffset,
+          message.byteLength,
+        );
         const messageHex = "0x" + messageBytes.toString("hex");
 
         // Decode the CCTP V2 message

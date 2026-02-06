@@ -22,7 +22,7 @@ import { SpokePoolProcessor } from "../../services/spokePoolProcessor";
 import { IndexerQueuesService } from "../../messaging/service";
 import { entities } from "@repo/indexer-database";
 import { createTestRetryProviderFactory } from "../../tests/testProvider";
-import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
+import { RetryProvider } from "@across-protocol/sdk/dist/cjs/src/providers/retryProvider";
 import { IndexerDataHandler } from "../service/IndexerDataHandler";
 import { HyperliquidDepositHandlerRepository } from "../../database/HyperliquidDepositHandlerRepository";
 

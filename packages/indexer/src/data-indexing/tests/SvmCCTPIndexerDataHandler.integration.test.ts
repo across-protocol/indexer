@@ -10,8 +10,8 @@ import { SvmCCTPIndexerDataHandler } from "../service/SvmCCTPIndexerDataHandler"
 import { CCTPRepository } from "../../database/CctpRepository";
 import { BlockRange } from "../model";
 import { createTestRetryProvider } from "../../tests/testProvider";
-import { RetryProvider } from "@across-protocol/sdk/dist/cjs/providers/retryProvider";
 import { formatFromAddressToChainFormat } from "../../utils";
+import { RetryProvider } from "@across-protocol/sdk/dist/cjs/src/providers/retryProvider";
 import { getCctpDestinationChainFromDomain } from "../adapter/cctp-v2/service";
 
 describe("SvmCCTPIndexerDataHandler Integration", () => {
