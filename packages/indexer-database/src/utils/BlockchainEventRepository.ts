@@ -58,6 +58,16 @@ export class BlockchainEventRepository {
     data: Partial<Entity>,
     uniqueKeys: (keyof Entity)[],
     comparisonKeys: (keyof Entity)[],
+    /**
+     * The action to take when a conflict is encountered during insertion.
+     * - "upsert" will update the existing record if a conflict is encountered.
+     * - "error" will throw an error if a conflict is encountered.
+     *
+     * This might be useful for cases where concurrent writes are not expected and an error should be thrown.
+     *
+     * Default is "upsert"
+     */
+    onInsertConflict: "upsert" | "error" = "upsert",
   ): Promise<SaveQueryResult<Entity>> {
     const where = uniqueKeys.reduce(
       (acc, key) => {
@@ -70,7 +80,14 @@ export class BlockchainEventRepository {
     const dbEntity = await repository.findOne({ where });
 
     if (!dbEntity) {
-      await repository.insert(data);
+      if (onInsertConflict === "upsert") {
+        await repository.upsert(data, {
+          conflictPaths: uniqueKeys as string[],
+          skipUpdateIfNoValuesChanged: true,
+        });
+      } else {
+        await repository.insert(data);
+      }
       return {
         data: (await repository.findOne({ where })) as Entity,
         result: SaveQueryResultType.Inserted,
