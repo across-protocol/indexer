@@ -34,6 +34,7 @@ import {
   TokensBridgedArgs,
   ClaimedRelayerRefundArgs,
   SponsoredOFTSendArgs,
+  SwapBeforeBridgeArgs,
 } from "../model/eventTypes";
 import { Logger } from "winston";
 import { BigNumber } from "ethers";
@@ -948,5 +949,28 @@ export const transformSponsoredOFTSendEvent = (
     maxUserSlippageBps: preprocessed.maxUserSlippageBps.toString(),
     finalToken,
     sig: preprocessed.sig,
+  };
+};
+export const transformSwapBeforeBridgeEvent = (
+  preprocessed: SwapBeforeBridgeArgs,
+  payload: IndexerEventPayload,
+  logger: Logger,
+): Partial<entities.SwapBeforeBridge> => {
+  const base = baseTransformer(payload, logger);
+  const chainId = Number(base.chainId);
+
+  return {
+    ...base,
+    chainId,
+    exchange: transformAddress(preprocessed.exchange, chainId),
+    swapToken: transformAddress(preprocessed.swapToken, chainId),
+    acrossInputToken: transformAddress(preprocessed.acrossInputToken, chainId),
+    swapTokenAmount: preprocessed.swapTokenAmount.toString(),
+    acrossInputAmount: preprocessed.acrossInputAmount.toString(),
+    acrossOutputToken: transformAddress(
+      preprocessed.acrossOutputToken,
+      chainId,
+    ),
+    acrossOutputAmount: preprocessed.acrossOutputAmount.toString(),
   };
 };

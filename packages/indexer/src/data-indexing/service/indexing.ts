@@ -1,6 +1,7 @@
 import {
   IndexerConfig,
   startIndexing as startGenericIndexing,
+  IndexerEventHandler,
 } from "./genericIndexing";
 import { DataSource, utils as dbUtils } from "@repo/indexer-database";
 import { Logger } from "winston";
@@ -8,21 +9,22 @@ import { getChainProtocols, SupportedProtocols } from "./config";
 import { DataDogMetricsService } from "../../services/MetricsService";
 import { WebSocketTransportConfig } from "viem";
 import { Config } from "../../parseEnv";
-import { RedisCache } from "../../redis/redisCache";
 
 /**
  * Definition of the request object for starting an indexer.
  *
- * @template TEventEntity The type of the structured database entity.
  * @template TDb The type of the database client/connection.
  * @template TPayload The type of the event payload from the event listener.
  * @template TPreprocessed The type of the preprocessed data.
+ * @template TTransformed The type of the transformed data.
+ * @template TStored The type of the stored data.
  */
 export interface StartIndexerRequest<
-  TEventEntity,
   TDb,
   TPayload,
   TPreprocessed,
+  TTransformed,
+  TStored,
 > {
   database: DataSource;
   rpcUrl: string;
@@ -31,18 +33,33 @@ export interface StartIndexerRequest<
   sigterm?: AbortSignal;
   chainId: number;
   /** The list of protocols (groups of events) to support on this chain */
-  protocols: SupportedProtocols<TEventEntity, TDb, TPayload, TPreprocessed>[];
+  protocols: SupportedProtocols<
+    TDb,
+    TPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >[];
   metrics?: DataDogMetricsService;
   /** Optional WebSocket transport options */
   transportOptions?: WebSocketTransportConfig;
 }
 
 export async function startChainIndexing<
-  TEventEntity,
   TDb,
   TPayload,
   TPreprocessed,
->(request: StartIndexerRequest<TEventEntity, TDb, TPayload, TPreprocessed>) {
+  TTransformed,
+  TStored,
+>(
+  request: StartIndexerRequest<
+    TDb,
+    TPayload,
+    TPreprocessed,
+    TTransformed,
+    TStored
+  >,
+) {
   const {
     database,
     rpcUrl,
@@ -63,10 +80,11 @@ export async function startChainIndexing<
 
   // Build the concrete configuration
   const indexerConfig: IndexerConfig<
-    TEventEntity,
     TDb,
     TPayload,
-    TPreprocessed
+    TPreprocessed,
+    TTransformed,
+    TStored
   > = {
     chainId,
     rpcUrl,
@@ -83,7 +101,7 @@ export async function startChainIndexing<
 
   // Start the generic indexer subsystem
   await startGenericIndexing({
-    db: new dbUtils.BlockchainEventRepository(database, logger) as TDb,
+    db: database as TDb,
     indexerConfig,
     logger,
     sigterm,

@@ -99,6 +99,10 @@ export type SanityCheckParams<T extends ObjectLiteral, H> = {
   repository: Repository<T>;
   findOptions: FindOptionsWhere<T>;
   blockNumber: number;
+  customDeleteFunction?: (
+    repository: Repository<T>,
+    findOptions: FindOptionsWhere<T>,
+  ) => Promise<void>;
 };
 
 /**
@@ -112,7 +116,13 @@ export async function sanityCheckWithEventIndexer<
   T extends ObjectLiteral,
   H extends IndexerDataHandler,
 >(params: SanityCheckParams<T, H>): Promise<T> {
-  const { handlerFactory, repository, findOptions, blockNumber } = params;
+  const {
+    handlerFactory,
+    repository,
+    findOptions,
+    blockNumber,
+    customDeleteFunction,
+  } = params;
   const handler = handlerFactory();
 
   await handler.processBlockRange({
@@ -128,7 +138,11 @@ export async function sanityCheckWithEventIndexer<
   }
 
   // delete the entry
-  await repository.delete(findOptions);
+  if (customDeleteFunction) {
+    await customDeleteFunction(repository, findOptions);
+  } else {
+    await repository.delete(findOptions);
+  }
 
   return event;
 }
@@ -192,12 +206,6 @@ export const getSpokePoolIndexerDataHandler = (
     logger,
   );
 
-  // Create Services
-  // Stub SpokePoolProcessor to avoid pg_advisory_xact_lock issues with pg-mem
-  const spokePoolProcessor = {
-    process: sinon.stub().resolves(),
-  } as unknown as SpokePoolProcessor;
-
   const indexerQueuesService = {
     publish: sinon.stub().resolves(),
     publishMessagesBulk: sinon.stub().resolves(),
@@ -216,7 +224,7 @@ export const getSpokePoolIndexerDataHandler = (
     callsFailedRepo,
     swapMetadataRepo,
     hyperliquidDepositHandlerRepo,
-    spokePoolProcessor,
+    new SpokePoolProcessor(dataSource, chainId, logger, undefined),
     indexerQueuesService,
   );
 
@@ -338,6 +346,21 @@ const TOKENS_BRIDGED_FIELDS = [
   "caller",
 ];
 
+const SWAP_BEFORE_BRIDGE_FIELDS = [
+  "blockNumber",
+  "transactionHash",
+  "transactionIndex",
+  "logIndex",
+  "finalised",
+  "exchange",
+  "swapToken",
+  "acrossInputToken",
+  "swapTokenAmount",
+  "acrossInputAmount",
+  "acrossOutputToken",
+  "acrossOutputAmount",
+];
+
 const compareSubset = <T>(
   saved: Partial<T>,
   expected: Partial<T>,
@@ -392,4 +415,11 @@ export const compareTokensBridgedEvents = (
   expected: Partial<entities.TokensBridged>,
 ) => {
   compareSubset(saved, expected, TOKENS_BRIDGED_FIELDS);
+};
+
+export const compareSwapBeforeBridgeEvents = (
+  saved: Partial<entities.SwapBeforeBridge>,
+  expected: Partial<entities.SwapBeforeBridge>,
+) => {
+  compareSubset(saved, expected, SWAP_BEFORE_BRIDGE_FIELDS);
 };

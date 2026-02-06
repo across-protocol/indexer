@@ -240,6 +240,16 @@ export interface ClaimedRelayerRefundArgs {
   caller: `0x${string}`;
 }
 
+export interface SwapBeforeBridgeArgs {
+  exchange: `0x${string}`;
+  swapToken: `0x${string}`;
+  acrossInputToken: `0x${string}`;
+  swapTokenAmount: bigint;
+  acrossInputAmount: bigint;
+  acrossOutputToken: `0x${string}`;
+  acrossOutputAmount: bigint;
+}
+
 export type EventArgs =
   | DepositForBurnArgs
   | MessageSentArgs
@@ -262,4 +272,5 @@ export type EventArgs =
   | RelayedRootBundleArgs
   | RequestedSlowFillArgs
   | TokensBridgedArgs
-  | ClaimedRelayerRefundArgs;
+  | ClaimedRelayerRefundArgs
+  | SwapBeforeBridgeArgs;
