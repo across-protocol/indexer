@@ -128,6 +128,8 @@ export class IncorrectDepositStatusMonitor extends RepeatableTask {
         .andWhere("d.blockTimestamp <= :blockTimestampLimit", {
           blockTimestampLimit: unfilledBlockTimestampLimit,
         })
+        // TODO: extend the time window once we are sure the service is working as expected.
+        .andWhere("d.blockTimestamp >= '2026-01-09 00:00:00'")
         // Only include deposits with no message (empty message means simple bridge, should fill quickly)
         .andWhere("(d.message IS NULL OR d.message = '' OR d.message = '0x')")
         // Exclude deposits with inputAmount = 0 as they will legitimately remain unfilled
