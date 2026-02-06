@@ -17,6 +17,7 @@ import {
   withMetrics,
 } from "../../services/MetricsService";
 import { COUNT } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
+import { safeJsonStringify } from "../../utils/map";
 
 /**
  * @file Implements the "WebSocket Listener" service.
@@ -138,38 +139,24 @@ export const subscribeToEvent = <TPayload>(
     eventName: config.eventName,
     onLogs: (logs: Log[]) => {
       // Fire and forget: Add the batch processing to the queue
-      processingQueue
-        .schedule(() =>
-          processLogBatch({
-            logs,
-            config,
-            chainId,
-            client,
-            onEvent,
-            logger,
-            metrics,
-          }).catch((error) => {
-            logger.debug({
-              at: "genericEventListener#subscribeToEvent",
-              message: `Uncaught error in processLogBatch`,
-              error,
-            });
-          }),
-        )
-        .catch((error) => {
-          logger.debug({
-            at: "genericEventListener#subscribeToEvent",
-            message: `Uncaught error in processingQueue.schedule`,
-            error,
-          });
-        });
+      processingQueue.schedule(() =>
+        processLogBatch({
+          logs,
+          config,
+          chainId,
+          client,
+          onEvent,
+          logger,
+          metrics,
+        }),
+      );
     },
     onError: (error: Error) => {
-      logger.error({
+      logger.debug({
         at: "genericEventListener#subscribeToEvent",
         message: `Fatal error watching event ${config.eventName}. Triggering restart.`,
         error: error,
-        notificationPath: "across-indexer-error",
+        errorJson: safeJsonStringify(error),
       });
 
       // Notify the orchestrator that this listener has died
