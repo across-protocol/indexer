@@ -39,18 +39,21 @@ const UK_TOKENS_BRIDGED = [
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSponsoredDepositForBurnEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SponsoredDepositForBurn>,
-  dbUtils.BlockchainEventRepository
+  entities.SponsoredDepositForBurn
 > = async (
   event: Partial<entities.SponsoredDepositForBurn>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SponsoredDepositForBurn>(
-    entities.SponsoredDepositForBurn,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredDepositForBurn)[],
-    [],
-  );
+): Promise<entities.SponsoredDepositForBurn> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredDepositForBurn>(
+      entities.SponsoredDepositForBurn,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredDepositForBurn)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -61,63 +64,75 @@ export const storeSponsoredDepositForBurnEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeDepositForBurnEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.DepositForBurn>,
-  dbUtils.BlockchainEventRepository
+  entities.DepositForBurn
 > = async (
   event: Partial<entities.DepositForBurn>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.DepositForBurn>(
-    entities.DepositForBurn,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.DepositForBurn)[],
-    [],
-  );
+): Promise<entities.DepositForBurn> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.DepositForBurn>(
+      entities.DepositForBurn,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.DepositForBurn)[],
+      [],
+    )
+  ).data;
 };
 
 export const storeMessageSentEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.MessageSent>,
-  dbUtils.BlockchainEventRepository
+  entities.MessageSent
 > = async (
   event: Partial<entities.MessageSent>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.MessageSent>(
-    entities.MessageSent,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
-    [],
-  );
+): Promise<entities.MessageSent> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.MessageSent>(
+      entities.MessageSent,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageSent)[],
+      [],
+    )
+  ).data;
 };
 
 export const storeMessageReceivedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.MessageReceived>,
-  dbUtils.BlockchainEventRepository
+  entities.MessageReceived
 > = async (
   event: Partial<entities.MessageReceived>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.MessageReceived>(
-    entities.MessageReceived,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageReceived)[],
-    [],
-  );
+): Promise<entities.MessageReceived> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.MessageReceived>(
+      entities.MessageReceived,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MessageReceived)[],
+      [],
+    )
+  ).data;
 };
 
 export const storeMintAndWithdrawEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.MintAndWithdraw>,
-  dbUtils.BlockchainEventRepository
+  entities.MintAndWithdraw
 > = async (
   event: Partial<entities.MintAndWithdraw>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.MintAndWithdraw>(
-    entities.MintAndWithdraw,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MintAndWithdraw)[],
-    [],
-  );
+): Promise<entities.MintAndWithdraw> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.MintAndWithdraw>(
+      entities.MintAndWithdraw,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.MintAndWithdraw)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -128,18 +143,21 @@ export const storeMintAndWithdrawEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSwapFlowInitializedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SwapFlowInitialized>,
-  dbUtils.BlockchainEventRepository
+  entities.SwapFlowInitialized
 > = async (
   event: Partial<entities.SwapFlowInitialized>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SwapFlowInitialized>(
-    entities.SwapFlowInitialized,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowInitialized)[],
-    [],
-  );
+): Promise<entities.SwapFlowInitialized> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SwapFlowInitialized>(
+      entities.SwapFlowInitialized,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowInitialized)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -150,18 +168,21 @@ export const storeSwapFlowInitializedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSwapFlowFinalizedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SwapFlowFinalized>,
-  dbUtils.BlockchainEventRepository
+  entities.SwapFlowFinalized
 > = async (
   event: Partial<entities.SwapFlowFinalized>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SwapFlowFinalized>(
-    entities.SwapFlowFinalized,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowFinalized)[],
-    [],
-  );
+): Promise<entities.SwapFlowFinalized> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SwapFlowFinalized>(
+      entities.SwapFlowFinalized,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SwapFlowFinalized)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -172,18 +193,21 @@ export const storeSwapFlowFinalizedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSponsoredAccountActivationEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SponsoredAccountActivation>,
-  dbUtils.BlockchainEventRepository
+  entities.SponsoredAccountActivation
 > = async (
   event: Partial<entities.SponsoredAccountActivation>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SponsoredAccountActivation>(
-    entities.SponsoredAccountActivation,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredAccountActivation)[],
-    [],
-  );
+): Promise<entities.SponsoredAccountActivation> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredAccountActivation>(
+      entities.SponsoredAccountActivation,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredAccountActivation)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -194,18 +218,21 @@ export const storeSponsoredAccountActivationEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSimpleTransferFlowCompletedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SimpleTransferFlowCompleted>,
-  dbUtils.BlockchainEventRepository
+  entities.SimpleTransferFlowCompleted
 > = async (
   event: Partial<entities.SimpleTransferFlowCompleted>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SimpleTransferFlowCompleted>(
-    entities.SimpleTransferFlowCompleted,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SimpleTransferFlowCompleted)[],
-    [],
-  );
+): Promise<entities.SimpleTransferFlowCompleted> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SimpleTransferFlowCompleted>(
+      entities.SimpleTransferFlowCompleted,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SimpleTransferFlowCompleted)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -216,18 +243,21 @@ export const storeSimpleTransferFlowCompletedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeFallbackHyperEVMFlowCompletedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.FallbackHyperEVMFlowCompleted>,
-  dbUtils.BlockchainEventRepository
+  entities.FallbackHyperEVMFlowCompleted
 > = async (
   event: Partial<entities.FallbackHyperEVMFlowCompleted>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.FallbackHyperEVMFlowCompleted>(
-    entities.FallbackHyperEVMFlowCompleted,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.FallbackHyperEVMFlowCompleted)[],
-    [],
-  );
+): Promise<entities.FallbackHyperEVMFlowCompleted> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.FallbackHyperEVMFlowCompleted>(
+      entities.FallbackHyperEVMFlowCompleted,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.FallbackHyperEVMFlowCompleted)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -238,18 +268,21 @@ export const storeFallbackHyperEVMFlowCompletedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeArbitraryActionsExecutedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.ArbitraryActionsExecuted>,
-  dbUtils.BlockchainEventRepository
+  entities.ArbitraryActionsExecuted
 > = async (
   event: Partial<entities.ArbitraryActionsExecuted>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.ArbitraryActionsExecuted>(
-    entities.ArbitraryActionsExecuted,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
-    [],
-  );
+): Promise<entities.ArbitraryActionsExecuted> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.ArbitraryActionsExecuted>(
+      entities.ArbitraryActionsExecuted,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ArbitraryActionsExecuted)[],
+      [],
+    )
+  ).data;
 };
 
 /* ==================================================================================
@@ -264,18 +297,21 @@ export const storeArbitraryActionsExecutedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeOFTSentEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.OFTSent>,
-  dbUtils.BlockchainEventRepository
+  entities.OFTSent
 > = async (
   event: Partial<entities.OFTSent>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.OFTSent>(
-    entities.OFTSent,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTSent)[],
-    [],
-  );
+): Promise<entities.OFTSent> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.OFTSent>(
+      entities.OFTSent,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTSent)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -286,18 +322,21 @@ export const storeOFTSentEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeOFTReceivedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.OFTReceived>,
-  dbUtils.BlockchainEventRepository
+  entities.OFTReceived
 > = async (
   event: Partial<entities.OFTReceived>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.OFTReceived>(
-    entities.OFTReceived,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTReceived)[],
-    [],
-  );
+): Promise<entities.OFTReceived> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.OFTReceived>(
+      entities.OFTReceived,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_CHAIN_BLOCKHASH_LOG as (keyof entities.OFTReceived)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -308,18 +347,21 @@ export const storeOFTReceivedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeSponsoredOFTSendEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.SponsoredOFTSend>,
-  dbUtils.BlockchainEventRepository
+  entities.SponsoredOFTSend
 > = async (
   event: Partial<entities.SponsoredOFTSend>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.SponsoredOFTSend>(
-    entities.SponsoredOFTSend,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredOFTSend)[],
-    [],
-  );
+): Promise<entities.SponsoredOFTSend> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.SponsoredOFTSend>(
+      entities.SponsoredOFTSend,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.SponsoredOFTSend)[],
+      [],
+    )
+  ).data;
 };
 
 /* ==================================================================================
@@ -327,33 +369,39 @@ export const storeSponsoredOFTSendEvent: Storer<
  * ================================================================================== */
 
 export const storeFilledV3RelayEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.FilledV3Relay>,
-  dbUtils.BlockchainEventRepository
+  entities.FilledV3Relay
 > = async (
   event: Partial<entities.FilledV3Relay>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.FilledV3Relay>(
-    entities.FilledV3Relay,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_INTERNAL_HASH as (keyof entities.FilledV3Relay)[],
-    UPDATE_TRANSACTION_HASH as (keyof entities.FilledV3Relay)[],
-  );
+): Promise<entities.FilledV3Relay> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.FilledV3Relay>(
+      entities.FilledV3Relay,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_INTERNAL_HASH as (keyof entities.FilledV3Relay)[],
+      UPDATE_TRANSACTION_HASH as (keyof entities.FilledV3Relay)[],
+    )
+  ).data;
 };
 
 export const storeV3FundsDepositedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.V3FundsDeposited>,
-  dbUtils.BlockchainEventRepository
+  entities.V3FundsDeposited
 > = async (
   event: Partial<entities.V3FundsDeposited>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.V3FundsDeposited>(
-    entities.V3FundsDeposited,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
-    [],
-  );
+): Promise<entities.V3FundsDeposited> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.V3FundsDeposited>(
+      entities.V3FundsDeposited,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_INTERNAL_HASH as (keyof entities.V3FundsDeposited)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -364,33 +412,39 @@ export const storeV3FundsDepositedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeExecutedRelayerRefundRootEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.ExecutedRelayerRefundRoot>,
-  dbUtils.BlockchainEventRepository
+  entities.ExecutedRelayerRefundRoot
 > = async (
   event: Partial<entities.ExecutedRelayerRefundRoot>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.ExecutedRelayerRefundRoot>(
-    entities.ExecutedRelayerRefundRoot,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_REFUND_ROOT_CHAIN_BUNDLE_LEAF_TXN as (keyof entities.ExecutedRelayerRefundRoot)[],
-    [],
-  );
+): Promise<entities.ExecutedRelayerRefundRoot> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.ExecutedRelayerRefundRoot>(
+      entities.ExecutedRelayerRefundRoot,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_REFUND_ROOT_CHAIN_BUNDLE_LEAF_TXN as (keyof entities.ExecutedRelayerRefundRoot)[],
+      [],
+    )
+  ).data;
 };
 
 export const storeRequestedSpeedUpV3DepositEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.RequestedSpeedUpV3Deposit>,
-  dbUtils.BlockchainEventRepository
+  entities.RequestedSpeedUpV3Deposit
 > = async (
   event: Partial<entities.RequestedSpeedUpV3Deposit>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.RequestedSpeedUpV3Deposit>(
-    entities.RequestedSpeedUpV3Deposit,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[],
-    [],
-  );
+): Promise<entities.RequestedSpeedUpV3Deposit> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.RequestedSpeedUpV3Deposit>(
+      entities.RequestedSpeedUpV3Deposit,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_SPEED_UP_V3_DEPOSIT_ID_ORIGIN_CHAIN_TX_HASH_LOG_IDX as (keyof entities.RequestedSpeedUpV3Deposit)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -401,18 +455,21 @@ export const storeRequestedSpeedUpV3DepositEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeRelayedRootBundleEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.RelayedRootBundle>,
-  dbUtils.BlockchainEventRepository
+  entities.RelayedRootBundle
 > = async (
   event: Partial<entities.RelayedRootBundle>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.RelayedRootBundle>(
-    entities.RelayedRootBundle,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_RELAYED_ROOT_BUNDLE as (keyof entities.RelayedRootBundle)[],
-    [],
-  );
+): Promise<entities.RelayedRootBundle> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.RelayedRootBundle>(
+      entities.RelayedRootBundle,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_RELAYED_ROOT_BUNDLE as (keyof entities.RelayedRootBundle)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -423,18 +480,21 @@ export const storeRelayedRootBundleEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeRequestedSlowFillEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.RequestedV3SlowFill>,
-  dbUtils.BlockchainEventRepository
+  entities.RequestedV3SlowFill
 > = async (
   event: Partial<entities.RequestedV3SlowFill>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.RequestedV3SlowFill>(
-    entities.RequestedV3SlowFill,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_INTERNAL_HASH as (keyof entities.RequestedV3SlowFill)[],
-    [],
-  );
+): Promise<entities.RequestedV3SlowFill> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.RequestedV3SlowFill>(
+      entities.RequestedV3SlowFill,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_INTERNAL_HASH as (keyof entities.RequestedV3SlowFill)[],
+      [],
+    )
+  ).data;
 };
 
 /**
@@ -445,18 +505,21 @@ export const storeRequestedSlowFillEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeTokensBridgedEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.TokensBridged>,
-  dbUtils.BlockchainEventRepository
+  entities.TokensBridged
 > = async (
   event: Partial<entities.TokensBridged>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.TokensBridged>(
-    entities.TokensBridged,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    UK_TOKENS_BRIDGED as (keyof entities.TokensBridged)[],
-    UPDATE_TRANSACTION_HASH as (keyof entities.TokensBridged)[],
-  );
+): Promise<entities.TokensBridged> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.TokensBridged>(
+      entities.TokensBridged,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      UK_TOKENS_BRIDGED as (keyof entities.TokensBridged)[],
+      UPDATE_TRANSACTION_HASH as (keyof entities.TokensBridged)[],
+    )
+  ).data;
 };
 
 /**
@@ -467,16 +530,19 @@ export const storeTokensBridgedEvent: Storer<
  * @returns A promise that resolves to the result of the save operation.
  */
 export const storeClaimedRelayerRefundEvent: Storer<
+  dbUtils.BlockchainEventRepository,
   Partial<entities.ClaimedRelayerRefunds>,
-  dbUtils.BlockchainEventRepository
+  entities.ClaimedRelayerRefunds
 > = async (
   event: Partial<entities.ClaimedRelayerRefunds>,
   repository: dbUtils.BlockchainEventRepository,
-) => {
-  return repository.saveAndHandleFinalisationBatch<entities.ClaimedRelayerRefunds>(
-    entities.ClaimedRelayerRefunds,
-    [{ ...event, dataSource: DataSourceType.WEB_SOCKET }],
-    PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ClaimedRelayerRefunds)[],
-    [],
-  );
+): Promise<entities.ClaimedRelayerRefunds> => {
+  return (
+    await repository.saveAndHandleFinalisation<entities.ClaimedRelayerRefunds>(
+      entities.ClaimedRelayerRefunds,
+      { ...event, dataSource: DataSourceType.WEB_SOCKET },
+      PK_CHAIN_BLOCK_TX_LOG as (keyof entities.ClaimedRelayerRefunds)[],
+      [],
+    )
+  ).data;
 };
